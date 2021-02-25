@@ -336,15 +336,15 @@ endif
 ifeq ($(SYSTYPE),"Bridges2")
 CC       = mpicc
 CXX      = mpic++
-FC       = mpif90 -nofor_main  # intel
-#FC       = mpif90  # gcc/clang
+FC       = mpif90  # gcc/clang
+#FC       = mpif90 -nofor_main  # intel
 OPTIMIZE = -O3
-OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer  -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
-#OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive  # clang
+OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive  # aocc/clang
 #OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer  # gcc
+#OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer  -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -qopenmp  # intel
-#OPTIMIZE += -fopenmp  # gcc/clang
+OPTIMIZE += -fopenmp  # gcc/clang
+#OPTIMIZE += -qopenmp  # intel
 endif
 MKL_INCL = -I$(INCLUDE)
 MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
@@ -356,9 +356,16 @@ HDF5INCL = -I$(INCLUDE) -DH5_USE_16_API
 HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
-## the above works for:
+## modules to load for aocc/clang:
+## module load aocc
+## module load openmpi/4.0.2-clang2.1
+## modules to load for gcc:
+## module load gcc
+## module load openmpi/3.1.6-gcc8.3.1
+## modules to load for intel:
 ## module load intel
 ## module load openmpi/4.0.2-intel20.4
+## additional modules to load for any compiler:
 ## module load mkl
 ## module load hdf5
 ## module load fftw
