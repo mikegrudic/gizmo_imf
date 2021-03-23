@@ -746,7 +746,7 @@ void blackhole_final_operations(void)
 #ifdef BH_DEBUG_FIX_MDOT
         double period_all = All.BH_fb_period/UNIT_TIME_IN_GYR;
         double period_on  = period_all*All.BH_fb_duty_cycle;
-        if (BH_fb_duty_cycle>0.99)
+        if (All.BH_fb_duty_cycle>0.99)
          {dm = BH_DEBUG_FIX_MDOT * dt;}
         else 
          {
