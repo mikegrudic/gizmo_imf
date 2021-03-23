@@ -60,6 +60,30 @@ void compute_hydro_densities_and_forces(void)
     {
         PRINT_STATUS("Start hydrodynamics computation...");
         density();		/* computes density, and pressure */
+
+/*re-assigned magnetic field after getting the correct density*/
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+    int i,k;
+    double fluxfreeze_fac=1.0;
+
+    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+        {
+          if(P[i].ID == All.AGNWindID && SphP[i].IniDen<0)
+          {
+           for (k =0; k<3; k++)
+             {
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)             
+              SphP[i].IniB[k] =SphP[i].IniB[k]*fluxfreeze_fac;
+              SphP[i].B[k]= SphP[i].IniB[k] * All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS * P[i].Mass  / (All.cf_a2inv * SphP[i].Density);
+              SphP[i].BPred[k]= SphP[i].B[k];
+#endif              
+              SphP[i].IniDen=SphP[i].Density;
+             }
+           }
+         }
+
+#endif
+        
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density();
 #endif

@@ -639,46 +639,113 @@ void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz){
 /*          is the axis                                                                                         */
 /* dir - shape (3,) array containing the direction - pass as an input to remember the previous direction        */
 
-void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir){
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir, double *dpdir){
     int k;
+#ifndef SPAWN_B_POL_TOR_SET_IN_PARAMS     
     if((mode != 3) && (num_spawned_this_call % 2)) { // every second particle is spawned in the opposite direction to the last, conserving momentum and COM
-        for(k=0; k<3;k++) {veldir[k] = -veldir[k];}
+        for(k=0; k<3;k++) {veldir[k] = -veldir[k]; dpdir[k]=-dpdir[k];}
         return; // we're done
     }
-
+#endif
     double nx[3] = {ny[1]*nz[2] - ny[2]*nz[1], ny[2]*nz[0] - ny[0]*nz[2], ny[0]*nz[1] - ny[1]*nz[0]};
     // now do the actual direction based on the mode we're in
     double phi, cos_theta, sin_theta, sin_phi, cos_phi;
     if(mode==0){ // fully random
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta;
+        veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta;dpdir[0]=veldir[0];dpdir[1]=veldir[1];dpdir[2]=veldir[2];
     } else if (mode==1){ // collimated
         double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
         double theta=atan(theta0*tan(get_random_number(num_spawned_this_call+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask);
         cos_theta = cos(theta), sin_theta=sin(theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        for(k=0;k<3;k++) {veldir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];} //converted from angular momentum relative to into standard coordinates
+        for(k=0;k<3;k++) {veldir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];dpdir[k]=veldir[k];} //converted from angular momentum relative to into standard coordinates
     }
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
         if(((P[i].ID_child_number-1) % 6) == 0) { // need to generate a brand new coordinate frame
             get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);
-            for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k];}
+            for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k];dpdir[k]=veldir[k];}
         }
-        else if(((P[i].ID_child_number-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k];}}
-        else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3];}}
+        else if(((P[i].ID_child_number-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k];dpdir[k]=veldir[k];}}
+        else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3];dpdir[k]=veldir[k];}}
     }
 #endif
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    else { // angular grid
+    else if (mode==3) { // angular grid
         int dir_ind = num_spawned_this_call % SINGLE_STAR_FB_SNE_N_EJECTA;
         for(k=0;k<3;k++) { //Particle positioned at one of the regular positions on the randomized coordinate system
             veldir[k] = All.SN_Ejecta_Direction[dir_ind][0] * nx[k] + All.SN_Ejecta_Direction[dir_ind][1] * ny[k] + All.SN_Ejecta_Direction[dir_ind][2] * nz[k];//use directions pre-computed to isotropically cover a sphere with SINGLE_STAR_FB_SNE_N_EJECTA particles
+            dpdir[k]=veldir[k];
         }
+    }
+#endif
+#if defined (BH_DEBUG_SPAWN_JET_TEST)
+    else {
+    phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+    if(P[i].ID_child_number % 2 == 0){cos_theta=fabs(cos_theta);}
+    else {cos_theta=-1.0*fabs(cos_theta);}
+#endif
+    double ct_v=1.-(1-cos((BH_DEBUG_SPAWN_JET_TEST)*(M_PI/180.)))*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v), vfac=1+0.2*(get_random_number(num_spawned_this_call+99+2*ThisTask)-0.5); if(cos_theta<0) {ct_v*=-1;}
+    for(k=0;k<3;k++) {dpdir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k];
+                     veldir[k] = st_v     *cos_phi*nx[k] + st_v     *sin_phi*ny[k] + ct_v     *nz[k];}
     }
 #endif
     return;
 }
+
+#ifdef MAGNETIC
+void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r){
+   int k;
+   SphP[j].divB = 0; 
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS        
+   double inj_scale = All.BH_spawn_rinj/All.cf_atime;
+   double Bfield[3]; //in the nx ny nz coordinate
+   double nx[3] = {ny[1]*nz[2] - ny[2]*nz[1], ny[2]*nz[0] - ny[0]*nz[2], ny[0]*nz[1] - ny[1]*nz[0]};
+   double cos_theta=nz[0]*dpdir[0]+nz[1]*dpdir[1]+nz[2]*dpdir[2];
+   double sin_theta=sqrt(1-cos_theta*cos_theta);
+   double cos_phi= (nx[0]*dpdir[0]+nx[1]*dpdir[1]+nx[2]*dpdir[2])/sin_theta;
+   double sin_phi= (ny[0]*dpdir[0]+ny[1]*dpdir[1]+ny[2]*dpdir[2])/sin_theta;
+        
+   for (k=0;k<3;k++) {Bfield[k]=0;}
+        
+   Bfield[0]+= All.B_spawn_pol*d_r*cos_theta*d_r*sin_theta/inj_scale/inj_scale*cos_phi*exp(-1.0*d_r*d_r/inj_scale/inj_scale)/exp(-1.0);
+   Bfield[1]+= All.B_spawn_pol*d_r*cos_theta*d_r*sin_theta/inj_scale/inj_scale*sin_phi*exp(-1.0*d_r*d_r/inj_scale/inj_scale)/exp(-1.0);
+   Bfield[2]+= All.B_spawn_pol*(1-d_r*cos_theta*d_r*sin_theta/inj_scale/inj_scale)    *exp(-1.0*d_r*d_r/inj_scale/inj_scale)/exp(-1.0);
+        
+   Bfield[0]+= -1*All.B_spawn_tor*(d_r/inj_scale)*sin_theta*sin_phi*exp(-1.0*d_r*d_r/inj_scale/inj_scale)/exp(-1.0);
+   Bfield[1]+=    All.B_spawn_tor*(d_r/inj_scale)*sin_theta*cos_phi*exp(-1.0*d_r*d_r/inj_scale/inj_scale)/exp(-1.0);
+
+   for(k=0;k<3;k++) {SphP[j].IniB[k] = Bfield[0]*nx[k] +  Bfield[1]*ny[k] +  Bfield[2]*nz[k];
+                     SphP[j].B[k]= SphP[j].IniB[k] *All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS * P[j].Mass  / (All.cf_a2inv * SphP[j].Density);
+                     SphP[j].BPred[k]= SphP[j].B[k];SphP[j].DtB[k]=0;}
+#else
+   double Bmag=0, Bmag_0=0;
+   for(k=0;k<3;k++) {double B=SphP[j].B[k]*SphP[j].Density/P[j].Mass*All.cf_a2inv; Bmag+=B*B; Bmag_0+=SphP[j].B[k]*SphP[j].B[k];} // get actual Bfield
+   double Bmag_low_rel_to_progenitor = 1.e-10 * sqrt(Bmag); // set to some extremely low value relative to cloned element
+   double u_internal_new_cell = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); // internal energy of new wind cell
+   double Bmag_low_rel_to_pressure = 1.e-3 * sqrt(2.*SphP[j].Density*All.cf_a3inv * u_internal_new_cell); // set to beta = 1e6
+   Bmag = DMAX(Bmag_low_rel_to_progenitor , Bmag_low_rel_to_pressure); // pick the larger of these (still small) B-field values
+#ifdef MHD_B_SET_IN_PARAMS
+   double Bmag_IC = sqrt(All.BiniX*All.BiniX + All.BiniY*All.BiniY + All.BiniZ*All.BiniZ) * All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS; // IC B-field sets floor as well
+   Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
+#endif
+#if defined(SINGLE_STAR_FB_SNE)
+   if(P[i].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta
+#endif
+   Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
+   /* add magnetic flux here to 'Bmag' if desired */
+   Bmag *= P[j].Mass / (All.cf_a2inv * SphP[j].Density); // convert back to code units
+   for(k=0;k<3;k++) {if(Bmag_0>0) {SphP[j].B[k]*=Bmag/sqrt(Bmag_0);} else {SphP[j].B[k]=Bmag;}} // assign if valid values
+   for(k=0;k<3;k++) {SphP[j].BPred[k]=SphP[j].B[k]; SphP[j].DtB[k]=0;} // set predicted = actual, derivative to null
+#endif
+
+#ifdef DIVBCLEANING_DEDNER
+        SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
+#endif
+    return;
+}
+#endif
 
 
 /*! this code copies what was used in merge_split.c for the gas particle split case */
@@ -733,7 +800,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]);
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
-    d_r = DMIN(d_r , 0.01); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
+    double inj_scale = All.BH_spawn_rinj/All.cf_atime;
+    d_r = DMIN(d_r , inj_scale); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
@@ -746,7 +814,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 
     double veldir[3]; // velocity direction to spawn in - declare outside the loop so we remember it from the last iteration
-    int mode = 0; // 0 if doing totally random directions, 1 if collimated, 2 for 3-axis isotropized, and 3 if using an angular grid
+    double dpdir[3];
+    int mode = 0; // 0 if doing totally random directions, 1 if collimated, 2 for 3-axis isotropized, and 3 if using an angular grid,  4 old collimatation script, position isotropic velicity coliminated within certain open angle (might be useful to still keep this option owing to the free open angle choice and better sampling the magnetic field geometry)
 #if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(BH_FB_COLLIMATED)
     mode = 1; // collimated mode
 #endif
@@ -765,6 +834,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
     if(P[i].ProtoStellarStage == 6) {mode = 3;} // SNe use an angular grid
+#endif
+#if defined(BH_DEBUG_SPAWN_JET_TEST)
+    mode = 4;
 #endif
 #endif
 
@@ -786,6 +858,31 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
         get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
     }
+#ifdef BH_JET_PRECESSION_SET_IN_PARAMS    
+    double degree = All.BH_jet_precess_degree; 
+    double period = All.BH_jet_precess_period/UNIT_TIME_IN_GYR;
+    double new_dir[3];
+    new_dir[0]= jx[0]*cos(degree/180.*M_PI)-jx[2]*sin(degree/180.*M_PI);
+    new_dir[1]= 1.0*jx[1];
+    new_dir[2]= jx[0]*sin(degree/180.*M_PI)+jx[2]*cos(degree/180.*M_PI);
+    jx[0]= new_dir[0]*cos(2.*M_PI/period*All.Time)-new_dir[1]*sin(2.*M_PI/period*All.Time);
+    jx[1]= new_dir[0]*sin(2.*M_PI/period*All.Time)+new_dir[1]*cos(2.*M_PI/period*All.Time);
+    jx[2]= new_dir[2];
+
+    new_dir[0]= jy[0]*cos(degree/180.*M_PI)-jy[2]*sin(degree/180.*M_PI);
+    new_dir[1]= 1.0*jy[1];
+    new_dir[2]= jy[0]*sin(degree/180.*M_PI)+jy[2]*cos(degree/180.*M_PI);
+    jy[0]= new_dir[0]*cos(2.*M_PI/period*All.Time)-new_dir[1]*sin(2.*M_PI/period*All.Time);
+    jy[1]= new_dir[0]*sin(2.*M_PI/period*All.Time)+new_dir[1]*cos(2.*M_PI/period*All.Time);
+    jy[2]= new_dir[2];
+
+    new_dir[0]= jz[0]*cos(degree/180.*M_PI)-jz[2]*sin(degree/180.*M_PI);
+    new_dir[1]= 1.0*jz[1];
+    new_dir[2]= jz[0]*sin(degree/180.*M_PI)+jz[2]*cos(degree/180.*M_PI);
+    jz[0]= new_dir[0]*cos(2.*M_PI/period*All.Time)-new_dir[1]*sin(2.*M_PI/period*All.Time);
+    jz[1]= new_dir[0]*sin(2.*M_PI/period*All.Time)+new_dir[1]*cos(2.*M_PI/period*All.Time);
+    jz[2]= new_dir[2];
+#endif    
 
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_sph_i_to_clone is a dummy SPH particle's tag to be used to init the wind particle */
@@ -880,45 +977,6 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         P[j].StellarAge = All.Time; // use this attibute to save the gas cell's formation time for possible subsequent checks for special behavior on its first timestep
 #endif
         
-        /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
-#ifdef MAGNETIC
-        SphP[j].divB = 0; double Bmag=0, Bmag_0=0;
-        for(k=0;k<3;k++) {double B=SphP[j].B[k]*SphP[j].Density/P[j].Mass*All.cf_a2inv; Bmag+=B*B; Bmag_0+=SphP[j].B[k]*SphP[j].B[k];} // get actual Bfield
-        double Bmag_low_rel_to_progenitor = 1.e-10 * sqrt(Bmag); // set to some extremely low value relative to cloned element
-        double u_internal_new_cell = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); // internal energy of new wind cell
-        double Bmag_low_rel_to_pressure = 1.e-3 * sqrt(2.*SphP[j].Density*All.cf_a3inv * u_internal_new_cell); // set to beta = 1e6
-        Bmag = DMAX(Bmag_low_rel_to_progenitor , Bmag_low_rel_to_pressure); // pick the larger of these (still small) B-field values
-#ifdef MHD_B_SET_IN_PARAMS
-        double Bmag_IC = sqrt(All.BiniX*All.BiniX + All.BiniY*All.BiniY + All.BiniZ*All.BiniZ) * All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS; // IC B-field sets floor as well
-        Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
-#endif
-#if defined(SINGLE_STAR_FB_SNE)
-        if(P[i].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta
-#endif
-        Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
-        /* add magnetic flux here to 'Bmag' if desired */
-        Bmag *= P[j].Mass / (All.cf_a2inv * SphP[j].Density); // convert back to code units
-        for(k=0;k<3;k++) {if(Bmag_0>0) {SphP[j].B[k]*=Bmag/sqrt(Bmag_0);} else {SphP[j].B[k]=Bmag;}} // assign if valid values
-        for(k=0;k<3;k++) {SphP[j].BPred[k]=SphP[j].B[k]; SphP[j].DtB[k]=0;} // set predicted = actual, derivative to null
-#ifdef DIVBCLEANING_DEDNER
-        SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0;
-#endif
-#endif
-#ifdef COSMIC_RAYS
-        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) /* initialize CR energy and other related terms to nil */
-        {
-            SphP[j].CosmicRayEnergyPred[k_CRegy]=SphP[j].CosmicRayEnergy[k_CRegy]=SphP[j].DtCosmicRayEnergy[k_CRegy]=0;
-#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
-            SphP[j].CosmicRay_Number_in_Bin[k_CRegy]=SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy]=0;
-#endif
-#ifdef COSMIC_RAYS_M1
-            for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k_CRegy][k]=SphP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
-#endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
-            for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
-#endif
-        } /* complete CR initialization to null */
-#endif
 
         /* now set the real hydro variables. */
         /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
@@ -933,7 +991,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].MassTrue = P[j].Mass;
 #endif
-#ifndef BH_DEBUG_FIX_MASS
+#ifndef BH_DEBUG_FIX_MDOT
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
@@ -962,8 +1020,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
         
         // actually lay down position and velocities using coordinate basis
-        get_wind_spawn_direction(i, j - (NumPart + num_already_spawned), mode, jy, jz, veldir);
-        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + veldir[k]*d_r; P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
+        get_wind_spawn_direction(i, j - (NumPart + num_already_spawned), mode, jy, jz, veldir,dpdir);
+        double vfac;
+#ifdef BH_DEBUG_SPAWN_JET_TEST   
+        vfac=1+0.2*(get_random_number(j+99+3*ThisTask)-0.5);
+#else
+        vfac=1;
+#endif 
+        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dpdir[k]*d_r; P[j].Vel[k]=P[i].Vel[k] + veldir[k]*vfac*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
@@ -982,6 +1046,28 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         PPP[j].Hsml=5.*d_r; SphP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*PPP[j].Hsml,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
+#endif
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+        SphP[j].IniDen =-1* SphP[j].Density ;
+#endif
+#ifdef MAGNETIC
+        get_wind_spawn_magnetic_field(j, mode, jy, jz, dpdir, d_r);
+#endif
+        /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
+#ifdef COSMIC_RAYS
+        int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) /* initialize CR energy and other related terms to nil */
+        {
+            SphP[j].CosmicRayEnergyPred[k_CRegy]=SphP[j].CosmicRayEnergy[k_CRegy]=SphP[j].DtCosmicRayEnergy[k_CRegy]=0;
+#ifdef COSMIC_RAYS_EVOLVE_SPECTRUM
+            SphP[j].CosmicRay_Number_in_Bin[k_CRegy]=SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy]=0;
+#endif
+#ifdef COSMIC_RAYS_M1
+            for(k=0;k<3;k++) {SphP[j].CosmicRayFlux[k_CRegy][k]=SphP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
+#endif
+#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+            for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
+#endif        
+        } /* complete CR initialization to null */
 #endif
         SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)

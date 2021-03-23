@@ -611,7 +611,10 @@ void density(void)
 #endif
                 }
 #endif
-
+#ifdef BH_DEBUG_SPAWN_JET_TEST
+                if(P[i].Type == 0)
+                {if(desnumngb < 64.0 ){desnumngb = 64.0;} }
+#endif
 #ifdef GRAIN_FLUID /* for the grains, we only need to estimate neighboring gas properties, we don't need to worry about condition numbers or conserving an exact neighbor number */
                 if((1 << P[i].Type) & (GRAIN_PTYPES))
                 {

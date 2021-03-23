@@ -507,7 +507,24 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
              for(n = 0; n < pc; n++) {P[offset + n].IMF_NumMassiveStars = *fp++;}
 #endif
             break;
-
+        case IO_UNSPMASS:
+#if defined(BH_WIND_SPAWN)
+             for(n = 0; n < pc; n++)
+                P[offset + n].unspawned_wind_mass = *fp++;
+#endif
+            break; 
+        case IO_IDEN:
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+             for(n = 0; n < pc; n++)
+                SphP[offset + n].IniDen = *fp++;
+#endif
+            break;
+        case IO_INIB:        
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+             for(n = 0; n < pc; n++)
+                for(k = 0; k < 3; k++) {SphP[offset + n].IniB[k] = *fp++;}
+#endif      
+            break;    
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
             for (n = 0; n < pc; n++) {SphP[offset + n].TD_DynDiffCoeff = *fp++;}

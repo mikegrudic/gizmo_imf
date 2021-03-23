@@ -743,9 +743,22 @@ void blackhole_final_operations(void)
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         double dm = BPP(n).BH_Mdot * dt;
+#ifdef BH_DEBUG_FIX_MDOT
+        double period_all = All.BH_fb_period/UNIT_TIME_IN_GYR;
+        double period_on  = period_all*All.BH_fb_duty_cycle;
+        if (BH_fb_duty_cycle>0.99)
+         {dm = BH_DEBUG_FIX_MDOT * dt;}
+        else 
+         {
+        if (fmod(All.Time, period_all)< period_on)
+            dm = 2*BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle *  pow(sin(M_PI*All.Time/(period_on)),2) * dt;
+        else
+            dm=0;
+         }   
+#endif          
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
-#ifndef BH_DEBUG_FIX_MASS
+#ifndef BH_DEBUG_FIX_MDOT
         P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
 #endif
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account */
@@ -758,7 +771,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_DEBUG_FIX_MASS
+#ifndef BH_DEBUG_FIX_MDOT
         P[n].Mass -= dm_wind; BPP(n).BH_Mass -= dm_wind;
 #endif
 #endif
@@ -778,13 +791,16 @@ void blackhole_final_operations(void)
 #ifdef SINGLE_STAR_FB_JETS
         if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
 #endif
+#ifdef BH_DEBUG_FIX_MDOT
+        dm_wind = dm;
+#endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
         if(dm_wind > BPP(n).BH_Mass_AlphaDisk) {dm_wind = BPP(n).BH_Mass_AlphaDisk;}
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_DEBUG_FIX_MASS
+#ifndef BH_DEBUG_FIX_MDOT
         BPP(n).BH_Mass -= dm_wind;
 #endif
 #endif
