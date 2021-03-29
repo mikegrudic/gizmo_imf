@@ -892,7 +892,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double f_molec = 0.5 * Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10)); // [0.5*f_molec for H2/HD cooling b/c cooling rates above are per molecule, not per nucleon]
 
             double q = logT - 3., Y_Hefrac=DMAX(0.,DMIN(1.,Z[1])), X_Hfrac=DMAX(0.,DMIN(1.,1.-Y_Hefrac-Z[0])); // variable used below
-            double Lambda_H2_thin = nH0 * X_Hfrac * pow(10., DMAX(-103. + 97.59*logT - 48.05*logT*logT + 10.8*logT*logT*logT - 0.9032*logT*logT*logT*logT , -50.)); // sub-critical H2 cooling rate from H2-H collisions [per H2 molecule]; this from Galli & Palla 1998
+            double Lambda_H2_thin = DMAX(nH0-2.*f_molec,0) * X_Hfrac * pow(10., DMAX(-103. + 97.59*logT - 48.05*logT*logT + 10.8*logT*logT*logT - 0.9032*logT*logT*logT*logT , -50.)); // sub-critical H2 cooling rate from H2-H collisions [per H2 molecule]; this from Galli & Palla 1998
             Lambda_H2_thin += Y_Hefrac * pow(10., DMAX(-23.6892 + 2.18924*q -0.815204*q*q + 0.290363*q*q*q -0.165962*q*q*q*q + 0.191914*q*q*q*q*q, -50.)); // H2-He; often more efficient than H2-H at very low temperatures (<100 K); this and other H2-x terms below from Glover & Abel 2008
             Lambda_H2_thin += f_molec * X_Hfrac * pow(10., DMAX(-23.9621 + 2.09434*q -0.771514*q*q + 0.436934*q*q*q -0.149132*q*q*q*q -0.0336383*q*q*q*q*q, -50.)); // H2-H2; can be more efficient than H2-H when H2 fraction is order-unity
             Lambda_H2_thin += nHp * X_Hfrac * pow(10., DMAX(-21.7167 + 1.38658*q -0.379153*q*q + 0.114537*q*q*q -0.232142*q*q*q*q + 0.0585389*q*q*q*q*q, -50.)); // H2-H+; very efficient if somehow appreciable H+ fraction remains
@@ -1668,11 +1668,13 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     /* evolve dot[nH2]/nH0 = d_dt[fH2[neutral]] = (1/nH0) * (a_H2*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
         - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] ) */
     double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=40.; int iter=0; // define some variables for below, including neutral H number density, free electron number, etc.
+    double x_p = DMIN(DMAX(nhp , x_e/10.), 2.); // get free H+ fraction [cap because irrelevant to below in very low regime //
     double a_Z  = (9.e-19 * T / (1. + 0.04*sqrt_T + 0.002*T + 8.e-6*T*T)) * (0.5*Z_Zsol) * nH_cgs * clumping_factor; // dust formation
-    double a_GP = (1.833e-21 * pow(T,0.88)) * n_e * clumping_factor; // gas-phase formation
+    double a_GP = (1.833e-18 * pow(T,0.88)) / (1. + x_p*1846.*(1.+T/20000.)/sqrt(T)) * n_e * clumping_factor; // gas-phase formation [Glover & Abel 2008, using fitting functions slightly more convenient and assuming H-->H2 much more rapid than other reactions, from Krumholz & McKee 2010; denominator factor accounts for p+H- -> H + H, instead of H2]
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * clumping_factor_3; // 3-body collisional formation
-    double b_H2HI = (7.073e-19 * pow(T,2.012) * exp(-DMIN(5.179e4/T,EXPmax)) / pow(1. + 2.130e-5*T , 3.512)) * (nH0/2.) * clumping_factor; // collisional dissociation
-    double b_H2H2 = (5.996e-30 * pow(T,4.1881) * exp(-DMIN(5.466e4/T,EXPmax)) / pow(1. + 6.761e-6*T , 5.6881)) * (nH0/2.) * (1./2.) * clumping_factor; // collisional mol-mol dissociation
+    double b_H2HI = (7.073e-19 * pow(T,2.012) * exp(-DMIN(5.179e4/T,EXPmax)) / pow(1. + 2.130e-5*T , 3.512)) * (nH0/2.) * clumping_factor; // collisional H2-H dissociation
+    b_H2HI += 4.49e-9 * pow(T,0.11) * exp(-DMIN(101858./T,EXPmax)) * (n_e) * clumping_factor; // collisional H2-e- dissociation [note assuming ground-state optically thin dissociation here as thats where this is most relevant, see Glover+Abel 2008)
+    double b_H2H2 = (5.996e-30 * pow(T,4.1881) * exp(-DMIN(5.466e4/T,EXPmax)) / pow(1. + 6.761e-6*T , 5.6881)) * (nH0/2.) * (1./2.) * clumping_factor; // collisional H2-H2 dissociation
     double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0
     double xi_cr_H2 = (7.525e-16) * (1./2.), prefac_CR=1.;; // CR dissociation (+ionization)
 #if defined(COSMIC_RAYS) // scale ionization+dissociation rates with local CR energy density

@@ -221,7 +221,7 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 {
     double dimensionless_kappa_relative_to_GV_protons = 1;
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
-    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.5 ); // assume a quasi-empirical scaling here //
+    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.6 ); // assume a quasi-empirical scaling here //
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -298,7 +298,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
 #else
     double Gamma_LIN = -G0 -0.5*P[target].Particle_DivVel*All.cf_a2inv; // sum of all the linear damping/growth terms
     double Gamma_NLL = (sqrt(M_PI)/8.) * cs_thermal / r_L; // NLL prefactor: Gamma_NLL is this times (e_A/e_B)
-    double f_cas_ET = vA_noion / (0.007 * C_LIGHT_CODE); /* Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
+    double f_cas_ET = 7. * (vA_noion / (beta * C_LIGHT_CODE)) * log(1.+L_scale/r_L); /* Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
     double S_ext_turb = f_cas_ET * vA_noion * fac_turb * M_A*M_A * (r_L/L_scale); // extrinsic turbulence cascade term. note consistency means multiplying by pitch-angle and gyro-averaging factors, and fcas above; expression here assumes whatever you do its a balanced cascade (defauly to GS95 scalings)
     double S_ext_gri  = vA_code * fabs(bhat_dot_CR_Pgrad) / (e_B + MIN_REAL_NUMBER); // Flux-steady-state value of the GRI term, normalized to e_B. note unless we rewrite this to the 5th-order polynomial version, assumption here is that return_CRbin_nuplusminus_asymmetry(i,k_CRegy) -> 1 for the term here in steady state
     double S_ext = S_ext_turb + S_ext_gri; // total driving term, for the flux-steady assumption

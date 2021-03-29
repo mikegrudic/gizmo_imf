@@ -339,9 +339,9 @@ CXX      = mpic++
 FC       = mpif90  # gcc/clang
 #FC       = mpif90 -nofor_main  # intel
 OPTIMIZE = -O3
-OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive  # aocc/clang
-#OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer  # gcc
-#OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer  -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
+OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive -fcommon  # aocc/clang
+#OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer -fcommon  # gcc
+#OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp  # gcc/clang
 #OPTIMIZE += -qopenmp  # intel
