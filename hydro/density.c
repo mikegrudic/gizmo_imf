@@ -633,10 +633,7 @@ void density(void)
 #endif
                 }
 #endif
-#ifdef BH_DEBUG_SPAWN_JET_TEST
-                if(P[i].Type == 0)
-                {if(desnumngb < 64.0 ){desnumngb = 64.0;} }
-#endif
+
 #ifdef GRAIN_FLUID /* for the grains, we only need to estimate neighboring gas properties, we don't need to worry about condition numbers or conserving an exact neighbor number */
                 if((1 << P[i].Type) & (GRAIN_PTYPES))
                 {
@@ -1075,8 +1072,12 @@ void density(void)
             if(PPP[i].NumNgb > 0) {PPP[i].NumNgb=pow(PPP[i].NumNgb,1./NUMDIMS);} else {PPP[i].NumNgb=0;}
 
         } // density_isactive(i)
-    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
 
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
+        if(P[i].Type==0) {if(P[i].ID==All.AGNWindID && SphP[i].IniDen<0) {SphP[i].IniDen=SphP[i].Density; int k; for(k=0;k<3;k++) {SphP[i].BPred[k]=SphP[i].B[k]=SphP[i].IniB[k]*(All.UnitMagneticField_in_gauss/UNIT_B_IN_GAUSS)*(P[i].Mass/(All.cf_a2inv*SphP[i].Density));}}
+#endif
+
+    } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
 
     /* collect some timing information */
     double t1; t1 = WallclockTime = my_second(); timeall = timediff(t00_truestart, t1);

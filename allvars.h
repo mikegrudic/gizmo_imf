@@ -2508,10 +2508,9 @@ extern struct global_data_all_processes
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
 #endif
-#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
-  double BH_spawn_rinj;
-#endif
+
 #if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+  double BH_spawn_rinj;
   double B_spawn_pol;
   double B_spawn_tor;
 #endif
@@ -2523,6 +2522,7 @@ extern struct global_data_all_processes
   double BH_fb_duty_cycle;
   double BH_fb_period;
 #endif
+
 }
 All;
 
@@ -2910,10 +2910,6 @@ extern struct sph_particle_data
     MyDouble VelPred[3];            /*!< predicted SPH particle velocity at the current time */
     //MyDouble dMomentum[3];        /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
     MyDouble HydroAccel[3];         /*!< acceleration due to hydrodynamical force (for drifting) */
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
-    MyDouble IniDen;
-    MyDouble IniB[3];
-#endif     
 
 #ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
     MyDouble Density_ExplicitInt;   /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
@@ -3040,6 +3036,10 @@ extern struct sph_particle_data
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
 #endif
 
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+    MyDouble IniDen;
+    MyDouble IniB[3];
+#endif     
 
 #ifdef CHIMES_STELLAR_FLUXES
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];            /*!< 6-13.6 eV flux, in Habing units */

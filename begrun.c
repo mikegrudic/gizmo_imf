@@ -1645,27 +1645,26 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 #endif /* MAGNETIC */
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) || defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
-      strcpy(tag[nt], "BH_spawn_rinj");
+
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+      strcpy(tag[nt], "BH_spawn_injection_radius");
       addr[nt] = &All.BH_spawn_rinj;
       id[nt++] = REAL;
-#endif
-#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
-      strcpy(tag[nt], "B_spawn_pol");
+
+      strcpy(tag[nt], "BH_spawn_poloidal_B");
       addr[nt] = &All.B_spawn_pol;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "B_spawn_tor");
+      strcpy(tag[nt], "BH_spawn_toroidal_B");
       addr[nt] = &All.B_spawn_tor;
       id[nt++] = REAL;
-
 #endif
 #ifdef BH_JET_PRECESSION_SET_IN_PARAMS
-      strcpy(tag[nt], "BH_jet_precess_degree");
+      strcpy(tag[nt], "BH_jet_precession_degree");
       addr[nt] = &All.BH_jet_precess_degree;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "BH_jet_precess_period");
+      strcpy(tag[nt], "BH_jet_precession_period");
       addr[nt] = &All.BH_jet_precess_period;
       id[nt++] = REAL;
 #endif

@@ -744,17 +744,8 @@ void blackhole_final_operations(void)
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
         double dm = BPP(n).BH_Mdot * dt;
 #ifdef BH_DEBUG_FIX_MDOT
-        double period_all = All.BH_fb_period/UNIT_TIME_IN_GYR;
-        double period_on  = period_all*All.BH_fb_duty_cycle;
-        if (All.BH_fb_duty_cycle>0.99)
-         {dm = BH_DEBUG_FIX_MDOT * dt;}
-        else 
-         {
-        if (fmod(All.Time, period_all)< period_on)
-            dm = 2*BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle *  pow(sin(M_PI*All.Time/(period_on)),2) * dt;
-        else
-            dm=0;
-         }   
+        dm=0; double period_bh=All.BH_fb_period/UNIT_TIME_IN_GYR, period_bh_on=All.BH_fb_duty_cycle*period_bh;
+        if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT*dt;} else {if(fmod(All.Time, period_all) < period_on) {dm = 2.*(BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/(period_on)),2) * dt;}}   
 #endif          
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
@@ -790,9 +781,6 @@ void blackhole_final_operations(void)
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
         if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
-#endif
-#ifdef BH_DEBUG_FIX_MDOT
-        dm_wind = dm;
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)

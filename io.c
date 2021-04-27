@@ -375,18 +375,20 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
+            
         case IO_INIB:
-#if defined( SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                        *fp++ = SphP[pindex].IniB[k];
+                    for(k=0;k<3;k++) {*fp++ = SphP[pindex].IniB[k];}
                     n++;
                 }
-#endif                     
+#endif               
+            break;
+            
         case IO_IDEN:
-#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -395,8 +397,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif                
             break;
+            
         case IO_UNSPMASS:
-#ifdef BH_WIND_SPAWN
+#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -405,6 +408,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif           
             break;
+            
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -2301,13 +2305,11 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
 
         case IO_AGE:
+            int valid_star_types=16, nstars_tot=0; if(All.ComovingIntegrationOn==0) {valid_star_types+=4+8;}
 #ifdef BLACK_HOLES
-            for(i = 0; i < 6; i++) {if(i != 4 && i != 5) {typelist[i] = 0;}}
-            return nstars + header.npart[5];
-#else
-            for(i = 0; i < 6; i++) {if(i != 4) {typelist[i] = 0;}}
-            return nstars;
+            valid_star_types += 32;
 #endif
+            for(i = 0; i < 6; i++) {if((1 << i) & (valid_star_types)) {nstars_tot+=header.npart[i]} else {typelist[i]=0;}}
             break;
 
         case IO_OSTAR:
@@ -2539,24 +2541,20 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
+            
         case IO_IDEN:
-#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
-            return 1;
-#else
-            return 0;
-#endif            
         case IO_INIB:
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
             return 1;
-#else
-            return 0;
-#endif  
+#endif         
+            break;
+
         case IO_UNSPMASS:
-#ifdef BH_WIND_SPAWN
+#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
             return 1;
-#else
-            return 0;
 #endif   
+            break;
+
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -3357,25 +3355,13 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "HeII");
             break;
         case IO_IDEN:
-#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
             strcpy(buf, "IniDen");
-#else
-            strcpy(buf, "IDEN");
-#endif            
             break;
         case IO_INIB:
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
             strcpy(buf, "IniB");
-#else
-            strcpy(buf, "INIB");
-#endif            
             break;    
         case IO_UNSPMASS:
-#ifdef BH_WIND_SPAWN
             strcpy(buf, "Unspawned_Wind_Mass");
-#else
-            strcpy(buf, "USPM");
-#endif
             break;     
         case IO_CRATE:
             strcpy(buf, "CoolingRate");
