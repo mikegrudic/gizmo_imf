@@ -745,7 +745,7 @@ void blackhole_final_operations(void)
         double dm = BPP(n).BH_Mdot * dt;
 #ifdef BH_DEBUG_FIX_MDOT
         dm=0; double period_bh=All.BH_fb_period/UNIT_TIME_IN_GYR, period_bh_on=All.BH_fb_duty_cycle*period_bh;
-        if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT*dt;} else {if(fmod(All.Time, period_all) < period_on) {dm = 2.*(BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/(period_on)),2) * dt;}}   
+        if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT*dt;} else {if(fmod(All.Time, period_bh) < period_bh_on) {dm = 2.*(BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_bh_on),2) * dt;}}
 #endif          
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
