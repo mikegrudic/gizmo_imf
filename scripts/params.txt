@@ -227,7 +227,13 @@ BAL_v_outflow                30000	    % velocity (code units) of BAL outflow (B
 BAL_internal_temperature     1.0e4      % internal temperature (K) of BAL outflow (BH_WIND_SPAWN)
 BAL_wind_particle_mass       1.e-10     % mass of 'virtual wind particles' in code units (BH_WIND_SPAWN)
 BH_CosmicRay_Injection_Efficiency 0.1   % fraction of accretion energy into cosmic rays (BH_COSMIC_RAYS)
-
+BH_spawn_rinj                0.01       % injection scale for jet #BH_DEBUG_SPAWN_JET_TEST and jet magnetic field #SPAWN_B_POL_TOR_SET_IN_PARAMS
+B_spawn_pol                  1e-4       % poloidal magnetic field for spawn particles at the jet or angular momentum axis at r=BH_spawn_rinj in Gauss (positive means upward)
+B_spawn_pol                  1e-4       % toroidal magnetic field for spawn particles in the plane perpendicular to the jet or angular momentum axis at r=BH_spawn_rinj in Gauss (positive means anti-clockwise)
+BH_jet_precess_degree        15         % manually set a precession degree in deg
+BH_jet_precess_period        0.1        % manually set a precession period in code unit
+BH_fb_duty_cycle              1         % fraction of the time that the injection is on, 1 for constant flux
+BH_fb_period                 0.1        % period for the duty cycle    
 
 %-------------------------------------------------------------------------
 %------------------ Grackle cooling module -----------------

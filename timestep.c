@@ -957,9 +957,10 @@ integertime get_timestep(int p,		/*!< particle index */
     } // if(P[p].Type == 5)
 
 #if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST) /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
-    if(P[p].Type == 5 && dt>1.e-6) {dt=1.e-6;}
-    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>5.e-7)
-    {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
+    double dt_jet=All.BH_spawn_rinj/All.BAL_v_outflow;
+    if(P[p].Type == 5 && dt>dt_jet) {dt=dt_jet;}
+    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>dt_jet && SphP[p].IniDen<0)
+    {dt=dt_jet;}
 #endif
 #endif // BLACK_HOLES
     

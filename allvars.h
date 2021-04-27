@@ -344,6 +344,8 @@
 #if defined(FIRE_BHS)
 #define BLACK_HOLES                 /* top-level flag */
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
+#define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
+#define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)
@@ -2506,6 +2508,21 @@ extern struct global_data_all_processes
 #if defined(COOLING) && defined(COOL_GRACKLE)
     code_units GrackleUnits;
 #endif
+#if defined(BH_DEBUG_SPAWN_JET_TEST) || defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+  double BH_spawn_rinj;
+#endif
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+  double B_spawn_pol;
+  double B_spawn_tor;
+#endif
+#ifdef BH_JET_PRECESSION_SET_IN_PARAMS
+  double BH_jet_precess_degree;
+  double BH_jet_precess_period;
+#endif
+#ifdef BH_DEBUG_FIX_MDOT
+  double BH_fb_duty_cycle;
+  double BH_fb_period;
+#endif
 }
 All;
 
@@ -2893,6 +2910,10 @@ extern struct sph_particle_data
     MyDouble VelPred[3];            /*!< predicted SPH particle velocity at the current time */
     //MyDouble dMomentum[3];        /*!< change in momentum from hydro step (conserved variable) */ //manifest-indiv-timestep-debug//
     MyDouble HydroAccel[3];         /*!< acceleration due to hydrodynamical force (for drifting) */
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+    MyDouble IniDen;
+    MyDouble IniB[3];
+#endif     
 
 #ifdef HYDRO_EXPLICITLY_INTEGRATE_VOLUME
     MyDouble Density_ExplicitInt;   /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
@@ -3529,6 +3550,9 @@ enum iofields
   IO_HII,
   IO_HeI,
   IO_HeII,
+  IO_IDEN,
+  IO_INIB,
+  IO_UNSPMASS,
   IO_CRATE,
   IO_HRATE,
   IO_NHRATE,

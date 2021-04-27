@@ -52,16 +52,11 @@ void run(void)
 
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
 
-        if(All.Ti_Current >= TIMEBASE)	/* check whether we reached the final time */
+        if((All.Ti_Current >= TIMEBASE) || (All.Time > All.TimeMax)) /* check whether we reached the final time */
         {
-            if(ThisTask == 0)
-                printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);
-
-            restart(0);		/* write a restart file to allow continuation of the run for a larger value of TimeMax */
-
-            if(All.Ti_lastoutput != All.Ti_Current)	/* make a snapshot at the final time in case none has produced at this time */
-                savepositions(All.SnapshotFileCount++);	/* this will be overwritten if All.TimeMax is increased and the run is continued */
-
+            if(ThisTask == 0) {printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);}
+            restart(0); /* write a restart file to allow continuation of the run for a larger value of TimeMax */
+            if(All.Ti_lastoutput != All.Ti_Current) {savepositions(All.SnapshotFileCount++);} /* make a snapshot at the final time in case none has produced at this time; this will be overwritten if All.TimeMax is increased and the run is continued */
             break;
         }
 

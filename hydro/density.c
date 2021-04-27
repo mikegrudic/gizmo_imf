@@ -483,7 +483,20 @@ void density(void)
     int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
-
+    
+#ifdef DO_DENSITY_AROUND_STAR_PARTICLES /* define a variable for below to know which stellar types qualify here */
+    int valid_stellar_types = 2+4+8+16, invalid_stellar_types = 1+32; // allow types 1,2,3,4 here //
+#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
+    valid_stellar_types = 16; invalid_stellar_types = 1+2+4+8+32; // -only- type-4 sources in these special problems
+#ifdef RADTRANSFER
+    invalid_stellar_types = 64; valid_stellar_types = RT_SOURCES; // any valid 'injection' source is allowed
+#endif
+#ifdef GRAIN_FLUID
+    invalid_stellar_types = GRAIN_PTYPES;
+#endif
+#endif
+#endif
+    
     /* initialize anything we need to about the active particles before their loop */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if(density_isactive(i)) {
@@ -497,6 +510,15 @@ void density(void)
             P[i].BH_Ngb_Flag = 0;
 #endif
 #endif
+            double maxsoft = All.MaxHsml; /* before the first pass, need to ensure the particles do not exceed the maximum Hsml allowed */
+#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(GALSF)
+            if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) ) {maxsoft = 2.0 / (UNIT_LENGTH_IN_KPC*All.cf_atime);}
+#endif
+#ifdef BLACK_HOLES
+            if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#endif
+            if((PPP[i].Hsml < 0) || !isfinite(PPP[i].Hsml) || (PPP[i].Hsml > 0.99*maxsoft)) {PPP[i].Hsml = 0.99*maxsoft;} /* don't set to exactly maxsoft because our looping below won't treat this correctly */
+            
         }} /* done with intial zero-out loop */
     desnumngb = All.DesNumNgb; desnumngbdev = All.MaxNumNgbDeviation;
     /* in the initial timestep and iteration, use a much more strict tolerance for the neighbor number */
@@ -611,7 +633,10 @@ void density(void)
 #endif
                 }
 #endif
-
+#ifdef BH_DEBUG_SPAWN_JET_TEST
+                if(P[i].Type == 0)
+                {if(desnumngb < 64.0 ){desnumngb = 64.0;} }
+#endif
 #ifdef GRAIN_FLUID /* for the grains, we only need to estimate neighboring gas properties, we don't need to worry about condition numbers or conserving an exact neighbor number */
                 if((1 << P[i].Type) & (GRAIN_PTYPES))
                 {
@@ -629,16 +654,6 @@ void density(void)
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */
-                int valid_stellar_types = 2+4+8+16, invalid_stellar_types = 1+32; // allow types 1,2,3,4 here //
-#if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
-                valid_stellar_types = 16; invalid_stellar_types = 1+2+4+8+32; // -only- type-4 sources in these special problems
-#ifdef RADTRANSFER
-                invalid_stellar_types = 64; valid_stellar_types = RT_SOURCES; // any valid 'injection' source is allowed
-#endif
-#ifdef GRAIN_FLUID
-                invalid_stellar_types = GRAIN_PTYPES;
-#endif
-#endif
                 if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) )
                 {
                     desnumngb = All.DesNumNgb;
@@ -676,7 +691,7 @@ void density(void)
                 /* check if we are in the 'normal' range between the max/min allowed values */
                 if((PPP[i].NumNgb < (desnumngb - desnumngbdev) && PPP[i].Hsml < 0.999*maxsoft) ||
                    (PPP[i].NumNgb > (desnumngb + desnumngbdev) && PPP[i].Hsml > 1.001*minsoft))
-                    redo_particle = 1;
+                    {redo_particle = 1;}
 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxhsml_flag = 0;
@@ -803,17 +818,16 @@ void density(void)
                             if(Right[i] == 0 && Left[i] > 0)
                             {
                                 if (PPP[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
+                                    {fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;} // this would give desnumgb if constant density (+0.231=2x desnumngb)
                                 else
-                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
+                                    {fac_lim = 1.4;} // factor ~66 increase in N_NGB in constant-density medium
 
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4)
-                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(PPP[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac < fac_lim+0.231)
                                     {
@@ -827,43 +841,42 @@ void density(void)
                                     }
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {PPP[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
 
                             if(Right[i] > 0 && Left[i] == 0)
                             {
-                                if (PPP[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
+                                if(PPP[i].NumNgb > 1)
+                                    {fac_lim = log( desnumngb / PPP[i].NumNgb ) / NUMDIMS;} // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
                                 else
-                                    fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
+                                    {fac_lim = 1.4;} // factor ~66 increase in N_NGB in constant-density medium
 
-                                if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
+                                if(fac_lim < -1.535) {fac_lim = -1.535;} // decreasing N_ngb by factor ~100
 
                                 if((PPP[i].NumNgb < 2*desnumngb)&&(PPP[i].NumNgb > 0.1*desnumngb))
                                 {
                                     double slope = PPP[i].DhsmlNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4)
-                                        if(PPP[i].DhsmlNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(PPP[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac > fac_lim-0.231)
                                     {
                                         PPP[i].Hsml *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
-                                        PPP[i].Hsml *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
+                                        {PPP[i].Hsml *= exp(fac_lim-0.231);} // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    PPP[i].Hsml *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {PPP[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                         } // closes if[particle_set_to_max/minhsml_flag]
                     } // closes redo_particle
                     /* resets for max/min values */
-                    if(PPP[i].Hsml < minsoft) PPP[i].Hsml = minsoft;
-                    if(particle_set_to_minhsml_flag==1) PPP[i].Hsml = minsoft;
-                    if(PPP[i].Hsml > maxsoft) PPP[i].Hsml = maxsoft;
-                    if(particle_set_to_maxhsml_flag==1) PPP[i].Hsml = maxsoft;
+                    if(PPP[i].Hsml < minsoft) {PPP[i].Hsml = minsoft;}
+                    if(particle_set_to_minhsml_flag==1) {PPP[i].Hsml = minsoft;}
+                    if(PPP[i].Hsml > maxsoft) {PPP[i].Hsml = maxsoft;}
+                    if(particle_set_to_maxhsml_flag==1) {PPP[i].Hsml = maxsoft;}
                 }
                 else {P[i].TimeBin = -P[i].TimeBin - 1;}	/* Mark as inactive */
             } //  if(density_isactive(i))

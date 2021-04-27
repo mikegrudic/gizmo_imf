@@ -1645,6 +1645,39 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 #endif /* MAGNETIC */
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) || defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+      strcpy(tag[nt], "BH_spawn_rinj");
+      addr[nt] = &All.BH_spawn_rinj;
+      id[nt++] = REAL;
+#endif
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+      strcpy(tag[nt], "B_spawn_pol");
+      addr[nt] = &All.B_spawn_pol;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "B_spawn_tor");
+      addr[nt] = &All.B_spawn_tor;
+      id[nt++] = REAL;
+
+#endif
+#ifdef BH_JET_PRECESSION_SET_IN_PARAMS
+      strcpy(tag[nt], "BH_jet_precess_degree");
+      addr[nt] = &All.BH_jet_precess_degree;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_jet_precess_period");
+      addr[nt] = &All.BH_jet_precess_period;
+      id[nt++] = REAL;
+#endif
+#ifdef BH_DEBUG_FIX_MDOT
+      strcpy(tag[nt], "BH_fb_duty_cycle");
+      addr[nt] = &All.BH_fb_duty_cycle;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_fb_period");
+      addr[nt] = &All.BH_fb_period;
+      id[nt++] = REAL;
+#endif
 
 #ifdef EOS_TABULATED
         strcpy(tag[nt], "EosTable");

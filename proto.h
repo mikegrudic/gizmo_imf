@@ -380,7 +380,10 @@ double INLINE_FUNC hubble_function_external(double a);
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
 void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
-void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir);
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir, double *dpdir);
+#ifdef MAGNETIC
+void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r);
+#endif
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
