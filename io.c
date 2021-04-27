@@ -2187,9 +2187,13 @@ int get_values_per_blockelement(enum iofields blocknr)
  */
 long get_particles_in_block(enum iofields blocknr, int *typelist)
 {
-    long i, nall, nsel, ntot_withmasses, ngas, nstars, nngb;
-    nall = 0; nsel = 0; ntot_withmasses = 0;
+    long i, nall, nsel, ntot_withmasses, ngas, nstars, nngb, nstars_tot;
+    nall = 0; nsel = 0; ntot_withmasses = 0; nstars_tot=0;
 
+    int valid_star_types=16; if(All.ComovingIntegrationOn==0) {valid_star_types+=4+8;} /* used in e.g. ages block below, not for all, but easier to define here */
+#ifdef BLACK_HOLES
+    valid_star_types += 32;
+#endif
     for(i = 0; i < 6; i++)
     {
         typelist[i] = 0;
@@ -2197,11 +2201,13 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         {
             nall += header.npart[i];
             typelist[i] = 1;
+            if((1 << i) & (valid_star_types)) {nstars_tot += header.npart[i];}
         }
         if(All.MassTable[i] == 0) {ntot_withmasses += header.npart[i];}
     }
     ngas = header.npart[0];
     nstars = header.npart[4];
+
 
     switch (blocknr)
     {
@@ -2305,11 +2311,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
 
         case IO_AGE:
-            int valid_star_types=16, nstars_tot=0; if(All.ComovingIntegrationOn==0) {valid_star_types+=4+8;}
-#ifdef BLACK_HOLES
-            valid_star_types += 32;
-#endif
-            for(i = 0; i < 6; i++) {if((1 << i) & (valid_star_types)) {nstars_tot+=header.npart[i]} else {typelist[i]=0;}}
+            for(i=0; i<6; i++) {if(!((1 << i) & (valid_star_types))) {typelist[i]=0;}}
+            return nstars_tot;
             break;
 
         case IO_OSTAR:
