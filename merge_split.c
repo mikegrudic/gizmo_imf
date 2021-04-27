@@ -73,6 +73,9 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#ifdef BH_DEBUG_SPAWN_JET_TEST
+    if(P[i].ID == All.AGNWindID) return 0;
+#endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
     if(P[i].Type == 0)

@@ -521,7 +521,6 @@
 #PARTICLE_EXCISION              # enable dynamical excision (remove particles within some radius)
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
-#BH_DEBUG_FIX_MASS              # does not allow BH/sink [type=5] particles to change their mass during run, from accretion/merging/swallowing
 #PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP # force merge/split operations to occur every timestep, instead of only on domain decomposition steps
 # --------------------
 # ----- Radiation-Hydrodynamics Special Options for Test Problems + Disabled or Other Special Features
@@ -579,7 +578,12 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
-
++####################################################################################################-
+#BH_DEBUG_SPAWN_JET_TEST=(1.)    #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within the angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
+#BH_DEBUG_FIX_MDOT=(0.2)         # fix BH fb mass flux and fixed BH mass
+#SPAWN_B_POL_TOR_SET_IN_PARAMS   # set poloridal and toroidal magnetic field for spawn particles (Should work for all partile spawning)
+#BH_JET_PRECESSION_SET_IN_PARAMS # manually set precession in parameter file (do not work for cosmological)
+####################################################################################################-
 
 ####################################################################################################-
 ##- some code options that will be made public as soon as the appropriate methods papers are published so it can be cited

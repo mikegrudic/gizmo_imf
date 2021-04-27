@@ -375,7 +375,36 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-
+        case IO_INIB:
+#if defined( SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k = 0; k < 3; k++)
+                        *fp++ = SphP[pindex].IniB[k];
+                    n++;
+                }
+#endif                     
+        case IO_IDEN:
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = SphP[pindex].IniDen;
+                    n++;
+                }
+#endif                
+            break;
+        case IO_UNSPMASS:
+#ifdef BH_WIND_SPAWN
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = P[pindex].unspawned_wind_mass;
+                    n++;
+                }
+#endif           
+            break;
         case IO_CRATE:
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)
             for(n = 0; n < pc; pindex++)
@@ -1664,6 +1693,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_PARTVEL:
         case IO_ACCEL:
         case IO_BFLD:
+        case IO_INIB:
         case IO_GRADPHI:
         case IO_RAD_ACCEL:
         case IO_VORT:
@@ -1704,6 +1734,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
+        case IO_IDEN:
+        case IO_UNSPMASS:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -1956,6 +1988,7 @@ int get_values_per_blockelement(enum iofields blocknr)
     {
         case IO_POS:
         case IO_VEL:
+        case IO_INIB:
         case IO_PARTVEL:
         case IO_ACCEL:
         case IO_BFLD:
@@ -1979,6 +2012,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
+        case IO_IDEN:
+        case IO_UNSPMASS:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2205,6 +2240,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
+        case IO_INIB:
+        case IO_IDEN:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2314,6 +2351,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BHDUSTMASS:
         case IO_BHMASSALPHA:
         case IO_BH_ANGMOM:
+        case IO_UNSPMASS:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_BHMDOT:
@@ -2501,7 +2539,24 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
-
+        case IO_IDEN:
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+            return 1;
+#else
+            return 0;
+#endif            
+        case IO_INIB:
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+            return 1;
+#else
+            return 0;
+#endif  
+        case IO_UNSPMASS:
+#ifdef BH_WIND_SPAWN
+            return 1;
+#else
+            return 0;
+#endif   
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2927,6 +2982,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_HeII:
             strncpy(label, "HeII", 4);
             break;
+        case IO_INIB:
+            strncpy(label, "INIB", 4);
+            break;
+        case IO_IDEN:
+            strncpy(label, "IDEN", 4);
+            break; 
+        case IO_UNSPMASS:
+            strncpy(label, "USPM", 4);
+            break;     
         case IO_CRATE:
             strncpy(label, "CRATE", 4);
             break;
@@ -3292,6 +3356,27 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_HeII:
             strcpy(buf, "HeII");
             break;
+        case IO_IDEN:
+#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+            strcpy(buf, "IniDen");
+#else
+            strcpy(buf, "IDEN");
+#endif            
+            break;
+        case IO_INIB:
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+            strcpy(buf, "IniB");
+#else
+            strcpy(buf, "INIB");
+#endif            
+            break;    
+        case IO_UNSPMASS:
+#ifdef BH_WIND_SPAWN
+            strcpy(buf, "Unspawned_Wind_Mass");
+#else
+            strcpy(buf, "USPM");
+#endif
+            break;     
         case IO_CRATE:
             strcpy(buf, "CoolingRate");
             break;
