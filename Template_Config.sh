@@ -578,11 +578,11 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
-+####################################################################################################-
-#BH_DEBUG_SPAWN_JET_TEST=(1.)    #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within the angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
-#BH_DEBUG_FIX_MDOT=(0.2)         # fix BH fb mass flux and fixed BH mass
-#SPAWN_B_POL_TOR_SET_IN_PARAMS   # set poloridal and toroidal magnetic field for spawn particles (Should work for all partile spawning)
-#BH_JET_PRECESSION_SET_IN_PARAMS # manually set precession in parameter file (do not work for cosmological)
+####################################################################################################-
+#BH_DEBUG_SPAWN_JET_TEST=(30.)   #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
+#BH_DEBUG_FIX_MDOT=(0.2)         #- fix BH fb mass flux and fixed BH mass
+#SPAWN_B_POL_TOR_SET_IN_PARAMS   #- set poloridal and toroidal magnetic field for spawn particles (Should work for all partile spawning)
+#BH_JET_PRECESSION_SET_IN_PARAMS #- manually set precession in parameter file (do not work for cosmological)
 ####################################################################################################-
 
 ####################################################################################################-

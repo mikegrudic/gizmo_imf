@@ -956,11 +956,8 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     } // if(P[p].Type == 5)
 
-#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST) /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
-    double dt_jet=All.BH_spawn_rinj/All.BAL_v_outflow;
-    if(P[p].Type == 5 && dt>dt_jet) {dt=dt_jet;}
-    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>dt_jet && SphP[p].IniDen<0)
-    {dt=dt_jet;}
+#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) /* KYSu: here for de-bugging jet injection model right now */
+    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && SphP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
 #endif
 #endif // BLACK_HOLES
     
