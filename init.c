@@ -464,7 +464,7 @@ void init(void)
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-		P[i].ZAMS_Mass = P[i].BH_Mass;
+                P[i].ZAMS_Mass = P[i].BH_Mass;
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif                
 #endif

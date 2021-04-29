@@ -69,7 +69,11 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
     
 #if defined(GALSF)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+    if(BPP(i).ProtoStellarStage != 7) {active_check += rt_get_lum_band_singlestar(i,mode,lum); /* stars and protostars */} else {active_check += rt_get_lum_band_agn(i,mode,lum); /* relics */}
+#else
     active_check += rt_get_lum_band_singlestar(i,mode,lum); // get luminosities for individual star/sink particles assuming they are protostars or stars
+#endif
 #else
     active_check += rt_get_lum_band_stellarpopulation(i,mode,lum); // get luminosities for star particles assuming they represent IMF-averaged populations
 #if defined(BLACK_HOLES)
@@ -1232,7 +1236,6 @@ double stellar_lum_in_band(int i, double E_lower, double E_upper)
 {
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     double r_sol = P[i].ProtoStellarRadius_inSolar, l_sol = P[i].StarLuminosity_Solar;
-    //if(P[i].ProtoStellarStage < 5) {if(E_lower < 0.1) {return l_sol/UNIT_LUM_IN_SOLAR;} else {return 0;}} // protostars [stage < 5] are only allowed to radiate in the broad-IR band, not higher wavelengths
 #elif defined(SINGLE_STAR_SINK_DYNAMICS) // use generic fits based on mass
     double l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR, m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
 #else

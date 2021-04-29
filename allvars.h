@@ -38,7 +38,7 @@
 
 #include "GIZMO_config.h"
 /*------- Things that are always recommended (this must follow loading GIZMO_config.h!) -------*/
-#define GIZMO_VERSION   "2020"  /*!< code version string */
+#define GIZMO_VERSION     2021  /*!< code version (should be an int corresponding to the year) */
 #define DOUBLEPRECISION         /* using double (not floating-point) precision */
 #define PEANOHILBERT            /* sort particles on a Peano-Hilbert curve (huge optimization) */
 #define WALLCLOCK               /* track timing of different routines */
@@ -2207,14 +2207,14 @@ extern struct global_data_all_processes
 #ifdef COOL_GRACKLE
     char GrackleDataFile[100];
 #endif
-  /*! table with desired output times */
-  double OutputListTimes[MAXLEN_OUTPUTLIST];
-  char OutputListFlag[MAXLEN_OUTPUTLIST];
-  int OutputListLength;		/*!< number of times stored in table of desired output times */
+    /*! table with desired output times */
+    double OutputListTimes[MAXLEN_OUTPUTLIST];
+    char OutputListFlag[MAXLEN_OUTPUTLIST];
+    int OutputListLength;		/*!< number of times stored in table of desired output times */
 
 #ifdef RADTRANSFER
-  integertime Radiation_Ti_begstep;
-  integertime Radiation_Ti_endstep;
+    integertime Radiation_Ti_begstep;
+    integertime Radiation_Ti_endstep;
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
     double Rad_Intensity_Direction[N_RT_INTENSITY_BINS][3];
@@ -2773,13 +2773,13 @@ extern ALIGN(32) struct particle_data
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
     MyFloat ProtoStellarAge; /*!< record the proto-stellar age instead of age */
     MyFloat ProtoStellarRadius_inSolar; /*!< protostellar radius (also tracks evolution from protostar to ZAMS star) */
-    int ProtoStellarStage; /*Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: supernova, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
+    int ProtoStellarStage; /* Track the stage of protostellar evolution, 0: pre collapse, 1: no burning, 2: fixed Tc burning, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: supernova, see Offner 2009 Appendix B*/ //IO flag IO_STAGE_PROTOSTAR
     MyFloat Mass_D; /* Mass of gas in the protostar that still contains D to burn */ // IO flag IO_MASS_D_PROTOSTAR
-    MyFloat StarLuminosity_Solar; /*the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
-    MyFloat ZAMS_Mass; /*The mass the star has when reaching the main sequence */ //IO flag IO_ZAMS_MASS
+    MyFloat StarLuminosity_Solar; /* the total luminosity of the star in L_solar units*/ //IO flag IO_LUM_SINGLESTAR
+    MyFloat ZAMS_Mass; /* The mass the star has when reaching the main sequence */ //IO flag IO_ZAMS_MASS
 #ifdef SINGLE_STAR_FB_WINDS
-    MyFloat Wind_direction[6]; //direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both.
-    int wind_mode; //tells what kind of wind model to use, 1 for particle spawning and 2 for using the FIRE wind module
+    MyFloat Wind_direction[6]; // direction of wind launches, to reduce anisotropy launches go along a random axis then a random perpendicular one, then one perpendicular to both.
+    int wind_mode; // tells what kind of wind model to use, 1 for particle spawning and 2 for using the FIRE wind module
 #endif
 #ifdef  SINGLE_STAR_FB_SNE
     MyFloat Mass_final; //final mass of the star before going SN (Since this is not saved to snapshots, hard restarts in the middle of spawning an SN will do weird things)

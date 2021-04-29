@@ -158,7 +158,7 @@ double evaluate_stellar_age_Gyr(double stellar_tform)
 void set_units_sfr(void)
 {
     All.OverDensThresh = All.CritOverDensity * All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G);
-    All.PhysDensThresh = All.CritPhysDensity / (HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_NHCGS);
+    All.PhysDensThresh = All.CritPhysDensity / UNIT_DENSITY_IN_NHCGS;
 #ifdef GALSF_EFFECTIVE_EQS
     All.EgySpecCold = All.TempClouds / ((4 / (1 + 3 * HYDROGEN_MASSFRAC)) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-neutral atomic H+He primordial mixture */
     All.EgySpecSN = All.TempSupernova / ((4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * (GAMMA_DEFAULT-1) * U_TO_TEMP_UNITS); /* note: assuming fully-ionized H+He primordial mixture */
@@ -205,8 +205,8 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
 
 
 
-/* Routine to actually determine the SFR assigned to an individual gas particle at each time */
-double get_starformation_rate(int i)
+/* Routine to actually determine the SFR assigned to an individual gas particle at each time. i is the index. mode is normal [0] or for snapshot output [1], where the latter is included to make sure certain flags dont give misleading outputs */
+double get_starformation_rate(int i, int mode)
 {
     double rateOfSF,tsfr,y; y=0; int flag=1, j, k; /* flag to proceed to SFR calc */
     if(P[i].Mass <= 0 || SphP[i].Density <= 0) {flag=0;} /* zero-mass elements [for deletion] not eligible for SF */
@@ -237,8 +237,9 @@ double get_starformation_rate(int i)
 
     int exceeds_force_softening_threshold; exceeds_force_softening_threshold = 0; /* flag that notes if the density is so high such that gravity is non-Keplerian [inside of smallest force-softening limits] */
 #if (SINGLE_STAR_SINK_FORMATION & 1024)
-    if(DMIN(PPP[i].Hsml, 2.*Get_Particle_Size(i)) <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
-    if(exceeds_force_softening_threshold) {return 1.e4 * rateOfSF;}
+    if(mode == 1) {
+        if(DMIN(PPP[i].Hsml, 2.*Get_Particle_Size(i)) <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
+        if(exceeds_force_softening_threshold) {return 1.e4 * rateOfSF;}}
 #endif
 
     /* compute various velocity-gradient terms which are potentially used in the various criteria below */
@@ -406,19 +407,14 @@ void star_formation_parent_routine(void)
 
         if((flag == 0)&&(dtime>0))		/* active star formation (upon start-up, we need to protect against dt==0) */
 	    {
-          sm = get_starformation_rate(i) * dtime; // expected stellar mass formed this timestep
-            // (this also updates entropies for the effective equation-of-state model) //
+          sm = get_starformation_rate(i, 0) * dtime; // expected stellar mass formed this timestep (this also updates entropies for the effective equation-of-state model) //
 	      p = sm / P[i].Mass;
 	      sum_sm += P[i].Mass * (1 - exp(-p));
-
 
           /* Alright, now we consider the actual gas-to-star particle conversion and associated steps */
 
 	      /* the upper bits of the gas particle ID store how many stars this gas particle gas already generated */
-	      if(bits == 0)
-            {number_of_stars_generated = 0;}
-	      else
-            {number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));}
+	      if(bits == 0) {number_of_stars_generated = 0;} else {number_of_stars_generated = (P[i].ID >> (sizeof(MyIDType) * 8 - bits));}
 
 	      mass_of_star = P[i].Mass / (GALSF_GENERATIONS - number_of_stars_generated);
           if(number_of_stars_generated >= GALSF_GENERATIONS-1) mass_of_star=P[i].Mass;
@@ -512,7 +508,6 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
-
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 P[i].Type = 5;
