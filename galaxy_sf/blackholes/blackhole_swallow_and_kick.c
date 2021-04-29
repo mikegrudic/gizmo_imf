@@ -725,7 +725,7 @@ void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  dou
     Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-    if(P[i].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta
+    if(P[j].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta - note that this assumes we inherited this attribute from the spawning sink before calling this routine
 #endif
     Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
     /* add magnetic flux here to 'Bmag' if desired */
@@ -1003,6 +1003,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #if defined(SINGLE_STAR_SINK_DYNAMICS) 
         SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+	P[j].ProtoStellarStage = P[i].ProtoStellarStage; // inherit this from the spawning sink particle so we can use it in subroutines
         // need to initialize the gas density and search radius so that we get sensible CFL timesteps (which happens before density() is called and we recalculate these self-consistently)
         if(n_particles_split > All.DesNumNgb){ // we are spawning a whole "shell" together, so initialize search radii/densities assuming kernels are confined to the region of spawned material.
             SphP[j].Density = mass_of_new_particle / (4 * M_PI * d_r*d_r*d_r);
