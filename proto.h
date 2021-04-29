@@ -737,7 +737,7 @@ void do_the_cooling_for_particle(int i);
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe);
 void apply_pm_hires_region_clipping_selection(int i);
-double get_starformation_rate(int i);
+double get_starformation_rate(int i, int mode);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
 void init_clouds(void);
 void integrate_sfr(void);

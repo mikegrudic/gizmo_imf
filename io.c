@@ -478,7 +478,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {   /* units convert to solar masses per yr */
-                    *fp++ = get_starformation_rate(pindex) * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
+                    *fp++ = get_starformation_rate(pindex, 1) * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR;
                     n++;
                 }
 #endif
@@ -4114,6 +4114,9 @@ void write_header_attributes_in_hdf5(hid_t handle)
 {
     hsize_t adim[1] = { 6 }; hid_t hdf5_dataspace, hdf5_attribute;
 
+    {int tmp=GIZMO_VERSION; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "GIZMO_version", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &tmp); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+    
     hdf5_dataspace = H5Screate(H5S_SIMPLE); H5Sset_extent_simple(hdf5_dataspace, 1, adim, NULL);
     hdf5_attribute = H5Acreate(handle, "NumPart_ThisFile", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, header.npart); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
@@ -4430,10 +4433,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.CosmicRay_SNeFraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 #endif
+
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "HIIRegion_fLum_Coupled", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.HIIRegion_fLum_Coupled); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
+
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     {int holder=NUM_AGE_TRACERS; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "AgeTracer_NumberOfBins", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
@@ -4455,8 +4460,72 @@ void write_header_attributes_in_hdf5(hid_t handle)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={NUM_METAL_SPECIES}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
     hdf5_attribute = H5Acreate(handle, "Solar_Abundances_Adopted", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.SolarAbundances); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+
+    /* assign labels for all metal species for reference in outputs */
+    {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={NUM_METAL_SPECIES}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
+        hdf5_attribute = H5Acreate(handle, "Metals_Atomic_Number_Or_Key", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        int zkey[NUM_METAL_SPECIES],k; zkey[0]=0; /* all metals */ for(k=1;k<NUM_METAL_SPECIES;k++) {zkey[k]=-20;}
+        if(NUM_LIVE_SPECIES_FOR_COOLTABLES==10) {zkey[1]=2; zkey[2]=6; zkey[3]=7; zkey[4]=8; zkey[5]=10; zkey[6]=12; zkey[7]=14; zkey[8]=16; zkey[9]=20; zkey[10]=26;} /* He,C,N,O,Ne,Mg,Si,S,Ca,Fe */
+        for(k=0;k<NUM_RPROCESS_SPECIES;k++) {zkey[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+k]=-1;}
+        for(k=0;k<NUM_AGE_TRACERS;k++) {zkey[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+k]=-2;}
+        for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {zkey[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS+k]=-3;}
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, zkey); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+    {
+        int k; double numin[N_RT_FREQ_BINS], numax[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {numin[k]=-20; numax[k]=-20;}
+#ifdef RT_CHEM_PHOTOION
+#if defined(RT_PHOTOION_MULTIFREQUENCY)
+        int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2};
+        numin[i_vec[3]]=rt_ion_nu_min[i_vec[3]]; numax[i_vec[3]]=500; for(k=0;k<3;k++) {numin[i_vec[k]]=rt_ion_nu_min[i_vec[k]]; numax[i_vec[k]]=rt_ion_nu_min[i_vec[k+1]];}
+#else
+        k=RT_FREQ_BIN_H0; numin[k]=13.6; numax[k]=500;
+#endif
+#endif
+#ifdef RT_SOFT_XRAY
+        k=RT_FREQ_BIN_SOFT_XRAY; numin[k]=500; numax[k]=2000;
+#endif
+#ifdef RT_HARD_XRAY
+        k=RT_FREQ_BIN_HARD_XRAY; numin[k]=2000; numax[k]=10000;
+#endif
+#ifdef RT_PHOTOELECTRIC
+        k=RT_FREQ_BIN_PHOTOELECTRIC; numin[k]=8; numax[k]=13.6;
+#endif
+#ifdef RT_LYMAN_WERNER
+        k=RT_FREQ_BIN_LYMAN_WERNER; numin[k]=11.2; numax[k]=13.6;
+#endif
+#ifdef RT_NUV
+        k=RT_FREQ_BIN_NUV; numin[k]=3.444; numax[k]=8.;
+#endif
+#ifdef RT_OPTICAL_NIR
+        k=RT_FREQ_BIN_OPTICAL_NIR; numin[k]=0.4133; numax[k]=3.444;
+#endif
+#ifdef RT_GENERIC_USER_FREQ
+        k=RT_FREQ_BIN_GENERIC_USER_FREQ; numin[k]=-1; numax[k]=-1;
+#endif
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
+        k=RT_FREQ_BIN_FIRE_UV; numin[k]=3.444; numax[k]=13.6;
+        k=RT_FREQ_BIN_FIRE_OPT; numin[k]=0.365; numax[k]=3.444;
+        k=RT_FREQ_BIN_FIRE_IR; numin[k]=0.01; numax[k]=0.365;
+#endif
+#ifdef RT_INFRARED
+        k=RT_FREQ_BIN_INFRARED; numin[k]=0.001; numax[k]=0.4133;
+#endif
+#ifdef RT_FREEFREE
+        k=RT_FREQ_BIN_FREEFREE; numin[k]=-2; numax[k]=-2;
+#endif
+        
+        {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
+            hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Min_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+            H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, numin); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+        {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
+            hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Max_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+            H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, numax); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+    }
+#endif
+
+    
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_accretion", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_f_accretion); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
