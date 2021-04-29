@@ -746,9 +746,12 @@ void blackhole_final_operations(void)
 #ifdef BH_DEBUG_FIX_MDOT
         dm=0; double period_bh=All.BH_fb_period/UNIT_TIME_IN_GYR, period_bh_on=All.BH_fb_duty_cycle*period_bh;
         if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT*dt;} else {if(fmod(All.Time, period_bh) < period_bh_on) {dm = 2.*(BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_bh_on),2) * dt;}}
-#endif          
+#endif
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+        if(All.BlackHoleRadiativeEfficiency > 0 && All.BlackHoleRadiativeEfficiency < 1 && BPP(n).ProtoStellarStage != 7) {radiation_loss = 0;} // negligible radiation loss term unless the object is actually a compact relic
+#endif
 #ifndef BH_DEBUG_FIX_MDOT
         P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
 #endif
@@ -780,7 +783,7 @@ void blackhole_final_operations(void)
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
         double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
 #ifdef SINGLE_STAR_FB_JETS
-        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01msun or if we haven't accreted enough to get a reliable jet direction
+        if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*All.MeanGasParticleMass) {dm_wind = 0;} // no jets launched yet if <0.01 msun or if we haven't accreted enough to get a reliable jet direction
 #endif
         if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
 #if defined(BH_ALPHADISK_ACCRETION)
@@ -799,10 +802,10 @@ void blackhole_final_operations(void)
                 dm_wind = single_star_wind_mdot(n,0) * dt;
                 BPP(n).BH_Mass -= dm_wind;
             }
-           } //wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
+        } // wind loss rate previously calculated in stellar_evolution at the end of the previous timestep: remove mass lost via winds
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-        if(P[n].ProtoStellarStage == 6) { //Star old enough to go out with a boom
+        if(P[n].ProtoStellarStage == 6) { // Star old enough to go out with a boom
             double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[n].Type], PPP[n].Hsml);
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[n].SinkRadius);
@@ -811,7 +814,7 @@ void blackhole_final_operations(void)
             double SN_mdot = (SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)/t_clear; // we spawn SINGLE_STAR_FB_SNE_N_EJECTA per ejected shell, and we can have maximum 1 shell per t_clear
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, (unsigned long long) P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
-            BPP(n).BH_Mass -= dm_wind; //remove amount of mass lost via winds
+            BPP(n).BH_Mass -= dm_wind; // remove amount of mass lost via winds
             if (BPP(n).BH_Mass < 0.5*(SINGLE_STAR_FB_SNE_N_EJECTA * All.MeanGasParticleMass)){ // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
                 dm_wind += BPP(n).BH_Mass; BPP(n).BH_Mass = 0; // add leftover mass to be spawned and zero-out mass
             }

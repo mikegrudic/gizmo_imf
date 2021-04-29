@@ -3099,15 +3099,51 @@ All files include a header block with (at minimum) the following quantities/flag
     HubbleParam = hubble parameter "h" for the run 
     Redshift = redshift of snapshot
 
+Newer versions of the code include a wide range of additional flags in the header, provided the appropriate physics is enabled at compile time (and that you are using HDF5). This makes it easier to figure out exactly how your run was set up, if you only have the snapshots. This includes, for example:
+
+    GIZMO_version = version (year) of GIZMO code
+    
+    ComovingIntegrationOn = was this simulation run in co-moving/cosmological form (1=yes)
+    Omega_Matter = cosmological omega matter (if ComovingIntegrationOn)
+    Omega_Lambda = cosmological omega lambda (if ComovingIntegrationOn)
+    Omega_Baryon = cosmological omega baryon (if ComovingIntegrationOn)
+    Omega_Radiation = cosmological omega radiation (if ComovingIntegrationOn)
+
+    UnitMass_In_CGS = user-specified unit mass in cgs (from parameterfile)
+    UnitVelocity_In_CGS = user-specified unit velocity in cgs (from parameterfile)
+    UnitLength_In_CGS = user-specified unit length in cgs (from parameterfile)
+    Internal_UnitB_In_Gauss = internal code B-units (not what is in the snapshot, but useful to check if desired setup is actually done, if MAGNETIC on) 
+    Gravitational_Constant_In_Code_Inits = gravity constant G in code units
+    
+    Minimum_Mass_For_Cell_Merge = minimum mass below which cells are merged
+    Maximum_Mass_For_Cell_Split = maximum mass above which cells are split
+    
+    Fixed_ForceSoftening_Keplerian_Kernel_Extent = 6-element table with the in-code kernel-radius-of-compact-supprt of the gravitational force softening value for each particle type, at the time of the snapshot
+    Kernel_Function_ID = value of KERNEL_FUNCTION, specifying the kernel function
+    Effective_Kernel_NeighborNumber = target effective number of cells inside the radius of compact support of one kernel
+    
+    Subfind_FOFLink_NeighborNumber = neighbor number for FOF linking for subfind (if SUBFIND is enabled)
+    
+    Solar_Abundances_Adopted = value of solar abundances assumed in code for the list of metals evolved (METALS on)
+    Metals_Atomic_Number_Or_Key = atomic number of each metals species evolved explicitly in-code; values <1 correspond to special keys, i.e. 0=all/total metallicity, -1=R-process tracer fields, -2=age-tracer fields, -3=starforge feedback tracer fields
+    
+    Radiation_RHD_Min_Bin_Freq_in_eV = if radiation-hydrodynamics is enabled, with outputs saved, this saves the minimim frequency of the explicitly-evolved radiation 'bins' which are actually saved in the code/snapshot outputs (should match the number of elements saved there, so you have a 1-to-1 correspondence), in units of eV (so this is h*nu). note a couple special keys: -1 is for RT_GENERIC_USER_FREQ, since this has no defined frequency range, and -2 for RT_FREEFREE, which evolves the bolometric (all-wavelength-integrated) free-free
+    Radiation_RHD_Max_Bin_Freq_in_eV = as Radiation_RHD_Min_Bin_Freq_in_eV, but the upper limits of the bins/intervals (same special keys)
+    
+    ... and many more, depending on the physics enabled ...
+    
+In the current versions of the code, almost every parameter of interest specified in the parameterfile will be saved to the header (e.g. if you enable cosmic rays and specify the diffusion coefficient in the parameterfile, that is saved here as `CosmicRayDiffusionCoeff_at_GV_CodeUnits`). Other useful information includes e.g. for spectrally-resolved cosmic ray methods the properties (species, charge, rigidity, etc) of each bin, or the age range of each bin for the stellar age tracer modules, etc. Please check the header files for your simulation outputs, they contain a tremendous amount of useful information!
+    
+
 Then, for *each* particle type, there are a set of structures/arrays; these are sub-divided by PARTICLE TYPE. particle type=0 is *always* gas resolution elements (we really shouldn't call them 'particles' since the code treats them as finite volume elements or even explicit, traditional fixed-grid 'cells' in some modes, but for the sake of simplicity, since the N-body particles are indeed 'particles', I'll use that term throughout this guide). The other particle types are not gas. What we chose them to represent is arbitrary and depends on the compile-time flags in the code. For the default example we are discussing here:
 
-    0 = gas
-    1 = high-resolution dark matter
-    2,3 = 'dummy' collisionless particles (low-res dark-matter particles in cosmological runs; pre-existing "disk" and "bulge" star particles in the non-cosmological runs)
-    4 = stars formed during the simulation
-    5 = black holes (usually) -- *some* of our runs use this as another reservoir for 'dummy collisionless particles'
+    0 = gas/fluid (the cells that feel local fluid-dynamic forces)
+    1 = high-resolution dark matter (in e.g. galaxy/cosmological simulations)
+    2,3 = 'dummy' collisionless particles (e.g. low-res dark-matter particles in cosmological runs; pre-existing "disk" and "bulge" star particles in the non-cosmological runs, dust grains or cosmic ray particles in simulations with explicit grain dynamics or MHD-PIC simulations)
+    4 = stars formed during the simulation (in e.g. simulations with non-sink 'star particle' formation like galaxy sims, otherwise another collisionless species)
+    5 = sink particles (e.g. black holes in galaxy simulations, or protostars or star particles in simulations with sink-particle star formation, or if no label is given, this is another dummy collisionless particle)
 
-For each particle, then, there are a wide range of data the routine will attempt to read. See the routine itself to see how these are embedded in the snapshots and extracted. Here we will outline what each quantity is. Each entry in **bold** below refers to the name of the HDF5 block, containing the data. The term in parentheses (P['x']) denotes the name of the block (usually some shorthand) which is returned by the routine `readsnap.py` (this can be trivially modified by the user). If you use `load_from_snapshot.py`, each data structure can be retrieved by asking for it with the proper name used by the HDF5 file. Here we give the description of what youre looking at.
+For each particle/cell, then, there are a wide range of data the routine will attempt to read. See the routine itself to see how these are embedded in the snapshots and extracted. Here we will outline what each quantity is. Each entry in **bold** below refers to the name of the HDF5 block, containing the data. The term in parentheses (P['x']) denotes the name of the block (usually some shorthand) which is returned by the routine `readsnap.py` (this can be trivially modified by the user). If you use `load_from_snapshot.py`, each data structure can be retrieved by asking for it with the proper name used by the HDF5 file. Here we give the description of what youre looking at.
 
 **Coordinates** (output by `readsnap.py` routine as P['p']): a [N,3] array where N is the number of particles (of the given type). Elements [i,0], [i,1], [i,3] give the x, y, z (respectively) coordinate positions of particle "i" in code units
 

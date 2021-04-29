@@ -748,17 +748,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     int k=0; long j;
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if (P[i].ProtoStellarStage == 6){
+    if (P[i].ProtoStellarStage == 6) {
         n_particles_split = (int) floor( total_mass_in_winds / (All.MeanGasParticleMass) );
-        if (P[i].BH_Mass == 0){ //Last batch to be spawned
-            n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; //we are going to spawn a bunch of low mass particles to take the last bit of mass away
+        if (P[i].BH_Mass == 0){ // last batch to be spawned
+            n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
             printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
-            P[i].Mass = 0; //set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
+            P[i].Mass = 0; // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
-            P[i].BH_Mass_AlphaDisk = 0; //just to be safe
+            P[i].BH_Mass_AlphaDisk = 0; // just to be safe
 #endif
         }
-        if (n_particles_split<SINGLE_STAR_FB_SNE_N_EJECTA) {return 0;} //we have to wait until we get a full shell
+        if (n_particles_split<SINGLE_STAR_FB_SNE_N_EJECTA) {return 0;} // we have to wait until we get a full shell
             else {n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA);} // we only eject full shells, in practice this will be one shell at a time
     }
 #endif
@@ -767,7 +767,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if (P[i].ProtoStellarStage == 6) {n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);} //so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
+    if (P[i].ProtoStellarStage == 6) {n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);} // so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
 #endif
     if(n_particles_split > n0max) {n_particles_split = n0max;}
 
@@ -830,7 +830,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #endif // single-star evolution clause
 
-// based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
+    // based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
     double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
 #ifdef BH_FOLLOW_ACCRETED_ANGMOM  /* use local angular momentum to estimate preferred directions/coordinates for spawning */
     if(mode==1){ // set up so that the z axis is the angular momentum vector
@@ -901,8 +901,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 #endif
 #endif
 #ifdef ADAPTIVE_TREEFORCE_UPDATE
-	P[j].tdyn_step_for_treeforce = 0;
-	P[j].time_since_last_treeforce = MAX_REAL_NUMBER; // make sure we get a new tree force right off the bat
+        P[j].tdyn_step_for_treeforce = 0;
+        P[j].time_since_last_treeforce = MAX_REAL_NUMBER; // make sure we get a new tree force right off the bat
 #endif
 #ifdef CONDUCTION
         SphP[j].Kappa_Conduction = 0;
@@ -944,7 +944,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
             SphP[j].Rad_E_gamma_Pred[k] = 0; SphP[j].Dt_Rad_E_gamma[k] = 0;
 #endif
 #if defined(RT_EVOLVE_FLUX)
-	    int kdir; for(kdir=0;kdir<3;kdir++){SphP[j].Rad_Flux[k][kdir] = 0;}
+            int kdir; for(kdir=0;kdir<3;kdir++){SphP[j].Rad_Flux[k][kdir] = 0;}
 #endif
         }
 #endif
