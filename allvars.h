@@ -499,6 +499,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
 #define EVALPOTENTIAL 
+#define GRADUAL_SNAPSHOT_RESTART
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
