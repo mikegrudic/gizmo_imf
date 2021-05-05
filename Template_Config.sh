@@ -442,6 +442,7 @@
 #OUTPUT_ACCELERATION            # output physical acceleration of each particle in snapshots
 #OUTPUT_CHANGEOFENERGY          # outputs rate-of-change of internal energy of gas particles in snapshots
 #OUTPUT_VORTICITY               # outputs the vorticity vector
+#OUTPUT_BFIELD_DIVCLEAN_INFO    # outputs the phi, phi-gradient, and numerical div-B fields used for de-bugging MHD simulations
 #OUTPUT_TIMESTEP                # outputs timesteps for each particle
 #OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled
 #OUTPUT_COOLRATE_DETAIL         # outputs cooling rate term by term [saves all individually to snapshot]
@@ -455,6 +456,7 @@
 #OUTPUT_MOLECULAR_FRACTION      # output the code-estimated molecular mass fraction [needs COOLING], for e.g. approximate molecular fraction estimators (as opposed to detailed chemistry modules, which already output this)
 #OUTPUT_SINK_ACCRETION_HIST     # save full accretion histories of sink (BH/star/etc) particles
 #OUTPUT_SINK_FORMATION_PROPS    # save at-formation properties of sink particles
+#OUTPUT_BH_DISTANCES            # saves the distance to the nearest sink, if BH_CALC_DISTANCES is enabled, to snapshots
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
 #IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
@@ -583,6 +585,7 @@
 #BH_DEBUG_FIX_MDOT=(0.2)         #- fix BH fb mass flux and fixed BH mass
 #SPAWN_B_POL_TOR_SET_IN_PARAMS   #- set poloridal and toroidal magnetic field for spawn particles (Should work for all partile spawning)
 #BH_JET_PRECESSION_SET_IN_PARAMS #- manually set precession in parameter file (do not work for cosmological)
+#BH_SIGMAMULTIPLIER              #- account for additional acceleration-dependent retention from stellar FB in Mdot
 ####################################################################################################-
 
 ####################################################################################################-
