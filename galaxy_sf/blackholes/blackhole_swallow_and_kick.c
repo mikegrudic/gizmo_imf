@@ -76,6 +76,9 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     in->BH_angle_weighted_kernel_sum = BlackholeTempInfo[j_tempinfo].BH_angle_weighted_kernel_sum;
 #endif
     in->Dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+    if(P[i].Type == 5){in->Dt = P[i].dt_since_last_gas_search;}
+#endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {in->BH_Specific_AngMom[k] = BPP(i).BH_Specific_AngMom[k];}
     in->angmom_norm_topass_in_swallowloop = BlackholeTempInfo[j_tempinfo].angmom_norm_topass_in_swallowloop;

@@ -172,6 +172,19 @@ void find_timesteps(void)
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+	if(P[i].Type == 5){
+	    if(All.Ti_Current == 0) { // first timestep
+                P[i].dt_since_last_gas_search = GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+		P[i].do_gas_search_this_timestep = 1;
+	    } else {
+	        P[i].dt_since_last_gas_search += GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+		if(P[i].dt_since_last_gas_search > 0.51 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].BH_TimeBinGasNeighbor)){ 
+		    P[i].do_gas_search_this_timestep = 1; 
+                } else {P[i].do_gas_search_this_timestep = 0;}
+	    }
+	}
+#endif
     }
 
 
@@ -934,7 +947,6 @@ integertime get_timestep(int p,		/*!< particle index */
             vsig += P[p].MaxFeedbackVel;
 #endif                        
             double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
-
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
         }
         if(P[p].StellarAge == All.Time)
