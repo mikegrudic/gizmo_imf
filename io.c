@@ -2600,6 +2600,11 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_BFLD:
+#if defined(MAGNETIC)
+            return 1;
+#endif
+            break;
+            
         case IO_DIVB:
 #if defined(MAGNETIC) && defined(OUTPUT_BFIELD_DIVCLEAN_INFO)
             return 1;
