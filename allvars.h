@@ -386,23 +386,6 @@
 #endif
 #endif // PMGRID check
 
-/* below is text to include on the FIRE wiki when we update with this */
-/*!
-FIRE_PHYSICS_DEFAULTS=3  # enable this version of FIRE default physics
-## options for additional physics
-FIRE_MHD             # optional: enable MHD, anisotropic conduction+viscosity
-FIRE_BHS              # optional: enable BHs, with default accretion+feedback+seed modules
-FIRE_CRS=0          # optional: enable default CR model, 0=constant diffusivity, 1=variable
-## options for cosmological zoom-in sims
-BOX_PERIODIC     # include if cosmological or otherwise periodic sim
-PMGRID=512         # include if cosmological, larger value at higher-res but must optimize
-## optimization options
-OPENMP=2            # set appropriately for machine and resolution, larger at higher-res
-MULTIPLEDOMAINS=32 # can vary if severe load-balancing problems present
-USE_FFTW3           # use fftw3 on this machine if appropriate (need to have correct modules loaded)
-COSMIC_RAYS_M1=(1000.)  # set reduced-speed-of-light (code units) used for CRs if FIRE_CRS enabled 
-*/
-
 #else
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
