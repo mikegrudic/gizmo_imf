@@ -1836,36 +1836,39 @@ int domain_countToGo(size_t nlimit)
 			}
 		    }
 
-		  if((ntoomany = list_NumPart[ta] + count_toget - count_togo - All.MaxPart) > 0)
-		    {
-		      if(ThisTask == 0)
-			{
-			  printf("exchange needs to be modified because I can't receive %d particles on task=%d\n", ntoomany, ta);
-			  if(flagsum > 25) {printf("list_NumPart[ta=%d]=%d  count_toget=%d count_togo=%d MaxPart=%d\n", ta, list_NumPart[ta], count_toget, count_togo, All.MaxPart);}
-			  fflush(stdout);
+            ntoomany = list_NumPart[ta] + count_toget - count_togo - All.MaxPart;
+            ifntoomany = (ntoomany > 0);
+            if(ifntoomany) {
+                if(ThisTask == 0) {
+                    if(ntoomany > 0) {
+                        printf("exchange needs to be modified because I can't receive %d particles on task=%d\n", ntoomany, ta);
+                        if(flagsum > 25) {printf("list_NumPart[ta=%d]=%d  count_toget=%d count_togo=%d MaxPart=%d\n", ta, list_NumPart[ta], count_toget, count_togo, All.MaxPart);}
+                        fflush(stdout);
+                    }
+                }
+            }
+            flag = 1;
+            i = flagsum % NTask;
+            while(ifntoomany) {
+                if(i == ThisTask) {
+                    if(toGo[ta] > 0) {
+                        if(ntoomany>0) {
+                            toGo[ta]--;
+                            count_toget--;
+                            ntoomany--;
+                        }
+                    }
+                }
+
+                MPI_Bcast(&ntoomany, 1, MPI_INT, i, MPI_COMM_WORLD);
+                MPI_Bcast(&count_toget, 1, MPI_INT, i, MPI_COMM_WORLD);
+
+                i++;
+                if(i >= NTask) {i = 0;}
+                
+                ifntoomany = (ntoomany > 0);
 			}
-
-		      flag = 1;
-		      i = flagsum % NTask;
-		      while(ntoomany)
-			{
-			  if(i == ThisTask)
-			    {
-			      if(toGo[ta] > 0)
-				{
-				  toGo[ta]--;
-				  count_toget--;
-				  ntoomany--;
-				}
-			    }
-
-			  MPI_Bcast(&ntoomany, 1, MPI_INT, i, MPI_COMM_WORLD);
-			  MPI_Bcast(&count_toget, 1, MPI_INT, i, MPI_COMM_WORLD);
-
-			  i++;
-			  if(i >= NTask) {i = 0;}
-			}
-		    }
+        }
 		}
 	      flagsum += flag;
 
