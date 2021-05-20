@@ -2336,8 +2336,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
 
         case IO_Z:
-            for(i = 0; i < 6; i++) {if(i != 0 && i != 4) {typelist[i] = 0;}}
-            return ngas + nstars;
+            for(i = 0; i < 6; i++) {if(i != 0 && i != 4 && i != 5) {typelist[i] = 0;}}
+            return ngas + nstars + header.npart[5];
             break;
 
         case IO_CHIMES_STAR_SIGMA:

@@ -179,7 +179,7 @@ void find_timesteps(void)
 		P[i].do_gas_search_this_timestep = 1;
 	    } else {
 	        P[i].dt_since_last_gas_search += GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
-		if(P[i].dt_since_last_gas_search > 0.51 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].BH_TimeBinGasNeighbor)){ 
+		if(P[i].dt_since_last_gas_search > 0.49 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].BH_TimeBinGasNeighbor)){ 
 		    P[i].do_gas_search_this_timestep = 1; 
                 } else {P[i].do_gas_search_this_timestep = 0;}
 	    }
