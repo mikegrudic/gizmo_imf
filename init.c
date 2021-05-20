@@ -887,6 +887,9 @@ void init(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
         {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
 #endif
+#if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+        SphP[i].SubGrid_CosmicRayEnergy = 0;
+#endif
 
 #ifdef COOL_GRACKLE
         if(RestartFlag == 0)

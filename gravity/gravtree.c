@@ -242,7 +242,7 @@ void gravity_tree(void)
 #if defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
 #endif
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
                 if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
@@ -413,6 +413,9 @@ void gravity_tree(void)
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
+#endif
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+                if(P[place].Type==0) SphP[place].SubGrid_CosmicRayEnergy += GravDataOut[j].SubGrid_CosmicRayEnergy;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}

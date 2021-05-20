@@ -237,7 +237,7 @@ double get_starformation_rate(int i, int mode)
 
     int exceeds_force_softening_threshold; exceeds_force_softening_threshold = 0; /* flag that notes if the density is so high such that gravity is non-Keplerian [inside of smallest force-softening limits] */
 #if (SINGLE_STAR_SINK_FORMATION & 1024)
-    if(mode == 1) {
+    if(mode == 0) {
         if(DMIN(PPP[i].Hsml, 2.*Get_Particle_Size(i)) <= DMAX(All.MinHsml, 2.*All.ForceSoftening[0])) {exceeds_force_softening_threshold=1;}
         if(exceeds_force_softening_threshold) {return 1.e4 * rateOfSF;}}
 #endif
