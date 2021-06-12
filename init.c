@@ -593,13 +593,8 @@ void init(void)
 #endif
 #if defined(COOL_MOLECFRAC_NONEQM)
 	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS;
-	    if(nHcgs > 10){ // dense ISM starts molecular - very approximate cutoff
-	        SphP[i].MolecularMassFraction = 1.0;
-		SphP[i].MolecularMassFraction_perNeutralH = 1.0;
-	    } else { // otherwise start atomic
-	        SphP[i].MolecularMassFraction = 0.0;
-		SphP[i].MolecularMassFraction_perNeutralH = 0.0;
-	    }
+        if(nHcgs > 10) {SphP[i].MolecularMassFraction = 1.0; SphP[i].MolecularMassFraction_perNeutralH = 1.0;} // dense ISM starts molecular - very approximate cutoff
+            else {SphP[i].MolecularMassFraction = 0.0; SphP[i].MolecularMassFraction_perNeutralH = 0.0;} // otherwise start atomic
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -888,7 +883,7 @@ void init(void)
         {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
-        SphP[i].SubGrid_CosmicRayEnergy = 0;
+        SphP[i].SubGrid_CosmicRayEnergyDensity = 0;
 #endif
 
 #ifdef COOL_GRACKLE

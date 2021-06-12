@@ -510,16 +510,14 @@ void force_insert_pseudo_particles(void)
 void force_update_node_recursive(int no, int sib, int father)
 {
     int j, jj, k, p, pp, nextsib, suns[8], count_particles, multiple_flag;
-    MyFloat hmax, vmax, v;
-    MyFloat divVmax, divVel;
-    MyFloat s[3], vs[3], mass;
+    MyFloat hmax, vmax, v, divVmax, divVel, s[3], vs[3], mass;
     struct particle_data *pa;
 
 #ifdef DM_SCALARFIELD_SCREENING
     MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    MyFloat cr_injection = 0;
+    double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS];
@@ -1049,7 +1047,7 @@ void force_exchange_pseudodata(void)
         MyFloat maxsoft;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-        MyFloat cr_injection = 0;
+        MyFloat cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
         MyFloat stellar_lum[N_RT_FREQ_BINS];
@@ -1291,7 +1289,7 @@ void force_treeupdate_pseudos(int no)
     MyFloat s[3], vs[3], mass;
 
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    MyFloat cr_injection = 0;
+    double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
     MyFloat stellar_lum[N_RT_FREQ_BINS]={0};
@@ -1736,7 +1734,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    double cr_injection;
+    double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
     double mass_stellarlum[N_RT_FREQ_BINS];
@@ -1762,7 +1760,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double incident_flux_agn=0;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    double SubGrid_CosmicRayEnergy = 0;
+    double SubGrid_CosmicRayEnergyDensity = 0;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
     double Rad_E_gamma[N_RT_FREQ_BINS]={0};
@@ -2695,13 +2693,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-            if(ptype==0)
+            if(ptype==0 && r>0 && cr_injection>0 && All.Time>All.TimeBegin)
             {
-                double kappa_0 = 700., vst_0 = 10.; // in code units
+                double kappa_0 = All.CosmicRay_Subgrid_Kappa_0, vst_0 = All.CosmicRay_Subgrid_Vstream_0; // in code units
                 double r_phys = r * All.cf_atime, t_max = evaluate_stellar_age_Gyr(All.TimeBegin)/UNIT_TIME_IN_GYR; // make sure we're working in physical code units, and assign max time to formation at begin time
                 double r_max = 0.5*t_max*vst_0 * (1. + sqrt(1. + 16.*kappa_0/(vst_0*vst_0*t_max))); // maximum stream distance
-                double fac_cr_distance = 1./(4.*M_PI*r_phys*(kappa_0 + vst_0*r_phys)) * exp(-r_phys*r_phys/(r_max*r_max));
-                SubGrid_CosmicRayEnergy += fac_cr_distance * cr_injection;
+                double fac_cr_distance = 1./(4.*M_PI*r_phys*(kappa_0 + vst_0*r_phys)) * exp(-DMIN(r_phys*r_phys/(1.e-6*r_phys*r_phys+r_max*r_max),50.));
+                if(fac_cr_distance>0) {SubGrid_CosmicRayEnergyDensity += fac_cr_distance * cr_injection / All.cf_a3inv;} // convert to appropriate code units for an energy density or pressure
             }
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -2879,7 +2877,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if(valid_gas_particle_for_rt) {SphP[target].Rad_Flux_AGN = incident_flux_agn;}
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
-        if(P[target].Type==0) {SphP[target].SubGrid_CosmicRayEnergy = SubGrid_CosmicRayEnergy;}
+        if(P[target].Type==0) {SphP[target].SubGrid_CosmicRayEnergyDensity = SubGrid_CosmicRayEnergyDensity;}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
         if(valid_gas_particle_for_rt) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {SphP[target].Rad_E_gamma[kf] = Rad_E_gamma[kf];}}
@@ -2946,7 +2944,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         GravDataResult[target].Rad_Flux_AGN = incident_flux_agn;
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
-        GravDataResult[target].SubGrid_CosmicRayEnergy = SubGrid_CosmicRayEnergy;
+        GravDataResult[target].SubGrid_CosmicRayEnergyDensity = SubGrid_CosmicRayEnergyDensity;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
         {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {GravDataResult[target].Rad_E_gamma[kf] = Rad_E_gamma[kf];}}

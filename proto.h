@@ -685,6 +685,12 @@ void disp_density(void);
 #endif
 
 
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+double cr_get_source_injection_rate(int i);
+double cr_get_source_shieldfac(int i);
+#endif
+
+
 #ifdef CHIMES
 double chimes_convert_u_to_temp(double u, double rho, int target);
 void chimes_update_gas_vars(int target);

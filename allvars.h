@@ -304,6 +304,9 @@
 #undef GALSF_SFR_MOLECULAR_CRITERION
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64+1024) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
+#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD 1
+//#define GALSF_SFR_CRITERION (0+2+64+1024)
+//#define GALSF_SFR_VIRIAL_SF_CRITERION 1
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -429,7 +432,9 @@
 #endif
 #endif
 
-
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#define N_CR_PARTICLE_BINS 1
+#endif
 
 
 #if defined(COOL_GRACKLE)
@@ -2324,7 +2329,7 @@ extern struct global_data_all_processes
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     double HIIRegion_fLum_Coupled;
 #endif
-
+    
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
     double AgeTracerRateNormalization;              /* Determines Fraction of time to do age tracer deposition (with checks depending on time bin width for current star) */
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
@@ -2355,6 +2360,13 @@ extern struct global_data_all_processes
 
 #if defined(BH_COSMIC_RAYS)
     double BH_CosmicRay_Injection_Efficiency;
+#endif
+    
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+    double BH_CosmicRay_Injection_Efficiency;
+    double CosmicRay_SNeFraction;
+    double CosmicRay_Subgrid_Vstream_0;
+    double CosmicRay_Subgrid_Kappa_0;
 #endif
 
 #ifdef METALS
@@ -3208,7 +3220,7 @@ extern struct sph_particle_data
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    MyFloat SubGrid_CosmicRayEnergy;
+    MyFloat SubGrid_CosmicRayEnergyDensity;
 #endif
 
 
@@ -3383,7 +3395,7 @@ extern struct gravdata_out
     MyLongDouble TreeMass;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
-    MyLongDouble SubGrid_CosmicRayEnergy;
+    MyLongDouble SubGrid_CosmicRayEnergyDensity;
 #endif
 #ifdef RT_OTVET
     MyLongDouble ET[N_RT_FREQ_BINS][6];

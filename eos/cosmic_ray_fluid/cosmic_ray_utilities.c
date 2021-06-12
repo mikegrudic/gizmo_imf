@@ -1796,6 +1796,49 @@ double return_CRbin_nuplusminus_asymmetry(int i, int k_CRegy)
 }
 
 
-#endif // closes block for entire file
+#endif // closes block for entire file for COSMIC_RAYS
 
 
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST // block for simplified sub-grid CR model
+/* function to return injection rate of CRs -time-averaged in total energy, extremely boiled-down version */
+double cr_get_source_injection_rate(int i)
+{
+    double Edot = 0;
+#ifdef GALSF
+#ifdef GALSF_FB_MECHANICAL
+    if(P[i].Type == 4)
+    {
+        double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, agemin=0.003401, agebrk=0.01037, agemax=0.03753;
+        if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant] //
+        if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
+        Edot = All.CosmicRay_SNeFraction * (RSNe*UNIT_TIME_IN_MYR) * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (1.0e51/UNIT_ENERGY_IN_CGS);
+    }
+#endif
+#ifdef BLACK_HOLES
+    if(P[i].Type == 5) {Edot = All.BH_CosmicRay_Injection_Efficiency * BPP(i).BH_Mdot * C_LIGHT_CODE*C_LIGHT_CODE;} // injection in code units
+#endif
+#endif
+    if(Edot > 0) {return Edot * cr_get_source_shieldfac(i);} else {return 0;}
+}
+/* function to return shielding/loss factor correction */
+double cr_get_source_shieldfac(int i)
+{
+    double cr_atten_fac = 1;
+    if(PPP[i].Hsml > 0 && PPP[i].NumNgb > 0 && All.Time > All.TimeBegin)
+    {
+        double dx=PPP[i].Hsml/PPP[i].NumNgb, gradrho[3], rho;
+        int k; for(k=0;k<3;k++) {gradrho[k]=P[i].GradRho[k];}
+        if(P[i].Type==0) {rho=SphP[i].Density;} else {rho=P[i].DensAroundStar;}
+        if(rho > 0)
+        {
+            double gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
+            if(gradrho_mag > 0) {dx += rho/gradrho_mag;}
+            double R_loss = ((6.37 + 3.09)*1.e-16*UNIT_TIME_IN_CGS) * (rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
+            double psi_loss_i = (R_loss / All.CosmicRay_Subgrid_Vstream_0) / sqrt(1. + R_loss*All.CosmicRay_Subgrid_Kappa_0/(All.CosmicRay_Subgrid_Vstream_0*All.CosmicRay_Subgrid_Vstream_0));
+            double dtau = 0.5 * psi_loss_i * (dx*All.cf_atime);
+            cr_atten_fac = exp(-DMIN(dtau, 50.));
+        }
+    }
+    return cr_atten_fac;
+}
+#endif // closes block for entire file for COSMIC_RAY_SUBGRID_LEBRON_TEST
