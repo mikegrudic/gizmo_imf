@@ -584,8 +584,8 @@
 ####################################################################################################-
 #BH_DEBUG_SPAWN_JET_TEST=(30.)   #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
 #BH_DEBUG_FIX_MDOT=(0.2)         #- fix BH fb mass flux and fixed BH mass
-#SPAWN_B_POL_TOR_SET_IN_PARAMS   #- set poloridal and toroidal magnetic field for spawn particles (Should work for all partile spawning)
-#BH_JET_PRECESSION_SET_IN_PARAMS #- manually set precession in parameter file (do not work for cosmological)
+#SPAWN_B_POL_TOR_SET_IN_PARAMS   #- set poloridal and toroidal magnetic field for spawn particles (should work for all partile spawning)
+#BH_JET_PRECESSION_SET_IN_PARAMS #- manually set precession in parameter file (does not work for cosmological simulations)
 #BH_SIGMAMULTIPLIER              #- account for additional acceleration-dependent retention from stellar FB in Mdot
 ####################################################################################################-
 
@@ -596,6 +596,8 @@
 #SINGLE_STAR_FB_SNE             #- [pfh version may be publishable] enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
 #SINGLE_STAR_FB_LOCAL_RP        #- pfh version (depends strictly on FIRE rhd implementation, not runnable without those modules)
 #SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below [more an option for testing variations]
+##------
+#GALSF_SFR_VIRIAL_CONTINUOUS_THOLD=1  #- semi-continuous SF as a function of alpha_vir. set 0=step function between 1 and 0.01; 1=Padoan 2012; 2=multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter
 ##------
 #BH_DYNFRICTION_FROMTREE        #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
 ##------
@@ -632,6 +634,8 @@
 #COSMIC_RAYS_ALT_M1_ISO_CLOSURE     #- replace the more accurate default M1-like closure relation (which interpolates between the strong-scattering/isotropic-DF and free-streaming/anisotropic-DF regimes) with a closure that assumes the CR DF is always isotropic
 #COSMIC_RAYS_ALT_FLUX_FORM_JOCH     #- replace the form of the two-moment CR equations derived directly from the focused CR transport equation (per Hopkins et al. 2021), with the older formulation of the two-moment equations derived ad-hoc (missing some important terms) from Jiang+Oh & Chan+Hopkins 2018
 #COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE #- replaces the correct form of the re-acceleration terms calculated from the focused CR transport equation with the more ad-hoc diffusive re-acceleration assumption that CR scattering/diffusion is dominated by an undamped, perfectly-symmetric, isotropic extrinsic turbulent cascade (not likely valid below ~TeV), following e.g. Drury+Strong 2017A&A...597A.117D; requires COSMIC_RAYS_EVOLVE_SPECTRUM.
+##------
+#COSMIC_RAY_SUBGRID_LEBRON_TEST     #- uses a simplified sub-grid LEBRON-type model for CR transport for cheap approximation in galaxy simulations
 ####################################################################################################-
 
 

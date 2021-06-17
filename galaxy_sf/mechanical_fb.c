@@ -606,12 +606,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
                     m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
+                    if(feedback_type_is_SNe == 0) {v_cooling *= 1.e10; m_cooling *= 1.e10;} // for non-SNe, ignore finite cooling radii and directly couple ???
                     RsneKPC = pow( 0.238732 * m_cooling/rho_j , 1./3. );
                 }
                 RsneKPC_3 = RsneKPC*RsneKPC*RsneKPC;
                 // if loop_iteration==-1, this is a pre-calc loop to get the relevant weights for coupling //
                 if(loop_iteration < 0)
                 {
+                    if(loop_iteration==-2) {for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {out.Area_weighted_sum[k] += wk_vec[k];}} // normal summation on the first loop
                     if(loop_iteration==-1) // the Area_weighted_sum quantities are computed on loop=-2; these quantities must be computed on loop=-1 (after Area_weighted_sums are computed)
                     {
                         /* calculate the corrected momentum vectors that we will actually use in the coupling proper */
@@ -649,8 +651,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                         wk_vec[8] = sqrt(pnorm * Mass_j) * cos_vel_ba_pcoupled; // beta_0 term : cross-term for momentum coupling effect on energy-coupling
                         wk_vec[9] = pnorm * cos_vel_ba_pcoupled / v_cooling; // calculate the beta term as if all particles hit terminal: more accurate result in that limit
                         wk_vec[10] = pnorm; // normalization (so that we can divide by its sum to properly normalize the beta_egy and beta_cool quantities)
+                        for(k=7;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {out.Area_weighted_sum[k] += wk_vec[k];} // pass these, which have not yet been calculated
                     }
-                    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {out.Area_weighted_sum[k] += wk_vec[k];}
                     continue;
                 }
                 // NOW do the actual feedback calculation //
@@ -753,11 +755,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double E_sne_initial = pnorm * Energy_injected_codeunits;
                 double d_Egy_internal = KE_initial + E_sne_initial - KE_final;
 #if !defined(SINGLE_STAR_FB_WINDS) /* (for single-star modules we ignore this b/c assume always trying to resolve R_cool) */
-                //if(feedback_type_is_SNe == 1) /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool. only use for SNe b/c scalings [like momentum] only apply there. over-cooling if code wants to do it will easily occur next timestep. */
+                if(feedback_type_is_SNe == 1) /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool. only use for SNe b/c scalings [like momentum] only apply there. over-cooling if code wants to do it will easily occur next timestep. */
                 {
-                    //if(d_Egy_internal < 0.5*E_sne_initial) {d_Egy_internal = 0.5*E_sne_initial;}
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+                    if(d_Egy_internal < 0.1*E_sne_initial) {d_Egy_internal = 0.1*E_sne_initial;}
+#else
                     double r_eff_ij = kernel.r - Get_Particle_Size(j); /* get effective distance */
                     if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);} /* rescale the coupled energy as intended for the feedback mechanism */
+#endif
                 }
 #endif
                 d_Egy_internal /= Mass_j; // convert to specific internal energy, finally //

@@ -562,8 +562,10 @@ void set_blackhole_drag(int i, int n, double dt)
         double fac, fac_friction;
         /* First term is approximation of the error function */
         fac = 8 * (M_PI - 3) / (3 * M_PI * (4. - M_PI));
-        x = sqrt(bhvel2_df) / (sqrt(2) * BlackholeTempInfo[i].DF_rms_vel);
+        x = sqrt(bhvel2_df) / (sqrt(2) * BlackholeTempInfo[i].DF_rms_vel); x = fabs(x);
         fac_friction =  x / fabs(x) * sqrt(1 - exp(-x * x * (4 / M_PI + fac * x * x) / (1 + fac * x * x))) - 2 * x / sqrt(M_PI) * exp(-x * x);
+        if(x < 0.2) {fac_friction = 4.*x*x*x/(3.*sqrt(M_PI)) * (1.-0.598843094706047*x*x);} // series expansion to prevent numerical errors for small-x
+        if(x > 3.0) {fac_friction = 1;} // negligible error in this approximation
         /* now the Coulomb logarithm */
         fac = 50. / UNIT_LENGTH_IN_KPC; /* impact parameter */
         fac_friction *= log(1. + fac * bhvel2_df / (All.G * bh_mass));

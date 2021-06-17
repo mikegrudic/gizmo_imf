@@ -1099,6 +1099,29 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 #endif
+        
+        
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+        strcpy(tag[nt], "CosmicRay_Subgrid_Kappa_0");
+        strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Kappa_0");
+        addr[nt] = &All.CosmicRay_Subgrid_Kappa_0;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "CosmicRay_Subgrid_Vstream_0");
+        strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Vstream_0");
+        addr[nt] = &All.CosmicRay_Subgrid_Vstream_0;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "CosmicRay_SNeFraction");
+        strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
+        addr[nt] = &All.CosmicRay_SNeFraction;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
+        id[nt++] = REAL;
+#endif
+        
 
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
         strcpy(tag[nt], "WindMomentumLoading");
