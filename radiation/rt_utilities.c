@@ -684,7 +684,8 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(SphP[i].Dust_Temperature <= T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
-#endif
+#endif    
+
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
     {
 #ifdef RT_INFRARED
@@ -801,7 +802,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             }
 #endif
             
-	        int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
+	    int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
 #ifdef RT_INFRARED
             if(donation_target_bin==RT_FREQ_BIN_INFRARED) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
             if(kf==RT_FREQ_BIN_INFRARED) {ef = e0 + total_de_dt * dt_entr;} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
@@ -815,6 +816,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #else
             if(donation_target_bin >= 0) {if(mode==0) {SphP[i].Rad_E_gamma[donation_target_bin] += de_abs;} else {SphP[i].Rad_E_gamma_Pred[donation_target_bin] += de_abs;}}
             if((ef < 0)||(isnan(ef))) {ef=0;}
+
             if(mode==0) {SphP[i].Rad_E_gamma[kf] = ef;} else {SphP[i].Rad_E_gamma_Pred[kf] = ef;}
 #endif
 
@@ -859,7 +861,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #if defined(RT_EVOLVE_INTENSITIES)
             de_emission_minus_absorption_saved[k_tmp][k_angle] = de_emission_minus_absorption; // save this for use below
 #endif
-        } // clause for radiation angle [needed for evolving intensities]
+        } // clause for radiation angle [needed for evolving intensities]	
     } // loop over frequencies
     
 #if defined(RT_EVOLVE_INTENSITIES)
@@ -921,6 +923,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 
     if(mode > 0) {rt_eddington_update_calculation(i);} /* update the eddington tensor (if we calculate it) as well */
+
+#ifdef RT_ISRF_BACKGROUND
+    if(mode==0){rt_apply_boundary_conditions(i);} /* if we have any special boundary conditions (e.g. fixed ISRF at box edge) apply this here */
+#endif    
 #endif
 }
 
@@ -928,7 +934,42 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 
 #endif
 
+#ifdef RT_ISRF_BACKGROUND
+void rt_apply_boundary_conditions(int i){
+    double urad[N_RT_FREQ_BINS], ef;
+    int k, k_dir;
+    get_background_isrf_urad(i,urad);
 
+    if(DMAX(DMAX(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) > 0.9*All.BoxSize || DMIN(DMIN(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) < 0.1*All.BoxSize) {  // if we are within 10% of the box length of the edge
+        for(k = 0; k < N_RT_FREQ_BINS; k++){
+            SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass/(SphP[i].Density * All.cf_a3inv);
+#ifdef RT_EVOLVE_FLUX
+	    for(k_dir = 0; k_dir < 3; k++){SphP[i].Rad_Flux[k][k_dir] = 0;}
+#endif
+	}
+    }
+}
+
+// computes the background ISRF energy density in code units for in each band, in code units
+void get_background_isrf_urad(int i, double *urad){
+    int k;
+    for(k = 0; k < N_RT_FREQ_BINS; k++){
+        urad[k] = 0;
+#ifdef RT_INFRARED
+        if(k==RT_FREQ_BIN_INFRARED){urad[k] = (RT_ISRF_BACKGROUND * 0.39 + 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
+#endif
+#ifdef RT_OPTICAL_NIR
+        if(k==RT_FREQ_BIN_OPTICAL_NIR){urad[k] = RT_ISRF_BACKGROUND * 0.54 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
+#endif
+#ifdef RT_NUV
+	if(k==RT_FREQ_BIN_NUV){urad[k] = RT_ISRF_BACKGROUND * 0.024 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
+#endif
+#ifdef RT_PHOTOELECTRIC
+        if(k==RT_FREQ_BIN_PHOTOELECTRIC){urad[k] = RT_ISRF_BACKGROUND * 1.7 * 3.9e-14 / UNIT_PRESSURE_IN_CGS;} // Draine 1978 value = 1.7 Habing
+#endif
+    }
+}
+#endif
 
 
 
@@ -965,6 +1006,10 @@ void rt_set_simple_inits(int RestartFlag)
             SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 #endif
 #endif
+#ifdef RT_ISRF_BACKGROUND
+	    double urad[N_RT_FREQ_BINS];
+	    get_background_isrf_urad(i, urad);
+#endif
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 if(RestartFlag==0) {SphP[i].Rad_E_gamma[k] = MIN_REAL_NUMBER;}
@@ -973,14 +1018,16 @@ void rt_set_simple_inits(int RestartFlag)
 #ifdef RT_FLUXLIMITER
                 SphP[i].Rad_Flux_Limiter[k] = 1;
 #endif
+
 #ifdef RT_INFRARED
 		if(RestartFlag==0 && k==RT_FREQ_BIN_INFRARED){ // only initialize the IR energy if starting a new run, otherwise use what's in the snapshot
-#ifdef SINGLE_STAR_FB_RAD // for GMC simulations, initialize to the energy density of the dust emission component observed ISRF - 0.31eV/cm^3 (Draine 2011)
-                    SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = RT_ISRF_BACKGROUND * 0.31 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
-#else
-                    SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
-#endif
+		    SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
                 }
+#endif
+#ifdef RT_ISRF_BACKGROUND
+		if(RestartFlag ==0){
+		    SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
+		}
 #endif
 #ifdef RT_EVOLVE_ENERGY
                 SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] = 0;
