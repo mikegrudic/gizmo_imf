@@ -478,23 +478,23 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[j].MassTrue = mass_of_new_particle * SphP[i].MassTrue;
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
             SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
             SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
             SphP[j].DtCosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRayEnergy[k_CRegy]; SphP[i].DtCosmicRayEnergy[k_CRegy] -= SphP[j].DtCosmicRayEnergy[k_CRegy];
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
             SphP[j].CosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRay_Number_in_Bin[k_CRegy]; SphP[i].CosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].CosmicRay_Number_in_Bin[k_CRegy];
             SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy]; SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
             for(k=0;k<3;k++)
             {
                 SphP[j].CosmicRayFlux[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k_CRegy][k]; SphP[i].CosmicRayFlux[k_CRegy][k] -= SphP[j].CosmicRayFlux[k_CRegy][k];
                 SphP[j].CosmicRayFluxPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k_CRegy][k]; SphP[i].CosmicRayFluxPred[k_CRegy][k] -= SphP[j].CosmicRayFluxPred[k_CRegy][k];
             }
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<2;k++)
             {
                 SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k];
@@ -775,24 +775,24 @@ void merge_particles_ij(int i, int j)
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
         SphP[j].CosmicRayEnergyPred[k_CRegy] += SphP[i].CosmicRayEnergyPred[k_CRegy];
         SphP[j].DtCosmicRayEnergy[k_CRegy] += SphP[i].DtCosmicRayEnergy[k_CRegy];
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
         SphP[j].CosmicRay_Number_in_Bin[k_CRegy] += SphP[i].CosmicRay_Number_in_Bin[k_CRegy];
         SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] += SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
         for(k=0;k<3;k++)
         {
             SphP[j].CosmicRayFlux[k_CRegy][k] += SphP[i].CosmicRayFlux[k_CRegy][k];
             SphP[j].CosmicRayFluxPred[k_CRegy][k] += SphP[i].CosmicRayFluxPred[k_CRegy][k];
         }
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         for(k=0;k<3;k++)
         {
             SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k];

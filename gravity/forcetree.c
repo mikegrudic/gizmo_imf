@@ -516,7 +516,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef DM_SCALARFIELD_SCREENING
     MyFloat s_dm[3], vs_dm[3], mass_dm;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -555,7 +555,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef RT_USE_TREECOL_FOR_NH
         MyFloat gasmass = 0;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
         cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -634,7 +634,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef RT_USE_TREECOL_FOR_NH
                         gasmass += Nodes[p].gasmass;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
                         cr_injection += Nodes[p].cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -727,7 +727,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(pa->Type == 5) gasmass += BPP(p).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
                     cr_injection += cr_get_source_injection_rate(p);
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -919,7 +919,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef RT_USE_TREECOL_FOR_NH
         Nodes[no].gasmass = gasmass;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
         Nodes[no].cr_injection = cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1046,7 +1046,7 @@ void force_exchange_pseudodata(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         MyFloat maxsoft;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
         MyFloat cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1119,7 +1119,7 @@ void force_exchange_pseudodata(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
             DomainMoment[i].maxsoft = Nodes[no].maxsoft;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
             DomainMoment[i].cr_injection = Nodes[no].cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1220,7 +1220,7 @@ void force_exchange_pseudodata(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                     Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
                     Nodes[no].cr_injection = DomainMoment[i].cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1288,7 +1288,7 @@ void force_treeupdate_pseudos(int no)
     MyFloat divVmax;
     MyFloat s[3], vs[3], mass;
 
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1361,7 +1361,7 @@ void force_treeupdate_pseudos(int no)
             s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
             s[1] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[1]);
             s[2] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[2]);
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
             cr_injection += Nodes[p].cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1520,7 +1520,7 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].vs[1] = vs[1];
     Extnodes[no].vs[2] = vs[2];
     Nodes[no].u.d.mass = mass;
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     Nodes[no].cr_injection = cr_injection;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1733,7 +1733,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
     double dxx, dyy, dzz, pdxx, pdyy, pdzz;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1759,7 +1759,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef BH_COMPTON_HEATING
     double incident_flux_agn=0;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     double SubGrid_CosmicRayEnergyDensity = 0;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
@@ -1791,7 +1791,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(BH_DYNFRICTION_FROMTREE)
     double bh_mass = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
     double soft=0, pmass;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, zeta_sec=0;
@@ -1842,7 +1842,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if(ptype==5) {bh_mass = P[target].BH_Mass;}
 #endif
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
         soft = All.ForceSoftening[ptype];
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
@@ -1883,7 +1883,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if(ptype==5) {bh_mass = GravDataGet[target].BH_Mass;}
 #endif
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
         soft = GravDataGet[target].Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         zeta = GravDataGet[target].AGS_zeta;
@@ -2053,7 +2053,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
 
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
                 cr_injection = cr_get_source_injection_rate(no);
 #endif
                     
@@ -2224,7 +2224,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
 
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
                 cr_injection = nop->cr_injection;
 #endif
                 
@@ -2345,7 +2345,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 {
                     /* force node to open if we are within the gravitational softening length */
-#if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST))
+#if !(defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(COSMIC_RAY_SUBGRID_LEBRON))
                     double soft = All.ForceSoftening[ptype];
 #endif
                     if((r2 < (soft+0.6*nop->len)*(soft+0.6*nop->len)) || (r2 < (nop->maxsoft+0.6*nop->len)*(nop->maxsoft+0.6*nop->len)))
@@ -2617,9 +2617,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
                     if(dv2 > 0)
                     {
-                        double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz_h,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
+                        double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
-                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this is appropriately dimensionless
+                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
                         acc_x += fac_df * dvx_h;
                         acc_y += fac_df * dvy_h;
                         acc_z += fac_df * dvz_h;
@@ -2692,7 +2692,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass); // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
             }
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
             if(ptype==0 && r>0 && cr_injection>0 && All.Time>All.TimeBegin)
             {
                 double kappa_0 = All.CosmicRay_Subgrid_Kappa_0, vst_0 = All.CosmicRay_Subgrid_Vstream_0; // in code units
@@ -2876,7 +2876,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef BH_COMPTON_HEATING
         if(valid_gas_particle_for_rt) {SphP[target].Rad_Flux_AGN = incident_flux_agn;}
 #endif
-#if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_SUBGRID_LEBRON)
         if(P[target].Type==0) {SphP[target].SubGrid_CosmicRayEnergyDensity = SubGrid_CosmicRayEnergyDensity;}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
@@ -2943,7 +2943,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef BH_COMPTON_HEATING
         GravDataResult[target].Rad_Flux_AGN = incident_flux_agn;
 #endif
-#if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_SUBGRID_LEBRON)
         GravDataResult[target].SubGrid_CosmicRayEnergyDensity = SubGrid_CosmicRayEnergyDensity;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)

@@ -230,7 +230,7 @@ void begrun(void)
     init_geofactor_table();
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
     CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
     
@@ -381,12 +381,12 @@ void begrun(void)
         All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
         All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
         All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
 #endif
-#ifdef COSMIC_RAYS
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#ifdef COSMIC_RAY_FLUID
+#if (CRFLUID_DIFFUSION_MODEL == 0)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 #endif
@@ -1036,6 +1036,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Pressure_Gradient_Accel;
         id[nt++] = REAL;
 #endif
+        
+#ifdef RT_OPACITY_FROM_EXPLICIT_GRAINS
+        strcpy(tag[nt],"Grain_Q_at_MaxGrainSize");
+        addr[nt] = &All.Grain_Q_at_MaxGrainSize;
+        id[nt++] = REAL;
+#endif
 
 #endif
 #if !defined(PIC_MHD) || defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
@@ -1055,6 +1061,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
         id[nt++] = REAL;
 #endif
+#endif
+
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) && defined(RT_GENERIC_USER_FREQ)
+        strcpy(tag[nt],"Grain_Absorbed_vs_Total_Extinction");
+        addr[nt] = &All.Grain_Absorbed_Fraction_vs_Total_Extinction;
+        id[nt++] = REAL;
 #endif
 
 #ifdef PIC_MHD
@@ -1092,7 +1104,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         strcpy(tag[nt], "CosmicRay_SNeFraction");
         strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
@@ -1101,7 +1113,7 @@ void read_parameter_file(char *fname)
 #endif
         
         
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
         strcpy(tag[nt], "CosmicRay_Subgrid_Kappa_0");
         strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Kappa_0");
         addr[nt] = &All.CosmicRay_Subgrid_Kappa_0;
@@ -1401,8 +1413,8 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#ifdef COSMIC_RAYS
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#ifdef COSMIC_RAY_FLUID
+#if (CRFLUID_DIFFUSION_MODEL == 0)
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
@@ -1672,7 +1684,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif /* MAGNETIC */
 
-#ifdef SPAWN_B_POL_TOR_SET_IN_PARAMS
+#ifdef BH_WIND_SPAWN_SET_BFIELD_POLTOR
       strcpy(tag[nt], "BH_spawn_injection_radius");
       addr[nt] = &All.BH_spawn_rinj;
       id[nt++] = REAL;
@@ -1685,7 +1697,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.B_spawn_tor;
       id[nt++] = REAL;
 #endif
-#ifdef BH_JET_PRECESSION_SET_IN_PARAMS
+#ifdef BH_WIND_SPAWN_SET_JET_PRECESSION
       strcpy(tag[nt], "BH_jet_precession_degree");
       addr[nt] = &All.BH_jet_precess_degree;
       id[nt++] = REAL;
@@ -1694,7 +1706,7 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.BH_jet_precess_period;
       id[nt++] = REAL;
 #endif
-#ifdef BH_DEBUG_FIX_MDOT
+#ifdef BH_DEBUG_FIX_MDOT_MBH
       strcpy(tag[nt], "BH_fb_duty_cycle");
       addr[nt] = &All.BH_fb_duty_cycle;
       id[nt++] = REAL;
@@ -2201,7 +2213,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
 #endif
 #if defined(FIRE_CRS) 
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#if (CRFLUID_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
@@ -2223,7 +2235,7 @@ void read_parameter_file(char *fname)
 #if defined(BH_WIND_SPAWN)
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
 #endif
-#if defined(COSMIC_RAYS)
+#if defined(COSMIC_RAY_FLUID)
                 if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
 #endif
 #endif

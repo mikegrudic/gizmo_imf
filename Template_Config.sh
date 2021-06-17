@@ -114,13 +114,13 @@
 ## ----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
-#COSMIC_RAYS_EVOLVE_SCATTERING_WAVES      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
-#COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
-#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
-#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
-#COSMIC_RAYS_ALT_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_ALT_DISABLE_LOSSES    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
+#COSMIC_RAY_FLUID                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
+#CRFLUID_EVOLVE_SCATTERINGWAVES      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
+#CRFLUID_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#CRFLUID_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#CRFLUID_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
+#CRFLUID_ALT_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
+#CRFLUID_ALT_DISABLE_LOSSES    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
 ####################################################################################################
 
 
@@ -211,7 +211,7 @@
 ## ----------------------------------------------------------------------------------------------------
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
-#GALSF_SFR_CRITERION=(0+1+2)     # mix-and-match SF criteria with a bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=adds a 'catch' which weakens some kinematic criteria when forces become strongly non-Newtonian (when approach minimum force-softening) 
+#GALSF_SFR_CRITERION=(0+1+2)     # mix-and-match SF criteria with a bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=adds a 'catch' which weakens some kinematic criteria when forces become strongly non-Newtonian (when approach minimum force-softening), 2048=uses time-averaged virial criterion
 #GALSF_SFR_MOLECULAR_CRITERION   # [if not using GALSF_SFR_CRITERION]: estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148. requires METALS and COOLING.
 #GALSF_SFR_VIRIAL_SF_CRITERION=0 # [if not using GALSF_SFR_CRITERION]: only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1='strict' (zero sf if not bound)); 2=1+time-smoothed estimator; 3=2+Jeans criterion; 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4,5)
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
@@ -581,32 +581,33 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION
 ####################################################################################################-
 
-####################################################################################################-
-#BH_DEBUG_SPAWN_JET_TEST=(30.)   #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
-#BH_DEBUG_FIX_MDOT=(0.2)         #- fix BH fb mass flux and fixed BH mass
-#SPAWN_B_POL_TOR_SET_IN_PARAMS   #- set poloridal and toroidal magnetic field for spawn particles (should work for all partile spawning)
-#BH_JET_PRECESSION_SET_IN_PARAMS #- manually set precession in parameter file (does not work for cosmological simulations)
-#BH_SIGMAMULTIPLIER              #- account for additional acceleration-dependent retention from stellar FB in Mdot
-####################################################################################################-
 
 ####################################################################################################-
 ##- some code options that will be made public as soon as the appropriate methods papers are published so it can be cited
 ##----------------------------------------------------------------------------------------------------
-#SINGLE_STAR_FB_WINDS           #- [actually pfh version is publishable] enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
-#SINGLE_STAR_FB_SNE             #- [pfh version may be publishable] enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
-#SINGLE_STAR_FB_LOCAL_RP        #- pfh version (depends strictly on FIRE rhd implementation, not runnable without those modules)
-#SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2 #- determines the maximum number of ejecta particles spawned per timestep, see below [more an option for testing variations]
+#SINGLE_STAR_FB_WINDS            #- [actually pfh version is publishable] enable continuous main-sequence mechanical feedback from single stellar sources accounting for OB/AGB/WR winds following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_SNE              #- [pfh version may be publishable] enable SNe single stellar sources at end of main-sequence lifetime using particle spawning in shells following STARFORGE methods (Grudic+ arXiv:2010.11254), non public for now
+#SINGLE_STAR_FB_LOCAL_RP         #- pfh version (depends strictly on FIRE rhd implementation, not runnable without those modules)
+#SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT=2     #- determines the maximum number of ejecta particles spawned per timestep, see below [more an option for testing variations]
 ##------
-#GALSF_SFR_VIRIAL_CONTINUOUS_THOLD=1  #- semi-continuous SF as a function of alpha_vir. set 0=step function between 1 and 0.01; 1=Padoan 2012; 2=multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter
+#GALSF_SFR_VIRIAL_CONTINUOUS_THOLD=1        #- semi-continuous SF as a function of alpha_vir. set 0=step function between 1 and 0.01; 1=Padoan 2012; 2=multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter
 ##------
-#BH_DYNFRICTION_FROMTREE        #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
+#BH_DYNFRICTION_FROMTREE         #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
 ##------
 #RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
-#GRAIN_RDI_TESTPROBLEM #-
-#GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE #-
+#GRAIN_RDI_TESTPROBLEM           #-
+#GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE    #-
 #GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION #-
-#GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC=(0.5) #-
-#GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX=(0.2) #-
+####################################################################################################-
+
+
+
+####################################################################################################-
+#BH_WIND_SPAWN_SET_BFIELD_POLTOR  #- set poloridal and toroidal magnetic field for spawn particles (should work for all particle spawning)
+#BH_WIND_SPAWN_SET_JET_PRECESSION #- manually set precession in parameter file (does not work for cosmological simulations)
+#BH_DEBUG_SPAWN_JET_TEST=(30.)    #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
+#BH_DEBUG_FIX_MDOT_MBH=(0.2)      #- fix BH fb mass flux and fixed BH mass
+#BH_GRAVACCRETION_STELLARFBCORR   #- account for additional acceleration-dependent retention from stellar FB in Mdot
 ####################################################################################################-
 
 
@@ -616,26 +617,26 @@
 #---------- Cosmic Rays & Relativistic Particles
 #---------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
 ##---------------------------------------------------------------------------------------------------
-#COSMIC_RAYS                    #- top-level switch to evolve the distribution function (continuum limit) of a population of CRs. includes losses/gains, coupling to gas, streaming, diffusion. if nothing else is set, this will adopt a single-bin and 0th-moment (diffusion) approximation. diffusion will be anisotropic as it should unless MHD is turned off. cite Chan et al. 2019MNRAS.488.3716C, Hopkins et al. 2019MNRAS.tmp.2993H and arXiv:2002.06211.
-#COSMIC_RAYS_M1=(10000.)        #- solve the CR transport in the two moment (M1-like) limit [second-order expansion of the collisionless boltzmann eqn] as in Hopkins et al. arXiv:2002.06211 (cite that paper for newest version, but also Chan et al. 2019MNRAS.488.3716C); value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
-##------
-#COSMIC_RAYS_DIFFUSION_MODEL=0  #- determine how coefficients for CR transport scale. 0=spatial/temporal constant diffusivity (power law in rigidity), -1=no diffusion (but stream at vAlfven), values >=1 correspond to different literature scalings for the coefficients (see user guide). cite Hopkins et al. arXiv:2002.06211 for all derivations, models here (and see refs therein for sources for some of the models re-derived and implemented here)
-#COSMIC_RAYS_ION_ALFVEN_SPEED   #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance). See discussion in and cite Hopkins et al. arXiv:2002.06211
-#COSMIC_RAYS_EVOLVE_SPECTRUM=2  #- follow a spectrally-resolved CR population of (=1:e-/p, =2:e-,e+,p,anti-p,B,C/N/O,stable (7-9)Be, unstable 10Be) from ~MeV-TeV (and other species if extended network is enabled), including injection and adiabatic+hadronic/catastrophic/pionic/fragmentation+inverse compton+ionization+coulomb+bremstrahhlung+gyroresonant/streaming+synchrotron+annihilation+radioactive losses and (optionally) re-acceleration. cite Hopkins et al. 2021 (in prep, methods in testing until published) for implementation+electrons+loss/gain terms and Girichidis+ 2020MNRAS.491..993G for the fundamental spectral bin-to-bin method
-#COSMIC_RAYS_EVOLVE_SCATTERING_WAVES #- follows Zweibel+13,17 and Thomas+Pfrommer 18 to explicitly evolve gyro-resonant wave packets which define the (gyro-averaged) CR scattering rates; requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states. cite Hopkins et al. arXiv:2002.06211 for numerical implementation into various solvers here
-##------
 #PIC_MHD                        #- hybrid MHD-PIC simulations for relativistic particles / cosmic rays (particle type=3). need to set 'subtype'. cite Ji, Hopkins, & Squire et al. (in prep) once module is public. in testing.
 #PIC_SPEEDOFLIGHT_REDUCTION=1   #- factor to reduce the speed-of-light for mhd-pic simulations (relative to true value of c). requires PIC_MHD.
 ##------
-#COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART=1 #- allows restart from a snapshot (flag=2) where single-bin CR model was used, for runs with CR spectra: the spectra are populated with the energy of the single-bin snapshot and fixed initial spectral shapes/ratios
-#COSMIC_RAYS_ALT_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; this also disables losses from gyro-resonant instabilities)
-#COSMIC_RAYS_ALT_DISABLE_LOSSES     #- turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic/D:GradU work terms remain)
-#COSMIC_RAYS_ALT_RSOL_FORM          #- enable the alternative reduced-speed-of-light formulation where 1/reduced_c appears in front of all D/Dt terms, as opposed to only in the flux equation. converges more slowly but accurately. will get made default, we think, once de-bugged
-#COSMIC_RAYS_ALT_M1_ISO_CLOSURE     #- replace the more accurate default M1-like closure relation (which interpolates between the strong-scattering/isotropic-DF and free-streaming/anisotropic-DF regimes) with a closure that assumes the CR DF is always isotropic
-#COSMIC_RAYS_ALT_FLUX_FORM_JOCH     #- replace the form of the two-moment CR equations derived directly from the focused CR transport equation (per Hopkins et al. 2021), with the older formulation of the two-moment equations derived ad-hoc (missing some important terms) from Jiang+Oh & Chan+Hopkins 2018
-#COSMIC_RAYS_ALT_REACCEL_ONLY_DIFFUSIVE #- replaces the correct form of the re-acceleration terms calculated from the focused CR transport equation with the more ad-hoc diffusive re-acceleration assumption that CR scattering/diffusion is dominated by an undamped, perfectly-symmetric, isotropic extrinsic turbulent cascade (not likely valid below ~TeV), following e.g. Drury+Strong 2017A&A...597A.117D; requires COSMIC_RAYS_EVOLVE_SPECTRUM.
+#COSMIC_RAY_FLUID               #- top-level switch to evolve the distribution function (continuum limit) of a population of CRs. includes losses/gains, coupling to gas, streaming, diffusion. if nothing else is set, this will adopt a single-bin and 0th-moment (diffusion) approximation. diffusion will be anisotropic as it should unless MHD is turned off. cite Chan et al. 2019MNRAS.488.3716C, Hopkins et al. 2019MNRAS.tmp.2993H and arXiv:2002.06211.
+#CRFLUID_M1=(10000.)            #- solve the CR transport in the two moment (M1-like) limit [second-order expansion of the collisionless boltzmann eqn] as in Hopkins et al. arXiv:2002.06211 (cite that paper for newest version, but also Chan et al. 2019MNRAS.488.3716C); value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
+#CRFLUID_DIFFUSION_MODEL=0      #- determine how coefficients for CR transport scale. 0=spatial/temporal constant diffusivity (power law in rigidity), -1=no diffusion (but stream at vAlfven), values >=1 correspond to different literature scalings for the coefficients (see user guide). cite Hopkins et al. arXiv:2002.06211 for all derivations, models here (and see refs therein for sources for some of the models re-derived and implemented here)
+#CRFLUID_ION_ALFVEN_SPEED       #- assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance). See discussion in and cite Hopkins et al. arXiv:2002.06211
+#CRFLUID_EVOLVE_SPECTRUM=2      #- follow a spectrally-resolved CR population of (=1:e-/p, =2:e-,e+,p,anti-p,B,C/N/O,stable (7-9)Be, unstable 10Be) from ~MeV-TeV (and other species if extended network is enabled), including injection and adiabatic+hadronic/catastrophic/pionic/fragmentation+inverse compton+ionization+coulomb+bremstrahhlung+gyroresonant/streaming+synchrotron+annihilation+radioactive losses and (optionally) re-acceleration. cite Hopkins et al. 2021 (in prep, methods in testing until published) for implementation+electrons+loss/gain terms and Girichidis+ 2020MNRAS.491..993G for the fundamental spectral bin-to-bin method
+#CRFLUID_EVOLVE_SCATTERINGWAVES #- follows Zweibel+13,17 and Thomas+Pfrommer 18 to explicitly evolve gyro-resonant wave packets which define the (gyro-averaged) CR scattering rates; requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states. cite Hopkins et al. arXiv:2002.06211 for numerical implementation into various solvers here
 ##------
-#COSMIC_RAY_SUBGRID_LEBRON_TEST     #- uses a simplified sub-grid LEBRON-type model for CR transport for cheap approximation in galaxy simulations
+#COSMIC_RAY_SUBGRID_LEBRON      #- uses a simplified sub-grid LEBRON-type model for CR transport for cheap approximation in galaxy simulations
+##------
+#CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART=1  #- allows restart from a snapshot (flag=2) where single-bin CR model was used, for runs with CR spectra: the spectra are populated with the energy of the single-bin snapshot and fixed initial spectral shapes/ratios
+#CRFLUID_ALT_DISABLE_STREAMING  #- turn off CR streaming (propagation is purely advective+diffusion; this also disables losses from gyro-resonant instabilities)
+#CRFLUID_ALT_DISABLE_LOSSES     #- turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic/D:GradU work terms remain)
+#CRFLUID_ALT_RSOL_FORM          #- enable the alternative reduced-speed-of-light formulation where 1/reduced_c appears in front of all D/Dt terms, as opposed to only in the flux equation. converges more slowly but accurately. will get made default, we think, once de-bugged
+#CRFLUID_ALT_M1_ISO_CLOSURE     #- replace the more accurate default M1-like closure relation (which interpolates between the strong-scattering/isotropic-DF and free-streaming/anisotropic-DF regimes) with a closure that assumes the CR DF is always isotropic
+#CRFLUID_ALT_FLUX_FORM_JOCH     #- replace the form of the two-moment CR equations derived directly from the focused CR transport equation (per Hopkins et al. 2021), with the older formulation of the two-moment equations derived ad-hoc (missing some important terms) from Jiang+Oh & Chan+Hopkins 2018
+#CRFLUID_ALT_REACCEL_ONLY_DIFFUSIVE #- replaces the correct form of the re-acceleration terms calculated from the focused CR transport equation with the more ad-hoc diffusive re-acceleration assumption that CR scattering/diffusion is dominated by an undamped, perfectly-symmetric, isotropic extrinsic turbulent cascade (not likely valid below ~TeV), following e.g. Drury+Strong 2017A&A...597A.117D; requires CRFLUID_EVOLVE_SPECTRUM.
+#CRFLUID_ALT_VARIABLE_RSOL      #- 
 ####################################################################################################-
 
 
