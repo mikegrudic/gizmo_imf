@@ -377,7 +377,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_INIB:
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -388,7 +388,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_IDEN:
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -824,7 +824,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_ENERGY:	/* energy in the cosmic ray field  */
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -833,7 +833,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -845,7 +845,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 
             
         case IO_COSMICRAY_SLOPES:    /* piecewise spectral slopes in the cosmic ray spectrum  */
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(COSMIC_RAY_FLUID) && defined(CRFLUID_EVOLVE_SPECTRUM)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -858,7 +858,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_KAPPA:    /* local CR diffusion constant */
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL)
+#if defined(COSMIC_RAY_FLUID) && defined(CRFLUID_DIFFUSION_MODEL)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -870,7 +870,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_COSMICRAY_ALFVEN:    /* energy in the resonant (~gyro-radii) Alfven modes field, in the +/- (with respect to B) fields  */
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1816,7 +1816,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_COSMICRAY_ENERGY:
         case IO_COSMICRAY_SLOPES:
         case IO_COSMICRAY_KAPPA:
-#if defined(COSMIC_RAYS) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
             if(mode)
                 bytes_per_blockelement = (N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
             else
@@ -1825,7 +1825,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             if(mode)
                 bytes_per_blockelement = (2 * N_CR_PARTICLE_BINS) * sizeof(MyInputFloat);
             else
@@ -2088,13 +2088,13 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_COSMICRAY_ENERGY:
         case IO_COSMICRAY_SLOPES:
         case IO_COSMICRAY_KAPPA:
-#if defined(COSMIC_RAYS) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
             values = N_CR_PARTICLE_BINS;
 #endif
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             values = (2*N_CR_PARTICLE_BINS);
 #endif
             break;
@@ -2536,7 +2536,7 @@ int blockpresent(enum iofields blocknr)
             
         case IO_IDEN:
         case IO_INIB:
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
             return 1;
 #endif         
             break;
@@ -2622,25 +2622,25 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_COSMICRAY_ENERGY:
-#if defined(COSMIC_RAYS) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
             return 1;
 #endif
             break;
 
         case IO_COSMICRAY_SLOPES:
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(COSMIC_RAY_FLUID) && defined(CRFLUID_EVOLVE_SPECTRUM)
             return 1;
 #endif
             break;
 
         case IO_COSMICRAY_KAPPA:
-#if defined(COSMIC_RAYS) && defined(COSMIC_RAYS_DIFFUSION_MODEL)
+#if defined(COSMIC_RAY_FLUID) && defined(CRFLUID_DIFFUSION_MODEL)
             return 1;
 #endif
             break;
 
         case IO_COSMICRAY_ALFVEN:
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             return 1;
 #endif
             break;
@@ -4214,7 +4214,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute,H5T_NATIVE_INT,&All.DesLinkNgb); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
-#if defined(COSMIC_RAYS) && (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#if defined(COSMIC_RAY_FLUID) && (CRFLUID_DIFFUSION_MODEL == 0)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "CosmicRayDiffusionCoeff_at_GV_CodeUnits", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.CosmicRayDiffusionCoeff); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
@@ -4248,7 +4248,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.ScalarScreeningLength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_CR_PARTICLE_SPECIES}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
     hdf5_attribute = H5Acreate(handle, "CR_Active_Species_ID_List", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, CR_species_ID_active_list); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
@@ -4336,11 +4336,15 @@ void write_header_attributes_in_hdf5(hid_t handle)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Grain_Size_Spectrum_Powerlaw", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Grain_Size_Spectrum_Powerlaw); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) && defined(RT_GENERIC_USER_FREQ)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Grain_Absorbed_vs_Total_Extinction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Grain_Absorbed_Fraction_vs_Total_Extinction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
 #ifdef GRAIN_RDI_TESTPROBLEM
-    {double holder=GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "RDI_TestProblemm_Grain_Abs_Frac", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
-    {double holder=GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "RDI_TestProblemm_Q_At_Max_Grainsize", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+#ifdef RT_OPACITY_FROM_EXPLICIT_GRAINS
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Grain_Q_at_MaxGrainSize", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Grain_Q_at_MaxGrainSize); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Grain_Charge_Parameter", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Grain_Charge_Parameter); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Dust_to_Gas_Mass_Ratio", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
@@ -4422,7 +4426,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.StellarMassLoss_Rate_Renormalization); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "StellarMassLoss_Energy_Normalization_FromSSP", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.StellarMassLoss_Energy_Renormalization); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "CosmicRay_SNeFraction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.CosmicRay_SNeFraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif

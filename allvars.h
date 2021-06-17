@@ -303,10 +303,9 @@
 #undef GALSF_SFR_VIRIAL_SF_CRITERION
 #undef GALSF_SFR_MOLECULAR_CRITERION
 #if !defined(GALSF_SFR_CRITERION)
-#define GALSF_SFR_CRITERION (0+1+2+64+1024) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
-#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD 1
-//#define GALSF_SFR_CRITERION (0+2+64+1024)
-//#define GALSF_SFR_VIRIAL_SF_CRITERION 1
+//#define GALSF_SFR_CRITERION (0+1+2+64+1024+2048) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
+//#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD 1
+#define GALSF_SFR_CRITERION (0+1+2+64+1024) // this and below experimenting between whether we should use time-smoothed virial, with smooth threshold, or instant virial (commented pair of lines here), with normal step-function threshold ???
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -322,30 +321,30 @@
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
-#define COSMIC_RAYS /*! top-level flag */
+#define COSMIC_RAY_FLUID /*! top-level flag */
 #if (FIRE_CRS <= 0)
-#if !defined(COSMIC_RAYS_M1)
-#define COSMIC_RAYS_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
+#if !defined(CRFLUID_M1)
+#define CRFLUID_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
 #endif
-#if !defined(COSMIC_RAYS_DIFFUSION_MODEL)
-#define COSMIC_RAYS_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
+#if !defined(CRFLUID_DIFFUSION_MODEL)
+#define CRFLUID_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
 #endif
-#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS == 3)
-#define COSMIC_RAYS_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
+#if !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS == 3)
+#define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
 #else
-#if !defined(COSMIC_RAYS_M1)
-#define COSMIC_RAYS_M1 (1000.)          /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
+#if !defined(CRFLUID_M1)
+#define CRFLUID_M1 (1000.)          /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
 #endif
-#if !defined(COSMIC_RAYS_DIFFUSION_MODEL)
-#define COSMIC_RAYS_DIFFUSION_MODEL 7   /*! best-guess for variable-kappa model, combining updated SC+ET */
+#if !defined(CRFLUID_DIFFUSION_MODEL)
+#define CRFLUID_DIFFUSION_MODEL 7   /*! best-guess for variable-kappa model, combining updated SC+ET */
 #endif
-#define COSMIC_RAYS_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
-#if !defined(COSMIC_RAYS_SET_SC_MODEL)
-#define COSMIC_RAYS_SET_SC_MODEL (0)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
+#if !defined(CRFLUID_SET_SC_MODEL)
+#define CRFLUID_SET_SC_MODEL (0)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
 #endif
-#if !defined(COSMIC_RAYS_SET_ET_MODEL)
-#define COSMIC_RAYS_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
+#if !defined(CRFLUID_SET_ET_MODEL)
+#define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
 #endif
 #endif // FIRE_CRS
@@ -359,7 +358,7 @@
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)
 #define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
-#define BH_SIGMAMULTIPLIER          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
+#define BH_GRAVACCRETION_STELLARFBCORR          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
 #endif
 #if !defined(BH_ALPHADISK_ACCRETION)
 #define BH_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
@@ -371,7 +370,7 @@
 #if !defined(BH_WIND_CONTINUOUS)
 #define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
 #define BH_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
 #endif // FIRE_BHS
@@ -403,36 +402,32 @@
 #define SINGLE_STAR_SINK_FORMATION GALSF_SFR_CRITERION
 #endif
 
-#ifdef COSMIC_RAYS
-#if !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#ifdef COSMIC_RAY_FLUID
+#if !defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) (4.0/3.0)
 #endif
-#ifndef COSMIC_RAYS_DIFFUSION_MODEL
-#define COSMIC_RAYS_DIFFUSION_MODEL 0
+#ifndef CRFLUID_DIFFUSION_MODEL
+#define CRFLUID_DIFFUSION_MODEL 0
 #endif
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
-#if (COSMIC_RAYS_EVOLVE_SPECTRUM == 2)
-#define COSMIC_RAYS_MULTIBIN 70     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#if (CRFLUID_EVOLVE_SPECTRUM == 2)
+#define N_CR_PARTICLE_BINS 70       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
 #else
-#define COSMIC_RAYS_MULTIBIN 19     /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
+#define N_CR_PARTICLE_BINS 19       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 2     /*<! total number of CR species to be evolved. must be set here because of references below*/
 #endif
 #endif
 #ifndef N_CR_PARTICLE_BINS
-#if defined(COSMIC_RAYS_MULTIBIN)
-#define N_CR_PARTICLE_BINS COSMIC_RAYS_MULTIBIN
-#else
 #define N_CR_PARTICLE_BINS 1
 #endif
-#endif
-#if (N_CR_PARTICLE_BINS > 2) && !defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-#define COSMIC_RAYS_EVOLVE_SPECTRUM
+#if (N_CR_PARTICLE_BINS > 2) && !defined(CRFLUID_EVOLVE_SPECTRUM)
+#define CRFLUID_EVOLVE_SPECTRUM
 #endif
 #endif
 
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
 #define N_CR_PARTICLE_BINS 1
 #endif
 
@@ -500,7 +495,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
-#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial)
+#define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
 #define DEVELOPER_MODE
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
@@ -645,8 +640,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 
-#if (SINGLE_STAR_SINK_FORMATION & 1) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star top-level flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
+#if (SINGLE_STAR_SINK_FORMATION & 1) || (SINGLE_STAR_SINK_FORMATION & 2048) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star top-level flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
+#if (SINGLE_STAR_SINK_FORMATION & 2048)
 #define GALSF_SFR_VIRIAL_SF_CRITERION 2
+#else
+#define GALSF_SFR_VIRIAL_SF_CRITERION 1
+#endif
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
 #ifndef SINGLE_STAR_TIMESTEPPING
@@ -1357,18 +1356,17 @@ typedef unsigned long long peanokey;
 
 
 
-#if defined(COSMIC_RAYS_M1)
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
-//#define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
-#define COSMIC_RAY_REDUCED_C_CODE(k) (return_CRbin_M1speed(k)) // allow for bin-to-bin variations in RSOL
+#if defined(CRFLUID_M1)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
+#define CRFLUID_REDUCED_C_CODE(k) (return_CRbin_M1speed(k)) // allow for bin-to-bin variations in RSOL
 #else
-#define COSMIC_RAY_REDUCED_C_CODE(k) (COSMIC_RAYS_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
+#define CRFLUID_REDUCED_C_CODE(k) (CRFLUID_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
 #endif
 #endif // M1 cosmic rays
-#if defined(COSMIC_RAYS_ALT_RSOL_FORM) && defined(COSMIC_RAYS_M1)
-#define COSMIC_RAYS_RSOL_CORRFAC(k) (((COSMIC_RAY_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
+#if defined(CRFLUID_ALT_RSOL_FORM) && defined(CRFLUID_M1)
+#define CosmicRayFluid_RSOL_Corrfac(k) (((CRFLUID_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
 #else
-#define COSMIC_RAYS_RSOL_CORRFAC(k) (1.0) // this is always unity, macro is trivial
+#define CosmicRayFluid_RSOL_Corrfac(k) (1.0) // this is always unity, macro is trivial
 #endif
 
 
@@ -1862,7 +1860,7 @@ double rt_ion_G_HeI[N_RT_FREQ_BINS];
 double rt_ion_G_HeII[N_RT_FREQ_BINS];
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM) /* define some global variables we will need to use semi-constantly to make reference to the CR spectra */
+#if defined(CRFLUID_EVOLVE_SPECTRUM) /* define some global variables we will need to use semi-constantly to make reference to the CR spectra */
 double CR_global_min_rigidity_in_bin[N_CR_PARTICLE_BINS];
 double CR_global_max_rigidity_in_bin[N_CR_PARTICLE_BINS];
 double CR_global_rigidity_at_bin_center[N_CR_PARTICLE_BINS];
@@ -2239,12 +2237,6 @@ extern struct global_data_all_processes
 #ifdef GRAIN_FLUID
 #define GRAIN_PTYPES 8 /* default to allowed particle type for grains == 3, only, but can make this a more extended list as desired */
 #ifdef GRAIN_RDI_TESTPROBLEM
-#if !defined(GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC)
-#define GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC (0.5)
-#endif
-#if !defined(GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX)
-#define GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX (1.0)
-#endif
 #if(NUMDIMS==3)
 #define GRAV_DIRECTION_RDI 2
 #else
@@ -2258,18 +2250,24 @@ extern struct global_data_all_processes
 #ifdef BOX_SHEARING
     double Pressure_Gradient_Accel;
 #endif
+#ifdef RT_OPACITY_FROM_EXPLICIT_GRAINS
+    double Grain_Q_at_MaxGrainSize;
+#endif
 #endif // GRAIN_RDI_TESTPROBLEM
     double Grain_Internal_Density;
     double Grain_Size_Min;
     double Grain_Size_Max;
     double Grain_Size_Spectrum_Powerlaw;
 #endif
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) && defined(RT_GENERIC_USER_FREQ)
+    double Grain_Absorbed_Fraction_vs_Total_Extinction;
+#endif
 
 #ifdef PIC_MHD
     double PIC_Charge_to_Mass_Ratio;
 #endif
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     double CosmicRayDiffusionCoeff;
 #endif
 
@@ -2322,7 +2320,7 @@ extern struct global_data_all_processes
     double SNe_Energy_Renormalization;
     double StellarMassLoss_Rate_Renormalization;
     double StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     double CosmicRay_SNeFraction;
 #endif
 #endif
@@ -2362,7 +2360,7 @@ extern struct global_data_all_processes
     double BH_CosmicRay_Injection_Efficiency;
 #endif
     
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     double BH_CosmicRay_Injection_Efficiency;
     double CosmicRay_SNeFraction;
     double CosmicRay_Subgrid_Vstream_0;
@@ -2512,16 +2510,16 @@ extern struct global_data_all_processes
     code_units GrackleUnits;
 #endif
 
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS)
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR)
   double BH_spawn_rinj;
   double B_spawn_pol;
   double B_spawn_tor;
 #endif
-#ifdef BH_JET_PRECESSION_SET_IN_PARAMS
+#ifdef BH_WIND_SPAWN_SET_JET_PRECESSION
   double BH_jet_precess_degree;
   double BH_jet_precess_period;
 #endif
-#ifdef BH_DEBUG_FIX_MDOT
+#ifdef BH_DEBUG_FIX_MDOT_MBH
   double BH_fb_duty_cycle;
   double BH_fb_period;
 #endif
@@ -2954,22 +2952,22 @@ extern struct sph_particle_data
     MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
 #endif
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     MyFloat CosmicRayEnergy[N_CR_PARTICLE_BINS];        /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat CosmicRayEnergyPred[N_CR_PARTICLE_BINS];    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy[N_CR_PARTICLE_BINS];      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];/*!< diffusion coefficient kappa for cosmic ray fluid */
     MyFloat Face_DivVel_ForAdOps;                                 /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
     MyFloat CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];       /*!< forward and backward-traveling Alfven wave-packet energies */
     MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */
     MyFloat DtCosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];     /*!< time derivative fof forward and backward-traveling Alfven wave-packet energies */
 #endif
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
     MyFloat CosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];         /*!< effective number of CRs in the bin, which we evolve alongside total energy. */
     MyFloat DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];       /*!< time derivative of effective number of CRs in the bin, which we evolve alongside total energy. */
     //MyFloat CosmicRay_PwrLaw_Slopes_in_Bin[N_CR_PARTICLE_BINS];  /*!< power-law slope "gamma" of the CR spectral distribution: dN/dp ~ p^gamma , within each energy bin. this is strictly redundant with Number as its derived from it, retained for now as a convenience function */
@@ -3006,7 +3004,7 @@ extern struct sph_particle_data
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS][3];
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
@@ -3043,7 +3041,7 @@ extern struct sph_particle_data
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
 #endif
 
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) 
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) 
     MyDouble IniDen;
     MyDouble IniB[3];
 #endif     
@@ -3219,7 +3217,7 @@ extern struct sph_particle_data
 #define Rad_Flux_Pred Rad_Flux
 #endif
     
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyFloat SubGrid_CosmicRayEnergyDensity;
 #endif
 
@@ -3362,7 +3360,7 @@ extern struct gravdata_in
 #if defined(BH_DYNFRICTION_FROMTREE)
     MyFloat BH_Mass;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
     MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;
@@ -3394,7 +3392,7 @@ extern struct gravdata_out
 #ifdef COUNT_MASS_IN_GRAVTREE
     MyLongDouble TreeMass;
 #endif
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyLongDouble SubGrid_CosmicRayEnergyDensity;
 #endif
 #ifdef RT_OTVET
@@ -3750,7 +3748,7 @@ extern ALIGN(32) struct NODE
     MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif
     
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyFloat cr_injection;
 #endif
 

@@ -316,7 +316,7 @@ void set_blackhole_mdot(int i, int n, double dt)
             double facc_which_hubber_mdot = DMIN(1, 1.75*sqrt(j_eff)/(m_eff*sqrt(All.G*(m_eff+P[n].Mass)*rmax_for_bhar))); /* disk fraction estimator */
             mdot = DMAX( BlackholeTempInfo[i].hubber_mdot_bondi_limiter , pow(hubber_mdot_from_vr_estimator,1-facc_which_hubber_mdot)*pow(hubber_mdot_disk_estimator,facc_which_hubber_mdot));
 #endif
-#ifdef BH_SIGMAMULTIPLIER
+#ifdef BH_GRAVACCRETION_STELLARFBCORR
             double sigma_crit = 3000. * (2.09e-4 / UNIT_SURFDEN_IN_CGS); // from MG's fit to isolated cloud sims [converts from Msun/pc^2 to code units]
             double sigma_enc = (BlackholeTempInfo[i].Malt_in_Kernel + P[n].Mass) / (M_PI*rmax_for_bhar*rmax_for_bhar); // effective surface density [total gravitating mass / area]
             mdot *= sigma_enc / (sigma_enc + sigma_crit);
@@ -752,16 +752,16 @@ void blackhole_final_operations(void)
         if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
 #endif
         double dm = BPP(n).BH_Mdot * dt;
-#ifdef BH_DEBUG_FIX_MDOT
+#ifdef BH_DEBUG_FIX_MDOT_MBH
         dm=0; double period_bh=All.BH_fb_period/UNIT_TIME_IN_GYR, period_bh_on=All.BH_fb_duty_cycle*period_bh;
-        if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT*dt;} else {if(fmod(All.Time, period_bh) < period_bh_on) {dm = 2.*(BH_DEBUG_FIX_MDOT/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_bh_on),2) * dt;}}
+        if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT_MBH*dt;} else {if(fmod(All.Time, period_bh) < period_bh_on) {dm = 2.*(BH_DEBUG_FIX_MDOT_MBH/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_bh_on),2) * dt;}}
 #endif
         double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
         if(All.BlackHoleRadiativeEfficiency > 0 && All.BlackHoleRadiativeEfficiency < 1 && BPP(n).ProtoStellarStage != 7) {radiation_loss = 0;} // negligible radiation loss term unless the object is actually a compact relic
 #endif
-#ifndef BH_DEBUG_FIX_MDOT
+#ifndef BH_DEBUG_FIX_MDOT_MBH
         P[n].Mass -= radiation_loss; BPP(n).BH_Mass -= radiation_loss;
 #endif
         /* subtract the BAL wind mass from P[n].Mass && (BPP(n).BH_Mass || BPP(n).BH_Mass_AlphaDisk) // DAA: note that the mass loss in winds for BH_WIND_KICK has already been taken into account */
@@ -774,7 +774,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_DEBUG_FIX_MDOT
+#ifndef BH_DEBUG_FIX_MDOT_MBH
         P[n].Mass -= dm_wind; BPP(n).BH_Mass -= dm_wind;
 #endif
 #endif
@@ -800,7 +800,7 @@ void blackhole_final_operations(void)
         BPP(n).BH_Mass_AlphaDisk -= dm_wind;
 #else
         if(dm_wind > BPP(n).BH_Mass) {dm_wind = BPP(n).BH_Mass;}
-#ifndef BH_DEBUG_FIX_MDOT
+#ifndef BH_DEBUG_FIX_MDOT_MBH
         BPP(n).BH_Mass -= dm_wind;
 #endif
 #endif

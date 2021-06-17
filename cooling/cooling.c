@@ -159,7 +159,7 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
+#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_ALT_DISABLE_LOSSES)
         CR_cooling_and_losses(i, SphP[i].Ne, SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, dtime*UNIT_TIME_IN_CGS );
 #endif
 
@@ -978,11 +978,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_ALT_DISABLE_LOSSES)
+#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_ALT_DISABLE_LOSSES)
         Heat += CR_gas_heating(target, n_elec, nHcgs);
 #else
 #ifdef COOL_LOW_TEMPERATURES
-        /* if COSMIC_RAYS is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
+        /* if COSMIC_RAY_FLUID is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
          a more approximate expression (assuming the mean background of the Milky Way clouds) */
         if(logT <= 5.2)
         {
@@ -1680,11 +1680,11 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double b_H2H2_v0 = 5.996e-30 * pow(T,4.1881) * exp(-DMIN(54657.4/T,EXPmax)) / pow(1. + 6.761e-6*T , 5.6881), b_H2H2_LTE = 1.3e-9 * exp(-DMIN(53300./T,EXPmax)), b_H2H2 = pow(10., f_v0_LTE*log10(b_H2H2_v0) + f_LTE_v0*log10(b_H2H2_LTE)) * (xH0*nH_cgs/2.) * clumping_factor; // collisional H2-H2 dissociation; GA08-A1-10
     double b_H2He_v0_log = -27.029 + 3.801*log_T - 29487./T, b_H2He_LTE_log = -2.729 - 1.75*log_T - 23474./T, b_H2He = pow(10., f_v0_LTE*b_H2He_v0_log + f_LTE_v0*b_H2He_LTE_log) * (nHe0*nH_cgs) * clumping_factor; // collisional H2-He dissociation, GA08-A1-11
     double b_H2Hep = (3.7e-14*exp(DMIN(35./T,EXPmax)) + 7.2e-15) * ((nHep+nHepp)*nH_cgs) * clumping_factor; // collisional H2-He+ dissociation, GA08-A1-24+25
-    // D questionable - this will really just convert to HD, should exclude here? ???
+    // D questionable - this will really just convert to HD, should exclude here
     double b_H2D; if(T<=2000.) {b_H2D=pow(10.,-56.4737 +5.88886*log_T +7.19692*log_T*log_T +2.25069*log_T*log_T*log_T -2.16903*log_T*log_T*log_T*log_T +0.317887*log_T*log_T*log_T*log_T*log_T);} else {b_H2D=3.17e-10 * exp(-DMIN(5207./T,EXPmax));}
     b_H2D *= (xH0*2.527e-5*nH_cgs) * clumping_factor; // collisional H2-D dissociation, GA08-A1-37, using D abundance from Cooke, Pettini,& Steidel 2018
     double b_H2Dp = 1.e-9 * (DMAX(0.417 + 0.846*log_T - 0.137*log_T*log_T,  0.)) * (nhp*2.527e-5*nH_cgs) * clumping_factor; // collisional H2-D+ dissociation, GA08-A1-39, using D abundance from Cooke, Pettini,& Steidel 2018
-    b_H2D*=1.e-10; b_H2Dp*=1.e-10; // ???
+    b_H2D*=1.e-10; b_H2Dp*=1.e-10; // see note above on D: include some non-zero here as a 'safety factor', but the overwhelming fraction is going to HD which we account for implicitly in cooling functions so dont explicitly solve here
     double b_H2ext = b_H2Hp + b_H2e + b_H2He + b_H2Hep + b_H2Dp; b_H2HI += b_H2D; b_H2ext*=1./2.; b_H2HI*=1./2.; b_H2H2*=1./4.; // collect dissociation terms where the secondary (e.g. e- does -not- scale with fmol as we define it here, and those where it does to different powers; 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction, becomes 1/4 in H2-H2 equation
     
     double Tdust = 30.; // need to assume something about dust temperature for reaction rates below for dust-phase formation
@@ -1716,12 +1716,12 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * xH0 * clumping_factor_3; // 3-body collisional formation
     double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0, 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction
     double xi_cr_H2 = (7.525e-16) * (1./2.), prefac_CR=1.; // CR dissociation (+ionization), 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction
-#if defined(COSMIC_RAYS) // scale ionization+dissociation rates with local CR energy density
+#if defined(COSMIC_RAY_FLUID) // scale ionization+dissociation rates with local CR energy density
     prefac_CR=0; {int kcr; for(kcr=0;kcr<N_CR_PARTICLE_BINS;kcr++) {prefac_CR += SphP[i].CosmicRayEnergyPred[kcr];}} // add up CR energy
     prefac_CR *= (SphP[i].Density * All.cf_a3inv / P[i].Mass) * UNIT_PRESSURE_IN_EV; // convert to CR volume energy density in eV/cm^3
     prefac_CR /= 3.0; // scale ionization rate relative to the CR energy density [in eV/cm3] assumed to give rise to this level of ionization [from Indriolo], for a universal spectrum
 #else
-    // questionable: needed for heating, but here seems to risk low-density molecular gas???
+    // questionable: needed for heating, but here seems to risk low-density molecular gas
     //if(All.ComovingIntegrationOn) {double rhofac = (rho*UNIT_DENSITY_IN_CGS)/(1000.*COSMIC_BARYON_DENSITY_CGS);
     //    if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
 #endif
@@ -1852,7 +1852,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 {
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     if(target>=0) {double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
         zeta_cr = u_cr * 2.2e-6 * ((SphP[target].Density*All.cf_a3inv / P[target].Mass) * (UNIT_PRESSURE_IN_CGS));} // convert to ionization rate
 #endif

@@ -626,15 +626,15 @@ void init(void)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
         //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin
         if(RestartFlag == 2) { // if we don't directly evolve the slopes, we do write them out and read them in, so need to re-construct the correct number in bin from what we actually read, which was the -slope- information
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART)
+#if defined(CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART)
             double e0 = 0.5 * P[i].Mass * SphP[i].InternalEnergy; // snapshot from which we read does not have the full CR info, so we need to initialize it from something //
-#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+#if (CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART==1)
             e0 = SphP[i].CosmicRayEnergy[0]; // we had one value of energy (total) available to read in //
 #endif
             // now define the desired spectrum //
@@ -829,14 +829,14 @@ void init(void)
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         for(k=0;k<N_CR_PARTICLE_BINS;k++)
         {
             SphP[i].CosmicRayEnergyPred[k]=SphP[i].CosmicRayEnergy[k]; SphP[i].CosmicRayDiffusionCoeff[k]=0; SphP[i].DtCosmicRayEnergy[k]=0;
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
             for(j=0;j<3;j++) {SphP[i].CosmicRayFlux[k][j]=0; SphP[i].CosmicRayFluxPred[k][j]=0;}
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(j=0;j<2;j++) {SphP[i].CosmicRayAlfvenEnergy[k][j]=0; SphP[i].CosmicRayAlfvenEnergyPred[k][j]=0; SphP[i].DtCosmicRayAlfvenEnergy[k][j]=0;}
 #endif
         }
@@ -882,7 +882,7 @@ void init(void)
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
         {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
 #endif
-#if defined(COSMIC_RAY_SUBGRID_LEBRON_TEST)
+#if defined(COSMIC_RAY_SUBGRID_LEBRON)
         SphP[i].SubGrid_CosmicRayEnergyDensity = 0;
 #endif
 

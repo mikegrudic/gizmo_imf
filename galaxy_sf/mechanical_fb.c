@@ -183,7 +183,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     h2 = local.Hsml*local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS; // some units (just used below, but handy to define for clarity) //
 
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     double CR_energy_to_inject = 0; // account for energy going into CRs, so we don't 'double count' //
     if((local.SNe_v_ejecta > 1000./UNIT_VEL_IN_KMS))
     {
@@ -376,7 +376,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(couple_anything_but_scalar_mass_and_metals)
                 {
                     
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
+#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) /* inject cosmic rays */
                 double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
                 inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
@@ -491,7 +491,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         if(beta_cool > 0.5) {psi_cool = 1./(2.*beta_cool);} // for cooling limit, only need upper limit to psi, all else will use less energy
     }
 
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
     if((v_ejecta_eff > 1000./UNIT_VEL_IN_KMS))
@@ -606,7 +606,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
                     m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
-                    if(feedback_type_is_SNe == 0) {v_cooling *= 1.e10; m_cooling *= 1.e10;} // for non-SNe, ignore finite cooling radii and directly couple ???
+                    if(feedback_type_is_SNe == 0) {v_cooling *= 1.e10; m_cooling *= 1.e10;} // for non-SNe, ignore finite cooling radii and directly couple; wont matter unless choose to include boost term below, with fixes we've added
                     RsneKPC = pow( 0.238732 * m_cooling/rho_j , 1./3. );
                 }
                 RsneKPC_3 = RsneKPC*RsneKPC*RsneKPC;
@@ -713,7 +713,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(couple_anything_but_scalar_mass_and_metals)
                 {
                     
-#if defined(COSMIC_RAYS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
                 double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
                 inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
@@ -722,7 +722,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double boost_max = sqrt(1 + wk_m_cooling / dM_ejecta_in); // terminal momentum boost-factor
                 double boost_egycon = sqrt(1 + mj_preshock / dM_ejecta_in); // energy-conserving limit for coupling through neighbors
                 double mom_boost_fac = 1;
-                if(feedback_type_is_SNe == 1)
+                if(feedback_type_is_SNe == 1) // question here is whether wind-type feedback should assume kinetic energy conserved here???
                 {
                     double psi0 = 1; // factor to use below for velocity-limiter
                     boost_max *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]

@@ -279,7 +279,7 @@ void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double
 #endif
 #endif
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     CosmicRay_Update_DriftKick(i,dt_entr,1);
 #endif
 #ifdef RADTRANSFER

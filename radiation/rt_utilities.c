@@ -111,7 +111,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #if (NUMDIMS == 3)
         A_base = boxSize_X * boxSize_Y;
 #endif
-        lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = (P[i].Mass/1.) * All.Vertical_Grain_Accel * C_LIGHT_CODE * (All.Grain_Internal_Density*All.Grain_Size_Max) * A_base / (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX); // special behavior for particular test of stratified boxes compared to explicit dust opacities
+        lum[RT_FREQ_BIN_GENERIC_USER_FREQ] = (P[i].Mass/1.) * All.Vertical_Grain_Accel * C_LIGHT_CODE * (All.Grain_Internal_Density*All.Grain_Size_Max) * A_base / (0.75*All.Grain_Q_at_MaxGrainSize); // special behavior for particular test of stratified boxes compared to explicit dust opacities
 #endif
     }
 #endif
@@ -143,7 +143,7 @@ double rt_kappa(int i, int k_freq)
 
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION /* special test problem implementation */
-    return SphP[i].Interpolated_Opacity[k_freq] + 1.e-3 * All.Dust_to_Gas_Mass_Ratio*0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX/(All.Grain_Internal_Density*All.Grain_Size_Max); /* enforce minimum */
+    return SphP[i].Interpolated_Opacity[k_freq] + 1.e-3 * All.Dust_to_Gas_Mass_Ratio*0.75*All.Grain_Q_at_MaxGrainSize/(All.Grain_Internal_Density*All.Grain_Size_Max); /* enforce minimum */
 #endif
     return MIN_REAL_NUMBER + SphP[i].Interpolated_Opacity[k_freq]; /* this is calculated in a different routine, just return it now */
 #endif
@@ -284,12 +284,8 @@ double rt_kappa(int i, int k_freq)
 /***********************************************************************************************************/
 double rt_absorb_frac_albedo(int i, int k_freq)
 {
-#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-    return DMAX(1.e-6, DMIN(1.0 - 1.e-6, (1.0*GRAIN_RDI_TESTPROBLEM_SET_ABSFRAC)));
-#endif
-    return 0.5; /* appropriate for single-scattering (e.g. ISM dust at optical wavelengths) */
-    //return 1.-1.e-6; /* appropriate for multiple-scattering at far-IR (wavelength much longer than dust size) */
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) && defined(RT_GENERIC_USER_FREQ)
+    if(k_freq==RT_FREQ_BIN_GENERIC_USER_FREQ) {return DMAX(1.e-6, DMIN(1.0 - 1.e-6, All.Grain_Absorbed_Fraction_vs_Total_Extinction));}
 #endif
 
 #ifdef RT_CHEM_PHOTOION
@@ -993,7 +989,7 @@ void rt_set_simple_inits(int RestartFlag)
 #endif
                 
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                double q_a = (0.75*GRAIN_RDI_TESTPROBLEM_Q_AT_GRAIN_MAX) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
+                double q_a = (0.75*All.Grain_Q_at_MaxGrainSize) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
                 double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
