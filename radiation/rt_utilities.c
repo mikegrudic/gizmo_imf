@@ -944,7 +944,7 @@ void rt_apply_boundary_conditions(int i){
         for(k = 0; k < N_RT_FREQ_BINS; k++){
             SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass/(SphP[i].Density * All.cf_a3inv);
 #ifdef RT_EVOLVE_FLUX
-	    for(k_dir = 0; k_dir < 3; k++){SphP[i].Rad_Flux[k][k_dir] = 0;}
+	    for(k_dir = 0; k_dir < 3; k_dir++){SphP[i].Rad_Flux[k][k_dir] = 0;}
 #endif
 	}
     }
