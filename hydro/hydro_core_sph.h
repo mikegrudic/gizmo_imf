@@ -12,11 +12,11 @@
     double vdotr2_phys = kernel.vdotr2;
     if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
     V_j = P[j].Mass / SphP[j].Density;
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         Fluxes.CosmicRayPressure[k] = 0;
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         Fluxes.CosmicRayAlfvenEnergy[k][0] = Fluxes.CosmicRayAlfvenEnergy[k][1] = 0;
 #endif
     }

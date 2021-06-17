@@ -104,13 +104,13 @@ double get_pressure(int i)
 #endif
     
     
-#ifdef COSMIC_RAYS /* compute the CR contribution to the total pressure and effective soundspeed here */
+#ifdef COSMIC_RAY_FLUID /* compute the CR contribution to the total pressure and effective soundspeed here */
     double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         press += Get_Gas_CosmicRayPressure(i,k_CRegy);
         soundspeed2 += GAMMA_COSMICRAY(k_CRegy) * (GAMMA_COSMICRAY(k_CRegy)-1.) * SphP[i].CosmicRayEnergyPred[k_CRegy] / P[i].Mass;
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES // using effective gamma of the alfven component = 3/2
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES // using effective gamma of the alfven component = 3/2
         press += (1.5-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]);
         soundspeed2 += 1.5*(1.5-1)*(SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]) / P[i].Mass;
 #endif
@@ -118,7 +118,7 @@ double get_pressure(int i)
     soundspeed = sqrt(soundspeed2);
 #endif
     
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
     soundspeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + (4./3.)*(1./3.)*SphP[i].SubGrid_CosmicRayEnergyDensity/SphP[i].Density);
     press += (1./3.) * SphP[i].SubGrid_CosmicRayEnergyDensity;
 #endif

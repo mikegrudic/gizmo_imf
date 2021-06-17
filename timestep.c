@@ -519,22 +519,22 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
             int k_CRegy;
             for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
                 if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
-#if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
+#if defined(DIFFUSION_OPTIMIZERS) || defined(CRFLUID_M1)
                     cr_diffusion_opt = 1;
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
                     double kappa_cr_eff = fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]);
-#if defined(COSMIC_RAYS_M1)
-                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
+#if defined(CRFLUID_M1)
+                    kappa_cr_eff *= CosmicRayFluid_RSOL_Corrfac(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
@@ -542,11 +542,11 @@ integertime get_timestep(int p,		/*!< particle index */
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * (GAMMA_COSMICRAY(k_CRegy)-1.));
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
-#if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
+#if (CRFLUID_DIFFUSION_MODEL < 0)
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif
-#ifndef COSMIC_RAYS_ALT_DISABLE_STREAMING
+#ifndef CRFLUID_ALT_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY(k_CRegy)/(GAMMA_COSMICRAY(k_CRegy)-1.)) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
                     if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
@@ -580,9 +580,9 @@ integertime get_timestep(int p,		/*!< particle index */
                         if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
                     }
 #else
-#ifdef COSMIC_RAYS_M1
-                    //double cr_m1_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // pull for use below
-                    double cr_m1_speed = COSMIC_RAYS_M1; // if used stricter flux-limiter, can use stricter version here
+#ifdef CRFLUID_M1
+                    //double cr_m1_speed = CRFLUID_REDUCED_C_CODE(k_CRegy); // pull for use below
+                    double cr_m1_speed = CRFLUID_M1; // if used stricter flux-limiter, can use stricter version here
                     if(cr_diffusion_opt==1)
                     {
                         if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
@@ -971,7 +971,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     } // if(P[p].Type == 5)
 
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) /* KYSu: here for de-bugging jet injection model right now */
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
     if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && SphP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
 #endif
 #endif // BLACK_HOLES

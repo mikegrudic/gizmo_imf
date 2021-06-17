@@ -1,4 +1,4 @@
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
 /* --------------------------------------------------------------------------------- */
 /* ... real cosmic ray diffusion/streaming evaluation ...
  *
@@ -24,7 +24,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     
     if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
-#ifndef COSMIC_RAYS_M1
+#ifndef CRFLUID_M1
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
         double *grad_i = local.Gradients.CosmicRayPressure[k_CRegy]; // units = E/[L_comoving^4]
         double *grad_j = SphP[j].Gradients.CosmicRayPressure[k_CRegy];
@@ -117,7 +117,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         } // if(diffusion_wt > 0)
         
         
-#else // COSMIC_RAYS_M1 is active
+#else // CRFLUID_M1 is active
         
         /* calculate the eigenvalues for the HLLE flux-weighting */
         double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
@@ -133,12 +133,12 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(cos_theta_face_flux < -1) {cos_theta_face_flux=-1;} else {if(cos_theta_face_flux > 1) {cos_theta_face_flux=1;}}
         
         /* add asymptotic-preserving correction so that numerical flux doesn't unphysically dominate in optically thick limit */
-        double cr_m1_speed_touse = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+        double cr_m1_speed_touse = CRFLUID_REDUCED_C_CODE(k_CRegy);
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         double c_hll = 0.5*fabs(face_vel_i-face_vel_j) + cr_m1_speed_touse; // physical
         double renormerFAC = cos_theta_face_flux*cos_theta_face_flux;
 #else
-        double kappa_ij = COSMIC_RAYS_RSOL_CORRFAC(k_CRegy) * 0.5 * (kappa_i+kappa_j); // physical, account for RSOL in effective diffusion speed
+        double kappa_ij = CosmicRayFluid_RSOL_Corrfac(k_CRegy) * 0.5 * (kappa_i+kappa_j); // physical, account for RSOL in effective diffusion speed
         double CRopticaldepth = DMIN(Particle_Size_i,Particle_Size_j)*cr_m1_speed_touse/kappa_ij;
         double reductionfactor = (4.+CRopticaldepth*(4.+3.*CRopticaldepth)) / (4.+CRopticaldepth*(4.+CRopticaldepth*(4.+3.*CRopticaldepth))); // this is just an excellent but simpler/faster approximation to SQRT[1-EXP[-x^2]]/x, which also deals better with small-x limits //
         double reducedcM1 = reductionfactor*cr_m1_speed_touse*sqrtthreeinv; //TK test: correct HLL according Jiang & Oh 2018
@@ -178,7 +178,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             Fluxes.CosmicRayPressure[k_CRegy] = cmag; // physical, as it needs to be
         } // cmag != 0
         
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         // pre-compute all the quanitities of interest //
         double A_dot_bhat=0, flux_tmp[2]; int k_j_to_i=0, k_i_to_j=1; for(k=0;k<3;k++) {A_dot_bhat += Face_Area_Vec[k]*bhat[k];}
         if(A_dot_bhat < 0) {k_j_to_i=1; k_i_to_j=0;}
@@ -196,12 +196,12 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
-#endif // COSMIC_RAYS_M1
+#endif // CRFLUID_M1
     } // close check that kappa and particle masses are positive
     // actually assign the fluxes //
     out.DtCosmicRayEnergy[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy];
     if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy];}
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
     double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
     if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
     //CR_number_to_energy_ratio *= 0.98; // = if want a simple approximation to the difference b/t diffusivities in energy vs number: multiply by 1 - 0.103021*epsilon, where epsilon = D_diffusion (0.5-ish) - gamma_slope where L_grad[R] ~ R^gamma_slope and kappa_diffusion ~ R^D_diffusion. reasonable approx is something like gamma_slope ~ (0.5-0.75)*D_diffusion [trends towards D_diffusion in eqm]
@@ -212,4 +212,4 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 
     out.Face_DivVel_ForAdOps += -(All.cf_a3inv/V_i) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel);
     if(j_is_active_for_fluxes) {SphP[j].Face_DivVel_ForAdOps -= -(All.cf_a3inv/V_j) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel);}
-#endif // COSMIC_RAYS
+#endif // COSMIC_RAY_FLUID

@@ -277,7 +277,7 @@ double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
 double Get_CosmicRayGradientLength(int i, int k_CRegy);
@@ -310,7 +310,7 @@ double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
 double Get_Gas_ion_Alfven_speed_i(int i);
 double return_CRbin_nuplusminus_asymmetry(int i, int k_CRegy);
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
 void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);
 void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
@@ -685,7 +685,7 @@ void disp_density(void);
 #endif
 
 
-#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
 double cr_get_source_injection_rate(int i);
 double cr_get_source_shieldfac(int i);
 #endif

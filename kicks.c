@@ -421,14 +421,14 @@ void set_predicted_sph_quantities_for_extra_physics(int i)
 #endif
 #endif
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         for(kf=0;kf<N_CR_PARTICLE_BINS;kf++)
         {
             SphP[i].CosmicRayEnergyPred[kf] = SphP[i].CosmicRayEnergy[kf];
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
             for(k=0;k<3;k++) {SphP[i].CosmicRayFluxPred[kf][k] = SphP[i].CosmicRayFlux[kf][k];}
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<2;k++) {SphP[i].CosmicRayAlfvenEnergyPred[kf][k] = SphP[i].CosmicRayAlfvenEnergy[kf][k];}
 #endif
         }
@@ -528,7 +528,7 @@ void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, 
     network_normalize(SphP[i].xnuc, &SphP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
     
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     CosmicRay_Update_DriftKick(i,dt_entr,0);
 #endif
     
@@ -569,7 +569,7 @@ void apply_special_boundary_conditions(int i, double mass_for_dp, int mode)
 #ifdef RT_EVOLVE_FLUX
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(SphP[i].Rad_Flux[kf][j]<0) {SphP[i].Rad_Flux[kf][j]=-SphP[i].Rad_Flux[kf][j]; SphP[i].Rad_Flux_Pred[kf][j]=SphP[i].Rad_Flux[kf][j];}}}
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_CR_PARTICLE_BINS;kf++) {if(SphP[i].CosmicRayFlux[kf][j]<0) {SphP[i].CosmicRayFlux[kf][j]=-SphP[i].CosmicRayFlux[kf][j]; SphP[i].CosmicRayFluxPred[kf][j]=SphP[i].CosmicRayFlux[kf][j];}}}
 #endif
             }
@@ -584,7 +584,7 @@ void apply_special_boundary_conditions(int i, double mass_for_dp, int mode)
 #ifdef RT_EVOLVE_FLUX
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(SphP[i].Rad_Flux[kf][j]>0) {SphP[i].Rad_Flux[kf][j]=-SphP[i].Rad_Flux[kf][j]; SphP[i].Rad_Flux_Pred[kf][j]=SphP[i].Rad_Flux[kf][j];}}}
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_CR_PARTICLE_BINS;kf++) {if(SphP[i].CosmicRayFlux[kf][j]>0) {SphP[i].CosmicRayFlux[kf][j]=-SphP[i].CosmicRayFlux[kf][j]; SphP[i].CosmicRayFluxPred[kf][j]=SphP[i].CosmicRayFlux[kf][j];}}}
 #endif
             }

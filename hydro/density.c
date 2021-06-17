@@ -1076,7 +1076,7 @@ void density(void)
 
         } // density_isactive(i)
 
-#if defined(SPAWN_B_POL_TOR_SET_IN_PARAMS) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
         if(P[i].Type==0) {if(P[i].ID==All.AGNWindID && SphP[i].IniDen<0) {SphP[i].IniDen=SphP[i].Density; int k; for(k=0;k<3;k++) {SphP[i].BPred[k]=SphP[i].B[k]=SphP[i].IniB[k]*(All.UnitMagneticField_in_gauss/UNIT_B_IN_GAUSS)*(P[i].Mass/(All.cf_a2inv*SphP[i].Density));}}}
 #endif
 
