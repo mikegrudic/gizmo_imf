@@ -221,7 +221,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     /* here we are determining an expected SNe rate, so SNe occur stochastically but with an age dependence in the population */
     // calculate: NSNe/Myr *if* each SNe had exactly 10^51 ergs; really from the energy curve [do this so we are gauranteed to get the correct SNe energy] //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION == 1) || (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
-    if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant //
+    if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant] //
     if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
 #elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
     agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4;

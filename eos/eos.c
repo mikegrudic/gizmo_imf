@@ -118,6 +118,11 @@ double get_pressure(int i)
     soundspeed = sqrt(soundspeed2);
 #endif
     
+#ifdef COSMIC_RAY_SUBGRID_LEBRON_TEST
+    soundspeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + (4./3.)*(1./3.)*SphP[i].SubGrid_CosmicRayEnergyDensity/SphP[i].Density);
+    press += (1./3.) * SphP[i].SubGrid_CosmicRayEnergyDensity;
+#endif
+    
     
 #ifdef RT_RADPRESSURE_IN_HYDRO /* add radiation pressure in the Riemann problem directly */
     int k_freq; double gamma_rad=4./3., fluxlim=1; double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
@@ -335,7 +340,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
 
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* set default module we will use here */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(COOL_MOLECFRAC_NONEQM) && !defined(COOL_MOLECFRAC_LOCALEQM) /* set default module we will use here */
 #define COOL_MOLECFRAC_LOCALEQM
 #endif
     
@@ -483,8 +488,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double nHalf = n_star * Lambda_incident / g_eff; // intermediate variable
     double w_x = 0.8 + sqrt(Lambda_incident) / pow(S_slab, 1./3.); // intermediate variable
     double x_f = w_x * log(nH_cgs / nHalf); // intermediate variable
-    fH2 = 1./(1. + exp(-x_f*(1.-0.02*x_f+0.001*x_f*x_f)));
-    return xH0 * fH2;
+    double fH2_gd = 1./(1. + exp(-x_f*(1.-0.02*x_f+0.001*x_f*x_f)));
+    return xH0 * fH2_gd;
 #endif
     
     
