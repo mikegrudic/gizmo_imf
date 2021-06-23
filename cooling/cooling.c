@@ -783,12 +783,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, shieldfac, LambdaMol, LambdaMetal;
+    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
-    LambdaMol=0; LambdaMetal=0; LambdaCompton=0;
+    LambdaMol=0; LambdaMetal=0; LambdaCompton=0; 
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
+    T_cmb = 2.73 / All.cf_atime; /* CMB temperature, used below */
 
     /* some blocks below to define useful variables before calculation of cooling rates: */
 
@@ -811,7 +812,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac);
 #endif
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
-    Tdust = DMIN(DMAX(10., 2.73/All.cf_atime),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
+    Tdust = DMIN(DMAX(10., T_cmb),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
 
@@ -843,7 +844,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
-            if(LambdaMetal > 0) {Lambda += LambdaMetal;}
+            if(LambdaMetal > 0) {Lambda += ((T-T_cmb)/(T+T_cmb)) * LambdaMetal;}
 #else
             Lambda += LambdaMetal;
 #endif
@@ -910,6 +911,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
             LambdaMol *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
+            LambdaMol *= ((T-T_cmb)/(T+T_cmb)); // account (approximately) for the CMB temperature 'bath' (could more accurately subtract Lambda(T[cmb]), but that's an approximation as well that can give some odd results owing to not treating the solve for molecules indepedently there, so we use this form instead, which is generally good)
             Lambda += LambdaMol;
 
             /* now add the dust cooling/heating terms */
@@ -1023,7 +1025,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 #if defined(RT_ISRF_BACKGROUND) && defined(RT_ISRF_ATTENUATE_COLUMN) // latter flag decides whether we do treecol/sobolev here to get the background intensity // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
-	    photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+            photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
             if(photoelec > 0) {if(photoelec > 1.e4) {photoelec = 1.e4;}}
 
