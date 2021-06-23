@@ -842,7 +842,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #else
     BPP(n).StarLuminosity_Solar = (eps_protostar*All.G*mass*mdot/r + lum_Hayashi) * UNIT_LUM_IN_SOLAR; // same as above but we don't count H burning for the emission. Thsi way the radial evolution follows the same track as with the full model, but we don't provide feedback from H burning to the nearby gas
 #endif
-    if(BPP(n).ProtoStellarStage == 0) {BPP(n).StarLuminosity_Solar = (f_acc * fk + (1-fk)) * All.G*mass*mdot/r * UNIT_LUM_IN_SOLAR;} // no internal luminosity yet, just accretion
+    if(BPP(n).ProtoStellarStage == 0) {BPP(n).StarLuminosity_Solar = 0;} // no luminosity yet 
     if(BPP(n).ProtoStellarStage == 7) {BPP(n).StarLuminosity_Solar = All.BlackHoleRadiativeEfficiency * (1.44e13 * mdot_m_solar_per_year);} // radiative efficiency of ~10%, times Mdot*c^2, in units of Lsolar //
 #endif //end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
     
