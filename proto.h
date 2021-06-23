@@ -277,6 +277,7 @@ double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
 #ifdef COSMIC_RAY_FLUID
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
@@ -284,7 +285,6 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i, int k_CRegy);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
-double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, double shock_vel, int return_index_in_bin, int target);
 double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k_CRegy);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_type, int target, double *dir);
