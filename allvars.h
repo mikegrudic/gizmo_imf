@@ -555,7 +555,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define GALSF // top-level switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
 #define BLACK_HOLES // need to have black holes active since these are our sink particles
-//#define BH_INTERACT_ON_GAS_TIMESTEP // BH-gas interactions (feedback and accretion) occur with frequency set by the gas timestep - remains beta for now
+#define BH_INTERACT_ON_GAS_TIMESTEP // BH-gas interactions (feedback and accretion) occur with frequency set by the gas timestep
 #define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 
 

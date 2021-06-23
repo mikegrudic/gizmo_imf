@@ -853,6 +853,10 @@ void rt_set_simple_inits(int RestartFlag);
 void rt_init_intensity_directions(void);
 #endif
 void rt_get_lum_gas(int target, double *je);
+#ifdef RT_ISRF_BACKGROUND
+void rt_apply_boundary_conditions(int i);
+void get_background_isrf_urad(int i, double *urad);
+#endif
 double slab_averaging_function(double x);
 double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
 double stellar_lum_in_band(int i, double E_lower, double E_upper);
