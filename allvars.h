@@ -293,8 +293,8 @@
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_COOLRATE
 #define RT_USE_GRAVTREE_SAVE_RAD_FLUX
-#if !defined(OUTPUT_ADDITIONAL_RUNINFO)
-#define OUTPUT_ADDITIONAL_RUNINFO
+#ifdef IO_REDUCED_MODE
+#undef IO_REDUCED_MODE /* generally output additional runinfo */
 #endif
 //#define OUTPUT_DENS_AROUND_STAR
 //#define OUTPUT_DELAY_TIME_HII
