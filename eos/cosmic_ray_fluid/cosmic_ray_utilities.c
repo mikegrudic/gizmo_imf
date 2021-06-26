@@ -286,9 +286,9 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double G_ion_neutral = (5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     double fac_turb = sqrt(k_turb*k_L) * fturb_multiplier; // factor to use below
     double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * fac_turb; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)
-    double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
 
 #ifdef CRFLUID_ALT_FLUX_FORM_JOCH
+    double G0 = G_ion_neutral + G_turb_plus_linear_landau + G_dust; // linear terms all add into single G0 term
     double CRPressureGradScaleLength=Get_CosmicRayGradientLength(target,k_CRegy), x_EB_ECR=(e_B+EPSILON_SMALL)/(e_CR+EPSILON_SMALL); // get scale length used below
     double Gamma_effective = G0, phi_0 = fabs(bhat_dot_CR_Pgrad) * ((sqrt(M_PI)*cs_thermal*vA_code*k_L)/(2.*e_B*G0*G0 + EPSILON_SMALL)); // parameter which determines whether NLL dominates
     if(isfinite(phi_0) && (phi_0>0.01)) {Gamma_effective *= phi_0/(2.*(sqrt(1.+phi_0)-1.));} // this accounts exactly for the steady-state solution for the Thomas+Pfrommer formulation, including both the linear [Landau,turbulent,ion-neutral] + non-linear terms. can estimate (G_nonlinear_landau_effective = Gamma_effective - G0)
@@ -296,12 +296,19 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double v_st_eff = vA_code * (1. + f_QLT * 4. * kappa_0 * Gamma_effective * x_EB_ECR * (1. + 2.*vA_code*vA_code/(C_LIGHT_CODE*C_LIGHT_CODE)) / (M_PI*vA_code*vA_code + EPSILON_SMALL)); // effective equilibrium streaming speed for all terms accounted
     return (GAMMA_COSMICRAY(k_CRegy) * v_st_eff * CRPressureGradScaleLength) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS); // convert to effective diffusivity from 'streaming speed' [this introduces the gamma and gradient length], and convert to CGS from code units
 #else
-    double Gamma_LIN = -G0 -0.5*P[target].Particle_DivVel*All.cf_a2inv; // sum of all the linear damping/growth terms
+    double G_adiabatic = 0.5*P[target].Particle_DivVel*All.cf_a2inv; // adiabatic term [signed like the other linear terms
     double Gamma_NLL = (sqrt(M_PI)/8.) * cs_thermal / r_L; // NLL prefactor: Gamma_NLL is this times (e_A/e_B)
     double f_cas_ET = 7. * (vA_noion / (beta * C_LIGHT_CODE)) * log(1.+L_scale/r_L); /* Alfvenic turbulence following an anisotropic Goldreich-Shridar cascade, per Chandran 2000 */
     double S_ext_turb = f_cas_ET * vA_noion * fac_turb * M_A*M_A * (r_L/L_scale); // extrinsic turbulence cascade term. note consistency means multiplying by pitch-angle and gyro-averaging factors, and fcas above; expression here assumes whatever you do its a balanced cascade (defauly to GS95 scalings)
     double S_ext_gri  = vA_code * fabs(bhat_dot_CR_Pgrad) / (e_B + MIN_REAL_NUMBER); // Flux-steady-state value of the GRI term, normalized to e_B. note unless we rewrite this to the 5th-order polynomial version, assumption here is that return_CRbin_nuplusminus_asymmetry(i,k_CRegy) -> 1 for the term here in steady state
+    double Gamma_LIN = -(G_ion_neutral + G_turb_plus_linear_landau + G_dust + G_adiabatic); // sum of all the linear damping/growth terms
     double S_ext = S_ext_turb + S_ext_gri; // total driving term, for the flux-steady assumption
+
+    if(mode==5) {S_ext=1.e-3*S_ext_turb + S_ext_gri; Gamma_LIN=-fturb_multiplier*vA_noion*k_turb*pow(k_L/k_turb,0.25)*((e_CR+EPSILON_SMALL)/(e_B+EPSILON_SMALL));} // resolve fundamental issues with SC+ET models by invoking alternative damping, following Hopkins et al. 2021
+    if(mode==6) {S_lin = 9.0e-19*UNIT_LENGTH_IN_CGS * (1.+M_A) * sqrt(vA_noion*vA_noion + cs_thermal*cs_thermal) * pow(r_L*UNIT_LENGTH_IN_CGS/1.5e12 , -0.66);
+        S_ext = 0.1*S_ext_turb + 0.01*S_ext_gri; Gamma_LIN=S_lin - (G_ion_neutral+G_adiabatic+1.e-10*G_dust); Gamma_NLL += vA_noion/r_L;} // resolve fundamental issues with SC+ET models by invoking alternative linear driving, following Hopkins et al. 2021
+    if(mode==7) {f_cas_ET=vA_noion/(0.007 * C_LIGHT_CODE); S_ext_turb=f_cas_ET*vA_noion*fac_turb*M_A*M_A*pow(r_L/L_scale,2./3.); S_ext=S_ext_turb+S_ext_gri;} // resolve fundamental issues with SC+ET models by invoking alternative constant driving, following Hopkins et al. 2021
+
     double fac=0, f0 = Gamma_LIN/(2.*Gamma_NLL + MIN_REAL_NUMBER), f1 = 4.*Gamma_NLL*S_ext / (Gamma_LIN*Gamma_LIN + MIN_REAL_NUMBER);
     if(f0>0) {fac=f0*(1.+sqrt(1.+f1));} else {if(f1>0.1) {fac=f0*(1.-sqrt(1.+f1));} else {fac=-0.5*f0*f1*(1.-f1/4.);}}
     double gyro_avg_factor = 3./4.; // weighting factor from pitch-angle averaging over nu, gives ~3/4 for nu~|mu-vA/c|^2, etc.
@@ -1769,8 +1776,14 @@ double cr_get_source_injection_rate(int i)
     if(P[i].Type == 4)
     {
         double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, agemin=0.003401, agebrk=0.01037, agemax=0.03753;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4; // inputs for newer SNe rate (and newer Ia rate below)
+        if(star_age<agemin) {RSNe=0;} else if(star_age<=agebrk) {RSNe=f1*pow(star_age/agemin,log(f2/f1)/log(agebrk/agemin));} else if(star_age<=agemax) {RSNe=f2*pow(star_age/agebrk,log(f3/f2)/log(agemax/agebrk));} else {RSNe=0;} // core-collapse; updated with same stellar evolution models for wind mass loss [see there for references]. simple 2-part power-law provides extremely-accurate fit. models predict a totally negligible metallicity-dependence.
+        double t_Ia_min=agemax, norm_Ia=1.6e-3; if(star_age>t_Ia_min) {RSNe += norm_Ia * 7.94e-5 * pow(star_age,-1.1) / fabs(pow(t_Ia_min/0.1,-0.1) - 0.61);} // Ia DTD following Maoz & Graur 2017, ApJ, 848, 25
+#else
         if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant] //
         if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
+#endif
         Edot = All.CosmicRay_SNeFraction * (RSNe*UNIT_TIME_IN_MYR) * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (1.0e51/UNIT_ENERGY_IN_CGS);
     }
 #endif
@@ -1786,16 +1799,16 @@ double cr_get_source_shieldfac(int i)
     double cr_atten_fac = 1;
     if(PPP[i].Hsml > 0 && PPP[i].NumNgb > 0 && All.Time > All.TimeBegin)
     {
-        double dx=PPP[i].Hsml/PPP[i].NumNgb, gradrho[3], rho;
+        double dx=PPP[i].Hsml/PPP[i].NumNgb, gradrho[3], rho; // code units
         int k; for(k=0;k<3;k++) {gradrho[k]=P[i].GradRho[k];}
         if(P[i].Type==0) {rho=SphP[i].Density;} else {rho=P[i].DensAroundStar;}
         if(rho > 0)
         {
             double gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
-            if(gradrho_mag > 0) {dx += rho/gradrho_mag;}
-            double R_loss = ((6.37 + 3.09)*1.e-16*UNIT_TIME_IN_CGS) * (rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
-            double psi_loss_i = (R_loss / All.CosmicRay_Subgrid_Vstream_0) / sqrt(1. + R_loss*All.CosmicRay_Subgrid_Kappa_0/(All.CosmicRay_Subgrid_Vstream_0*All.CosmicRay_Subgrid_Vstream_0));
-            double dtau = 0.5 * psi_loss_i * (dx*All.cf_atime);
+            if(gradrho_mag > 0) {dx += rho/gradrho_mag;} // code units
+            double R_loss = ((6.37 + 3.09)*1.e-16*UNIT_TIME_IN_CGS) * (rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS); // physical units
+            double psi_loss_i = (R_loss / All.CosmicRay_Subgrid_Vstream_0) / sqrt(1. + R_loss*All.CosmicRay_Subgrid_Kappa_0/(All.CosmicRay_Subgrid_Vstream_0*All.CosmicRay_Subgrid_Vstream_0)); // physical units
+            double dtau = 0.5 * psi_loss_i * (dx*All.cf_atime); // physical units in dx, so dimensionless here
             cr_atten_fac = exp(-DMIN(dtau, 50.));
         }
     }
