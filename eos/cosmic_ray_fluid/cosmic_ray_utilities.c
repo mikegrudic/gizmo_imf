@@ -305,7 +305,7 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     double S_ext = S_ext_turb + S_ext_gri; // total driving term, for the flux-steady assumption
 
     if(mode==5) {S_ext=1.e-3*S_ext_turb + S_ext_gri; Gamma_LIN=-fturb_multiplier*vA_noion*k_turb*pow(k_L/k_turb,0.25)*((e_CR+EPSILON_SMALL)/(e_B+EPSILON_SMALL));} // resolve fundamental issues with SC+ET models by invoking alternative damping, following Hopkins et al. 2021
-    if(mode==6) {S_lin = 9.0e-19*UNIT_LENGTH_IN_CGS * (1.+M_A) * sqrt(vA_noion*vA_noion + cs_thermal*cs_thermal) * pow(r_L*UNIT_LENGTH_IN_CGS/1.5e12 , -0.66);
+    if(mode==6) {double S_lin = 9.0e-19*UNIT_LENGTH_IN_CGS * (1.+M_A) * sqrt(vA_noion*vA_noion + cs_thermal*cs_thermal) * pow(r_L*UNIT_LENGTH_IN_CGS/1.5e12 , -0.66);
         S_ext = 0.1*S_ext_turb + 0.01*S_ext_gri; Gamma_LIN=S_lin - (G_ion_neutral+G_adiabatic+1.e-10*G_dust); Gamma_NLL += vA_noion/r_L;} // resolve fundamental issues with SC+ET models by invoking alternative linear driving, following Hopkins et al. 2021
     if(mode==7) {f_cas_ET=vA_noion/(0.007 * C_LIGHT_CODE); S_ext_turb=f_cas_ET*vA_noion*fac_turb*M_A*M_A*pow(r_L/L_scale,2./3.); S_ext=S_ext_turb+S_ext_gri;} // resolve fundamental issues with SC+ET models by invoking alternative constant driving, following Hopkins et al. 2021
 
@@ -1795,8 +1795,8 @@ double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i)
 {
     if(i<=0) {return 0;}
 #ifdef COSMIC_RAY_FLUID
-    double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
-    return u_cr * (SphP[target].Density*All.cf_a3inv / P[target].Mass) * UNIT_PRESSURE_IN_CGS;
+    double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
+    return u_cr * (SphP[i].Density*All.cf_a3inv / P[i].Mass) * UNIT_PRESSURE_IN_CGS;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
     return SphP[i].SubGrid_CosmicRayEnergyDensity*All.cf_a3inv * UNIT_PRESSURE_IN_CGS;
@@ -1809,7 +1809,7 @@ double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i)
 double Get_CosmicRayIonizationRate_cgs(int i)
 {
 #if defined(COSMIC_RAY_FLUID) && (N_CR_PARTICLE_BINS > 2)
-    double ecr_units=(SphP[target].Density*All.cf_a3inv/P[target].Mass)*UNIT_PRESSURE_IN_CGS, zeta_cr=0; int k;
+    double ecr_units=(SphP[i].Density*All.cf_a3inv/P[i].Mass)*UNIT_PRESSURE_IN_CGS, zeta_cr=0; int k;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         double T_GeV=return_CRbin_kinetic_energy_in_GeV(-1,k), beta=return_CRbin_beta_factor(-1,k), Z=return_CRbin_CR_charge_in_e(-1,k), gamma=return_CRbin_gamma_factor(-1,k);
