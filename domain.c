@@ -1836,27 +1836,24 @@ int domain_countToGo(size_t nlimit)
                             if(flagsum > 25) {printf("list_NumPart[ta=%d]=%d  count_toget=%d count_togo=%d MaxPart=%d\n", ta, list_NumPart[ta], count_toget, count_togo, All.MaxPart);}
                             fflush(stdout);
                         }
-                    }
-                    flag = 1;
-                    i = flagsum % NTask;
-                    while(ifntoomany) {
-                        if(i == ThisTask) {
-                            if(toGo[ta] > 0) {
-                                if(ntoomany>0) {
+                    
+                        flag = 1;
+                        i = flagsum % NTask;
+                        while(ntoomany) {
+                            if(i == ThisTask) {
+                                if(toGo[ta] > 0) {
                                     toGo[ta]--;
                                     count_toget--;
                                     ntoomany--;
                                 }
                             }
+                            
+                            MPI_Bcast(&ntoomany, 1, MPI_INT, i, MPI_COMM_WORLD);
+                            MPI_Bcast(&count_toget, 1, MPI_INT, i, MPI_COMM_WORLD);
+                            
+                            i++;
+                            if(i >= NTask) {i = 0;}
                         }
-                        
-                        MPI_Bcast(&ntoomany, 1, MPI_INT, i, MPI_COMM_WORLD);
-                        MPI_Bcast(&count_toget, 1, MPI_INT, i, MPI_COMM_WORLD);
-                        
-                        i++;
-                        if(i >= NTask) {i = 0;}
-                        
-                        ifntoomany = (ntoomany > 0);
                     }
                 }
                 flagsum += flag;
@@ -1943,7 +1940,6 @@ int domain_countToGo(size_t nlimit)
                 
                 MPI_Alltoall(toGo, 1, MPI_INT, toGet, 1, MPI_INT, MPI_COMM_WORLD);
                 MPI_Alltoall(toGoSph, 1, MPI_INT, toGetSph, 1, MPI_INT, MPI_COMM_WORLD);
-                
 #ifdef SEPARATE_STELLARDOMAINDECOMP
                 MPI_Alltoall(toGoStars, 1, MPI_INT, toGetStars, 1, MPI_INT, MPI_COMM_WORLD);
                 myfree(local_toGoStars);

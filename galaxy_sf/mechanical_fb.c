@@ -722,7 +722,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double boost_max = sqrt(1 + wk_m_cooling / dM_ejecta_in); // terminal momentum boost-factor
                 double boost_egycon = sqrt(1 + mj_preshock / dM_ejecta_in); // energy-conserving limit for coupling through neighbors
                 double mom_boost_fac = 1;
-                if(feedback_type_is_SNe == 1) // question here is whether wind-type feedback should assume kinetic energy conserved here???
+                if(feedback_type_is_SNe == 1) // question here is whether wind-type feedback should assume kinetic energy conserved here
                 {
                     double psi0 = 1; // factor to use below for velocity-limiter
                     boost_max *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]

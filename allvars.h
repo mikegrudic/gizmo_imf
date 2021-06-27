@@ -293,8 +293,8 @@
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_COOLRATE
 #define RT_USE_GRAVTREE_SAVE_RAD_FLUX
-#if !defined(OUTPUT_ADDITIONAL_RUNINFO)
-#define OUTPUT_ADDITIONAL_RUNINFO
+#ifdef IO_REDUCED_MODE
+#undef IO_REDUCED_MODE /* generally output additional runinfo */
 #endif
 //#define OUTPUT_DENS_AROUND_STAR
 //#define OUTPUT_DELAY_TIME_HII
@@ -305,7 +305,7 @@
 #if !defined(GALSF_SFR_CRITERION)
 //#define GALSF_SFR_CRITERION (0+1+2+64+1024+2048) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 //#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD 1
-#define GALSF_SFR_CRITERION (0+1+2+64+1024) // this and below experimenting between whether we should use time-smoothed virial, with smooth threshold, or instant virial (commented pair of lines here), with normal step-function threshold ???
+#define GALSF_SFR_CRITERION (0+1+2+64+1024) // this and below experimenting between whether we should use time-smoothed virial, with smooth threshold, or instant virial (commented pair of lines here), with normal step-function threshold
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -337,11 +337,11 @@
 #define CRFLUID_M1 (1000.)          /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
 #endif
 #if !defined(CRFLUID_DIFFUSION_MODEL)
-#define CRFLUID_DIFFUSION_MODEL 7   /*! best-guess for variable-kappa model, combining updated SC+ET */
+#define CRFLUID_DIFFUSION_MODEL 6   /*! best-guess for variable-kappa model, combining updated SC+ET */
 #endif
 #define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
 #if !defined(CRFLUID_SET_SC_MODEL)
-#define CRFLUID_SET_SC_MODEL (0)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
 #endif
 #if !defined(CRFLUID_SET_ET_MODEL)
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */

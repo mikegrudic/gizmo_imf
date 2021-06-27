@@ -979,34 +979,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         }
 #endif
 
-
-#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_ALT_DISABLE_LOSSES)
-        Heat += CR_gas_heating(target, n_elec, nHcgs);
-#else
-#ifdef COOL_LOW_TEMPERATURES
-        /* if COSMIC_RAY_FLUID is not enabled, but low-temperature cooling is on, we account for the CRs as a heating source using
-         a more approximate expression (assuming the mean background of the Milky Way clouds) */
-        if(logT <= 5.2)
-        {
-            double prefac_CR=1.; if(All.ComovingIntegrationOn) {
-                double rhofac = rho / (1000.*COSMIC_BARYON_DENSITY_CGS);
-                if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
-            double cr_zeta=1.e-16, e_per_cr_ioniz=8.8e-12; // either high background (zeta=1e-16), with softer spectrum (5.5eV per ionization), following e.g. van Dishoeck & Black (1986); or equivalently lower rate with higher ~20eV per ionization per Goldsmith & Langer (1978); this is formally degenerate here. however both produce ~3-10x higher rates than more modern estimates (basically in both cases, assuming a CR energy density of ~2-5 eV/cm^3, instead of more modern ~0.5-2 eV/cm^3
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-            cr_zeta=1.e-17; e_per_cr_ioniz=3.0e-11; // follow e.g. Glover+Jappsen 2007, Le Teuff et al. 2000, gives about a 3x lower CR heating rate compared to older numbers above
-#endif
-            Heat += prefac_CR * cr_zeta * (1. + 1.68*n_elec*HYDROGEN_MASSFRAC) / (1.e-2 + nHcgs) * e_per_cr_ioniz; // final result
-        }
-#endif
-#endif
-
+        Heat += CR_gas_heating(target, n_elec, nH0, nHcgs); // CR hadronic+Coulomb+ionization heating //
 #if defined(COOL_LOW_TEMPERATURES)
-        if(LambdaDust>0) {Heat += LambdaDust;} /* Dust collisional heating (Tdust > Tgas) */
+        if(LambdaDust>0) {Heat += LambdaDust;} // Dust collisional heating (Tdust > Tgas) //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
-        
         if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
 #if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND)
@@ -1717,17 +1696,10 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * xH0 * clumping_factor_3; // 3-body collisional formation
     double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0, 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction
-    double xi_cr_H2 = (7.525e-16) * (1./2.), prefac_CR=1.; // CR dissociation (+ionization), 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction
-#if defined(COSMIC_RAY_FLUID) // scale ionization+dissociation rates with local CR energy density
-    prefac_CR=0; {int kcr; for(kcr=0;kcr<N_CR_PARTICLE_BINS;kcr++) {prefac_CR += SphP[i].CosmicRayEnergyPred[kcr];}} // add up CR energy
-    prefac_CR *= (SphP[i].Density * All.cf_a3inv / P[i].Mass) * UNIT_PRESSURE_IN_EV; // convert to CR volume energy density in eV/cm^3
-    prefac_CR /= 3.0; // scale ionization rate relative to the CR energy density [in eV/cm3] assumed to give rise to this level of ionization [from Indriolo], for a universal spectrum
-#else
-    // questionable: needed for heating, but here seems to risk low-density molecular gas
-    //if(All.ComovingIntegrationOn) {double rhofac = (rho*UNIT_DENSITY_IN_CGS)/(1000.*COSMIC_BARYON_DENSITY_CGS);
-    //    if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}} // in cosmological runs, turn off CR heating for any gas with density unless it's >1000 times the cosmic mean density
+    double xi_cr_H2 = (7.525e-16) * (1./2.); // CR dissociation (+ionization), 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction. Using value favored by Indriolo et al for dense GMCs.
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON) // scale ionization+dissociation rates with local CR energy density
+    xi_cr_H2 = Get_CosmicRayIonizationRate_cgs(i) * (1./2.); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
 #endif
-    xi_cr_H2 *= prefac_CR;
 
     // want to solve the implicit equation: f_f = f_0 + g[f_f]*dt, where g[f_f] = df_dt evaluated at f=f_f, so root-find: dt*g[f_f] + f_0-f_f = 0
     // can write this as a quadtratic: x_a*f^2 - x_b_0*f - xb_LW*f + x_c = 0, where xb_LW is a non-linear function of f accounting for the H2 self-shielding terms
@@ -1854,10 +1826,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 {
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
-#ifdef COSMIC_RAY_FLUID
-    if(target>=0) {double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[target].CosmicRayEnergyPred[k];}
-        zeta_cr = u_cr * 2.2e-6 * ((SphP[target].Density*All.cf_a3inv / P[target].Mass) * (UNIT_PRESSURE_IN_CGS));} // convert to ionization rate
-#endif
+    if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
     if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0];} // constant dust-to-metals ratio
 #ifdef COOL_METAL_LINES_BY_SPECIES
