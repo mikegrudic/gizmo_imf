@@ -278,6 +278,9 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
 double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
+double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i);
+double CR_gas_heating(int target, double n_elec, double nH0, double nHcgs);
+double Get_CosmicRayIonizationRate_cgs(int i);
 #ifdef COSMIC_RAY_FLUID
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
@@ -304,7 +307,6 @@ double gamma_eos_of_crs_in_bin(int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);
 double get_cell_Urad_in_eVcm3(int i);
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
-double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
