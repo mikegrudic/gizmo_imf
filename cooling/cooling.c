@@ -1648,7 +1648,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     
     /* evolve dot[nH2]/nH0 = d_dt[fH2[neutral]] = (1/nH0) * (a_Z*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
         - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] ) */
-    double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=90.; int iter=0; // define some variables for below, including neutral H number density, free electron number, etc.
+    double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, EXPmax=90.; int iter=0; // define some variables for below, including neutral H number density, free electron number, etc.
     double x_p = DMIN(DMAX(nhp , x_e/10.), 2.); // get free H+ fraction [cap because irrelevant to below in very low regime //
     /* use interpolation function from Glover & Abel 2008 [GA08], section 2.1.3, for interpolating between ground state (v=0) and LTE assumptions for states for collisional dissociation rates */
     double XH=HYDROGEN_MASSFRAC, xH2_guess=XH*DMAX(DMIN(SphP[i].MolecularMassFraction,1.),0.), xH_guess=DMAX(XH-xH2_guess,0), xHe_guess=nHe0+nHep+nHepp;
@@ -1674,7 +1674,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #endif
     double a_Z = 3.e-18*sqrt_T / ((1. +4.e-2*sqrt(T+Tdust) +2.e-3*T +8.e-6*T*T )*(1. +1.e4/exp(DMIN(EXPmax,600./Tdust)))) * Z_Zsol * nH0 * clumping_factor; // dust surface formation (assuming dust-to-metals ratio is 0.5 in all regions where this is significant), from Glover & Jappsen 2007
 
-    //double a_GP = (1.833e-18 * pow(T,0.88)) / (1. + x_p*1846.*(1.+T/20000.)/sqrt(T)) * xH0 * n_e * clumping_factor; // gas-phase formation [Glover & Abel 2008, using fitting functions slightly more convenient and assuming H-->H2 much more rapid than other reactions, from Krumholz & McKee 2010; denominator factor accounts for p+H- -> H + H, instead of H2]; note the Nickerson version of this expression omits the ne,-3 term replacing it with ne from Krumholz+McKee which makes it incorrect by a factor of ~1000 in normalization
+    //double a_GP = (1.833e-18 * pow(T,0.88)) / (1. + x_p*1846.*(1.+T/20000.)/sqrt(T)) * xH0 * x_e*nH_cgs * clumping_factor; // gas-phase formation [Glover & Abel 2008, using fitting functions slightly more convenient and assuming H-->H2 much more rapid than other reactions, from Krumholz & McKee 2010; denominator factor accounts for p+H- -> H + H, instead of H2]; note the Nickerson version of this expression omits the ne,-3 term replacing it with ne from Krumholz+McKee which makes it incorrect by a factor of ~1000 in normalization
     double k1,k2,k5,k15,k16,k17,lnTeV=ln_T-9.35915,R51_n=3.62e-17/nH_cgs; // R51_n is contribution from photo-diss assuming ISRF-like since very low-E threshold (=0.755) photons, serves only as a 'floor' here
     if(T<=6000.) {k1=-17.845 + 0.762*log_T + 0.1523*log_T*log_T - 0.03274*log_T*log_T*log_T;} else {k1=-16.420 + 0.1998*log_T*log_T - 5.447e-3*log_T*log_T*log_T*log_T + 4.0415e-5*log_T*log_T*log_T*log_T*log_T*log_T;}
     k1=pow(10.,DMAX(k1,-50.));
