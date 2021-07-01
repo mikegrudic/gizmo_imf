@@ -2277,15 +2277,15 @@ void read_parameter_file(char *fname)
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
 #ifdef CHIMES
-    if (ThisTask == 0)
-      {
-	ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf;
-	ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf;
-	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf;
-	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf;
-	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf;
-	ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf;
-      }
+    if(ThisTask == 0)
+    {
+        ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf;
+        ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf;
+        ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf;
+        ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf;
+        ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf;
+        ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf;
+    }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesEqAbundanceTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);

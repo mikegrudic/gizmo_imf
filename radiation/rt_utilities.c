@@ -931,18 +931,20 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
 
 #ifdef RT_ISRF_BACKGROUND
-void rt_apply_boundary_conditions(int i){
-    double urad[N_RT_FREQ_BINS], ef;
-    int k, k_dir;
-    get_background_isrf_urad(i,urad);
-
-    if(DMAX(DMAX(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) > 0.9*All.BoxSize || DMIN(DMIN(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) < 0.1*All.BoxSize) {  // if we are within 10% of the box length of the edge
-        for(k = 0; k < N_RT_FREQ_BINS; k++){
+void rt_apply_boundary_conditions(int i)
+{
+    double urad[N_RT_FREQ_BINS]; int k, k_dir;
+    get_background_isrf_urad(i, urad);
+    // if we are within 10% of the box length of the edge:
+    if(DMAX(DMAX(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) > 0.9*All.BoxSize || DMIN(DMIN(P[i].Pos[0],P[i].Pos[1]),P[i].Pos[2]) < 0.1*All.BoxSize)
+    {
+        for(k = 0; k < N_RT_FREQ_BINS; k++)
+        {
             SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass/(SphP[i].Density * All.cf_a3inv);
 #ifdef RT_EVOLVE_FLUX
-	    for(k_dir = 0; k_dir < 3; k_dir++){SphP[i].Rad_Flux[k][k_dir] = 0;}
+            for(k_dir = 0; k_dir < 3; k_dir++){SphP[i].Rad_Flux[k][k_dir] = 0;}
 #endif
-	}
+        }
     }
 }
 

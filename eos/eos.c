@@ -370,7 +370,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
         
     
-#if defined(COOL_MOLECFRAC_LOCALEQM)
+#if defined(COOL_MOLECFRAC_LOCALEQM) // ??? -- update to match noneqm fancier cooling functions --
     /* estimate local equilibrium molecular fraction actually using the real formation and destruction rates. expressions for the different rate terms
         as used here are collected in Nickerson, Teyssier, & Rosdahl et al. 2018. Expression for the line self-shielding here
         including turbulent and cell line blanketing terms comes from Gnedin & Draine 2014. below solves this all exactly, using the temperature, metallicity,
