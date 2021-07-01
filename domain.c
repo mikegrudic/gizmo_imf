@@ -1772,7 +1772,7 @@ int domain_countToGo(size_t nlimit)
                     {
                         if(ntoomany > 0 && ThisTask==0)
                         {
-                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d gas elements on task=%d (iter=%d)\n", ntoomany, ta, flagsum+1);}
+                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d gas elements on task=%d (iter=%d)", ntoomany, ta, flagsum+1);}
                             else {
                                 printf(" ..domain exchange must be modified - cannot receive %d gas elements on task=%d (iter=%d)\n", ntoomany, ta, flagsum+1);
                                 printf(" ..list_N_gas[ta=%d]=%d  count_toget_gas=%d count_togo_gas=%d MaxPartGas=%d NTask=%d flagsum=%d\n", ta, list_N_gas[ta], count_toget_sph, count_togo_sph,All.MaxPartSph,NTask,flagsum); fflush(stdout);
@@ -1781,7 +1781,7 @@ int domain_countToGo(size_t nlimit)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
                         if(ntoomanystars > 0 && ThisTask==0)
                         {
-                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d star particles on task=%d (iter=%d)\n", ntoomanystars, ta, flagsum+1);}
+                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d star particles on task=%d (iter=%d)", ntoomanystars, ta, flagsum+1);}
                             else {
                                 printf(" ..domain exchange must be modified - cannot receive %d star particles on task=%d (iter=%d)\n", ntoomanystars, ta, flagsum+1);
                                 printf(" ..list_N_stars[ta=%d]=%d  count_toget_stars=%d count_togo_stars=%d MaxPartStars=%d\n", ta, list_N_stars[ta], count_toget_stars, count_togo_stars, All.MaxPart); fflush(stdout);
@@ -1833,7 +1833,7 @@ int domain_countToGo(size_t nlimit)
                     ifntoomany = (ntoomany > 0);
                     if(ifntoomany) {
                         if(ntoomany > 0 && ThisTask==0) {
-                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d elements on task=%d (iter=%d)\n", ntoomany, ta, flagsum+1);}
+                            if(flagsum < 25) {PRINT_STATUS(" ..domain exchange must be modified - cannot receive %d elements on task=%d (iter=%d)", ntoomany, ta, flagsum+1);}
                             else {
                                 printf(" ..domain exchange must be modified - cannot receive %d elements on task=%d (iter=%d)\n", ntoomany, ta, flagsum+1);
                                 printf(" ..list_NumPart[ta=%d]=%d count_toget=%d count_togo=%d MaxPart=%d NTask=%d flagsum=%d \n", ta, list_NumPart[ta], count_toget, count_togo, All.MaxPart, NTask, flagsum); fflush(stdout);
