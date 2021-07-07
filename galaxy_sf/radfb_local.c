@@ -275,7 +275,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if !defined(CHIMES_HII_REGIONS)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
-                                if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+                                if((SphP[i].Ne>0.8) || (u>50.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
 #endif
@@ -413,6 +413,10 @@ int do_the_local_ionization(int target, double dt, int source)
     double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
     double u_final = DMIN( u_post_ion_no_cooling , u_eqm ); // don't heat to higher temperature than intial energy of ionization allows
     SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = u_final; /* add it */
+    /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor'): note this is repeated in the 'self-shield' routine but has to be in both because otherwise this wont appear on the first timestep after which a gas cell is flagged as ionized by this subroutine */
+    double n1000 = SphP[target].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / 1000.; // density in 1000 cm^-3
+    double flux_compactHII = DMAX(0.85*pow(n1000,1./3.) , 1) * 2.6e5*n1000; // set to typical value in HII region or minimum needed to maintain f_neutral < 1e-5-ish, whichever is larger
+    SphP[target].Rad_Flux_UV += flux_compactHII; SphP[target].Rad_Flux_EUV += flux_compactHII;
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
 

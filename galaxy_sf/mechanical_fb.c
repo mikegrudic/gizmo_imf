@@ -383,13 +383,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 /* inject the post-shock energy and momentum (convert to specific units as needed first) */
                 e_shock *= 1 / Mass_j;
                 InternalEnergy_j += e_shock;
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
-                double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
-                if(InternalEnergy_j > uion) {
-                    #pragma omp atomic write
-                    SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
-                }
-#endif
                 /* inject momentum */
                 double m_ej_input = pnorm * local.Msne;
                 /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
@@ -767,17 +760,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 d_Egy_internal /= Mass_j; // convert to specific internal energy, finally //
 #ifndef MECHANICAL_FB_MOMENTUM_ONLY
-                if(d_Egy_internal > 0)
-                {
-                    InternalEnergy_j += d_Egy_internal; E_coupled += d_Egy_internal;
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
-                    double uion = HIIRegion_Temp / (0.59*(5./3.-1.)*U_TO_TEMP_UNITS);
-                    if(InternalEnergy_j > uion) {
-                        #pragma omp atomic write
-                        SphP[j].Ne = 1.0 + 2.0*yhelium(j); /* reset ionized fraction and treat as fully-ionized from the shock */
-                    }
-#endif
-                }
+                if(d_Egy_internal > 0) {InternalEnergy_j += d_Egy_internal; E_coupled += d_Egy_internal;}
 #endif
                     
                 } // couple_anything_but_scalar_mass_and_metals
@@ -801,10 +784,23 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     #pragma omp atomic
                     P[j].dp[k] += Mass_j*Vel_j[k] - Mass_j_0*Vel_j_0[k]; // discrete momentum change
                 }
+#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT) // if we are not operator-splitting the mechanical terms, this is another 'hydrodynamic' work/shock/heating term, which should be fed to the cooling routine along with everything else to detemine a local quasi-equilibrium temperature.
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j); // to do so, we need to average over the timestep, assuming it is finite
+                if(dt  > 0) { // timestep is finite and positive, we can do this
+                    #pragma omp atomic
+                    SphP[j].DtInternalEnergy += (InternalEnergy_j - InternalEnergy_j_0) / dt;
+                } else { // timestep is zero, rate is undefined, simply add directly as in operator-split mode
+                    #pragma omp atomic
+                    SphP[j].InternalEnergy += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                    #pragma omp atomic
+                    SphP[j].InternalEnergyPred += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                }
+#else // directly reset internal energy of the cells with the change from mechanical feedback
                 #pragma omp atomic
                 SphP[j].InternalEnergy += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                 #pragma omp atomic
                 SphP[j].InternalEnergyPred += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+#endif
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic
                     P[j].Metallicity[k] += Metallicity_j[k] - Metallicity_j_0[k]; // delta-update
