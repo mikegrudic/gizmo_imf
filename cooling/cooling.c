@@ -318,9 +318,14 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
         iter++;
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
-        iter_condition = ((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10)));
+        iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
+#if 0 //defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        iter_condition = ((fabs(du/u) > 3.0e-4) || ((fabs(du/u) > 3.0e-6) && (iter < 10)));
+        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
+#endif
 #ifdef RT_INFRARED
-        iter_condition = iter_condition || (((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) || (fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)))  && (iter < MAXITER-11));
+        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
+        iter_condition = iter_condition || ((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) && (iter < MAXITER-11));
 #endif        
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
@@ -502,9 +507,9 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         if(iter > (MAXITER - 10)) {printf("-> temp_next/new/old/oldold=%g/%g/%g/%g ne=%g mu=%g rho=%g iter=%d target=%d err_new/prev=%g/%g gamma_minus_1_mu_new/prev=%g/%g Brackets: Error_bracket_positive=%g Error_bracket_negative=%g T_bracket_Min/Max=%g/%g fac_for_SecantDT=%g \n", temp,temp_new,temp_old,temp_old_old,*ne_guess, (*mu_guess) ,rho,iter,target,err_new,err_old,prefac_fun,prefac_fun_old,T_bracket_errpos,T_bracket_errneg,T_bracket_min,T_bracket_max,fac); fflush(stdout);}
     }
     while(
-#ifdef RT_INFRARED
+#if defined(RT_INFRARED) //|| (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         (fabs(temp - temp_old) > 1e-3 * temp) && iter < MAXITER);
-#else   
+#else
           ((fabs(temp - temp_old) > 0.25 * temp) ||
            ((fabs(temp - temp_old) > 0.1 * temp) && (temp > 20.)) ||
            ((fabs(temp - temp_old) > 0.05 * temp) && (temp > 200.)) ||
