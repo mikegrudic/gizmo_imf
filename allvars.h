@@ -303,7 +303,7 @@
 #undef GALSF_SFR_VIRIAL_SF_CRITERION
 #undef GALSF_SFR_MOLECULAR_CRITERION
 #if !defined(GALSF_SFR_CRITERION)
-//#define GALSF_SFR_CRITERION (0+1+2+64+1024+2048) // 0=density threshold, 1=virial criterion (strict+time-smoothed), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
+//#define GALSF_SFR_CRITERION (0+1+2+64+1024+2048) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 //#define GALSF_SFR_VIRIAL_CONTINUOUS_THOLD 1
 #define GALSF_SFR_CRITERION (0+1+2+64+1024) // this and below experimenting between whether we should use time-smoothed virial, with smooth threshold, or instant virial (commented pair of lines here), with normal step-function threshold
 #endif

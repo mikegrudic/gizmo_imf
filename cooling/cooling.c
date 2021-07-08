@@ -100,12 +100,19 @@ void do_the_cooling_for_particle(int i)
 
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
+        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
+#else
+        if(SphP[i].DelayTimeHII < 0) { // this cell re-combined at the end of the previous timestep and has not been re-ionized yet, so we need to recombine it correctly given our sub-grid model (at fixed T not fixed U)
+            SphP[i].DelayTimeHII = 0; SphP[i].InternalEnergy *= 0.59/1.28; SphP[i].Ne = DMIN(SphP[i].Ne , 0.01); // assume efficient recombination here, at fixed temperature, and reset conserved quantities
+            SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; SphP[i].Pressure = get_pressure(i);}
+#endif
+#endif
+
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
-#endif
-        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
-        double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
@@ -197,9 +204,17 @@ void do_the_cooling_for_particle(int i)
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
-        if(SphP[i].DelayTimeHII > 0) {SphP[i].DelayTimeHII -= dtime;}
-        if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;}
+        
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
+        if(SphP[i].DelayTimeHII > 0) {
+            SphP[i].DelayTimeHII -= dtime;
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+            if(SphP[i].DelayTimeHII <= 0) {SphP[i].DelayTimeHII = -DMAX(fabs(SphP[i].DelayTimeHII),fabs(dtime));} // in new versions, allow this to run over to a negative number as a flag to reset the value at the beginning of the -next- timestep
+#endif
+        }
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+        if(SphP[i].DelayTimeHII < 0) {SphP[i].DelayTimeHII = 0;} // older versions simply dont allow negative values here
+#endif
 #endif
 
     } // closes if((dt>0)&&(P[i].Mass>0)&&(P[i].Type==0)) check
@@ -303,9 +318,14 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
         iter++;
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
-        iter_condition = ((fabs(du/u) > 3.0e-2)||((fabs(du/u) > 3.0e-4)&&(iter < 10)));
+        iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
+#if 0 //defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+        iter_condition = ((fabs(du/u) > 3.0e-4) || ((fabs(du/u) > 3.0e-6) && (iter < 10)));
+        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
+#endif
 #ifdef RT_INFRARED
-        iter_condition = iter_condition || (((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) || (fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)))  && (iter < MAXITER-11));
+        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
+        iter_condition = iter_condition || ((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) && (iter < MAXITER-11));
 #endif        
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
@@ -432,7 +452,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     prefac_fun = (GAMMA(target)-1) * (*mu_guess); // dimensionless pre-factor determining the temperature
     err_new = prefac_fun - temp_guess / T_0; // define initial error from this iteration
     if(err_new < 0) {T_bracket_errneg = temp_guess;} else {T_bracket_errpos = temp_guess;}
-    temp = prefac_fun * T_0; // re-calculate temo with the new mu
+    temp = prefac_fun * T_0; // re-calculate temp with the new mu
 
     do
     {
@@ -487,9 +507,9 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         if(iter > (MAXITER - 10)) {printf("-> temp_next/new/old/oldold=%g/%g/%g/%g ne=%g mu=%g rho=%g iter=%d target=%d err_new/prev=%g/%g gamma_minus_1_mu_new/prev=%g/%g Brackets: Error_bracket_positive=%g Error_bracket_negative=%g T_bracket_Min/Max=%g/%g fac_for_SecantDT=%g \n", temp,temp_new,temp_old,temp_old_old,*ne_guess, (*mu_guess) ,rho,iter,target,err_new,err_old,prefac_fun,prefac_fun_old,T_bracket_errpos,T_bracket_errneg,T_bracket_min,T_bracket_max,fac); fflush(stdout);}
     }
     while(
-#ifdef RT_INFRARED
+#if defined(RT_INFRARED) //|| (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         (fabs(temp - temp_old) > 1e-3 * temp) && iter < MAXITER);
-#else   
+#else
           ((fabs(temp - temp_old) > 0.25 * temp) ||
            ((fabs(temp - temp_old) > 0.1 * temp) && (temp > 20.)) ||
            ((fabs(temp - temp_old) > 0.05 * temp) && (temp > 200.)) ||
@@ -1602,7 +1622,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #ifdef COOL_MOLECFRAC_NONEQM
     // first define a number of environmental variables that are fixed over this update step
     double fH2_initial = SphP[i].MolecularMassFraction_perNeutralH; // initial molecular fraction per H atom, entering this subroutine, needed for update below
-    double xn_e=1, nh0=0, nHe0, nHepp, nhp, nHep, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+    double xn_e=1, nh0=0, nHe0, nHepp, nhp, nHep, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergy;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &xn_e, &nh0, &nhp, &nHe0, &nHep, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
     double T=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
     Z_Zsol=1; urad_G0=1; // initialize metal and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.

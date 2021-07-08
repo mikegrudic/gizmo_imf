@@ -798,7 +798,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             }
 #endif
             
-	    int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
+            int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
 #ifdef RT_INFRARED
             if(donation_target_bin==RT_FREQ_BIN_INFRARED) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
             if(kf==RT_FREQ_BIN_INFRARED) {ef = e0 + total_de_dt * dt_entr;} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
