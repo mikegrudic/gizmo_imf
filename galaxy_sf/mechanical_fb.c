@@ -584,22 +584,20 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(loop_iteration < 2)
                 {
                     double e0 = Esne51;
-                    if(loop_iteration < 0) {e0=1;}
-                    if(feedback_type_is_SNe == 1) {e0+=1;} else {e0=0.1;} // set to small number for non-SNe feedback
-                    double n0 = rho_j*density_to_n;
-                    if(n0 < 0.001) {n0=0.001;}
+                    if(loop_iteration < 0) {e0=1;} else {if(feedback_type_is_SNe == 1) {e0+=1;} else {e0=0.1;}} // set to small number for non-SNe feedback
+                    double n0 = rho_j*density_to_n; if(n0 < 0.001) {n0=0.001;}
                     double z0 = Metallicity_j[0]/All.SolarAbundances[0];
-                    if(z0 < 0.01) {z0 = 0.01;}
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                    double nz_dep = pow(n0, 0.14) * pow(z0, 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
+                    if(z0 < 1.e-4) {z0 = 1.e-4;}
+                    double nz_dep = pow(n0, 0.143) * pow(z0, 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
 #else
-                    double z0_term=1.;
-                    if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
+                    if(z0 < 0.01) {z0 = 0.01;}
+                    double z0_term=1.; if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
                     double nz_dep  = pow(n0 * z0_term , 0.14);
 #endif
                     v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
                     m_cooling = 4.56e36 * e0 / (nz_dep*nz_dep * UNIT_MASS_IN_CGS);
-                    if(feedback_type_is_SNe == 0) {v_cooling *= 1.e10; m_cooling *= 1.e10;} // for non-SNe, ignore finite cooling radii and directly couple; wont matter unless choose to include boost term below, with fixes we've added
+                    if(loop_iteration >= 0 && feedback_type_is_SNe == 0) {v_cooling *= 1.e10; m_cooling *= 1.e10;} // for non-SNe, ignore finite cooling radii and directly couple; wont matter unless choose to include boost term below, with fixes we've added
                     RsneKPC = pow( 0.238732 * m_cooling/rho_j , 1./3. );
                 }
                 RsneKPC_3 = RsneKPC*RsneKPC*RsneKPC;
@@ -727,7 +725,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double dv_dp_phys = 0; for(k=0;k<3;k++) {dv_dp_phys += (1-massratio_ejecta) * (kernel.dp[k]/kernel.r) * ((local.Vel[k] - Vel_j[k])/All.cf_atime);} // recession velocity of particle from SNe
                     double v_cooling_lim = DMAX( vcool , dv_dp_phys ); // cooling vel can't be smaller than actual vel (note: negative dvdp here automatically returns vcool, as desired)
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
-                    if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
+                    //if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
                 }
 
                 /* save summation values for outputs */
