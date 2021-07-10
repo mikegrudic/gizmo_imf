@@ -784,10 +784,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT) // if we are not operator-splitting the mechanical terms, this is another 'hydrodynamic' work/shock/heating term, which should be fed to the cooling routine along with everything else to detemine a local quasi-equilibrium temperature.
                 double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j); // to do so, we need to average over the timestep, assuming it is finite
-                if(dt  > 0) { // timestep is finite and positive, we can do this
+                if((dt > MIN_REAL_NUMBER) && ((InternalEnergy_j < 3.*InternalEnergy_j_0) || ((InternalEnergy_j < 100.*InternalEnergy_j_0) && (InternalEnergy_j*U_TO_TEMP_UNITS*(5./3.-1.)*1.28 < 2.e5))))
+                { /* timestep is sufficiently large, and jump isn't too huge or into super-high temperatures, so we can safely treat it as continuous for more accurate equilibrium temperatures */
                     #pragma omp atomic
                     SphP[j].DtInternalEnergy += (InternalEnergy_j - InternalEnergy_j_0) / dt;
-                } else { // timestep is zero, rate is undefined, simply add directly as in operator-split mode
+                } else { /* timestep is zero, rate is undefined, or jump is very large which can lead to conservation problems in the implicit solver, so instead simply add directly as in operator-split mode */
                     #pragma omp atomic
                     SphP[j].InternalEnergy += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                     #pragma omp atomic
