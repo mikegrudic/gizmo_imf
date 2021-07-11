@@ -469,16 +469,18 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
 
     // now define quantities that will be used below //
-    double psi_cool=1, psi_egycon=1, v_ejecta_eff=local.SNe_v_ejecta;
+    double psi_cool=1, psi_egycon=1, v_ejecta_eff_init=local.SNe_v_ejecta, v_ejecta_eff=v_ejecta_eff_init; // separate initial [pre-shock] ejecta velocity, which defines energy, and post-shock
     double wk_norm = 1. / (MIN_REAL_NUMBER + fabs(local.Area_weighted_sum[0])); // normalization for scalar weight sum
     double pnorm_sum = 1./(MIN_REAL_NUMBER + fabs(local.Area_weighted_sum[10])); // re-normalization after second pass for normalized "pnorm" (should be close to ~1)
+    double sedov_phase_thermal_to_kinetic_ratio = 2.54, f_sedov_kin=1./(1.+sedov_phase_thermal_to_kinetic_ratio); // fraction of total energy in kinetic after reverse shock, to assume for sedov-taylor phase
     if((local.Area_weighted_sum[0] > MIN_REAL_NUMBER) && (loop_iteration >= 0))
     {
         double vba_2_eff = pnorm_sum * local.Area_weighted_sum[7]; // phi term for energy: weighted mass-deposited KE for ejecta neighbors
-        v_ejecta_eff = sqrt(local.SNe_v_ejecta*local.SNe_v_ejecta + vba_2_eff); // account for all terms to get the revised KE term here
+        v_ejecta_eff_init = sqrt(local.SNe_v_ejecta*local.SNe_v_ejecta + vba_2_eff); // account for all terms to get the revised KE term here
+        v_ejecta_eff = v_ejecta_eff_init * sqrt(f_sedov_kin); // effective velocity after reverse shock in sedov phase
         double beta_egycon = sqrt(pnorm_sum / local.Msne) * (1./v_ejecta_eff) * local.Area_weighted_sum[8]; // beta term for re-normalization for energy [can be positive or negative]
         double beta_cool = pnorm_sum * local.Area_weighted_sum[9]; // beta term if all particles in terminal-momentum-limit
-        if(All.ComovingIntegrationOn) {if(fabs(beta_cool) < fabs(beta_egycon)) {beta_egycon = beta_cool;}}
+       //if(All.ComovingIntegrationOn) {if(fabs(beta_cool) < fabs(beta_egycon)) {beta_egycon = beta_cool;}} // this was a testing catch from earlier versions of this code, not needed now, this can and should be allowed to be larger
         psi_egycon = sqrt(1. + beta_egycon*beta_egycon) - beta_egycon; // exact solution for energy equation for constant psi
         if(beta_egycon > 20.) {psi_egycon = 1./(2.*beta_egycon);} // replace with series expansion to avoid roundoff error at high beta
         if(beta_cool > 0.5) {psi_cool = 1./(2.*beta_cool);} // for cooling limit, only need upper limit to psi, all else will use less energy
@@ -487,14 +489,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
-    if((v_ejecta_eff > 1000./UNIT_VEL_IN_KMS))
+    if((v_ejecta_eff_init > 1000./UNIT_VEL_IN_KMS))
     {
-        v_ejecta_eff *= sqrt(1.-All.CosmicRay_SNeFraction);
-        CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
+        double post_cr_corr=sqrt(1.-All.CosmicRay_SNeFraction); v_ejecta_eff_init*=post_cr_corr; v_ejecta_eff*=post_cr_corr;
+        CR_energy_to_inject = (All.CosmicRay_SNeFraction/(1.-All.CosmicRay_SNeFraction)) * 0.5 * local.Msne * v_ejecta_eff_init * v_ejecta_eff_init;
     }
 #endif
 
-    double Energy_injected_codeunits = 0.5 * local.Msne * v_ejecta_eff * v_ejecta_eff;
+    double Energy_injected_codeunits = 0.5 * local.Msne * v_ejecta_eff_init * v_ejecta_eff_init;
     double Esne51 = Energy_injected_codeunits / unit_egy_SNe;
     double RsneKPC = 0., RsneKPC_3 = 0., m_cooling = 0., v_cooling = 210./UNIT_VEL_IN_KMS;
     double RsneKPC_0 = (0.0284/unitlength_in_kpc);
@@ -561,7 +563,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(kernel.dp[0]>0) {wk_vec[1]=wk*kernel.dp[0]/kernel.r; wk_vec[2]=0;} else {wk_vec[1]=0; wk_vec[2]=wk*kernel.dp[0]/kernel.r;}
                 if(kernel.dp[1]>0) {wk_vec[3]=wk*kernel.dp[1]/kernel.r; wk_vec[4]=0;} else {wk_vec[3]=0; wk_vec[4]=wk*kernel.dp[1]/kernel.r;}
                 if(kernel.dp[2]>0) {wk_vec[5]=wk*kernel.dp[2]/kernel.r; wk_vec[6]=0;} else {wk_vec[5]=0; wk_vec[6]=wk*kernel.dp[2]/kernel.r;}
-
+                if(loop_iteration==-2) {
+                    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {out.Area_weighted_sum[k] += wk_vec[k];} // normal summation on the first loop
+                    continue;
+                }
                 // ok worth initializing other variables we will use below
                 #pragma omp atomic read
                 InternalEnergy_j = SphP[j].InternalEnergy; // this can get modified below, so we need to read it thread-safe now
@@ -604,7 +609,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 // if loop_iteration==-1, this is a pre-calc loop to get the relevant weights for coupling //
                 if(loop_iteration < 0)
                 {
-                    if(loop_iteration==-2) {for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {out.Area_weighted_sum[k] += wk_vec[k];}} // normal summation on the first loop
                     if(loop_iteration==-1) // the Area_weighted_sum quantities are computed on loop=-2; these quantities must be computed on loop=-1 (after Area_weighted_sums are computed)
                     {
                         /* calculate the corrected momentum vectors that we will actually use in the coupling proper */
@@ -710,15 +714,23 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                 /* inject momentum: account for ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
                 double wk_m_cooling = pnorm * m_cooling; // effective cooling mass for this particle
-                double boost_max = sqrt(1 + wk_m_cooling / dM_ejecta_in); // terminal momentum boost-factor
+                double boost_terminal = sqrt(1 + wk_m_cooling / dM_ejecta_in); // terminal momentum boost-factor
                 double boost_egycon = sqrt(1 + mj_preshock / dM_ejecta_in); // energy-conserving limit for coupling through neighbors
-                double mom_boost_fac = 1;
+                double mom_boost_fac = 1, mcool_mod = 2.*mj_preshock; // set default value of momentum term and dummy variable to check which [energy or momentum-conserving] solution to apply
                 if(feedback_type_is_SNe == 1) // question here is whether wind-type feedback should assume kinetic energy conserved here
                 {
-                    double psi0 = 1; // factor to use below for velocity-limiter
-                    boost_max *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]
+                    boost_terminal *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]
                     boost_egycon *= psi_egycon; // appropriately re-weight boost to avoid energy conservation errors [energy-conserving-limit]
-                    if((wk_m_cooling < mj_preshock) || (boost_max < boost_egycon)) {mom_boost_fac=boost_max; psi0=DMAX(psi0,psi_cool);} else {mom_boost_fac=boost_egycon; psi0=DMAX(psi0,psi_egycon);} // limit to cooling case if egy-conserving exceeds terminal boost, or coupled mass short of cooling mass
+                    mom_boost_fac = boost_egycon; // default to energy-conserving solution, then modify if needed in lines below
+                    double dv_dp_phys = 0; for(k=0;k<3;k++) {dv_dp_phys += (1-massratio_ejecta) * (kernel.dp[k]/kernel.r) * ((local.Vel[k] - Vel_j[k])/All.cf_atime);} // recession velocity of cell from SNe
+                    double vcool_eff = v_cooling / psi_cool; // effective shell speed when the cooling radius is reached
+                    double dv_eff = vcool_eff + 2.*dv_dp_phys; // effective relative velocity for determining if you can reach that shell speed. i.e. when recession velocity equals nominal cooling mass for a real solution, assuming you cool when the post-shock temperature reaches a Tcool that corresponds to the post-shock velocity for some outward vcool, giving e.g. half the desired cooling mass is obtained when you have outward v = vcool
+                    if(dv_eff > 0) {mcool_mod = wk_m_cooling * vcool_eff / (1.e-20*vcool_eff + dv_eff);} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
+                    if(mcool_mod < mj_preshock) {mom_boost_fac = boost_terminal;} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
+
+#if 0 // old legacy code from earlier implementation of this which was less careful with the thermal component
+                    double psi0 = 1; // factor to use below for velocity-limiter
+                    if((wk_m_cooling < mj_preshock) || (boost_terminal < boost_egycon)) {mom_boost_fac=boost_terminal; psi0=DMAX(psi0,psi_cool);} else {mom_boost_fac=boost_egycon; psi0=DMAX(psi0,psi_egycon);} // limit to cooling case if egy-conserving exceeds terminal boost, or coupled mass short of cooling mass
                     if(mom_boost_fac < 1) {mom_boost_fac=1;} // impose lower limit of initial ejecta momentum
                     // finally account for simple physical limiter: if particle moving away faster than cooling terminal velocity, can't reach that velocity //
                     double vcool = DMIN(v_cooling/psi0 , v_ejecta_eff/mom_boost_fac); // effective velocity at stalling/cooling radius
@@ -726,6 +738,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double v_cooling_lim = DMAX( vcool , dv_dp_phys ); // cooling vel can't be smaller than actual vel (note: negative dvdp here automatically returns vcool, as desired)
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     //if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
+#endif
                 }
 
                 /* save summation values for outputs */
@@ -748,9 +761,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #if !defined(SINGLE_STAR_FB_WINDS) /* (for single-star modules we ignore this b/c assume always trying to resolve R_cool) */
                 if(feedback_type_is_SNe == 1) /* if coupling radius > R_cooling, account for thermal energy loss in the post-shock medium: from Thornton et al. thermal energy scales as R^(-6.5) for R>R_cool. only use for SNe b/c scalings [like momentum] only apply there. over-cooling if code wants to do it will easily occur next timestep. */
                 {
-#if defined(GALSF_FB_FIRE_RT_HIIHEATING) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                    if(d_Egy_internal < 0.1*E_sne_initial) {d_Egy_internal = 0.1*E_sne_initial;}
-#else
+                    d_Egy_internal = (1.-f_sedov_kin)*E_sne_initial; // the thermal energy component is constant (proportional to the injected area) and determined -as part of the energy-conserving solution- here, you should not artificially decrease it or renormalize it cell-by-cell for this form of the solutions
+#if 0 // old legacy code from earlier implementation of this which was less careful with the thermal component
+                    //if(d_Egy_internal < 0.1*E_sne_initial) {d_Egy_internal = 0.1*E_sne_initial;}
                     double r_eff_ij = kernel.r - Get_Particle_Size(j); /* get effective distance */
                     if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);} /* rescale the coupled energy as intended for the feedback mechanism */
 #endif
