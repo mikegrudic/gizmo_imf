@@ -242,7 +242,7 @@ double get_starformation_rate(int i, int mode)
 #endif
 
     /* compute various velocity-gradient terms which are potentially used in the various criteria below */
-    double dv2abs=0, divv=0, gradv[9]={0}, cs_eff=0, vA=0, v_fast=0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+    double dv2abs=0, dv2abs_0=0, divv=0, gradv[9]={0}, cs_eff=0, vA=0, v_fast=0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
     cs_eff=Get_Gas_thermal_soundspeed_i(i); vA=Get_Gas_Alfven_speed_i(i); /* specifically get the -isothermal- soundspeed and Alfven speed  (since we're doing a local Jeans analysis using these terms) [dont include terms like radiation pressure or cosmic ray pressure in the relevant speeds here] */
     v_fast=sqrt(cs_eff*cs_eff + vA*vA); /* calculate fast magnetosonic speed for use below */
     for(j=0;j<3;j++) {
@@ -251,6 +251,7 @@ double get_starformation_rate(int i, int mode)
             if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
             gradv[3*j + k]=vt; dv2abs+=vt*vt; if(j==k) {divv+=vt;} // save for possible use below
         }}
+    dv2abs_0=dv2abs; // save for possible use below
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION) && ((defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)) // if we have to deal with optically-thick thermo
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
     if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 0.2/UNIT_VEL_IN_KMS);} // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
@@ -260,6 +261,9 @@ double get_starformation_rate(int i, int mode)
     double k_cs = 1. * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
     k_cs *= M_PI; // use a stricter version here, because the relevant pre-factor depends on whether we expect Jeans collapse at the thermal limit to be resolved or un-resolved
+#endif
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
+    if(divv < 0) {dv2abs -= divv*divv/3.} // this is mathematically identical to taking the Frobenius norm of the divergence-free (trace-free) part of the shear tensor instead of the whole tensor. when using the stricter criterion, if the gas is in inflow (divv<0), don't want to count the inflow motion itself against the virial criterion, since this could if close to free-fall artificially bias us against recognizing real star formation
 #endif
     double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     double alpha_vir = dv2abs / (8.*M_PI * All.G * SphP[i].Density * All.cf_a3inv); // coefficient comes from different density profiles, assuming a constant velocity gradient tensor: 22.6=constant-density cube, 8pi[approximate]=constant-density sphere, e.g. rho~exp(-r^n) n={4,8,16,32,64}->{17.1,22.1,24.1,24.9,25.1,25.15} [approaches uniform-density sphere as n->infinity]
@@ -298,7 +302,16 @@ double get_starformation_rate(int i, int mode)
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 2) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* restrict to convergent flows */
-    if(divv >= 0) {rateOfSF=0;} /* diverging flow, no SF */
+#if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
+    if(divv >= 0) {rateOfSF=0;} /* diverging flow, no SF [simplest version of this] */
+#else
+    if(divv < 0) {
+        double t_compression = -1./divv; if(t_compression < tsfr) {rateOfSF *= tsfr/t_compression;} /* if you are collapsing or being externally compressed faster than the local dynamical time, allow SF to characteristically follow -that- timescale, to prevent runaway densities from appearing spuriously (will have no effect in single star runs since sf is deterministic and this normalization is set to infinity at the end) */
+    } else {
+        double dv_turb_est = sqrt(DMAX(dv2abs_0 - divv*divv/3., MIN_REAL_NUMBER)); // magnitude of Frobenius norm of the trace-free shear tensor. if we had perfectly isotropic turbulence, the rms value of this would be ~sqrt(8)*q, where q = <|dvi/dxj|^2>^(1/2). meanwhile the rms value of the divergence would be ~sqrt[3]*x, or ~sqrt[3/8]~0.6 times this value. so this gives us a reasonable guess of when divv is smaller than we would expect of rms fluctuations in an isotropic turbulent random field.
+        if(divv > 0.2*dv_turb_est) {rateOfSF=0;} // take a threshold which is ~(1/3) of the rms, corresponding to divergence being ~1% of the contribution to the Frobenius norm above: very low threshold to consider this, could easily raise it
+    }
+#endif
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 128) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */

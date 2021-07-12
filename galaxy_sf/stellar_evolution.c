@@ -443,6 +443,9 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     in->Msne = P[i].Mass; // conserve mass and destroy star completely
 #endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+    if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[0]/All.SolarAbundances[0]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}}
+#endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/in->Msne); // v_ej in code units
 }
 
