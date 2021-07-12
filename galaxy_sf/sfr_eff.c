@@ -263,7 +263,7 @@ double get_starformation_rate(int i, int mode)
     k_cs *= M_PI; // use a stricter version here, because the relevant pre-factor depends on whether we expect Jeans collapse at the thermal limit to be resolved or un-resolved
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
-    if(divv < 0) {dv2abs -= divv*divv/3.} // this is mathematically identical to taking the Frobenius norm of the divergence-free (trace-free) part of the shear tensor instead of the whole tensor. when using the stricter criterion, if the gas is in inflow (divv<0), don't want to count the inflow motion itself against the virial criterion, since this could if close to free-fall artificially bias us against recognizing real star formation
+    if(divv < 0) {dv2abs -= divv*divv/3.;} // this is mathematically identical to taking the Frobenius norm of the divergence-free (trace-free) part of the shear tensor instead of the whole tensor. when using the stricter criterion, if the gas is in inflow (divv<0), don't want to count the inflow motion itself against the virial criterion, since this could if close to free-fall artificially bias us against recognizing real star formation
 #endif
     double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
     double alpha_vir = dv2abs / (8.*M_PI * All.G * SphP[i].Density * All.cf_a3inv); // coefficient comes from different density profiles, assuming a constant velocity gradient tensor: 22.6=constant-density cube, 8pi[approximate]=constant-density sphere, e.g. rho~exp(-r^n) n={4,8,16,32,64}->{17.1,22.1,24.1,24.9,25.1,25.15} [approaches uniform-density sphere as n->infinity]
@@ -309,7 +309,7 @@ double get_starformation_rate(int i, int mode)
         double t_compression = -1./divv; if(t_compression < tsfr) {rateOfSF *= tsfr/t_compression;} /* if you are collapsing or being externally compressed faster than the local dynamical time, allow SF to characteristically follow -that- timescale, to prevent runaway densities from appearing spuriously (will have no effect in single star runs since sf is deterministic and this normalization is set to infinity at the end) */
     } else {
         double dv_turb_est = sqrt(DMAX(dv2abs_0 - divv*divv/3., MIN_REAL_NUMBER)); // magnitude of Frobenius norm of the trace-free shear tensor. if we had perfectly isotropic turbulence, the rms value of this would be ~sqrt(8)*q, where q = <|dvi/dxj|^2>^(1/2). meanwhile the rms value of the divergence would be ~sqrt[3]*x, or ~sqrt[3/8]~0.6 times this value. so this gives us a reasonable guess of when divv is smaller than we would expect of rms fluctuations in an isotropic turbulent random field.
-        if(divv > 0.2*dv_turb_est) {rateOfSF=0;} // take a threshold which is ~(1/3) of the rms, corresponding to divergence being ~1% of the contribution to the Frobenius norm above: very low threshold to consider this, could easily raise it
+        if(divv > 0.3*dv_turb_est) {rateOfSF=0;} // take a threshold which is ~(1/2) of the rms, corresponding to divergence being ~1% (0.2) or 3% (0.3) of the contribution to the Frobenius norm above: very low threshold to consider this, could easily raise it.
     }
 #endif
 #endif
