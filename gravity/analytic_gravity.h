@@ -26,7 +26,7 @@ void GravAccel_RayleighTaylorTest(void);
 void GravAccel_ShearingSheet(void);
 void GravAccel_PaczynskyWiita(void);
 void GravAccel_RDITestProblem(void);
-void GravAccel_GMCTurbInit(void)
+void GravAccel_GMCTurbInit(void);
 
 /* parent routine which decides which (if any) analytic gravitational forces are applied */
 void add_analytic_gravitational_forces()
@@ -204,7 +204,7 @@ void GravAccel_GMCTurbInit()
         double dp[3]; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k] - 0.5*All.BoxSize;}
 
         double r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2], r = sqrt(r2);
-	double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass * , R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
+	double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
 	double rho0 = 3*M/(4*M_PI*R*R*R);
 
 
