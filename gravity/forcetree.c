@@ -1712,6 +1712,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double vel_x, vel_y, vel_z;
 #endif
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+    double r_source, r_target, center[3]={0};
+#ifdef BOX_PERIODIC
+    center[0] = 0.5 * boxSize_X;
+    center[1] = 0.5 * boxSize_Y;
+    center[2] = 0.5 * boxSize_Z;
+#endif    
+#endif
 #ifdef PMGRID
     int tabindex;
     double eff_dist, rcut, asmth, asmthfac, rcut2, dist;
@@ -1829,7 +1837,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pos_y = P[target].Pos[1];
         pos_z = P[target].Pos[2];
         ptype = P[target].Type;
-
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
         pmass = P[target].Mass;
 #endif
@@ -1983,6 +1990,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+		r_source = sqrt(pow(P[no].Pos[0] - center[0],2) + pow(P[no].Pos[1] - center[1],2) + pow(P[no].Pos[2] - center[2],2));
+#endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
                 dvx = P[no].Vel[0] - vel_x;
                 dvy = P[no].Vel[1] - vel_y;
@@ -2216,6 +2226,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = nop->u.d.s[0] - pos_x;
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+		r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
+#endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
                 dvx = Extnodes[no].vs[0] - vel_x;
                 dvy = Extnodes[no].vs[1] - vel_y;
@@ -2465,7 +2478,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
             }
-
+	    	   
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
             r = sqrt(r2);
@@ -2606,6 +2619,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
 #endif
 #endif
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+		r_target = sqrt(pow(pos_x - center[0],2) + pow(pos_y - center[1],2) + pow(pos_z - center[2],2)); // distance of target point from box center
+		if(r_source < r_target){
+		    dx = center[0] - pos_x;
+   		    dy = center[1] - pos_y;
+		    dz = center[2] - pos_z;
+		    fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);
+		} else {
+           	    fac = 0;
+		}
+#endif
                 acc_x += FLT(dx * fac);
                 acc_y += FLT(dy * fac);
                 acc_z += FLT(dz * fac);
@@ -2635,6 +2659,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                  |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
                  |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
                  */
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+		if(r_source < r_target){
+		    fac2_tidal = 3 * mass / pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),5);
+		} else {
+   		    fac2_tidal = 0;
+		}
+#endif
 #ifdef PMGRID
                 tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2_tidal) * shortrange_table[tabindex]) +
                     dx * dx * fac2_tidal / 3.0 * shortrange_table_tidal[tabindex];
