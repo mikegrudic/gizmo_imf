@@ -726,7 +726,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double vcool_eff = v_cooling / psi_cool; // effective shell speed when the cooling radius is reached
                     double dv_eff = vcool_eff + 2.*dv_dp_phys; // effective relative velocity for determining if you can reach that shell speed. i.e. when recession velocity equals nominal cooling mass for a real solution, assuming you cool when the post-shock temperature reaches a Tcool that corresponds to the post-shock velocity for some outward vcool, giving e.g. half the desired cooling mass is obtained when you have outward v = vcool
                     if(dv_eff > 0) {mcool_mod = wk_m_cooling * vcool_eff / (1.e-20*vcool_eff + dv_eff);} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
-                    if(mcool_mod < mj_preshock) {mom_boost_fac = boost_terminal;} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
+                    if(mcool_mod < mj_preshock) {mom_boost_fac = DMIN(boost_terminal,boost_egycon);} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
 
 #if 0 // old legacy code from earlier implementation of this which was less careful with the thermal component
                     double psi0 = 1; // factor to use below for velocity-limiter
@@ -739,7 +739,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double boostfac_max = DMIN(1000. , v_ejecta_eff/v_cooling_lim); // boost factor cant exceed velocity limiter - if recession vel large, limits boost
                     //if(mom_boost_fac > boostfac_max) {mom_boost_fac = boostfac_max;} // apply limiter
 #endif
-                }
+                } else {mom_boost_fac=DMIN(1,boost_egycon*psi_egycon);} // prevent energy conservation issues when coupling mass-loss
 
                 /* save summation values for outputs */
                 dP = local.unit_mom_SNe / Mass_j * pnorm;
@@ -767,7 +767,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double r_eff_ij = kernel.r - Get_Particle_Size(j); /* get effective distance */
                     if(r_eff_ij > RsneKPC) {d_Egy_internal *= RsneKPC_3 / (r_eff_ij*r_eff_ij*r_eff_ij);} /* rescale the coupled energy as intended for the feedback mechanism */
 #endif
-                }
+                } else {d_Egy_internal = DMAX(DMIN(d_Egy_internal , 2.*E_sne_initial),0);}
 #endif
                 d_Egy_internal /= Mass_j; // convert to specific internal energy, finally //
 #ifndef MECHANICAL_FB_MOMENTUM_ONLY
