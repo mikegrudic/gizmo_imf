@@ -797,7 +797,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
 #if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT) // if we are not operator-splitting the mechanical terms, this is another 'hydrodynamic' work/shock/heating term, which should be fed to the cooling routine along with everything else to detemine a local quasi-equilibrium temperature.
                 double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j); // to do so, we need to average over the timestep, assuming it is finite
-                if((dt > MIN_REAL_NUMBER) && ((InternalEnergy_j < 3.*InternalEnergy_j_0) || ((InternalEnergy_j < 100.*InternalEnergy_j_0) && (InternalEnergy_j*U_TO_TEMP_UNITS*(5./3.-1.)*1.28 < 2.e5))))
+                double implied_heating_cgs=((InternalEnergy_j - InternalEnergy_j_0)*UNIT_SPECEGY_IN_CGS*PROTONMASS)/(dt*UNIT_TIME_IN_CGS), typical_cooling_cgs=1.e-23*(rho_j*density_to_n);
+                if((implied_heating_cgs < 0.1*typical_cooling_cgs) && (dt > MIN_REAL_NUMBER) && ((InternalEnergy_j < 3.*InternalEnergy_j_0) ||
+                                                 ((InternalEnergy_j < 100.*InternalEnergy_j_0) && (InternalEnergy_j*U_TO_TEMP_UNITS*(5./3.-1.)*1.28 < 2.e5))))
                 { /* timestep is sufficiently large, and jump isn't too huge or into super-high temperatures, so we can safely treat it as continuous for more accurate equilibrium temperatures */
                     #pragma omp atomic
                     SphP[j].DtInternalEnergy += (InternalEnergy_j - InternalEnergy_j_0) / dt;

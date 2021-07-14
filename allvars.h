@@ -3070,8 +3070,11 @@ extern struct sph_particle_data
 #endif
 
 #ifdef COOLING
+#if !defined(COOLING_OPERATOR_SPLIT)
+    int CoolingIsOperatorSplitThisTimestep; /* flag to tell us if cooling is operator split or not on a given timestep */
+#endif
 #ifndef CHIMES
-  MyFloat Ne;  /*!< electron fraction, expressed as local electron number
+    MyFloat Ne;  /*!< electron fraction, expressed as local electron number
 		    density normalized to the hydrogen number density. Gives
 		    indirectly ionization state and mean molecular weight. */
 #endif
