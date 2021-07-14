@@ -932,6 +932,9 @@ double single_star_wind_velocity(int n){
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
 /* Computes the maximum signal velocity of _any_ feedback mechanism emanating from a star (jets, winds, radiation, SNe), as a worst-case for e.g. timestepping stability purposes */
 double single_star_feedback_velocity_fortimestep(int n){   
+#ifdef SELFGRAVITY_OFF
+    return 0; 
+#endif    
     if(P[n].Type != 5) {return 0;}
     double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensAroundStar; v_shell=0;
 #ifdef SINGLE_STAR_FB_WINDS

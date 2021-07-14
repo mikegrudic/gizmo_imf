@@ -503,7 +503,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #ifdef STARFORGE_GMC_TURBINIT
 #define TURB_DRIVING
-#define ANALYTIC_GRAVITY
+#define GRAVITY_ANALYTIC
 #define SELFGRAVITY_OFF
 #endif
 #define BH_ALPHADISK_ACCRETION (1.0e6)
