@@ -120,6 +120,7 @@ static struct temporary_mech_fb_data_tohold
     double m_injected;
     double p_injected[3];
     double KE_injected;
+    double KE_injected_egycon;
     double TE_injected;
     double Z_injected[NUM_METAL_SPECIES];
 }
@@ -669,7 +670,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 wk *= wk_norm; // this way wk matches the value summed above for the weighting //
 
                 if((wk <= 0)||(isnan(wk))) continue;
-
+            
                 /* define initial mass and ejecta velocity in this 'cone' */
                 double pnorm = 0, pvec[3] = {0};
                 for(k=0; k<3; k++)
@@ -720,7 +721,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
                 
-                double KE_initial = 0, KE_final = 0;
+                double KE_initial=0, KE_final=0, KE_final_egycon=0;
                 if(couple_anything_but_scalar_mass_and_metals)
                 {
 #if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
@@ -743,21 +744,24 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(dv_eff > 0) {mcool_mod = wk_m_cooling * vcool_eff / (1.e-20*vcool_eff + dv_eff);} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
                     if(mcool_mod < mj_preshock) {mom_boost_fac = DMIN(boost_terminal,boost_egycon);} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
                 } else {mom_boost_fac=DMIN(1,boost_egycon*psi_egycon);} // prevent energy conservation issues when coupling mass-loss
-
+                
                 /* save summation values for outputs */
                 dP = local.unit_mom_SNe / Mass_j * pnorm;
                 dP_sum += dP; dP_boost_sum += dP * mom_boost_fac;
 
                 /* actually do the injection */
                 double mom_prefactor =  mom_boost_fac * massratio_ejecta * (All.cf_atime*v_ejecta_eff) / pnorm; // this gives the appropriately-normalized tap-able momentum from the energy-conserving solution
-                for(k=0; k<3; k++)
+                if(mom_prefactor > 0)
                 {
-                    double d_vel = mom_prefactor * pvec[k] + massratio_ejecta*(local.Vel[k] - Vel_j[k]); // local.Vel term from extra momentum of moving star, Vel_j term from going from momentum to velocity boost with added mass
-                    KE_initial += Vel_j[k]*Vel_j[k]; Vel_j[k] += d_vel; KE_final += Vel_j[k]*Vel_j[k];
+                    for(k=0; k<3; k++)
+                    {
+                        double d_vel = mom_prefactor * pvec[k] + massratio_ejecta*(local.Vel[k] - Vel_j[k]); // local.Vel term from extra momentum of moving star, Vel_j term from going from momentum to velocity boost with added mass
+                        KE_initial += Vel_j_0[k]*Vel_j_0[k]; Vel_j[k] += d_vel; KE_final += Vel_j[k]*Vel_j[k];
+                        double v_egy=Vel_j_0[k] + d_vel*(boost_egycon*psi_egycon/mom_boost_fac); KE_final_egycon += v_egy*v_egy;
+                    }
+                    /* now calculate the residual energy and add it as thermal */
+                    KE_initial *= 0.5*mj_preshock*All.cf_a2inv; KE_final *= 0.5*Mass_j*All.cf_a2inv; KE_final_egycon *= 0.5*Mass_j*All.cf_a2inv;
                 }
-                /* now calculate the residual energy and add it as thermal */
-                KE_initial *= 0.5 * mj_preshock * All.cf_a2inv;
-                KE_final *= 0.5 * Mass_j * All.cf_a2inv;
                 double E_sne_initial = pnorm * Energy_injected_codeunits;
                 double d_Egy_internal = KE_initial + E_sne_initial - KE_final;
 #if !defined(SINGLE_STAR_FB_WINDS) /* (for single-star modules we ignore this b/c assume always trying to resolve R_cool) */
@@ -780,6 +784,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 LocalGasMechFBInfoTemp[j].TE_injected += Mass_j*InternalEnergy_j - Mass_j_0*InternalEnergy_j_0; // delta-update of conserved quantity (total internal energy)
                 #pragma omp atomic
                 LocalGasMechFBInfoTemp[j].KE_injected += KE_final - KE_initial; // delta-update of conserved quantity (total kinetic energy)
+                #pragma omp atomic
+                LocalGasMechFBInfoTemp[j].KE_injected_egycon += KE_final_egycon - KE_initial; // delta-update of conserved quantity (total kinetic energy)
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic
                     LocalGasMechFBInfoTemp[j].Z_injected[k] += Mass_j*Metallicity_j[k] - Mass_j_0*Metallicity_j_0[k]; // delta-update of conserved quantity (total metal mass)
@@ -833,6 +839,16 @@ void verify_and_assign_local_mechfb_integrals(void)
                     else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
                     else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
                 if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
+                /* test against the energy we had available with the energy-conserving solutions, to see if we -could- correct the solution within the realm of allowed energy conservation */
+                double f0_default=f0, dKE_egycon = DMAX(-KE_0, LocalGasMechFBInfoTemp[j].KE_injected_egycon); c0=p2*dm/m0+2.*mf*dKE_egycon; sfac=b0*b0+4.*a0*c0; f0=0; /* set value, reset constants from above */
+                if(sfac<=0 || !isfinite(sfac)) {if((fabs(a0)<1.e-40) || !isfinite(b0/a0)) {f0=0;} else {f0=-b0/(2.*a0);}} // catches for floating-point error
+                else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
+                    else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
+                if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
+                /* now compare f0_default and f0_egycon */
+                if(fabs(f0-f0_default)/(f0+f0_default) < 1.e-3) {f0=f0_default;} /* there's no difference, use the default value */
+                    else {if((f0<1 && f0_default>1) || (f0>1 && f0_default<1)) {f0=1;} /* this means there was enough energy to couple the default solution, in principle, so it's fine, let's use it */
+                    else {if(fabs(f0_default-1) < fabs(f0-1)) {f0=f0_default;} else {f0=f0;}}} /* otherwise use whichever value is closer to unity, preserving the desired solutions */
                 for(k=0;k<3;k++) {
                     double dv = (-dm/mf)*P[j].Vel[k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
                     P[j].Vel[k] += dv; SphP[j].VelPred[k] += dv; P[j].dp[k] += f0*dp[k]; /* update velocities */
