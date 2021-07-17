@@ -807,30 +807,34 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 void verify_and_assign_local_mechfb_integrals(void)
 {
     int j,k; for(j=0;j<N_gas;j++) {
-        if(P[j].Type==0) {
-            double m0=P[j].Mass; P[j].Mass += LocalGasMechFBInfoTemp[j].m_injected; /* update mass */
+        if(P[j].Type==0 && P[j].Mass>0) {
+            double m0=P[j].Mass, dm=LocalGasMechFBInfoTemp[j].m_injected; P[j].Mass += dm; /* update mass */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            m0=SphP[j].MassTrue; SphP[j].MassTrue += LocalGasMechFBInfoTemp[j].m_injected; /* update conserved mass */
+            m0=SphP[j].MassTrue; SphP[j].MassTrue += dm; /* update conserved mass */
 #endif
-            double mf=m0+LocalGasMechFBInfoTemp[j].m_injected; /* save for below */
+            double mf=m0+dm; /* save for below */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = (m0/mf)*P[j].Metallicity[k] + (1./mf)*LocalGasMechFBInfoTemp[j].Z_injected[k];} /* update metallicity */
             SphP[j].Density *= mf/m0; /* update density [semi-drift] */
-            if(LocalGasMechFBInfoTemp[j].TE_injected > 0)
+            double dTE=LocalGasMechFBInfoTemp[j].TE_injected;
+            if(dTE > 0)
             {
-                double dU = (-LocalGasMechFBInfoTemp[j].m_injected/mf)*SphP[j].InternalEnergy + (1./mf)*LocalGasMechFBInfoTemp[j].TE_injected; /* using new mass get updated internal energy */
+                double TE_0=m0*SphP[j].InternalEnergy; dTE=DMAX(-TE_0,dTE); /* ensure against non-negative values */
+                double dU = (-dm/mf)*SphP[j].InternalEnergy + (1./mf)*dTE; /* using new mass get updated internal energy */
                 SphP[j].InternalEnergy += dU; SphP[j].InternalEnergyPred += dU; /* update internal energy */
             }
-            if(LocalGasMechFBInfoTemp[j].KE_injected != 0 || LocalGasMechFBInfoTemp[j].p_injected[0] != 0 || LocalGasMechFBInfoTemp[j].p_injected[1] != 0 || LocalGasMechFBInfoTemp[j].p_injected[2] != 0 )
+            double dKE=LocalGasMechFBInfoTemp[j].KE_injected, dp[3];
+            if(dKE != 0 || LocalGasMechFBInfoTemp[j].p_injected[0] != 0 || LocalGasMechFBInfoTemp[j].p_injected[1] != 0 || LocalGasMechFBInfoTemp[j].p_injected[2] != 0 )
             {
-                double p0[3], dp[3], p2=0, dp2=0, pdp=0; /* define variables for momentum update (the non-trivial update term) */
+                double KE_0=0, p0[3], p2=0, dp2=0, pdp=0; /* define variables for momentum update (the non-trivial update term) */
                 for(k=0;k<3;k++) {p0[k]=m0*P[j].Vel[k]/All.cf_atime; dp[k]=LocalGasMechFBInfoTemp[j].p_injected[k]; p2+=p0[k]*p0[k]; dp2+=dp[k]*dp[k]; pdp+=p0[k]*dp[k];} /* define variables */
-                double a0=dp2, b0=2.*pdp, c0=p2*LocalGasMechFBInfoTemp[j].m_injected/m0+2.*mf*LocalGasMechFBInfoTemp[j].KE_injected, sfac=b0*b0+4.*a0*c0, f0=0; /* assume coupled delta_p = f0*delta_p, and solve for the multiplier f0 that gives the desired total kinetic energy change */
+                KE_0=p2/(2.*m0); dKE=DMAX(-KE_0,dKE); /* limit to retain positive definite kinetic energy */
+                double a0=dp2, b0=2.*pdp, c0=p2*dm/m0+2.*mf*dKE, sfac=b0*b0+4.*a0*c0, f0=0; /* assume coupled delta_p = f0*delta_p, and solve for the multiplier f0 that gives the desired total kinetic energy change */
                 if(sfac<=0 || !isfinite(sfac)) {if((fabs(a0)<1.e-40) || !isfinite(b0/a0)) {f0=0;} else {f0=-b0/(2.*a0);}} // catches for floating-point error
                     else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
                     else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
                 if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
                 for(k=0;k<3;k++) {
-                    double dv = (-LocalGasMechFBInfoTemp[j].m_injected/mf)*P[j].Vel[k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
+                    double dv = (-dm/mf)*P[j].Vel[k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
                     P[j].Vel[k] += dv; SphP[j].VelPred[k] += dv; P[j].dp[k] += f0*dp[k]; /* update velocities */
                 }
             }
