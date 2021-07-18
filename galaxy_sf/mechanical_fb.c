@@ -756,8 +756,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     for(k=0; k<3; k++)
                     {
                         double d_vel = mom_prefactor * pvec[k] + massratio_ejecta*(local.Vel[k] - Vel_j[k]); // local.Vel term from extra momentum of moving star, Vel_j term from going from momentum to velocity boost with added mass
-                        KE_initial += Vel_j_0[k]*Vel_j_0[k]; Vel_j[k] += d_vel; KE_final += Vel_j[k]*Vel_j[k];
-                        double v_egy=Vel_j_0[k] + d_vel*(boost_egycon*psi_egycon/mom_boost_fac); KE_final_egycon += v_egy*v_egy;
+                        KE_initial += Vel_j_0[k]*Vel_j_0[k]; Vel_j[k] += d_vel; KE_final += Vel_j[k]*Vel_j[k]; // calculate initial and final kinetic energies (here v^2, multiply by mass below)
+                        double v_egy=Vel_j_0[k] + massratio_ejecta*(local.Vel[k]-Vel_j[k]) + (boost_egycon*psi_egycon)*massratio_ejecta*(v_ejecta_eff*All.cf_atime)*(pvec[k]/pnorm); KE_final_egycon += v_egy*v_egy; // calculate final KE if we had used the strictly energy-conserving solution
                     }
                     /* now calculate the residual energy and add it as thermal */
                     KE_initial *= 0.5*mj_preshock*All.cf_a2inv; KE_final *= 0.5*Mass_j*All.cf_a2inv; KE_final_egycon *= 0.5*Mass_j*All.cf_a2inv;
@@ -845,10 +845,12 @@ void verify_and_assign_local_mechfb_integrals(void)
                 else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
                     else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
                 if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
-                /* now compare f0_default and f0_egycon */
-                if(fabs(f0-f0_default)/(f0+f0_default) < 1.e-3) {f0=f0_default;} /* there's no difference, use the default value */
-                    else {if((f0<1 && f0_default>1) || (f0>1 && f0_default<1)) {f0=1;} /* this means there was enough energy to couple the default solution, in principle, so it's fine, let's use it */
-                    else {if(fabs(f0_default-1) < fabs(f0-1)) {f0=f0_default;} else {f0=f0;}}} /* otherwise use whichever value is closer to unity, preserving the desired solutions */
+                if(LocalGasMechFBInfoTemp[j].KE_injected_egycon>0 && dKE > 0 && f0 > 0 && f0 != 1)
+                { /* now compare f0_default and f0_egycon, if increasing (if decreasing the momentum solution is the only that matters) */
+                    if(fabs(f0-f0_default)/(f0+f0_default) < 1.e-3) {f0=f0_default;} /* there's no difference, use the default value */
+                        else {if((f0<1 && f0_default>1) || (f0>1 && f0_default<1)) {f0=1;} /* this means there was enough energy to couple the default solution, in principle, so it's fine, let's use it */
+                        else {if(fabs(f0_default-1) < fabs(f0-1)) {f0=f0_default;} else {f0=f0;}}} /* otherwise use whichever value is closer to unity, preserving the desired solutions */
+                }
                 for(k=0;k<3;k++) {
                     double dv = (-dm/mf)*P[j].Vel[k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
                     P[j].Vel[k] += dv; SphP[j].VelPred[k] += dv; P[j].dp[k] += f0*dp[k]; /* update velocities */
