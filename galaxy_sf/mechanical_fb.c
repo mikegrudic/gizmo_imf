@@ -840,13 +840,13 @@ void verify_and_assign_local_mechfb_integrals(void)
                     else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
                 if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
                 /* test against the energy we had available with the energy-conserving solutions, to see if we -could- correct the solution within the realm of allowed energy conservation */
-                double f0_default=f0, dKE_egycon = DMAX(-KE_0, LocalGasMechFBInfoTemp[j].KE_injected_egycon); c0=p2*dm/m0+2.*mf*dKE_egycon; sfac=b0*b0+4.*a0*c0; f0=0; /* set value, reset constants from above */
-                if(sfac<=0 || !isfinite(sfac)) {if((fabs(a0)<1.e-40) || !isfinite(b0/a0)) {f0=0;} else {f0=-b0/(2.*a0);}} // catches for floating-point error
-                else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
-                    else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
-                if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
                 if(LocalGasMechFBInfoTemp[j].KE_injected_egycon>0 && dKE > 0 && f0 > 0 && f0 != 1)
                 { /* now compare f0_default and f0_egycon, if increasing (if decreasing the momentum solution is the only that matters) */
+                    double f0_default=f0, dKE_egycon = DMAX(-KE_0, LocalGasMechFBInfoTemp[j].KE_injected_egycon); c0=p2*dm/m0+2.*mf*dKE_egycon; sfac=b0*b0+4.*a0*c0; f0=0; /* set value, reset constants from above */
+                    if(sfac<=0 || !isfinite(sfac)) {if((fabs(a0)<1.e-40) || !isfinite(b0/a0)) {f0=0;} else {f0=-b0/(2.*a0);}} // catches for floating-point error
+                    else {if((b0>0) && fabs(4.*a0*c0)<1.e-3*b0*b0) {f0=c0/b0;} // catches for floating-point error
+                        else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
+                    if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>2.) {f0=2.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
                     if(fabs(f0-f0_default)/(f0+f0_default) < 1.e-3) {f0=f0_default;} /* there's no difference, use the default value */
                         else {if((f0<1 && f0_default>1) || (f0>1 && f0_default<1)) {f0=1;} /* this means there was enough energy to couple the default solution, in principle, so it's fine, let's use it */
                         else {if(fabs(f0_default-1) < fabs(f0-1)) {f0=f0_default;} else {f0=f0;}}} /* otherwise use whichever value is closer to unity, preserving the desired solutions */
