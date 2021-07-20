@@ -1169,11 +1169,8 @@ int get_timestep_bin(integertime ti_step)
 #ifdef WAKEUP
 void process_wake_ups(void)
 {
-    int i, n;
+    int i, n, max_time_bin_active, bin, binold, prev, next; long long ntot;
     integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
-    int max_time_bin_active;
-    int bin, binold, prev, next;
-    long long ntot;
 
     /* find the next kick time */
     for(n = 0, ti_next_kick = TIMEBASE; n < TIMEBINS; n++)
@@ -1182,7 +1179,8 @@ void process_wake_ups(void)
         {
             if(n > 0)
             {
-                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n); ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
+                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);
+                ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
             }
             else {dt_bin = 0; ti_next_for_bin = All.Ti_Current;}
             if(ti_next_for_bin < ti_next_kick) {ti_next_kick = ti_next_for_bin;}
@@ -1200,7 +1198,7 @@ void process_wake_ups(void)
         if((ti_next_kick_global % dt_bin) == 0) {max_time_bin_active = n;}
     }
 
-    /* move the particle on the highest bin, that is active in the next timestep and that is lower than its last timebin */
+    /* move the particle into the highest bin, that is active in the next timestep and that is lower than its last timebin */
     bin = 0; for(n = 0; n < TIMEBINS; n++) {if(TimeBinCount[n] > 0) {bin = n; break;}}
     n = 0;
 
