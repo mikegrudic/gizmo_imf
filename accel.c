@@ -81,7 +81,10 @@ void compute_hydro_densities_and_forces(void)
         dynamic_diff_vel_calc(); /* This must be called between density and gradient calculations */
 #endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-        interpolate_fluxes_opacities_gasgrains();
+        interpolate_fluxes_opacities_gasgrains(); /* this must be called here for the computation of opacities and radiative quantity gradients below to be correct */
+#endif
+#ifdef GALSF /* PFH set of feedback routines; here because for e.g. strong SNe, obtain better stability if they are coupled discretely just -before- the hydro force is computed */
+        compute_stellar_feedback();
 #endif
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
@@ -130,23 +133,10 @@ void compute_stellar_feedback(void)
     CPU_Step[CPU_MISC] += measure_time();
 
 #ifdef GALSF_FB_MECHANICAL /* check the mechanical sources of feedback */
-    PRINT_STATUS("Start mechanical feedback computation...");
-#ifndef GALSF_USE_SNE_ONELOOP_SCHEME
-    mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
-#endif
-    mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */
-    mechanical_fb_calc(0); /* actually do the mechanical feedback coupling */
-#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-    mechanical_fb_calc(1); /* additional loop for stellar mass-loss */
-#ifdef GALSF_FB_FIRE_RPROCESS
-    mechanical_fb_calc(2); /* additional loop for R-process */
-#endif
-#ifdef GALSF_FB_FIRE_AGE_TRACERS
-    mechanical_fb_calc(3); /* additional loop for stellar age tracers */
-#endif
-#endif
+    mechanical_fb_calc_toplevel();  /* call the parent loop for the different mechanical fb sub-loops */
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */
 #endif
+
 #ifdef GALSF_FB_THERMAL
     thermal_fb_calc(); /* thermal feedback */
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SNIIHEATING] += measure_time(); /* collect timings and reset clock for next timing */

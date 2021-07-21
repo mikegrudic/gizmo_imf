@@ -116,6 +116,7 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
+        double DtInternalEnergyEffCGS = SphP[i].DtInternalEnergy;
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
@@ -126,14 +127,19 @@ void do_the_cooling_for_particle(int i)
 #ifdef PMGRID
             grav_acc += All.cf_a2inv * P[i].GravPM[k];
 #endif
-            SphP[i].DtInternalEnergy -= SphP[i].GravWorkTerm[k] * All.cf_atime * grav_acc;
+            DtInternalEnergyEffCGS -= SphP[i].GravWorkTerm[k] * All.cf_atime * grav_acc;
         }
 #endif
         /* limit the magnitude of the hydro dtinternalenergy */
-        SphP[i].DtInternalEnergy = DMAX(SphP[i].DtInternalEnergy , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
-        SphP[i].DtInternalEnergy = DMIN(SphP[i].DtInternalEnergy ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
+        DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
+        DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
-        SphP[i].DtInternalEnergy *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
+        DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
+        
+        /* now decide if we need to split this particular cell on this particular timestep, since this un-split solver can lead to energy conservation problems if the mechanical heating is much larger than cooling */
+        SphP[i].CoolingIsOperatorSplitThisTimestep=1;
+        if(DtInternalEnergyEffCGS < 1.e-23*SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS) {SphP[i].CoolingIsOperatorSplitThisTimestep=0;} // cooling is fast compared to the hydro work term, or the hydro term is negative [cooling], so un-split the operation
+        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
 #endif
 
 
@@ -198,7 +204,7 @@ void do_the_cooling_for_particle(int i)
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         SphP[i].Pressure = get_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
-        SphP[i].DtInternalEnergy = 0;
+        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here
 #endif
 
 #ifdef COOL_MOLECFRAC_NONEQM
@@ -234,15 +240,18 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 #ifndef COOLING_OPERATOR_SPLIT
     /* because grackle uses a pre-defined set of libraries, we can't properly incorporate the hydro heating
      into the cooling subroutine. instead, we will use the approximate treatment below to split the step */
-    du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC));
-    u_old += 0.5*du;
-    u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
-    /* now we attempt to correct for what the solution would have been if we had included the remaining half-step heating
-     term in the full implicit solution. The term "r" below represents the exact solution if the cooling function has
-     the form d(u-u0)/dt ~ -a*(u-u0)  around some u0 which is close to the "ufinal" returned by the cooling routine,
-     to which we then add the heating term from hydro and compute the solution over a full timestep */
-    double r=u/u_old; if(r>1) {r=1/r;} if(fabs(r-1)>1.e-4) {r=(r-1)/log(r);} r=DMAX(0,DMIN(r,1));
-    du *= 0.5*r; if(du<-0.5*u) {du=-0.5*u;} u+=du;
+    if(SphP[target].CoolingIsOperatorSplitThisTimestep==0)
+    {
+        du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC));
+        u_old += 0.5*du;
+        u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
+        /* now we attempt to correct for what the solution would have been if we had included the remaining half-step heating
+         term in the full implicit solution. The term "r" below represents the exact solution if the cooling function has
+         the form d(u-u0)/dt ~ -a*(u-u0)  around some u0 which is close to the "ufinal" returned by the cooling routine,
+         to which we then add the heating term from hydro and compute the solution over a full timestep */
+        double r=u/u_old; if(r>1) {r=1/r;} if(fabs(r-1)>1.e-4) {r=(r-1)/log(r);} r=DMAX(0,DMIN(r,1));
+        du *= 0.5*r; if(du<-0.5*u) {du=-0.5*u;} u+=du;
+    }
 #else
     /* with full operator splitting we just call grackle normally. note this is usually fine,
      but can lead to artificial noise at high densities and low temperatures, especially if something
@@ -1113,7 +1122,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #ifndef COOLING_OPERATOR_SPLIT
     /* add the hydro energy change directly: this represents an additional heating/cooling term, to be accounted for in the semi-implicit solution determined here. this is more accurate when tcool << tdynamical */
-    if(target >= 0) {Q += SphP[target].DtInternalEnergy / nHcgs;}
+    if(target >= 0) {if(SphP[target].CoolingIsOperatorSplitThisTimestep==0) {Q += SphP[target].DtInternalEnergy / nHcgs;}}
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target >= 0) {SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
@@ -2102,7 +2111,8 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].divVel = (ChimesFloat) fabs(ChimesGasVars[target].divVel);
 
 #ifndef COOLING_OPERATOR_SPLIT
-  ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);
+  if(SphP[target].CoolingIsOperatorSplitThisTimestep==0)
+  {ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);}
 #else
   ChimesGasVars[target].constant_heating_rate = 0.0;
 #endif

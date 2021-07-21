@@ -872,7 +872,9 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_stellar_evol;
         dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
+        double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR) / 0.1; /* expectation of ()/X SNe per timestep -- here 0.1 */
+        if(star_age > 0.044) {mcorr *= 0.02;} // into Ia regime, lower SNR means we can substantially relax this mass-dependent criterion
+        if(mcorr > 1) {dt_stellar_evol /= DMIN(mcorr, 10.);} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
 #else
         double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
@@ -1167,11 +1169,8 @@ int get_timestep_bin(integertime ti_step)
 #ifdef WAKEUP
 void process_wake_ups(void)
 {
-    int i, n;
+    int i, n, max_time_bin_active, bin, binold, prev, next; long long ntot;
     integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
-    int max_time_bin_active;
-    int bin, binold, prev, next;
-    long long ntot;
 
     /* find the next kick time */
     for(n = 0, ti_next_kick = TIMEBASE; n < TIMEBINS; n++)
@@ -1180,7 +1179,8 @@ void process_wake_ups(void)
         {
             if(n > 0)
             {
-                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n); ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
+                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);
+                ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
             }
             else {dt_bin = 0; ti_next_for_bin = All.Ti_Current;}
             if(ti_next_for_bin < ti_next_kick) {ti_next_kick = ti_next_for_bin;}
@@ -1198,7 +1198,7 @@ void process_wake_ups(void)
         if((ti_next_kick_global % dt_bin) == 0) {max_time_bin_active = n;}
     }
 
-    /* move the particle on the highest bin, that is active in the next timestep and that is lower than its last timebin */
+    /* move the particle into the highest bin, that is active in the next timestep and that is lower than its last timebin */
     bin = 0; for(n = 0; n < TIMEBINS; n++) {if(TimeBinCount[n] > 0) {bin = n; break;}}
     n = 0;
 

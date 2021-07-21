@@ -851,6 +851,9 @@ void init(void)
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
+#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+        SphP[i].CoolingIsOperatorSplitThisTimestep = 1; /* default to more conservative split */
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
