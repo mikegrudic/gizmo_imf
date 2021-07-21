@@ -499,6 +499,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
+#ifdef STARFORGE_GMC_TURBINIT
+#define TURB_DRIVING
+#define GRAVITY_ANALYTIC
+#define SELFGRAVITY_OFF
+#endif
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
