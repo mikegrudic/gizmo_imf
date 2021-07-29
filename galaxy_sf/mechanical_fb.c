@@ -14,6 +14,7 @@
 
 #ifdef GALSF_FB_MECHANICAL
 
+int N_Gas_Couplings_ThisTask; // define variable to use below to record if and how many times a coupling to a cell occurs in a timestep per MPI task
 
 int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
@@ -117,11 +118,7 @@ void determine_where_SNe_occur(void)
  for example for ensuring conservation if there are many overlapping events */
 static struct temporary_mech_fb_data_tohold
 {
-    double m_injected;
-    double p_injected[3];
-    double KE_injected;
-    double TE_injected;
-    double Z_injected[NUM_METAL_SPECIES];
+    int N_injected; double m_injected, p_injected[3], KE_injected, TE_injected, Z_injected[NUM_METAL_SPECIES];
 }
 *LocalGasMechFBInfoTemp;
 
@@ -775,6 +772,10 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
+                N_Gas_Couplings_ThisTask++; // note that a cell recieved some feedback
+                #pragma omp atomic
+                LocalGasMechFBInfoTemp[j].N_injected++; // flag that -this- cell received feedback
+                #pragma omp atomic
                 LocalGasMechFBInfoTemp[j].m_injected += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]. done this way to ensure conservation.
                 #pragma omp atomic
                 LocalGasMechFBInfoTemp[j].TE_injected += Mass_j*InternalEnergy_j - Mass_j_0*InternalEnergy_j_0; // delta-update of conserved quantity (total internal energy)
@@ -806,8 +807,12 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 /* subroutine to check for total kinetic energy change and thermal energy change after integrating the effects of all SNe over all cells, and coupling this to particles,  */
 void verify_and_assign_local_mechfb_integrals(void)
 {
-    int j,k; for(j=0;j<N_gas;j++) {
-        if(P[j].Type==0 && P[j].Mass>0) {
+    if(N_Gas_Couplings_ThisTask <= 0) {return;} /* no cells had feedback deposited */
+    int j,k; for(j=0;j<N_gas;j++)
+    {
+        if(LocalGasMechFBInfoTemp[j].N_injected <= 0) {continue;} /* all mechanisms deposit non-zero mass, so skip if this is not >0*/
+        if(P[j].Type==0 && P[j].Mass>0)
+        {
             double m0=P[j].Mass, dm=LocalGasMechFBInfoTemp[j].m_injected; P[j].Mass += dm; /* update mass */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             m0=SphP[j].MassTrue; SphP[j].MassTrue += dm; /* update conserved mass */
@@ -844,6 +849,8 @@ void verify_and_assign_local_mechfb_integrals(void)
                     P[j].Vel[k] += dv; SphP[j].VelPred[k] += dv; P[j].dp[k] += f0*dp[k]; /* update velocities */
                 }
             }
+            ndone++; /* note another cell accounted for */
+            if(ndone >= N_Gas_Couplings_ThisTask) {break;} /* we have done all cells (note is possible if the same cell is hit many times, N_Gas_Couplings_ThisTask can be much larger than ndone after the full loop. but if its smaller, then we -must- be done with this loop */
         }
     }
     return;
@@ -858,6 +865,7 @@ void mechanical_fb_calc_toplevel(void)
 #ifndef GALSF_USE_SNE_ONELOOP_SCHEME
     /* allocate temporary stucture which will hold the total change, to compare when done to check for non-linear effects if too many cells act at once */
     LocalGasMechFBInfoTemp = (struct temporary_mech_fb_data_tohold *) mymalloc("LocalGasMechFBInfoTemp",N_gas * sizeof(struct temporary_mech_fb_data_tohold)); /* allocate */
+    N_Gas_Coupled_ThisTask = 0; /* initialize this to zero [default to assume no coupled feedback] */
     int i; for(i=0;i<N_gas;i++) {if(P[i].Type==0) {memset(&LocalGasMechFBInfoTemp[i], 0, sizeof(struct temporary_mech_fb_data_tohold));}} /* zero it out before loops */
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif

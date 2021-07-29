@@ -422,7 +422,7 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
             in->yields[k+k_age_start] += ((age_step - age) / dt) * M_norm; // do fractional / full injection for each bin we cross
             age = age_step; k++;}
     } else {in->yields[k+k_age_start] += M_norm;} // normalization is somewhat arbitrary, but choosing "1" unit per bin per solar mass of star for convenience
-    in->Msne = 1.e-10 / UNIT_MASS_IN_SOLAR; // small number just to be nonzero
+    in->Msne = 1.e-9 / UNIT_MASS_IN_SOLAR; // small number just to be nonzero
 #endif
     return;
 }

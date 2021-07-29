@@ -135,10 +135,6 @@ void do_the_cooling_for_particle(int i)
         DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
         DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
-        
-        /* now decide if we need to split this particular cell on this particular timestep, since this un-split solver can lead to energy conservation problems if the mechanical heating is much larger than cooling */
-        SphP[i].CoolingIsOperatorSplitThisTimestep=1;
-        if(DtInternalEnergyEffCGS < 1.e-23*SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS) {SphP[i].CoolingIsOperatorSplitThisTimestep=0;} // cooling is fast compared to the hydro work term, or the hydro term is negative [cooling], so un-split the operation
         if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
 #endif
 
@@ -2111,8 +2107,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].divVel = (ChimesFloat) fabs(ChimesGasVars[target].divVel);
 
 #ifndef COOLING_OPERATOR_SPLIT
-  if(SphP[target].CoolingIsOperatorSplitThisTimestep==0)
-  {ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);}
+  if(SphP[target].CoolingIsOperatorSplitThisTimestep==0) {ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);}
 #else
   ChimesGasVars[target].constant_heating_rate = 0.0;
 #endif

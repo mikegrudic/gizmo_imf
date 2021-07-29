@@ -245,6 +245,11 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
             double du_tot = SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
 #if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+            if((mode == 1) && (du_tot != 0) && (dt_hydrokick > 0)) { /* if about to consider second-halfstep kick (just after hydro), decide if we need to split this particular cell on this particular timestep, since this un-split solver can lead to energy conservation problems if the mechanical heating is much larger than cooling */
+                SphP[i].CoolingIsOperatorSplitThisTimestep=1; /* default to assume split */
+                double DtInternalEnergyEffCGS = (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC) * (du_tot/dt_hydrokick), DtInternalEnergyReference = 1.e-23*SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS; /* define the effective work term in cgs and a reference typical cooling time */
+                if(DtInternalEnergyEffCGS < DtInternalEnergyReference) {SphP[i].CoolingIsOperatorSplitThisTimestep=0;} /* cooling is fast compared to the hydro work term, or the hydro term is negative [cooling], so un-split the operation */
+            }
             if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {du_tot=0;} /* cooling in unsplit, so zero contribution here */
 #endif
             double dEnt = SphP[i].InternalEnergy + du_tot;
