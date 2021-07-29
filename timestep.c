@@ -872,11 +872,11 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_stellar_evol;
         dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-#ifndef GALSF_FIRE_TEST_MODS // below not necessary with newer code, can be safely skipped for optimization //
+/* // GALSF_FIRE_TEST_MODS below not necessary with newer code, can be safely skipped for optimization //
         double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR) / 0.1; // expectation of ()/X SNe per timestep -- here 0.1
         if(star_age > 0.044) {mcorr *= 0.02;} // into Ia regime, lower SNR means we can substantially relax this mass-dependent criterion
         if(mcorr > 1) {dt_stellar_evol /= DMIN(mcorr, 10.);} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
-#endif
+*/
 #else
         double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
