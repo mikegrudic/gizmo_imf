@@ -808,7 +808,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 void verify_and_assign_local_mechfb_integrals(void)
 {
     if(N_Gas_Couplings_ThisTask <= 0) {return;} /* no cells had feedback deposited */
-    int j,k; for(j=0;j<N_gas;j++)
+    int j,k,ndone=0; for(j=0;j<N_gas;j++)
     {
         if(LocalGasMechFBInfoTemp[j].N_injected <= 0) {continue;} /* all mechanisms deposit non-zero mass, so skip if this is not >0*/
         if(P[j].Type==0 && P[j].Mass>0)
@@ -865,7 +865,7 @@ void mechanical_fb_calc_toplevel(void)
 #ifndef GALSF_USE_SNE_ONELOOP_SCHEME
     /* allocate temporary stucture which will hold the total change, to compare when done to check for non-linear effects if too many cells act at once */
     LocalGasMechFBInfoTemp = (struct temporary_mech_fb_data_tohold *) mymalloc("LocalGasMechFBInfoTemp",N_gas * sizeof(struct temporary_mech_fb_data_tohold)); /* allocate */
-    N_Gas_Coupled_ThisTask = 0; /* initialize this to zero [default to assume no coupled feedback] */
+    N_Gas_Couplings_ThisTask = 0; /* initialize this to zero [default to assume no coupled feedback] */
     int i; for(i=0;i<N_gas;i++) {if(P[i].Type==0) {memset(&LocalGasMechFBInfoTemp[i], 0, sizeof(struct temporary_mech_fb_data_tohold));}} /* zero it out before loops */
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
