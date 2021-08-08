@@ -240,6 +240,11 @@ void calculate_non_standard_physics(void)
 #endif
 
 
+#ifdef GALSF /* PFH set of feedback routines; here because for e.g. strong SNe, obtain better stability if they are coupled discretely just -before- the hydro force is computed */
+    //compute_stellar_feedback();
+#endif
+
+    
 #ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();

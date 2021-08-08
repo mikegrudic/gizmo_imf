@@ -828,9 +828,8 @@ void verify_and_assign_local_mechfb_integrals(void)
                 double TE_0=m0*SphP[j].InternalEnergy; dTE=DMAX(-TE_0,dTE); /* ensure against non-negative values */
                 double dU = (-dm/mf)*SphP[j].InternalEnergy + (1./mf)*dTE; /* using new mass get updated internal energy */
                 double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j), implied_heating_cgs=(dU*UNIT_SPECEGY_IN_CGS*PROTONMASS)/(dt*UNIT_TIME_IN_CGS), typical_cooling_cgs=1.e-23*(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
-                if((implied_heating_cgs < 0.1*typical_cooling_cgs) && (dt > MIN_REAL_NUMBER) && ((dU < 2.*SphP[j].InternalEnergy) || ((dU < 100.*SphP[j].InternalEnergy) && ((dU+SphP[j].InternalEnergy)*U_TO_TEMP_UNITS*2./3.*1.28 < 2.e5))))
-                    {SphP[j].DtInternalEnergy += dU/dt;} else {SphP[j].InternalEnergy += dU; SphP[j].InternalEnergyPred += dU;}
-                //SphP[j].InternalEnergy += dU; SphP[j].InternalEnergyPred += dU; /* update internal energy; simpler (old) way to do it - less accurate phase diagrams at high density, however */
+                //if((implied_heating_cgs < 0.1*typical_cooling_cgs) && (dt > MIN_REAL_NUMBER) && ((dU < 2.*SphP[j].InternalEnergy) || ((dU < 100.*SphP[j].InternalEnergy) && ((dU+SphP[j].InternalEnergy)*U_TO_TEMP_UNITS*2./3.*1.28 < 2.e5)))) {SphP[j].DtInternalEnergy += dU/dt;} else {SphP[j].InternalEnergy += dU; SphP[j].InternalEnergyPred += dU;}
+                SphP[j].InternalEnergy += dU; SphP[j].InternalEnergyPred += dU; /* update internal energy; simpler (old) way to do it - less accurate phase diagrams at high density, however */
             }
             double dKE=LocalGasMechFBInfoTemp[j].KE_injected, dp[3];
             if(dKE != 0 || LocalGasMechFBInfoTemp[j].p_injected[0] != 0 || LocalGasMechFBInfoTemp[j].p_injected[1] != 0 || LocalGasMechFBInfoTemp[j].p_injected[2] != 0 )

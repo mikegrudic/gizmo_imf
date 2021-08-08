@@ -1038,13 +1038,14 @@ void rt_set_simple_inits(int RestartFlag)
 #endif
                 
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                double q_a = (0.75*All.Grain_Q_at_MaxGrainSize) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
+                double q_a = (0.75*All.Grain_Q_at_MaxGrainSize) / (All.Grain_Internal_Density*All.Grain_Size_Max), e0 = All.Vertical_Grain_Accel / q_a, kappa_0 = All.Grain_Absorbed_vs_Total_Extinction * q_a * All.Dust_to_Gas_Mass_Ratio, cell_vol = (P[i].Mass/SphP[i].Density);
                 double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
 #endif
-                double E_cell = e0 * cell_vol * exp(-kappa_0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
-                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k] = E_cell;
+                double E_cell_x, E_cell = cell_vol * e0 * exp(-kappa_0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); E_cell_x=E_cell // attenuate according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+                //E_cell_x = cell_vol * (3.*All.Vertical_Grain_Accel*All.Dust_to_Gas_Mass_Ratio*rho_base_setup*H_scale_setup) * exp(-P[i].Pos[2]/H_scale_setup); // equilibrium expectation for multiple-scattering, optically thick problem [different from the above] -- need to choose which is most appropriate //
+                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k] = E_cell_x;
 #if defined(RT_EVOLVE_FLUX)
                 SphP[i].Rad_Flux_Pred[k][2]=SphP[i].Rad_Flux[k][2] = E_cell*C_LIGHT_CODE_REDUCED;
                 SphP[i].Rad_Flux[k][0]=SphP[i].Rad_Flux[k][1]=SphP[i].Rad_Flux_Pred[k][0]=SphP[i].Rad_Flux_Pred[k][1]=0;
