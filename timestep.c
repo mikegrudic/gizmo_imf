@@ -430,6 +430,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(GRAIN_BACKREACTION)
         if(6.*P[p].Grain_AccelTimeMin < dt_courant) {dt_courant = 6.*P[p].Grain_AccelTimeMin;}
 #endif
+#if defined(GRAIN_LORENTZFORCE) && defined(GRAIN_RDI_TESTPROBLEM)
+        if(All.Grain_Charge_Parameter != 0) {double bmag=0; for(k=0;k<3;k++) {bmag += P[p].Gas_B[k]*P[p].Gas_B[k];}
+            if(bmag>0) {double dt_gyro = 0.5 / ((All.Grain_Charge_Parameter/All.Grain_Size_Max) * pow(All.Grain_Size_Max/P[i].Grain_Size,2) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}}
+#endif
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {
