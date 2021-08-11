@@ -127,7 +127,7 @@ void blackhole_end(void)
 /* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) */
 double bh_eddington_mdot(double bh_mass)
 {
-    return (4*M_PI * GRAVITY_G * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C_LIGHT * THOMPSON)) * bh_mass * UNIT_TIME_IN_CGS;
+    return (4*M_PI * GRAVITY_G_CGS * PROTONMASS_CGS / (All.BlackHoleRadiativeEfficiency * C_LIGHT_CGS * THOMPSON_CX_CGS)) * bh_mass * UNIT_TIME_IN_CGS;
 }
 
 

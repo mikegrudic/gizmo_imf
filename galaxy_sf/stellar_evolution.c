@@ -98,7 +98,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     double l_sol=bh_lum_bol(0,P[i].Mass,i)*(UNIT_LUM_IN_SOLAR), m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
     double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25), x0=157800./T_eff, fion=0; // ZAMS effective temperature; x0=h*nu/kT for nu>13.6 eV; fion=fraction of blackbody emitted above x0
     if(x0 < 30.) {double q=18./(x0*x0) + 1./(8. + x0 + 20.*exp(-x0/10.)); fion = exp(-1./q);} // accurate to <10% for a Planck spectrum to x0>30, well into vanishing flux //
-    return fion * l_sol * SOLAR_LUM; // return value in cgs, as desired for this routine [l_sol is in L_sun, by definition above] //
+    return fion * l_sol * SOLAR_LUM_CGS; // return value in cgs, as desired for this routine [l_sol is in L_sun, by definition above] //
 
 #else /* STELLAR POPULATION VERSION: use updated SB99 tracks: including rotation, new mass-loss tracks, etc. */
 
@@ -112,7 +112,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
         lm_ssp *= calculate_relative_light_to_mass_ratio_from_imf(star_age, i);
 #endif
         if(star_age >= tmax) {return 0;} // skip since old stars don't contribute
-        return lm_ssp * SOLAR_LUM * (P[i].Mass*UNIT_MASS_IN_SOLAR); // converts to cgs luminosity [lm_ssp is in Lsun/Msun, here]
+        return lm_ssp * SOLAR_LUM_CGS * (P[i].Mass*UNIT_MASS_IN_SOLAR); // converts to cgs luminosity [lm_ssp is in Lsun/Msun, here]
     } // (P[i].Type != 5)
 #ifdef BH_HII_HEATING /* AGN template: light-to-mass ratio L(>13.6ev)/Mparticle in Lsun/Msun, above is dNion/dt = 5.5e54 s^-1 (Lbol/1e45 erg/s) */
     if(P[i].Type == 5) {return 0.18 * bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i) * UNIT_LUM_IN_CGS;}
@@ -1033,7 +1033,7 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
     double mass=m*UNIT_MASS_IN_SOLAR;//in units of solar mass
     double Pc_cgs=Pc*All.cf_a3inv*UNIT_PRESSURE_IN_CGS, rhoc_cgs=rhoc*All.cf_a3inv*UNIT_DENSITY_IN_CGS;
     if(n_ad==3.0) {// In this case we solve the Eddington quartic, P_c^3 = (3/a) (k / (mu mH))^4 (1 - beta) / beta^4 rho_c^4 for beta
-        int JMAX=40, j; double BETAMIN=1.0e-4, BETAMAX=1.0, TOL=1.0e-7, dx, f, fmid, xmid, rtb, x1=BETAMIN, x2=BETAMAX, coef=3.0/7.56e-15*pow(BOLTZMANN*rhoc_cgs/(0.613*PROTONMASS),4);
+        int JMAX=40, j; double BETAMIN=1.0e-4, BETAMAX=1.0, TOL=1.0e-7, dx, f, fmid, xmid, rtb, x1=BETAMIN, x2=BETAMAX, coef=3.0/7.56e-15*pow(BOLTZMANN_CGS*rhoc_cgs/(0.613*PROTONMASS_CGS),4);
         f = pow(Pc_cgs,3) - coef * (1.0-x1)/pow(x1,4); fmid = pow(Pc_cgs,3) - coef * (1.0-x2)/pow(x2,4); rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
         for (j=1;j<=JMAX;j++) {
           xmid=rtb+(dx *= 0.5); fmid = pow(Pc_cgs,3) - coef * (1.0-xmid)/pow(xmid,4);
@@ -1086,14 +1086,14 @@ double ps_adiabatic_index(int stage, double mdot){
 /* Calculate central temperature for protostar by solving Pc = rho_c*kb*Tc/(mu*mH)+1/3*a*Tc^4 using bisection, based on Offner 2009 Eq B14, code taken from ORION */
 double ps_Tc(double rhoc, double Pc) {
     int JMAX=40; double TOL=1.0e-7; // max number of iterations, and error tolerance, respectively
-    double Pc_cgs=Pc*All.cf_a3inv*UNIT_PRESSURE_IN_CGS, rhoc_cgs=rhoc*All.cf_a3inv*UNIT_DENSITY_IN_CGS, Tgas=Pc_cgs*0.613*PROTONMASS/(BOLTZMANN*rhoc_cgs), Trad=pow(3*Pc_cgs/7.56e-15, 0.25), dx, f, fmid, xmid, rtb, x1=0, x2; int j;
+    double Pc_cgs=Pc*All.cf_a3inv*UNIT_PRESSURE_IN_CGS, rhoc_cgs=rhoc*All.cf_a3inv*UNIT_DENSITY_IN_CGS, Tgas=Pc_cgs*0.613*PROTONMASS_CGS/(BOLTZMANN_CGS*rhoc_cgs), Trad=pow(3*Pc_cgs/7.56e-15, 0.25), dx, f, fmid, xmid, rtb, x1=0, x2; int j;
     x2 = (Trad > Tgas) ? 2*Trad : Tgas;
-    f = Pc_cgs - rhoc_cgs*BOLTZMANN*x1/(0.613*PROTONMASS) - 7.56e-15*pow(x1,4)/3.0;
-    fmid=Pc_cgs - rhoc_cgs*BOLTZMANN*x2/(0.613*PROTONMASS) - 7.56e-15*pow(x2,4)/3.0;
+    f = Pc_cgs - rhoc_cgs*BOLTZMANN_CGS*x1/(0.613*PROTONMASS_CGS) - 7.56e-15*pow(x1,4)/3.0;
+    fmid=Pc_cgs - rhoc_cgs*BOLTZMANN_CGS*x2/(0.613*PROTONMASS_CGS) - 7.56e-15*pow(x2,4)/3.0;
     rtb = f < 0.0 ? (dx=x2-x1,x1) : (dx=x1-x2,x2);
     for (j=1;j<=JMAX;j++) {
         xmid=rtb+(dx *= 0.5);
-        fmid = Pc_cgs - rhoc_cgs*BOLTZMANN*xmid/(0.613*PROTONMASS) - 7.56e-15*pow(xmid,4)/3.0;
+        fmid = Pc_cgs - rhoc_cgs*BOLTZMANN_CGS*xmid/(0.613*PROTONMASS_CGS) - 7.56e-15*pow(xmid,4)/3.0;
         if (fmid <= 0.0) rtb=xmid;
         if (fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
     }
@@ -1114,7 +1114,7 @@ double ps_Pc(double m, double n_ad, double r) {
 /* Calculate the mean ratio of the gas pressure to the gas+radiation pressure at the center, based on Offner 2009, code taken from ORION */
 double ps_betac(double rhoc, double Pc, double Tc) {
     double Pc_cgs=Pc*All.cf_a3inv*UNIT_PRESSURE_IN_CGS, rhoc_cgs=rhoc*All.cf_a3inv*UNIT_DENSITY_IN_CGS;
-    return (rhoc_cgs*BOLTZMANN*Tc/(0.613*PROTONMASS) / Pc_cgs);
+    return (rhoc_cgs*BOLTZMANN_CGS*Tc/(0.613*PROTONMASS_CGS) / Pc_cgs);
 }
 /* Calculate dlog(beta)/dlog(m) by taking a numerical derivative, based on Offner 2009, code taken from ORION */
 double ps_dlogbeta_dlogm(double m, double r, double n_ad, double beta, double rhoc, double Pc) {

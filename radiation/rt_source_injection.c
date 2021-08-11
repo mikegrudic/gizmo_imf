@@ -267,9 +267,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif
 
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
-                    {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += dE * ((C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*local.Vel[kv]/All.cf_atime);}}
+                    {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += dE * (RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*local.Vel[kv]/All.cf_atime);}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                    {double dflux=dE*C_LIGHT_CODE_REDUCED; dfluxes[2] += dflux;}
+                    {double dflux=dE*C_LIGHT_CODE_REDUCED; dfluxes[2] += dflux;} // ???
 #endif
                     {int kv; for(kv=0;kv<3;kv++) {
                         #pragma omp atomic
