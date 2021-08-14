@@ -223,7 +223,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         {
             dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-	    if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
+            if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
             if(dt<=0) {continue;} // don't keep going with this loop
 

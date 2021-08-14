@@ -55,7 +55,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
     dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-    if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
+    if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
 #if defined(RT_EVOLVE_FLUX)
     for(k=0; k<3; k++) {if(P[i].Type==0) {in->Vel[k] = SphP[i].VelPred[k];} else {in->Vel[k] = P[i].Vel[k];}}
@@ -269,7 +269,23 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += dE * (RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*local.Vel[kv]/All.cf_atime);}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                    {double dflux=dE*C_LIGHT_CODE_REDUCED; dfluxes[2] += dflux;} // ???
+                    double e0 =  (P[j].Mass/SphP[j].Density) * All.Vertical_Grain_Accel*(All.Grain_Internal_Density*All.Grain_Size_Max)/(0.75*All.Grain_Q_at_MaxGrainSize), f0 = C_LIGHT_CODE_REDUCED * DMAX( e0 , SphP[j].Rad_E_gamma[k] );
+                    dfluxes[0]=0; dfluxes[1]=0; dfluxes[2]=f0; /* for now, for this special problem setup, we have everything hard-coded here to ensure it obeys the desired flux boundary condition */
+                    {
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux[k][0]=0;
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux[k][1]=0;
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux[k][2]=0;
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux_Pred[k][0]=0;
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux_Pred[k][1]=0;
+                        #pragma omp atomic
+                        SphP[j].Rad_Flux_Pred[k][2]=0;
+                    }
+                    //{double dflux=dE*C_LIGHT_CODE_REDUCED; dfluxes[2] += dflux;}
 #endif
                     {int kv; for(kv=0;kv<3;kv++) {
                         #pragma omp atomic

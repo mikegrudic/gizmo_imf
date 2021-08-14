@@ -1416,6 +1416,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_RAD_FLUX:
+#if defined(OUTPUT_RT_RAD_FLUX) && defined(RT_EVOLVE_FLUX)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k=0;k<3;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {fp[N_RT_FREQ_BINS*k + kf] = (MyOutputFloat) (SphP[pindex].Rad_Flux_Pred[kf][k] * (SphP[pindex].Density*All.cf_a3inv/P[pindex].Mass));}}
+                    fp += 3*N_RT_FREQ_BINS;
+                    n++;
+                }
+#endif
+            break;
+
         case IO_RAD_ACCEL:
 #ifdef RT_RAD_PRESSURE_OUTPUT
             for(n = 0; n < pc; pindex++)
@@ -1851,6 +1863,15 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 #endif
             break;
 
+        case IO_RAD_FLUX:
+#ifdef RADTRANSFER
+            if(mode)
+                bytes_per_blockelement = (3*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
+            else
+                bytes_per_blockelement = (3*N_RT_FREQ_BINS) * sizeof(MyOutputFloat);
+#endif
+            break;
+
         case IO_EDDINGTON_TENSOR:
 #ifdef RADTRANSFER
             if(mode)
@@ -2111,6 +2132,12 @@ int get_values_per_blockelement(enum iofields blocknr)
 #endif
             break;
 
+        case IO_RAD_FLUX:
+#ifdef RADTRANSFER
+            values = (3*N_RT_FREQ_BINS);
+#endif
+            break;
+
         case IO_RADGAMMA:
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
             values = N_RT_FREQ_BINS;
@@ -2231,6 +2258,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_PARTVEL:
         case IO_RAD_ACCEL:
         case IO_RADGAMMA:
+        case IO_RAD_FLUX:
         case IO_EDDINGTON_TENSOR:
         case IO_U:
         case IO_RHO:
@@ -2412,6 +2440,12 @@ int blockpresent(enum iofields blocknr)
 
         case IO_RADGAMMA:
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+            return 1;
+#endif
+            break;
+
+        case IO_RAD_ACCEL:
+#if defined(OUTPUT_RT_RAD_FLUX) && defined(RT_EVOLVE_FLUX)
             return 1;
 #endif
             break;
@@ -3217,6 +3251,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_RADGAMMA:
             strncpy(label, "RADG", 4);
             break;
+        case IO_RAD_FLUX:
+            strncpy(label, "RADF", 4);
+            break;
         case IO_RAD_ACCEL:
             strncpy(label, "RADA", 4);
             break;
@@ -3338,6 +3375,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_RADGAMMA:
             strcpy(buf, "PhotonEnergy");
+            break;
+        case IO_RADFLUX:
+            strcpy(buf, "PhotonFluxDensity");
             break;
         case IO_RAD_ACCEL:
             strcpy(buf, "RadiativeAcceleration");

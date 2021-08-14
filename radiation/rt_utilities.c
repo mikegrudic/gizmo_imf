@@ -592,7 +592,7 @@ void rt_eddington_update_calculation(int j)
         if(f_chifac < 0) {f_chifac=0;}
         if(fmag_j <= 0) {f_chifac = 0;}
         // restrict values of f_chifac to physical range.
-        double f_min = 0.01, f_max = 0.99;
+        double f_min = 0.01, f_max = 0.9999;
         if((f_chifac < f_min) || (isnan(f_chifac))) {f_chifac = f_min;}
         if(f_chifac > f_max) {f_chifac = f_max;}
         double chi_j = (3.+4.*f_chifac*f_chifac) / (5. + 2.*sqrt(4. - 3.*f_chifac*f_chifac));
@@ -701,6 +701,12 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             if(mode==0) {e0 = SphP[i].Rad_E_gamma[kf];} else {e0 = SphP[i].Rad_E_gamma_Pred[kf];}
             dt_e_gamma_band = SphP[i].Dt_Rad_E_gamma[kf];
 #endif
+#ifdef RT_COMOVING
+            double ET_dotdot_GradVcom = SphP[i].ET[kf][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].ET[kf][1]*SphP[i].Gradients.Velocity[1][1] + SphP[i].ET[kf][2]*SphP[i].Gradients.Velocity[2][2]
+                + SphP[i].ET[kf][3]*(SphP[i].Gradients.Velocity[0][1]+SphP[i].Gradients.Velocity[1][0]) + SphP[i].ET[kf][4]*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2]) + SphP[i].ET[kf][5]*(SphP[i].Gradients.Velocity[0][2]+SphP[i].Gradients.Velocity[2][0]);
+            double VolP_dotdot_GradV = e0 * ET_dotdot_GradVcom * All.cf_a2inv; // convert to physical units and multiply by radiation energy density to get into appropriate units
+            dt_e_gamma_band += (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * (-VolP_dotdot_GradV); // account for RSOL term here as usual
+#endif
             total_de_dt = SphP[i].Rad_Je[kf] + dt_e_gamma_band;
 
 #ifdef RT_INFRARED
@@ -752,7 +758,6 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             if((dt_entr <= 0.)||(a0 >= 0.)||(abs_0 <= 0.)) {abs_0=0.; slabfac=e_abs_0=1.;} else {if(abs_0 < 1.e-5) {slabfac=1.-0.5*abs_0; e_abs_0 = 1.-abs_0;} else {if(abs_0 > 100.) {slabfac = 1./abs_0; e_abs_0 = 0.;}}}
             double e0_postabs = e0*e_abs_0, de_postabs = total_de_dt * dt_entr * slabfac, f_min = 0.01;
             if(e0_postabs+de_postabs < f_min*e0_postabs) {slabfac *= fabs((1.-f_min)*e0_postabs)/(fabs(de_postabs)+MIN_REAL_NUMBER);}
-            //slabfac = 1; // older less-accurate methods needed this for optically-thick problems, but now deal with avoiding overshoot differently ???
             
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
             if((ef < 0)||(isnan(ef))) {ef=0;}
@@ -771,7 +776,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 {
                     radacc[kx] = -dt_entr * slabfac_rp * return_flux_limiter(i,kf) * (SphP[i].Gradients.Rad_E_gamma_ET[kf][kx] / SphP[i].Density) / All.cf_atime; // naive radiation-pressure calc for FLD methods [physical units]
                     rmag += radacc[kx]*radacc[kx]; // compute magnitude
-                    if(mode==0) {vel_i[kx]=(C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*P[i].Vel[kx]/All.cf_atime;} else {vel_i[kx]=(C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*SphP[i].VelPred[kx]/All.cf_atime;} // ???[for comoving]??? note this is the 'effective' u appearing in the RHD equations for an RSOL, care needed with these factors!
+                    if(mode==0) {vel_i[kx]=(C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*P[i].Vel[kx]/All.cf_atime;} else {vel_i[kx]=(C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*SphP[i].VelPred[kx]/All.cf_atime;} // [for comoving] note this is the 'effective' u appearing in the RHD equations for an RSOL, care needed with these factors!
                 }
                 if(rmag > 0)
                 {
