@@ -2444,7 +2444,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_RAD_ACCEL:
+        case IO_RAD_FLUX:
 #if defined(OUTPUT_RT_RAD_FLUX) && defined(RT_EVOLVE_FLUX)
             return 1;
 #endif
