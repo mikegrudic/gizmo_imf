@@ -3376,7 +3376,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_RADGAMMA:
             strcpy(buf, "PhotonEnergy");
             break;
-        case IO_RADFLUX:
+        case IO_RAD_FLUX:
             strcpy(buf, "PhotonFluxDensity");
             break;
         case IO_RAD_ACCEL:
