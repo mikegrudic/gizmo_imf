@@ -567,7 +567,7 @@ void apply_special_boundary_conditions(int i, double mass_for_dp, int mode)
             if(special_boundary_condition_xyz_def_reflect[j] == 0 || special_boundary_condition_xyz_def_reflect[j] == -1)
             {
                 if(P[i].Vel[j]<0) {P[i].Vel[j]=-P[i].Vel[j]; if(P[i].Type==0) {SphP[i].VelPred[j]=P[i].Vel[j]; SphP[i].HydroAccel[j]=0;} if(mode==1) {P[i].dp[j]+=2*P[i].Vel[j]*mass_for_dp;}}
-                P[i].Pos[j]=DMAX((0.+((double)P[i].ID)*2.e-8)*box_upper[j], 0.1*P[i].Pos[j]) // old  was 1e-9, safer on some problems, but can artificially lead to 'trapping' in some low-res tests
+                P[i].Pos[j]=DMAX((0.+((double)P[i].ID)*2.e-8)*box_upper[j], 0.1*P[i].Pos[j]); // old  was 1e-9, safer on some problems, but can artificially lead to 'trapping' in some low-res tests
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
                 P[i].Pos[j]+=3.e-3*boxSize_X; P[i].Vel[j] += 0.1; /* special because of our wierd boundary condition for this problem, sorry to have so many hacks for this! */
 #endif
