@@ -608,7 +608,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double n0 = rho_j*density_to_n; if(n0 < 0.001) {n0=0.001;}
                     double z0 = Metallicity_j[0]/All.SolarAbundances[0];
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                    double nz_dep = 3. * pow(n0, 0.143) * pow(DMAX(z0,1.e-40, 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
+                    double nz_dep = 3. * pow(n0, 0.143) * pow(DMAX(z0,1.e-4), 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
                     v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS;
 #else
                     if(z0 < 0.01) {z0 = 0.01;}
