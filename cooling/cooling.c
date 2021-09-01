@@ -134,11 +134,7 @@ void do_the_cooling_for_particle(int i)
         DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , -0.99*SphP[i].InternalEnergy/dtime ); // equivalent to saying this wouldn't lower internal energy to below 1% in one timestep
         DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
-        DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC);
-        
-        /* now decide if we need to split this particular cell on this particular timestep, since this un-split solver can lead to energy conservation problems if the mechanical heating is much larger than cooling */
-        SphP[i].CoolingIsOperatorSplitThisTimestep=1;
-        if(DtInternalEnergyEffCGS < 1.e-23*SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS) {SphP[i].CoolingIsOperatorSplitThisTimestep=0;} // cooling is fast compared to the hydro work term, or the hydro term is negative [cooling], so un-split the operation
+        DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS_CGS/HYDROGEN_MASSFRAC);
         if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
 #endif
 
@@ -178,7 +174,7 @@ void do_the_cooling_for_particle(int i)
 
         
 #ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term] */
-        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS;	/* hydrogen number dens in cgs units */
+        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
         double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS); /* need to account for RSOL factors in emission/absorption rates */
         double de_u = -SphP[i].LambdaDust * ratefact * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation */
         if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
@@ -189,7 +185,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux:
 #if defined(RT_EVOLVE_FLUX)
-        for(kv=0;kv<3;kv++) {double fluxfac = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*SphP[i].VelPred[kv]/All.cf_atime * de_u;
+        for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_u;
             SphP[i].Rad_Flux[RT_FREQ_BIN_INFRARED][kv] += fluxfac; SphP[i].Rad_Flux_Pred[RT_FREQ_BIN_INFRARED][kv] += fluxfac;}
 #endif
         double momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
@@ -242,7 +238,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
      into the cooling subroutine. instead, we will use the approximate treatment below to split the step */
     if(SphP[target].CoolingIsOperatorSplitThisTimestep==0)
     {
-        du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS/HYDROGEN_MASSFRAC));
+        du = dt * SphP[target].DtInternalEnergy / ( (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS_CGS/HYDROGEN_MASSFRAC));
         u_old += 0.5*du;
         u = CallGrackle(u_old, rho, dt, ne_guess, target, 0);
         /* now we attempt to correct for what the solution would have been if we had included the remaining half-step heating
@@ -270,7 +266,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     chimes_network(&(ChimesGasVars[target]), &ChimesGlobalVars);
 
     // Compute updated internal energy
-    u = (double) ChimesGasVars[target].temperature * BOLTZMANN / ((GAMMA(target)-1) * PROTONMASS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars));
+    u = (double) ChimesGasVars[target].temperature * BOLTZMANN_CGS / ((GAMMA(target)-1) * PROTONMASS_CGS * calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars));
     u /= UNIT_SPECEGY_IN_CGS;  // code units
 
 #ifdef CHIMES_TURB_DIFF_IONS 
@@ -288,7 +284,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho;
 
     u = u_old; u_lower = u; u_upper = u; /* initialize values */
@@ -374,7 +370,7 @@ double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
 #else
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     double LambdaNet = CoolingRateFromU(u_old, rho, ne_guess, target);
     if(LambdaNet >= 0) {return 0;} /* net heating due to UV background */
     return u_old / (-(nHcgs * nHcgs / rho) * LambdaNet) / UNIT_TIME_IN_CGS;
@@ -395,7 +391,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
     u *= UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
     fac /= UNIT_SPECEGY_IN_CGS;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho * fac;
     m = m_old; m_lower = m; m_upper = m;
     LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
@@ -443,7 +439,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
 /* This function converts thermal energy to temperature, using the mean molecular weight computed from the non-equilibrium CHIMES abundances. */
 double chimes_convert_u_to_temp(double u, double rho, int target)
 {
-  return u * (GAMMA(target)-1) * PROTONMASS * ((double) calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)) / BOLTZMANN;
+  return u * (GAMMA(target)-1) * PROTONMASS_CGS * ((double) calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)) / BOLTZMANN_CGS;
 }
 
 #else  // CHIMES
@@ -455,7 +451,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
     int iter = 0;
     double temp, temp_old, temp_old_old = 0, temp_new, prefac_fun_old, prefac_fun, fac, err_old, err_new, T_bracket_errneg = 0, T_bracket_errpos = 0, T_bracket_min = 0, T_bracket_max = 1.e20, bracket_sign = 0; // double max = 0;
     double u_input = u, rho_input = rho, temp_guess;
-    double T_0 = u * PROTONMASS / BOLTZMANN; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
+    double T_0 = u * PROTONMASS_CGS / BOLTZMANN_CGS; // this is the dimensional temperature, which since u is fixed is -frozen- in this calculation: we can work dimensionlessly below
     temp_guess = (GAMMA(target)-1) * T_0; // begin assuming mu ~ 1
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp_guess, rho, nH0_guess, ne_guess, 0., target); // get mu with that temp
     prefac_fun = (GAMMA(target)-1) * (*mu_guess); // dimensionless pre-factor determining the temperature
@@ -585,7 +581,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     }
     /* CAFG: this is the density that we should use for UV background threshold */
     double local_gammamultiplier = return_local_gammamultiplier(target); // account for local UVB terms in some expressions below
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     if(shieldfac < 0) {shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);} // if < 0, that's a key to tell us this needs to be recalculated
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
@@ -642,7 +638,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         if(target >= 0)
         {
             int k;
-            c_light_ne = C_LIGHT / ((MIN_REAL_NUMBER + necgs) * UNIT_LENGTH_IN_CGS); // want physical cgs units for quantities below
+            c_light_ne = C_LIGHT_CGS / ((MIN_REAL_NUMBER + necgs) * UNIT_LENGTH_IN_CGS); // want physical cgs units for quantities below
             double gJH0ne_0=gJH0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHe0ne_0=gJHe0 * local_gammamultiplier / (MIN_REAL_NUMBER + necgs), gJHepne_0=gJHep * local_gammamultiplier / (MIN_REAL_NUMBER + necgs); // need a baseline, so we don't over-shoot below
             gJH0ne = DMAX(gJH0ne, EPSILON_SMALL); if(!isfinite(gJH0ne)) {gJH0ne=0;} // need traps here b/c very small numbers assigned in some newer TREECOOL versions cause a nan underflow
             gJHe0ne = DMAX(gJHe0ne, EPSILON_SMALL); if(!isfinite(gJHe0ne)) {gJHe0ne=0;}
@@ -813,7 +809,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal;
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS;	/* hydrogen number dens in cgs units */
+    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     LambdaMol=0; LambdaMetal=0; LambdaCompton=0; 
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
@@ -847,7 +843,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 
 #if defined(RT_CHEM_PHOTOION) || defined(RT_PHOTOELECTRIC)
-    double cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS * UNIT_MASS_IN_CGS; // pre-factor for converting cross sections into opacities
+    double cx_to_kappa = HYDROGEN_MASSFRAC / PROTONMASS_CGS * UNIT_MASS_IN_CGS; // pre-factor for converting cross sections into opacities
 #endif
     if(logT < Tmax)
     {
@@ -975,7 +971,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         /* add in photons from explicit radiative transfer (on top of assumed background) */
         if((target >= 0) && (nHcgs > MIN_REAL_NUMBER))
         {
-            int k; double c_light_nH = C_LIGHT / (nHcgs * UNIT_LENGTH_IN_CGS) * UNIT_ENERGY_IN_CGS; // want physical cgs units for quantities below
+            int k; double c_light_nH = C_LIGHT_CGS / (nHcgs * UNIT_LENGTH_IN_CGS) * UNIT_ENERGY_IN_CGS; // want physical cgs units for quantities below
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2))
@@ -1090,7 +1086,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
         surface_density *= 0.2 * UNIT_SURFDEN_IN_CGS; // converts to cgs; 0.2 is a tuning factor so that the Masunaga & Inutsuka 2000 solution is reproduced
-        double effective_area = 2.3 * PROTONMASS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
+        double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
         if(T < 1500.)
         {
@@ -1661,7 +1657,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
     // define a number of variables needed in the shielding module
     double dx_cell = Get_Particle_Size(i) * All.cf_atime; // cell size
-    double surface_density_H2_0 = 5.e14 * PROTONMASS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
+    double surface_density_H2_0 = 5.e14 * PROTONMASS_CGS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
     w0 = 0.035; // actual calibration from Drain, Gnedin, Richings, others: 0.2 is more appropriate as a re-calibration for sims doing local eqm without ability to resolve shielding at higher columns
     //double surface_density_local = xH0 * SphP[i].Density * All.cf_a3inv * dx_cell * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth through the local cell/slab. note G0 is -already- attenuated in the pre-processing by dust.
     double surface_density_local = xH0 * evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth to infinity with our Sobolev-type approximation. Note G0 is already attenuated by dust, but we need to include H2 self-shielding, for which it is appropriate to integrate to infinity.
@@ -1864,8 +1860,8 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 #endif
     /* Regime I: highly/photo-ionized, any contributions here would be negligible -- no need to continue */
     if(n_elec_HHe > 0.01) {return n_ion_max;} // contribute something negligible, doesn't matter here //
-    double a_grain_micron=0.1, m_ion=24.305*PROTONMASS, mu_eff=2.38, m_neutrals=mu_eff*PROTONMASS, m_grain=4.189e-12*(2.4)*a_grain_micron*a_grain_micron*a_grain_micron, ngrain_ngas=(m_neutrals/m_grain)*f_dustgas; // effective size of grains that matter at these densities, and ions [here Mg] that dominate
-    double k_ei=9.77e-8, y=sqrt(m_ion/ELECTRONMASS), ln_y=log(y), psi_0=-ln_y+(1.+ln_y)*log(1.+ln_y)/(2.+ln_y), k_eg_00=0.0195*a_grain_micron*a_grain_micron*sqrt(temperature), k_eg_0=k_eg_00*exp(psi_0), n_crit=k_ei*zeta_cr/(k_eg_0*ngrain_ngas*k_eg_0*ngrain_ngas), n_eff=density_cgs/m_neutrals;
+    double a_grain_micron=0.1, m_ion=24.305*PROTONMASS_CGS, mu_eff=2.38, m_neutrals=mu_eff*PROTONMASS_CGS, m_grain=4.189e-12*(2.4)*a_grain_micron*a_grain_micron*a_grain_micron, ngrain_ngas=(m_neutrals/m_grain)*f_dustgas; // effective size of grains that matter at these densities, and ions [here Mg] that dominate
+    double k_ei=9.77e-8, y=sqrt(m_ion/ELECTRONMASS_CGS), ln_y=log(y), psi_0=-ln_y+(1.+ln_y)*log(1.+ln_y)/(2.+ln_y), k_eg_00=0.0195*a_grain_micron*a_grain_micron*sqrt(temperature), k_eg_0=k_eg_00*exp(psi_0), n_crit=k_ei*zeta_cr/(k_eg_0*ngrain_ngas*k_eg_0*ngrain_ngas), n_eff=density_cgs/m_neutrals;
 
     /* Regime II: CR-ionized with high enough ionization fraction that gas-phase recombinations dominate */
     if(n_eff < 0.01*n_crit) {return DMIN(n_ion_max , sqrt(zeta_cr / (k_ei * n_eff)) / (XH*mu_eff) );} // CR-dominated off gas with recombination -- put into appropriate units here
@@ -1952,7 +1948,7 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 #ifdef BH_COMPTON_HEATING /* custom band to represent (non)relativistic X-ray compton cooling from an AGN source without full RHD */
     if(target >= 0)
     {
-        double e_agn = (SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS) / (C_LIGHT * ELECTRONVOLT_IN_ERGS), T_agn=2.e7; /* approximate from Sazonov et al. */
+        double e_agn = (SphP[target].Rad_Flux_AGN * UNIT_FLUX_IN_CGS) / (C_LIGHT_CGS * ELECTRONVOLT_IN_ERGS), T_agn=2.e7; /* approximate from Sazonov et al. */
         Lambda += compton_prefac_eV * e_agn * (T-T_agn); // since the heating here is primarily hard X-rays, and the cooling only relevant for very high temps, do not have an n_elec here
     }
 #endif
@@ -2058,7 +2054,7 @@ void chimes_update_gas_vars(int target)
 #endif
 
   ChimesGasVars[target].temperature = (ChimesFloat) chimes_convert_u_to_temp(u_old_cgs, rho_cgs, target);
-  ChimesGasVars[target].nH_tot = (ChimesFloat) (H_mass_fraction * rho_cgs / PROTONMASS);
+  ChimesGasVars[target].nH_tot = (ChimesFloat) (H_mass_fraction * rho_cgs / PROTONMASS_CGS);
   ChimesGasVars[target].ThermEvolOn = All.ChimesThermEvolOn;
 
   // If there is an EoS, need to set TempFloor to that instead.
@@ -2083,11 +2079,11 @@ void chimes_update_gas_vars(int target)
   int kc;
   for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++)
     {
-      ChimesGasVars[target].isotropic_photon_density[kc + 1] = (ChimesFloat) (SphP[target].Chimes_fluxPhotIon[kc] / C_LIGHT);
+      ChimesGasVars[target].isotropic_photon_density[kc + 1] = (ChimesFloat) (SphP[target].Chimes_fluxPhotIon[kc] / C_LIGHT_CGS);
 
 #ifdef CHIMES_HII_REGIONS
     if(SphP[target].DelayTimeHII > 0) {
-        ChimesGasVars[target].isotropic_photon_density[kc + 1] += (ChimesFloat) (SphP[target].Chimes_fluxPhotIon_HII[kc] / C_LIGHT);
+        ChimesGasVars[target].isotropic_photon_density[kc + 1] += (ChimesFloat) (SphP[target].Chimes_fluxPhotIon_HII[kc] / C_LIGHT_CGS);
         ChimesGasVars[target].G0_parameter[kc + 1] = (ChimesFloat) ((SphP[target].Chimes_G0[kc] + SphP[target].Chimes_G0_HII[kc]) / DMAX((SphP[target].Chimes_fluxPhotIon[kc] + SphP[target].Chimes_fluxPhotIon_HII[kc]), 1.0e-300));
 	} else {ChimesGasVars[target].G0_parameter[kc + 1] = (ChimesFloat) (SphP[target].Chimes_G0[kc] / DMAX(SphP[target].Chimes_fluxPhotIon[kc], 1.0e-300));}
     ChimesGasVars[target].H2_dissocJ[kc + 1] = (ChimesFloat) (ChimesGasVars[target].G0_parameter[kc + 1] * (chimes_table_spectra.H2_dissocJ[kc + 1] / chimes_table_spectra.G0_parameter[kc + 1]));
@@ -2111,8 +2107,7 @@ void chimes_update_gas_vars(int target)
   ChimesGasVars[target].divVel = (ChimesFloat) fabs(ChimesGasVars[target].divVel);
 
 #ifndef COOLING_OPERATOR_SPLIT
-  if(SphP[target].CoolingIsOperatorSplitThisTimestep==0)
-  {ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);}
+  if(SphP[target].CoolingIsOperatorSplitThisTimestep==0) {ChimesGasVars[target].constant_heating_rate = ChimesGasVars[target].nH_tot * ((ChimesFloat) SphP[target].DtInternalEnergy);}
 #else
   ChimesGasVars[target].constant_heating_rate = 0.0;
 #endif
@@ -2203,7 +2198,7 @@ void chimes_update_element_abundances(int i)
 void chimes_update_turbulent_abundances(int i, int mode)
 {
   int k_species;
-  double NHtot = (1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1])) * (P[i].Mass * UNIT_MASS_IN_CGS) / PROTONMASS;
+  double NHtot = (1.0 - (P[i].Metallicity[0] + P[i].Metallicity[1])) * (P[i].Mass * UNIT_MASS_IN_CGS) / PROTONMASS_CGS;
 
   if (mode == 0)
     {

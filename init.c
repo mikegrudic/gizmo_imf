@@ -322,6 +322,14 @@ void init(void)
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 a0 *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                double q_a = (0.75*All.Grain_Q_at_MaxGrainSize) / (All.Grain_Internal_Density*All.Grain_Size_Max), kappa_0 = All.Grain_Absorbed_Fraction_vs_Total_Extinction * q_a * All.Dust_to_Gas_Mass_Ratio;
+                double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+                kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
+#endif
+                a0 *= exp(-kappa_0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); // attenuate incident flux (and reduce acceleration) according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+#endif
                 w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
                 double Bmag, tL_i=0, tau2_0=0, f_tau_guess2=0; B[0]=All.BiniX; B[1]=All.BiniY; B[2]=All.BiniZ; Bmag=sqrt(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]); B[0]/=Bmag; B[1]/=Bmag; B[2]/=Bmag;
@@ -336,9 +344,7 @@ void init(void)
 #endif
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
                 A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
-#if !defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
                 for(k=0;k<3;k++) {P[i].Vel[k]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
-#endif
 #ifdef BOX_SHEARING
                 // now add linearly the NHS drift solution for our shearing box setup
                 double v00 = -All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER);
@@ -592,7 +598,7 @@ void init(void)
             SphP[i].Ne = 1.0;
 #endif
 #if defined(COOL_MOLECFRAC_NONEQM)
-	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS;
+	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
         if(nHcgs > 10) {SphP[i].MolecularMassFraction = 1.0; SphP[i].MolecularMassFraction_perNeutralH = 1.0;} // dense ISM starts molecular - very approximate cutoff
             else {SphP[i].MolecularMassFraction = 0.0; SphP[i].MolecularMassFraction_perNeutralH = 0.0;} // otherwise start atomic
 #endif

@@ -127,7 +127,7 @@ void blackhole_end(void)
 /* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) */
 double bh_eddington_mdot(double bh_mass)
 {
-    return (4*M_PI * GRAVITY_G * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C_LIGHT * THOMPSON)) * bh_mass * UNIT_TIME_IN_CGS;
+    return (4*M_PI * GRAVITY_G_CGS * PROTONMASS_CGS / (All.BlackHoleRadiativeEfficiency * C_LIGHT_CGS * THOMPSON_CX_CGS)) * bh_mass * UNIT_TIME_IN_CGS;
 }
 
 
@@ -152,7 +152,7 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
         n = BlackholeTempInfo[i].index;
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-        if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
+        if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
         BPP(n).BH_Mdot=0;  /* always initialize/default to zero accretion rate */
         set_blackhole_long_range_rp(i, n);

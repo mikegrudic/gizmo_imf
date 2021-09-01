@@ -510,7 +510,7 @@ void begrun(void)
 void set_units(void)
 {
   /* convert some physical input parameters to internal units */
-  if(All.G <= 0) {All.G = GRAVITY_G * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
+  if(All.G <= 0) {All.G = GRAVITY_G_CGS * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
 #ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
@@ -572,12 +572,12 @@ void set_units(void)
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS/(PROTONMASS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
+    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS_CGS/(PROTONMASS_CGS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
     All.BulkViscosityCoeff = 0; // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif
     /* factor used for determining saturation */
     All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
-        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
+        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS_CGS, 3) / pow(ELECTRONCHARGE_CGS, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length

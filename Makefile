@@ -229,7 +229,7 @@ MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 ##
 ## module load TACC intel impi hdf5 gsl fftw2
-##  - note you cann choose to use FFTW3 now instead of FFTW2, but you will need to load that module and change the compiler link appropriately
+##  - note you can choose to use FFTW3 now instead of FFTW2, but you will need to load that module and change the compiler link appropriately
 ## note is you are using the KNL system it has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
 ##  - recommend running with ~16 mpi tasks/node. higher [32 or 64] usually involves a performance hit unless the problem is more scale-able;
 ##     use the remaining nodes in OPENMP. Do not use >64 MPI tasks/node [need ~4 cores free for management] and do not use >2 threads/core

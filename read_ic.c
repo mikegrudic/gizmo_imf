@@ -586,6 +586,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_LAST_CAUSTIC:
         case IO_HSMS:
         case IO_ACRB:
+        case IO_RAD_FLUX:
         case IO_VSTURB_DISS:
         case IO_VSTURB_DRIVE:
         case IO_grHI:

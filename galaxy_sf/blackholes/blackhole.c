@@ -664,7 +664,7 @@ void blackhole_final_operations(void)
 #if (BH_REPOSITION_ON_POTMIN == 2)
                 dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-		if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
+                if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
                 double dr_min=0; for(k=0;k<3;k++) {dr_min+=(BPP(n).BH_MinPotPos[k]-P[n].Pos[k])*(BPP(n).BH_MinPotPos[k]-P[n].Pos[k]);}
                 if(dr_min > 0 && dt > 0)
@@ -749,7 +749,7 @@ void blackhole_final_operations(void)
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-        if(P[i].Type == 5){dt = P[i].dt_since_last_gas_search;}
+        if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
         double dm = BPP(n).BH_Mdot * dt;
 #ifdef BH_DEBUG_FIX_MDOT_MBH

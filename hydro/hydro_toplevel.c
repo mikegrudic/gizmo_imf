@@ -782,7 +782,7 @@ void hydro_final_operations_and_cleanup(void)
                 erad_i = SphP[i].Rad_E_gamma_Pred[kfreq]*vol_inv; // radiation energy density, needed below
                 for(k=0;k<3;k++) {flux_i[k]=SphP[i].Rad_Flux_Pred[kfreq][k]*vol_inv; vel_i[k]=(C_LIGHT_CODE_REDUCED/C_LIGHT_CODE)*SphP[i].VelPred[k]/All.cf_atime; flux_mag+=flux_i[k]*flux_i[k];}
                 eddington_tensor_dot_vector(SphP[i].ET[kfreq],vel_i,vdot_D); // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
-                for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdot_D[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
+                for(k=0;k<3;k++) {vdot_h[k] = (RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*C_LIGHT_CODE/C_LIGHT_CODE_REDUCED) * erad_i * (vel_i[k] + vdot_D[k]);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 double flux_thin = erad_i * C_LIGHT_CODE_REDUCED; if(flux_mag>0) {flux_mag=sqrt(flux_mag);} else {flux_mag=1.e-20*flux_thin;}
                 if(flux_mag > 0) {flux_corr = DMIN(1., flux_thin/flux_mag); // restrict flux here (b/c drifted can exceed physical b/c of integration errors
 #if defined(RT_ENABLE_R15_GRADIENTFIX)

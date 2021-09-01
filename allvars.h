@@ -1267,19 +1267,19 @@ typedef unsigned long long peanokey;
 #define  RNDTABLE 16384 /*!< this is arbitrary, but some power of 2 makes much easier */
 #endif
 
-/* ... often used physical constants (cgs units) */
-#define  GRAVITY_G      (6.672e-8)
-#define  SOLAR_MASS     (1.989e33)
-#define  SOLAR_LUM      (3.826e33)
-#define  SOLAR_RADIUS   (6.957e10)
-#define  BOLTZMANN      (1.38066e-16)
-#define  C_LIGHT        (2.9979e10)
-#define  PROTONMASS     (1.6726e-24)
-#define  ELECTRONMASS   (9.10953e-28)
-#define  THOMPSON       (6.65245e-25)
-#define  ELECTRONCHARGE (4.8032e-10)
-#define  SEC_PER_YEAR   (3.155e7)
-#define  HUBBLE_H100_CGS (3.2407789e-18)	/* in h/sec */
+/* ... often used physical constants (cgs units). note many of these are defined to better precision with different units in e.g. the GSL package, these are purely for user convenience */
+#define  GRAVITY_G_CGS      (6.672e-8)
+#define  SOLAR_MASS_CGS     (1.989e33)
+#define  SOLAR_LUM_CGS      (3.826e33)
+#define  SOLAR_RADIUS_CGS   (6.957e10)
+#define  BOLTZMANN_CGS      (1.38066e-16)
+#define  C_LIGHT_CGS        (2.9979e10)
+#define  PROTONMASS_CGS     (1.6726e-24)
+#define  ELECTRONMASS_CGS   (9.10953e-28)
+#define  THOMPSON_CX_CGS    (6.65245e-25)
+#define  ELECTRONCHARGE_CGS (4.8032e-10)
+#define  SECONDS_PER_YEAR   (3.155e7)
+#define  HUBBLE_H100_CGS    (3.2407789e-18)	/* in h/sec */
 #define  ELECTRONVOLT_IN_ERGS (1.60217733e-12)
 
 /* and a bunch of useful unit-conversion macros pre-bundled here, to help keep the 'h' terms and other correct */
@@ -1295,26 +1295,35 @@ typedef unsigned long long peanokey;
 #define UNIT_FLUX_IN_CGS        (((UNIT_PRESSURE_IN_CGS)*(UNIT_VEL_IN_CGS)))
 #define UNIT_LUM_IN_CGS         (((UNIT_ENERGY_IN_CGS)/(UNIT_TIME_IN_CGS)))
 #define UNIT_B_IN_GAUSS         ((sqrt(4.*M_PI*UNIT_PRESSURE_IN_CGS)))
-#define UNIT_MASS_IN_SOLAR      (((UNIT_MASS_IN_CGS)/SOLAR_MASS))
-#define UNIT_DENSITY_IN_NHCGS   (((UNIT_DENSITY_IN_CGS)/PROTONMASS))
-#define UNIT_TIME_IN_YR         (((UNIT_TIME_IN_CGS)/(SEC_PER_YEAR)))
-#define UNIT_TIME_IN_MYR        (((UNIT_TIME_IN_CGS)/(1.e6*SEC_PER_YEAR)))
-#define UNIT_TIME_IN_GYR        (((UNIT_TIME_IN_CGS)/(1.e9*SEC_PER_YEAR)))
-#define UNIT_LENGTH_IN_SOLAR    (((UNIT_LENGTH_IN_CGS)/SOLAR_RADIUS))
+#define UNIT_MASS_IN_SOLAR      (((UNIT_MASS_IN_CGS)/SOLAR_MASS_CGS))
+#define UNIT_DENSITY_IN_NHCGS   (((UNIT_DENSITY_IN_CGS)/PROTONMASS_CGS))
+#define UNIT_TIME_IN_YR         (((UNIT_TIME_IN_CGS)/(SECONDS_PER_YEAR)))
+#define UNIT_TIME_IN_MYR        (((UNIT_TIME_IN_CGS)/(1.e6*SECONDS_PER_YEAR)))
+#define UNIT_TIME_IN_GYR        (((UNIT_TIME_IN_CGS)/(1.e9*SECONDS_PER_YEAR)))
+#define UNIT_LENGTH_IN_SOLAR    (((UNIT_LENGTH_IN_CGS)/SOLAR_RADIUS_CGS))
 #define UNIT_LENGTH_IN_AU       (((UNIT_LENGTH_IN_CGS)/1.496e13))
 #define UNIT_LENGTH_IN_PC       (((UNIT_LENGTH_IN_CGS)/3.085678e18))
 #define UNIT_LENGTH_IN_KPC      (((UNIT_LENGTH_IN_CGS)/3.085678e21))
 #define UNIT_PRESSURE_IN_EV     (((UNIT_PRESSURE_IN_CGS)/ELECTRONVOLT_IN_ERGS))
 #define UNIT_VEL_IN_KMS         (((UNIT_VEL_IN_CGS)/1.e5))
-#define UNIT_LUM_IN_SOLAR       (((UNIT_LUM_IN_CGS)/SOLAR_LUM))
+#define UNIT_LUM_IN_SOLAR       (((UNIT_LUM_IN_CGS)/SOLAR_LUM_CGS))
 #define UNIT_FLUX_IN_HABING     (((UNIT_FLUX_IN_CGS)/1.6e-3))
 
-#define U_TO_TEMP_UNITS         ((PROTONMASS/BOLTZMANN)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
-#define C_LIGHT_CODE            ((C_LIGHT/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
-#define C_LIGHT_CODE_REDUCED    (((RT_SPEEDOFLIGHT_REDUCTION)*((C_LIGHT)/(UNIT_VEL_IN_CGS)))) /* reduced speed-of-light in code units, again here as a convenience function */
+#define U_TO_TEMP_UNITS         ((PROTONMASS_CGS/BOLTZMANN_CGS)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
+#ifndef C_LIGHT_CODE
+#define C_LIGHT_CODE            ((C_LIGHT_CGS/UNIT_VEL_IN_CGS)) /* pure convenience function, speed-of-light in code units */
+#endif
+#define C_LIGHT_CODE_REDUCED    (((RT_SPEEDOFLIGHT_REDUCTION)*(C_LIGHT_CODE))) /* reduced speed-of-light in code units, again here as a convenience function */
 #define H0_CGS                  ((All.HubbleParam*HUBBLE_H100_CGS)) /* actual value of H0 in cgs */
-#define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(H0_CGS)*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
+#define COSMIC_BARYON_DENSITY_CGS ((All.OmegaBaryon*(H0_CGS)*(H0_CGS)*(3./(8.*M_PI*GRAVITY_G_CGS))*All.cf_a3inv)) /* cosmic mean baryon density [scale-factor-dependent] in cgs units */
 
+
+
+#ifdef RT_COMOVING
+#define RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS (0) /* this prefactor goes in front of various terms which vanish in the comoving frame RHD equations */
+#else
+#define RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS ((C_LIGHT_CODE_REDUCED)/(C_LIGHT_CODE)) /* these terms in the mixed-frame equations need to be multiplied by c_reduced/c */
+#endif
 
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
@@ -3607,6 +3616,7 @@ enum iofields
   IO_PARTVEL,
   IO_RADGAMMA,
   IO_RAD_ACCEL,
+  IO_RAD_FLUX,
   IO_EDDINGTON_TENSOR,
   IO_LAST_CAUSTIC,
   IO_SHEET_ORIENTATION,

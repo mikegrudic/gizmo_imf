@@ -141,7 +141,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // calculate the wave-damping rates (again in appropriate dimensionless units)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
-    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
+    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS_CGS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
 
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)
