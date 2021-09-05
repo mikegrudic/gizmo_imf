@@ -502,9 +502,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         double beta_cool = pnorm_sum * local.Area_weighted_sum[9]; // beta term if all particles in terminal-momentum-limit
         psi_egycon = sqrt(1. + beta_egycon*beta_egycon) - beta_egycon; // exact solution for energy equation for constant psi
         if(beta_egycon > 20.) {psi_egycon = 1./(2.*beta_egycon);} // replace with series expansion to avoid roundoff error at high beta
-        if(beta_egycon < 0) {psi_egycon=1; residual_thermal_frac=-2.*beta_egycon*f_sedov_kin;} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
+        if(beta_egycon < 0) {psi_egycon=1; residual_thermal_frac=DMAX(0., sqrt(1.+beta_egycon*beta_egycon)-beta_egycon-1.) * f_sedov_kin;} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-        residual_thermal_frac = DMAX(0,DMIN(residual_thermal_frac , 10.)); // limit to prevent extreme runaway cases just in case you find extreme situations
+        residual_thermal_frac = DMAX(0,DMIN(residual_thermal_frac , 30.)); // limit to prevent extreme runaway cases just in case you find extreme situations [can easily go to 100+ in safety tests, using 30 here to be extra-cautious]
 #endif
         if(beta_cool > 0.5) {psi_cool = 1./(2.*beta_cool);} // for cooling limit, only need upper limit to psi, all else will use less energy
     }
@@ -616,10 +616,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double z0 = Metallicity_j[0]/All.SolarAbundances[0];
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
                     //double nz_dep = pow(n0, 0.143) * pow(DMAX(z0,1.e-4), 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
-                    //v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS;
-                    if(z0 < 0.01) {z0 = 0.01;}
-                    double z0_term=1.; if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
-                    double nz_dep = pow(n0 * z0_term , 0.14); v_cooling = 210. * DMAX(nz_dep,0.5) / UNIT_VEL_IN_KMS;
+                    double z0_term=1.; if(z0 < 1.) {z0_term = pow(DMAX(z0,1.e-2),1.5);} else {z0_term = z0;}
+                    double nz_dep = pow(n0 * z0_term , 0.14); v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS;
 #else
                     if(z0 < 0.01) {z0 = 0.01;}
                     double z0_term=1.; if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
@@ -749,10 +747,18 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     mom_boost_fac = boost_egycon; // default to energy-conserving solution, then modify if needed in lines below
                     double dv_dp_phys = 0; for(k=0;k<3;k++) {dv_dp_phys += (1-massratio_ejecta) * (kernel.dp[k]/kernel.r) * ((local.Vel[k] - Vel_j[k])/All.cf_atime);} // recession velocity of cell from SNe
                     double vcool_eff = v_cooling / psi_cool; // effective shell speed when the cooling radius is reached
+#if 0
                     double dv_eff = vcool_eff + 2.*dv_dp_phys; // effective relative velocity for determining if you can reach that shell speed. i.e. when recession velocity equals nominal cooling mass for a real solution, assuming you cool when the post-shock temperature reaches a Tcool that corresponds to the post-shock velocity for some outward vcool, giving e.g. half the desired cooling mass is obtained when you have outward v = vcool
                     mcool_mod = wk_m_cooling; // this should be our starting point for applying the cooling solution, unless we include the compressive term, but don't want to over-shoot there
                     if(dv_eff > 0) {mcool_mod = wk_m_cooling; if(dv_dp_phys > 0) {mcool_mod *= vcool_eff / (1.e-20*vcool_eff + dv_eff);}} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
                     if(mcool_mod < mj_preshock) {mom_boost_fac = DMIN(boost_terminal,boost_egycon); residual_thermal_frac=0; retain_thermal_flag=0;} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
+#else
+                    double dv_eff = vcool_eff + dv_dp_phys; // effective relative velocity for determining if you can reach that shell speed. i.e. when recession velocity equals nominal cooling mass for a real solution, assuming you cool when the post-shock temperature reaches a Tcool that corresponds to the post-shock velocity for some outward vcool, giving e.g. half the desired cooling mass is obtained when you have outward v = vcool
+                    double m_terminal=wk_m_cooling, m_cooling=1.e10*mj_preshock; // this should be our starting point for applying the cooling solution, unless we include the compressive term, but don't want to over-shoot there
+                    if(dv_eff > 1.e-10*vcool_eff) {double fac_ve=vcool_eff/(MIN_REAL_NUMBER+1.e-10*vcool_eff + dv_eff); m_cooling*=fac_ve; if(fac_ve<1.) {m_terminal*=fac_ve;}} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
+                    if(mj_preshock > m_cooling) {residual_thermal_frac=0; retain_thermal_flag=0;} // figure out if we've passed the cooling time/distance (which is -not- the same as reaching the terminal momentum for an arbitrary inflow structure around the explosion)
+                    if(mj_preshock > m_terminal) {mom_boost_fac = DMIN(boost_terminal,boost_egycon);} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
+#endif
                 } else {mom_boost_fac=DMIN(1,boost_egycon*psi_egycon); residual_thermal_frac=0;} // prevent energy conservation issues when coupling mass-loss
                 
                 /* save summation values for outputs */
