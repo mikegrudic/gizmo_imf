@@ -57,7 +57,10 @@ int does_particle_need_to_be_merged(int i)
         double lambda_J = Get_Gas_Fast_MHD_wavespeed_i(i) * sqrt(M_PI / (All.G * SphP[i].Density * All.cf_a3inv));
         if((lambda_J > 4. * PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT * Get_Particle_Size(i)*All.cf_atime) && (P[i].Mass < All.MaxMassForParticleSplit)) {return 1;} // de-refine
     }
-#endif    
+#endif
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
+    if(P[i].Type>0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
+#endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
     if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
@@ -92,6 +95,31 @@ int does_particle_need_to_be_split(int i)
 double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
+    if(P[i].Type==0)
+    {
+        double mcrit_0=7000., T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+        double MJ = 9.e6 * pow( 1.e4 + T_eff, 1.5) / sqrt(1.e-12 + nH_cgs); // Jeans mass, but modified with lower limit for temperature so we refine all cool gas equally, lower limit for numerical convenience for density
+        if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);} // ensure that only cells much denser than cosmic mean are eligible for refinement. use 100x so even cells outside Rvir are potentially eligible
+        // to check against hot gas in high-density ISM getting worse than a certain resolution level, we want to check that we don't down-grade the spatial resolution too much
+        double m_ref_mJ = 0.001 * MJ;
+#if defined(BH_CALC_DISTANCES)
+        double rbh = P[i].min_dist_to_bh * All.cf_atime; // distance to nearest BH
+        if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
+        {
+            double mc=1.e10, m_r1=7.e3, m_r2=7.e4, m_r3=7.e5, r1=1., r2=10., r3=20.;
+            if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
+                {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));}} else {mc=m_r3*pow(rbh/r3,3);}}
+            
+            m_ref_mJ = DMIN(m_ref_mJ , mc);
+        }
+#endif
+        double M_target = DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR; // enforce minimum refinement to 7000 Msun, and convert to code units, compare to 0.001xJeans mass, which is designed to target desired levels
+        double normal_median_mass = All.MaxMassForParticleSplit / 3.; // code median mass from ICs
+        ref_factor = DMAX(1.e-4, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
+        return ref_factor; // return it
+    }
+#endif
 /*!
  #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
     ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //

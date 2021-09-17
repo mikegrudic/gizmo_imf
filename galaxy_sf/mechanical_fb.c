@@ -502,7 +502,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         double beta_cool = pnorm_sum * local.Area_weighted_sum[9]; // beta term if all particles in terminal-momentum-limit
         psi_egycon = sqrt(1. + beta_egycon*beta_egycon) - beta_egycon; // exact solution for energy equation for constant psi
         if(beta_egycon > 20.) {psi_egycon = 1./(2.*beta_egycon);} // replace with series expansion to avoid roundoff error at high beta
-        if(beta_egycon < 0) {psi_egycon=1; residual_thermal_frac=DMAX(0., sqrt(1.+beta_egycon*beta_egycon)-beta_egycon-1.) * f_sedov_kin;} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
+        //if(beta_egycon < 0) {psi_egycon=1; residual_thermal_frac=DMAX(0., sqrt(1.+beta_egycon*beta_egycon)-beta_egycon-1.) * f_sedov_kin;} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
+        if(beta_egycon < 0) {psi_egycon=1; residual_thermal_frac=DMAX(0., -2.*beta_egycon) * f_sedov_kin;} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         residual_thermal_frac = DMAX(0,DMIN(residual_thermal_frac , 30.)); // limit to prevent extreme runaway cases just in case you find extreme situations [can easily go to 100+ in safety tests, using 30 here to be extra-cautious]
 #endif
@@ -615,9 +616,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double n0 = rho_j*density_to_n; if(n0 < 0.001) {n0=0.001;}
                     double z0 = Metallicity_j[0]/All.SolarAbundances[0];
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-                    //double nz_dep = pow(n0, 0.143) * pow(DMAX(z0,1.e-4), 0.12); // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
                     double z0_term=1.; if(z0 < 1.) {z0_term = pow(DMAX(z0,1.e-2),1.5);} else {z0_term = z0;}
-                    double nz_dep = pow(n0 * z0_term , 0.14); v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS;
+                    double nz_dep = pow(n0, 0.143) * pow(z0_term, 0.12); v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS; // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
 #else
                     if(z0 < 0.01) {z0 = 0.01;}
                     double z0_term=1.; if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
