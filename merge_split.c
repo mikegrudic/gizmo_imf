@@ -59,7 +59,7 @@ int does_particle_need_to_be_merged(int i)
     }
 #endif
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
-    if(P[i].Type>0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
+    if(P[i].Type>0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;}} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
 #endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
     if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
@@ -109,7 +109,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
         {
             double mc=1.e10, m_r1=7.e3, m_r2=7.e4, m_r3=7.e5, r1=1., r2=10., r3=20.;
             if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
-                {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));}} else {mc=m_r3*pow(rbh/r3,3);}}
+                {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
             
             m_ref_mJ = DMIN(m_ref_mJ , mc);
         }
