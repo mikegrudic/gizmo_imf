@@ -59,7 +59,8 @@ int does_particle_need_to_be_merged(int i)
     }
 #endif
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
-    if(P[i].Type>0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;}} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
+    if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
+    if(P[i].Type==0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;}} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
 #endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
     if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
@@ -98,8 +99,8 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
     if(P[i].Type==0)
     {
-        double mcrit_0=7000., T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
-        double MJ = 9.e6 * pow( 1.e4 + T_eff, 1.5) / sqrt(1.e-12 + nH_cgs); // Jeans mass, but modified with lower limit for temperature so we refine all cool gas equally, lower limit for numerical convenience for density
+        double mcrit_0=1.*(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+        double MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs); // Jeans mass, but modified with lower limit for temperature so we refine all cool gas equally, lower limit for numerical convenience for density
         if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);} // ensure that only cells much denser than cosmic mean are eligible for refinement. use 100x so even cells outside Rvir are potentially eligible
         // to check against hot gas in high-density ISM getting worse than a certain resolution level, we want to check that we don't down-grade the spatial resolution too much
         double m_ref_mJ = 0.001 * MJ;
@@ -107,7 +108,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
         double rbh = P[i].min_dist_to_bh * All.cf_atime; // distance to nearest BH
         if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
         {
-            double mc=1.e10, m_r1=7.e3, m_r2=7.e4, m_r3=7.e5, r1=1., r2=10., r3=20.;
+            double mc=1.e10, m_r1=DMIN(mcrit_0, 7.e3), m_r2=10.*m_r1, m_r3=10.*m_r2, r1=1., r2=10., r3=20.;
             if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
                 {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
             
