@@ -936,7 +936,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 
 #endif
 
-#ifdef RT_ISRF_BACKGROUND
+#if defined(RT_ISRF_BACKGROUND) && defined(RADTRANSFER)
 void rt_apply_boundary_conditions(int i)
 {
     double urad[N_RT_FREQ_BINS]; int k, k_dir;
