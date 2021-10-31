@@ -320,15 +320,19 @@
 
 #if defined(FIRE_CRS)
 #define COSMIC_RAY_FLUID /*! top-level flag */
+#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS >= 3) /* enable multi-spectrum CRs if this set and FIRE version high enough */
+#if (FIRE_CRS >= 2)
+#define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve proton + electron spectrum by default */
+#else
+#define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
+#endif
+#endif
 #if (FIRE_CRS <= 0)
 #if !defined(CRFLUID_M1)
 #define CRFLUID_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
 #endif
 #if !defined(CRFLUID_DIFFUSION_MODEL)
 #define CRFLUID_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
-#endif
-#if !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS == 3)
-#define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
 #else
 #if !defined(CRFLUID_M1)
@@ -339,7 +343,7 @@
 #endif
 #define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
 #if !defined(CRFLUID_SET_SC_MODEL)
-#define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS */
+#define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS, and best model for extrinsic driving of CRs */
 #endif
 #if !defined(CRFLUID_SET_ET_MODEL)
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
