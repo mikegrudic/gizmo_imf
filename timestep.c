@@ -917,7 +917,6 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-            dt_accr = 0.5*All.MeanGasParticleMass / BPP(p).BH_Mdot;
 #ifdef SINGLE_STAR_FB_JETS
             dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot);
 #endif
