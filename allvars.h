@@ -502,7 +502,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
-#define OUTPUT_TEMPERATURE
 #define REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #ifdef STARFORGE_GMC_TURBINIT
 #define TURB_DRIVING
@@ -643,6 +642,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef COOL_METAL_LINES_BY_SPECIES
 #define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
 #endif
+#define OUTPUT_TEMPERATURE
 #endif
 
 #endif // SINGLE_STAR_SINK_DYNAMICS
