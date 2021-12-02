@@ -225,8 +225,8 @@ double rt_kappa(int i, int k_freq)
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature) || SphP[i].Dust_Temperature<=T_min) {SphP[i].Dust_Temperature=T_min;} // reset baseline
-        if(isnan(SphP[i].Radiation_Temperature) || SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
+        if(SphP[i].Dust_Temperature<=T_min) {SphP[i].Dust_Temperature=T_min;} // reset baseline
+        if(SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
         
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
@@ -593,7 +593,7 @@ void rt_eddington_update_calculation(int j)
         if(fmag_j <= 0) {f_chifac = 0;}
         // restrict values of f_chifac to physical range.
         double f_min = 0.01, f_max = 0.9999;
-        if((f_chifac < f_min) || (isnan(f_chifac))) {f_chifac = f_min;}
+        if(f_chifac < f_min) {f_chifac = f_min;}
         if(f_chifac > f_max) {f_chifac = f_max;}
         double chi_j = (3.+4.*f_chifac*f_chifac) / (5. + 2.*sqrt(4. - 3.*f_chifac*f_chifac));
         double chifac_iso_j = 0.5 * (1.-chi_j);
@@ -718,10 +718,10 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     double dE_fac = dt_e_gamma_band * dt_entr; // change in energy from advection
                     double dTE_fac = SphP[i].Dt_Rad_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
                     double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
+                    double T_max = DMAX(SphP[i].Radiation_Temperature , dE_fac / dTE_fac); 
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
                     dE_fac*=rfac; dTE_fac*=rfac; // limit temperature change from advection to prevent spurious divergences
                     
-                    double T_max = DMAX(SphP[i].Radiation_Temperature , dE_fac / dTE_fac);
                     SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                     a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
@@ -760,7 +760,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             if(e0_postabs+de_postabs < f_min*e0_postabs) {slabfac *= fabs((1.-f_min)*e0_postabs)/(fabs(de_postabs)+MIN_REAL_NUMBER);}
             
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
-            if((ef < 0)||(isnan(ef))) {ef=0;}
+            if(ef < 0) {ef=0;}
             double de_abs = e0 + total_de_dt * dt_entr - ef; // energy removed by absorption alone
             double de_emission_minus_absorption = (ef - DMAX(0, (e0 + dt_e_gamma_band * dt_entr * slabfac))); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
             if((dt_entr <= 0) || (de_abs <= 0)) {de_abs = 0;}
@@ -813,11 +813,11 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #if defined(RT_EVOLVE_INTENSITIES)
             // this is the leading-order (isotropic) emission-absorption step, i.e. the psi_a * (j_e - I) term in the intensity equation. solved by the methods above to deal generically with stiff emission-absorption problems, re-used below if needed //
             if(donation_target_bin >= 0) {int k_q; for(k_q=0;k_q<N_RT_INTENSITY_BINS;k_q++) {if(mode==0) {SphP[i].Rad_Intensity[donation_target_bin][k_q] += de_abs/RT_INTENSITY_BINS_DOMEGA;} else {SphP[i].Rad_Intensity_Pred[donation_target_bin][k_q] += de_abs/RT_INTENSITY_BINS_DOMEGA;}}}
-            if((ef < 0)||(isnan(ef))) {ef=0;}
+            if(ef < 0) {ef=0;}
             if(mode==0) {SphP[i].Rad_Intensity[kf][k_angle] = ef/RT_INTENSITY_BINS_DOMEGA;} else {SphP[i].Rad_Intensity_Pred[kf][k_angle] = ef/RT_INTENSITY_BINS_DOMEGA;}
 #else
             if(donation_target_bin >= 0) {if(mode==0) {SphP[i].Rad_E_gamma[donation_target_bin] += de_abs;} else {SphP[i].Rad_E_gamma_Pred[donation_target_bin] += de_abs;}}
-            if((ef < 0)||(isnan(ef))) {ef=0;}
+            if(ef < 0) {ef=0;}
 
             if(mode==0) {SphP[i].Rad_E_gamma[kf] = ef;} else {SphP[i].Rad_E_gamma_Pred[kf] = ef;}
 #endif
