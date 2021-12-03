@@ -328,9 +328,9 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
         iter_condition = ((fabs(du/u) > 3.0e-4) || ((fabs(du/u) > 3.0e-6) && (iter < 10)));
         iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
 #endif
-#ifdef RT_INFRARED
-        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
-        iter_condition = iter_condition || ((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-2*fabs(LambdaDust)) && (iter < MAXITER-11));
+#ifdef RT_INFRARED  // additional, stronger convergence criteria for problems where you have tightly coupled gas dust and radiation and want reasonably accurate conservation
+        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)) && (iter < MAXITER-11));
+        iter_condition = iter_condition || ((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-4*fabs(LambdaDust)) && (iter < MAXITER-11)); 
 #endif        
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
@@ -339,7 +339,6 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     /* crash condition */
     if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
-
 #ifdef RT_CHEM_PHOTOION
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
     double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
@@ -349,6 +348,10 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
 #endif
 #endif
+#ifdef RT_INFRARED // need to update the dust temp with the converged solution
+    get_rt_ir_lambdadust_effective(temp, rho, &nHI, &ne_guess, target, 1);
+#endif 
+
 
     /* safe return */
     return specific_energy_codeunits_toreturn;
@@ -942,7 +945,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             /* now add the dust cooling/heating terms */
             LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
-            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
+            if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
             if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
