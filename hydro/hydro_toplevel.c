@@ -549,6 +549,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #ifdef CRFLUID_EVOLVE_SPECTRUM
         in->CR_number_to_energy_ratio[j] = SphP[i].CosmicRay_Number_in_Bin[j] / (SphP[i].CosmicRayEnergy[j] + MIN_REAL_NUMBER);
+#if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
+        in->CR_number_to_energy_ratio[j] *= SphP[i].Flux_Number_to_Energy_Correction_Factor[j];
+#endif
 #endif
     }
 #endif
