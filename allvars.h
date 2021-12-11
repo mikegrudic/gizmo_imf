@@ -2988,6 +2988,9 @@ extern struct sph_particle_data
     MyFloat CosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];         /*!< effective number of CRs in the bin, which we evolve alongside total energy. */
     MyFloat DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];       /*!< time derivative of effective number of CRs in the bin, which we evolve alongside total energy. */
     //MyFloat CosmicRay_PwrLaw_Slopes_in_Bin[N_CR_PARTICLE_BINS];  /*!< power-law slope "gamma" of the CR spectral distribution: dN/dp ~ p^gamma , within each energy bin. this is strictly redundant with Number as its derived from it, retained for now as a convenience function */
+#if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
+    MyFloat Flux_Number_to_Energy_Correction_Factor[N_CR_PARTICLE_BINS]; /*!< correction term to compute correct flux of number versus energy, since not identical for finite-bin-width effects. */
+#endif
 #endif
 #endif
 
