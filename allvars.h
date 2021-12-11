@@ -642,6 +642,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef COOL_METAL_LINES_BY_SPECIES
 #define COOL_METAL_LINES_BY_SPECIES // metal-based cooling enabled
 #endif
+#define OUTPUT_TEMPERATURE
 #endif
 
 #endif // SINGLE_STAR_SINK_DYNAMICS

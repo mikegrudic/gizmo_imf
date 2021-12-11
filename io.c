@@ -1318,6 +1318,15 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     *fp++ = (MyOutputFloat) SphP[pindex].Temperature;
                     n++;
                 }
+#elif defined(OUTPUT_TEMPERATURE)
+	    for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+		    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units                                                                                                                                                  
+		    temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);		  
+		    *fp++ = (MyOutputFloat) temp;
+		    n++;
+                }	    
 #endif
             break;
 
@@ -2837,6 +2846,8 @@ int blockpresent(enum iofields blocknr)
         case IO_EOSTEMP:
 #ifdef EOS_CARRIES_TEMPERATURE
             return 1;
+#elif defined(OUTPUT_TEMPERATURE)
+	    return 1;
 #endif
             break;
 
