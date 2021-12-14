@@ -959,6 +959,8 @@ void rt_apply_boundary_conditions(int i)
 	    if(k==RT_FREQ_BIN_INFRARED){SphP[i].Radiation_Temperature = DMIN(All.InitGasTemp,100.);}
 #endif
         }
+    } else {
+        for(k = 0; k < N_RT_FREQ_BINS; k++){SphP[i].Rad_E_gamma[k] = DMAX(SphP[i].Rad_E_gamma[k], MIN_REAL_NUMBER);}
     }
 }
 
@@ -966,7 +968,7 @@ void rt_apply_boundary_conditions(int i)
 void get_background_isrf_urad(int i, double *urad){
     int k;
     for(k = 0; k < N_RT_FREQ_BINS; k++){
-        urad[k] = 0;
+        urad[k] = MIN_REAL_NUMBER;
 #ifdef RT_INFRARED
         if(k==RT_FREQ_BIN_INFRARED){urad[k] = (RT_ISRF_BACKGROUND * 0.39 + 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
 #endif
