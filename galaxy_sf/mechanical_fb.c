@@ -67,7 +67,13 @@ void determine_where_SNe_occur(void)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-        if((P[i].ProtoStellarStage != 5) && (P[i].ProtoStellarStage != 6)) {continue;} // only MS or SN-tagged particles eligible to have winds or SN in this routine
+        if(P[i].Type == 5)
+        {   // single sink type, for type 5
+            if((P[i].ProtoStellarStage != 5) && (P[i].ProtoStellarStage != 6)) {continue;} // only MS or SN-tagged particles eligible to have winds or SN in this routine
+        } else { // stellar population type allowed here
+            if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
+            if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
+        }
 #endif
 #else
         if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4

@@ -140,7 +140,7 @@
         Fluxes_Rad_Flux[k_freq][0]=Fluxes_Rad_Flux[k_freq][1]=Fluxes_Rad_Flux[k_freq][2]=0;
         double scalar_i = local.Rad_E_gamma[k_freq] / V_i_phys; // volumetric photon number density in this frequency bin (E_phys/L_phys^3)//
         double scalar_j = SphP[j].Rad_E_gamma_Pred[k_freq] / V_j_phys;
-        if((scalar_i>0)&&(scalar_j>0)&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0))
+        if((scalar_i+scalar_j>0)&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>0)&&(Face_Area_Norm>0))
         {
             double d_scalar = scalar_i - scalar_j;
             double face_dot_flux=0., cmag=0., cmag_flux[3]={0}, grad_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;

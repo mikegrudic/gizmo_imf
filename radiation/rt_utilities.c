@@ -70,7 +70,12 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #if defined(GALSF)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if(BPP(i).ProtoStellarStage != 7) {active_check += rt_get_lum_band_singlestar(i,mode,lum); /* stars and protostars */} else {active_check += rt_get_lum_band_agn(i,mode,lum); /* relics */}
+    if(P[i].Type == 5)
+    {   // here we have type=5, treat as a sink particle/single-star
+        if(BPP(i).ProtoStellarStage != 7) {active_check += rt_get_lum_band_singlestar(i,mode,lum); /* stars and protostars */} else {active_check += rt_get_lum_band_agn(i,mode,lum); /* relics */}
+    } else { // otherwise, treat as a stellar population particle
+        active_check += rt_get_lum_band_stellarpopulation(i,mode,lum); // get luminosities for star particles assuming they represent IMF-averaged populations
+    }
 #else
     active_check += rt_get_lum_band_singlestar(i,mode,lum); // get luminosities for individual star/sink particles assuming they are protostars or stars
 #endif
