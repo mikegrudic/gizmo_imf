@@ -99,7 +99,7 @@ void blackhole_end(void)
         {
             /* convert to solar masses per yr */
             mdot_in_msun_per_year = total_mdot * UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR;
-            total_mdoteddington *= 1.0 / bh_eddington_mdot(1);
+            total_mdoteddington *= 1.0 / (bh_eddington_mdot(1) * All.TotBHs);
             fprintf(FdBlackHoles, "%g %d %g %g %g %g %g\n", All.Time, All.TotBHs, total_mass_holes, total_mdot, mdot_in_msun_per_year, total_mass_real, total_mdoteddington);
         }
         fflush(FdBlackHoles);
@@ -127,7 +127,7 @@ void blackhole_end(void)
 /* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) */
 double bh_eddington_mdot(double bh_mass)
 {
-    return (4*M_PI * GRAVITY_G * PROTONMASS / (All.BlackHoleRadiativeEfficiency * C_LIGHT * THOMPSON)) * bh_mass * UNIT_TIME_IN_CGS;
+    return (4*M_PI * GRAVITY_G_CGS * PROTONMASS_CGS / (All.BlackHoleRadiativeEfficiency * C_LIGHT_CGS * THOMPSON_CX_CGS)) * bh_mass * UNIT_TIME_IN_CGS;
 }
 
 
@@ -151,6 +151,9 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     {
         n = BlackholeTempInfo[i].index;
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+        if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
+#endif
         BPP(n).BH_Mdot=0;  /* always initialize/default to zero accretion rate */
         set_blackhole_long_range_rp(i, n);
         set_blackhole_mdot(i, n, dt);

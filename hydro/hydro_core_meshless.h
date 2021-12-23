@@ -30,11 +30,11 @@
         dummy_pressure *= 1. - tensile_correction_factor; /* we still need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
     }
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         Fluxes.CosmicRayPressure[k] = 0;
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         Fluxes.CosmicRayAlfvenEnergy[k][0] = Fluxes.CosmicRayAlfvenEnergy[k][1] = 0;
 #endif
     }
@@ -305,7 +305,7 @@
 #endif
             Fluxes.p = Face_Area_Norm * Riemann_out.Fluxes.p; // this is really Dt of --total-- energy, need to subtract KE component for e */
             for(k=0;k<3;k++) {Fluxes.v[k] = Face_Area_Norm * Riemann_out.Fluxes.v[k];} // momentum flux (need to divide by mass) //
-#if defined(COSMIC_RAYS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
+#if defined(COSMIC_RAY_FLUID) && defined(HYDRO_MESHLESS_FINITE_VOLUME)
             /* here we simply assume that if there is mass flux, the cosmic ray fluid is advected -with the mass flux-, taking an
              implicit constant (zeroth-order) reconstruction of the CR energy density at the face (we could reconstruct the CR
              properties at the face, and calculate a more accurate advection term; however at that stage we should actually be
@@ -318,7 +318,7 @@
                 } else {
                     Fluxes.CosmicRayPressure[k] = Fluxes.rho * (CosmicRayPressure_j[k]*V_j/((GAMMA_COSMICRAY(k)-1.)*P[j].Mass));
                 }
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
                 int kAlf=0; for(kAlf=0;kAlf<2;kAlf++) {if(Fluxes.rho<0) {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=local.CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;} else {Fluxes.CosmicRayAlfvenEnergy[k][kAlf]+=SphP[j].CosmicRayAlfvenEnergy[k][kAlf]*Fluxes.rho/local.Mass;}}
 #endif
             }

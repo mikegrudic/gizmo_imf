@@ -18,10 +18,9 @@
     }
     Face_Area_Norm = sqrt(Face_Area_Norm);
     
-    
+    // define and load in the basis moments into convenient variables for use below //
     double local_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
     double Pj_CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];
-    
     for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
     {
         for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
@@ -36,6 +35,7 @@
         }
     }
     
+    // using the center-of-motion frame, solve for whether each basis is in approach, and use this to define the face velocity
     double vface_new[3]={0};
     double theta_i[CBE_INTEGRATOR_NBASIS]={0}, theta_j[CBE_INTEGRATOR_NBASIS]={0}, v_wt_sum=0;
     for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
@@ -61,9 +61,12 @@
         
         // first loop over pairs to determine closest a-to-b, closest b-to-a //
         int matching_basis_j_for_basis_in_i[CBE_INTEGRATOR_NBASIS], matching_basis_i_for_basis_in_j[CBE_INTEGRATOR_NBASIS], m_j;
-        double wt_i[CBE_INTEGRATOR_NBASIS], wt_j[CBE_INTEGRATOR_NBASIS], imag_i[CBE_INTEGRATOR_NBASIS], imag_j[CBE_INTEGRATOR_NBASIS], cos_ij, vsig=0;
+        double wt_i[CBE_INTEGRATOR_NBASIS], wt_j[CBE_INTEGRATOR_NBASIS], cos_ij, vsig=0;
+        //double imag_i[CBE_INTEGRATOR_NBASIS], imag_j[CBE_INTEGRATOR_NBASIS]; // old [maximize] model
         for(m=0;m<CBE_INTEGRATOR_NBASIS;m++) // first pass to normalize and initialize quantities for both sides
         {
+            wt_i[m] = wt_j[m] = MAX_REAL_NUMBER; // initialize for use below [minimize]
+            /*
             double norm_tmp,q0; wt_i[m] = -1000.; wt_j[m] = -1000.; // large negative value (<-1)
             norm_tmp=0; for(k=0;k<3;k++) {q0=local_CBE_basis_moments[m][k+1]-fMfac*vface[k]*local_CBE_basis_moments[m][0]; norm_tmp += q0*q0;} // squared weight of momentum (vectors we'll use for matching below //
             if(norm_tmp > 0) {norm_tmp = 1./sqrt(norm_tmp);} // compute inverse-weight, for use below
@@ -71,6 +74,7 @@
             norm_tmp=0; for(k=0;k<3;k++) {q0=Pj_CBE_basis_moments[m][k+1]-fMfac*vface[k]*Pj_CBE_basis_moments[m][0]; norm_tmp += q0*q0;} // squared weight of momentum (vectors we'll use for matching below //
             if(norm_tmp > 0) {norm_tmp = 1./sqrt(norm_tmp);} // compute inverse-weight, for use below
             imag_j[m] = norm_tmp; // assign
+            */
         }
         for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         {
@@ -79,17 +83,24 @@
                 cos_ij=0;
                 for(k=0;k<3;k++)
                 {
+                    /* // product of vector momenta  -- old method for favoring one basis
                     double q1 = local_CBE_basis_moments[m][k+1] - fMfac*vface[k]*local_CBE_basis_moments[m][0];
                     double q2 = Pj_CBE_basis_moments[m_j][k+1] - fMfac*vface[k]*Pj_CBE_basis_moments[m][0];
-                    cos_ij += q1*q2;
-                } // product of vector momenta
-                cos_ij *= imag_i[m] * imag_j[m_j]; // ok this is now the dot product p_hat_i_alpha . p_hat_j_beta
-                if(cos_ij > wt_i[m]) // better match found for i
+                    cos_ij += q1*q2; // maximize vector dot product of momenta
+                    */
+                    double q1 = local_CBE_basis_moments[m][k+1] / local_CBE_basis_moments[m][0];
+                    double q2 = Pj_CBE_basis_moments[m_j][k+1]  / Pj_CBE_basis_moments[m][0];
+                    cos_ij += (q1 - q2) * (q1 - q2); // minimize magnitude of vector difference to minimize mixing entropy
+                }
+                /* cos_ij *= imag_i[m] * imag_j[m_j]; // ok this is now the dot product p_hat_i_alpha . p_hat_j_beta */
+                //if(cos_ij > wt_i[m]) // better match found for i [maximize]
+                if(cos_ij < wt_i[m]) // better match found for i [minimize]
                 {
                     wt_i[m] = cos_ij; // note the best match so far
                     matching_basis_j_for_basis_in_i[m] = m_j; // assign the basis function to the list
                 }
-                if(cos_ij > wt_j[m_j]) // better match found for j
+                //if(cos_ij > wt_j[m_j]) // better match found for j [maximize]
+                if(cos_ij < wt_j[m_j]) // better match found for j [minimize]
                 {
                     wt_j[m_j] = cos_ij; // note the best match so far
                     matching_basis_i_for_basis_in_j[m_j] = m; // assign the basis function to the list

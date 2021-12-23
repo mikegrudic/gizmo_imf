@@ -229,7 +229,7 @@ MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 ##
 ## module load TACC intel impi hdf5 gsl fftw2
-##  - note you cann choose to use FFTW3 now instead of FFTW2, but you will need to load that module and change the compiler link appropriately
+##  - note you can choose to use FFTW3 now instead of FFTW2, but you will need to load that module and change the compiler link appropriately
 ## note is you are using the KNL system it has a large number of slow cores, so some changes to 'usual' compilation parameters are advised:
 ##  - recommend running with ~16 mpi tasks/node. higher [32 or 64] usually involves a performance hit unless the problem is more scale-able;
 ##     use the remaining nodes in OPENMP. Do not use >64 MPI tasks/node [need ~4 cores free for management] and do not use >2 threads/core
@@ -595,35 +595,34 @@ MPICHLIB =
 endif
 
 
-
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Iron")
 CC       =   mpicc     # sets the C-compiler
 OPT      +=  -DMPICH_IGNORE_CXX_SEEK
 #OPTIMIZE =   -std=c99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
-OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native
+#OPTIMIZE =   -std=c99 -O3 -fno-tree-vectorize -march=native -Wno-implicit-function-declaration -Wno-cpp
+OPTIMIZE =   -std=c99 -O2 -fno-tree-vectorize -march=native -Wno-implicit-function-declaration -Wno-cpp
 OPTIMIZE += -g   #-Wall # compiler warnings
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE +=  -fopenmp
 endif
-GSL_INCL =  -I$(GSLDIR)/include
-GSL_LIBS =  -L$(GSLDIR)/lib
-FFTW_INCL=  -I$(FFTW2DIR)/include
-FFTW_LIBS=  -L$(FFTW2DIR)/lib
+GSL_INCL =  -I$(GSL_BASE)/include
+GSL_LIBS =  -L$(GSL_BASE)/lib
+FFTW_INCL=  -I$(FFTW2_BASE)/include
+FFTW_LIBS=  -L$(FFTW2_BASE)/lib
 MPICHLIB =
-HDF5INCL =  -I$(HDF5DIR)/include -DH5_USE_16_API
-HDF5LIB  =  -L$(HDF5DIR)/lib -lhdf5 -lz
+HDF5INCL =  -I$(HDF5_BASE)/include -DH5_USE_16_API
+HDF5LIB  =  -L$(HDF5_BASE)/lib -lhdf5 -lz
 GMP_INCL =  #-I$(GMPDIR)/include
 GMP_LIBs =  #-L$(GMPDIR)/lib
 #module load slurm
 #module add gcc
 #module load openmpi2/2.0.2-hfi
-#module add lib/hdf5
+#module add lib/hdf5/1.8.21-openmpi2
 #module add lib/fftw2/2.1.5-openmpi2
 #module add lib/gsl
 endif
 #----------------------------------------------------------------------------------------------
-
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Gordon")

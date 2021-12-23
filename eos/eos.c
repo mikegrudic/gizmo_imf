@@ -104,18 +104,23 @@ double get_pressure(int i)
 #endif
     
     
-#ifdef COSMIC_RAYS /* compute the CR contribution to the total pressure and effective soundspeed here */
+#ifdef COSMIC_RAY_FLUID /* compute the CR contribution to the total pressure and effective soundspeed here */
     double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         press += Get_Gas_CosmicRayPressure(i,k_CRegy);
         soundspeed2 += GAMMA_COSMICRAY(k_CRegy) * (GAMMA_COSMICRAY(k_CRegy)-1.) * SphP[i].CosmicRayEnergyPred[k_CRegy] / P[i].Mass;
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES // using effective gamma of the alfven component = 3/2
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES // using effective gamma of the alfven component = 3/2
         press += (1.5-1) * SphP[i].Density * (SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]);
         soundspeed2 += 1.5*(1.5-1)*(SphP[i].CosmicRayAlfvenEnergy[k_CRegy][0]+SphP[i].CosmicRayAlfvenEnergy[k_CRegy][1]) / P[i].Mass;
 #endif
     }
     soundspeed = sqrt(soundspeed2);
+#endif
+    
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
+    soundspeed = sqrt(gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred + (4./3.)*(1./3.)*SphP[i].SubGrid_CosmicRayEnergyDensity/SphP[i].Density);
+    press += (1./3.) * SphP[i].SubGrid_CosmicRayEnergyDensity;
 #endif
     
     
@@ -164,7 +169,9 @@ double gamma_eos(int i)
     if(i >= 0) {
         if(P[i].Type==0) {
             double fH = HYDROGEN_MASSFRAC, f = SphP[i].MolecularMassFraction, xe = SphP[i].Ne; // use the variables below to update the EOS as needed
-            return 1. + (fH*((1.-f)/1. + f/2.) + (1.-fH)/4.) / (fH*((1.-f + xe)/(1.*(5./3.-1.)) + f/(2.*(7./5.-1.))) + (1.-fH)/(4.*(5./3.-1.))); // assume He is atomic, H has a mass fraction f molecular
+            double f_mono = fH*(xe + 1.-f) + (1.-fH)/4., f_di = fH*f/2., gamma_mono=5./3., gamma_di=7./5.; // sum e-, H or p, He, which act monotomic, and molecular, by number
+            return 1. + (f_mono + f_di) / (f_mono/(gamma_mono-1.) + f_di/(gamma_di-1.)); // weighted sum by number to compute effective EOS
+            //return 1. + (fH*((1.-f)/1. + f/2.) + (1.-fH)/4.) / (fH*((1.-f + xe)/(1.*(5./3.-1.)) + f/(2.*(7./5.-1.))) + (1.-fH)/(4.*(5./3.-1.))); // assume He is atomic, H has a mass fraction f molecular
         }
     }
 #endif
@@ -335,7 +342,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     if(SphP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
 
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) /* set default module we will use here */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(COOL_MOLECFRAC_NONEQM) && !defined(COOL_MOLECFRAC_LOCALEQM) /* set default module we will use here */
 #define COOL_MOLECFRAC_LOCALEQM
 #endif
     
@@ -365,7 +372,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
         
     
-#if defined(COOL_MOLECFRAC_LOCALEQM)
+#if defined(COOL_MOLECFRAC_LOCALEQM) // ??? -- update to match noneqm fancier cooling functions --
     /* estimate local equilibrium molecular fraction actually using the real formation and destruction rates. expressions for the different rate terms
         as used here are collected in Nickerson, Teyssier, & Rosdahl et al. 2018. Expression for the line self-shielding here
         including turbulent and cell line blanketing terms comes from Gnedin & Draine 2014. below solves this all exactly, using the temperature, metallicity,
@@ -396,7 +403,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
         double fH2_min = fH2; // we have just calculated fH2 with -no- molecular self-shielding, so this number can only go up from here
         // calculate a bundle of variables we will need below, to account for the velocity-gradient Sobolev approximation and slab attenuation of G0 //
         double dx_cell = Get_Particle_Size(i) * All.cf_atime; // cell size
-        double surface_density_H2_0 = 5.e14 * PROTONMASS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
+        double surface_density_H2_0 = 5.e14 * PROTONMASS_CGS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
         double surface_density_local = xH0 * SphP[i].Density * All.cf_a3inv * dx_cell * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth through the local cell/slab. that's closer to what we want here, since G0 is -already- attenuated in the pre-processing step!
         double v_thermal_rms = 0.111*sqrt(T); // sqrt(3*kB*T/2*mp), since want rms thermal speed of -molecular H2- in kms
         double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
@@ -483,8 +490,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     double nHalf = n_star * Lambda_incident / g_eff; // intermediate variable
     double w_x = 0.8 + sqrt(Lambda_incident) / pow(S_slab, 1./3.); // intermediate variable
     double x_f = w_x * log(nH_cgs / nHalf); // intermediate variable
-    fH2 = 1./(1. + exp(-x_f*(1.-0.02*x_f+0.001*x_f*x_f)));
-    return xH0 * fH2;
+    double fH2_gd = 1./(1. + exp(-x_f*(1.-0.02*x_f+0.001*x_f*x_f)));
+    return xH0 * fH2_gd;
 #endif
     
     

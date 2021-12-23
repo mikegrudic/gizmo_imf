@@ -277,14 +277,17 @@ double INLINE_FUNC Get_Gas_density_for_energy_i(int i);
 double INLINE_FUNC Get_Particle_Expected_Area(double h);
 double get_cell_Bfield_in_microGauss(int i);
 double Get_Gas_Ionized_Fraction(int i);
-#ifdef COSMIC_RAYS
+double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
+double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i);
+double CR_gas_heating(int target, double n_elec, double nH0, double nHcgs);
+double Get_CosmicRayIonizationRate_cgs(int i);
+#ifdef COSMIC_RAY_FLUID
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
 double Get_CosmicRayGradientLength(int i, int k_CRegy);
 double Get_CosmicRayStreamingVelocity(int i, int k_CRegy);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
-double CR_calculate_adiabatic_gasCR_exchange_term(int i, double dt_entr, double gamma_minus_eCR_tmp, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, double shock_vel, int return_index_in_bin, int target);
 double return_cosmic_ray_anisotropic_closure_function_threechi(int target, int k_CRegy);
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_type, int target, double *dir);
@@ -304,13 +307,12 @@ double gamma_eos_of_crs_in_bin(int k_CRegy);
 double return_CRbin_beta_factor(int target, int k_CRegy);
 double get_cell_Urad_in_eVcm3(int i);
 void CR_cooling_and_losses(int target, double n_elec, double nHcgs, double dtime_cgs);
-double CR_gas_heating(int target, double n_elec, double nHcgs);
 double return_CRbin_CRmass_in_mp(int target, int k_CRegy);
 double return_CRbin_CR_rigidity_in_GV(int target, int k_CRegy);
 double CR_get_streaming_loss_rate_coefficient(int target, int k_CRegy);
 double Get_Gas_ion_Alfven_speed_i(int i);
 double return_CRbin_nuplusminus_asymmetry(int i, int k_CRegy);
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
 void CR_spectrum_define_bins(void);
 void CR_initialize_multibin_quantities(void);
 void CR_cooling_and_losses_multibin(int target, double n_elec, double nHcgs, double dtime_cgs, int mode_driftkick);
@@ -380,7 +382,10 @@ double INLINE_FUNC hubble_function_external(double a);
 void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
 void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
-void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir);
+void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir, double *dpdir);
+#ifdef MAGNETIC
+void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r);
+#endif
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
@@ -616,7 +621,7 @@ void apply_grain_dragforce(void);
 
 #ifdef RT_INFRARED
 double get_min_allowed_dustIRrad_temperature(void);
-double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target);
+double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target, int update_Tdust);
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))
@@ -640,6 +645,8 @@ void selfshield_local_incident_uv_flux(void);
 #ifdef GALSF_FB_MECHANICAL
 void determine_where_SNe_occur(void);
 void mechanical_fb_calc(int fb_loop_iteration);
+void mechanical_fb_calc_toplevel(void);
+void verify_and_assign_local_mechfb_integrals(void);
 #endif
 
 #ifdef GALSF_FB_THERMAL
@@ -679,6 +686,12 @@ int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_lo
 void disp_setup_smoothinglengths(void);
 void disp_density(void);
 #endif
+#endif
+
+
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
+double cr_get_source_injection_rate(int i);
+double cr_get_source_shieldfac(int i);
 #endif
 
 
@@ -734,7 +747,7 @@ void do_the_cooling_for_particle(int i);
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe);
 void apply_pm_hires_region_clipping_selection(int i);
-double get_starformation_rate(int i);
+double get_starformation_rate(int i, int mode);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
 void init_clouds(void);
 void integrate_sfr(void);
@@ -844,6 +857,10 @@ void rt_set_simple_inits(int RestartFlag);
 void rt_init_intensity_directions(void);
 #endif
 void rt_get_lum_gas(int target, double *je);
+#ifdef RT_ISRF_BACKGROUND
+void rt_apply_boundary_conditions(int i);
+void get_background_isrf_urad(int i, double *urad);
+#endif
 double slab_averaging_function(double x);
 double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
 double stellar_lum_in_band(int i, double E_lower, double E_upper);

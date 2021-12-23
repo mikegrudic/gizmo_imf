@@ -35,10 +35,10 @@ void radiation_pressure_winds_consolidated(void)
             {
                 /* calculate some basic luminosity properties of the stars */
                 double lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
-                double lum_cgs = (lm_ssp * SOLAR_LUM) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
+                double lum_cgs = (lm_ssp * SOLAR_LUM_CGS) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
                 double f_lum_ion = particle_ionizing_luminosity_in_cgs(i) / lum_cgs; f_lum_ion=DMAX(0.,DMIN(1.,f_lum_ion)); // fraction of luminosity in H-ionizing radiation
                 double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-                double dE_over_c = All.RP_Local_Momentum_Renormalization * lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
+                double dE_over_c = All.RP_Local_Momentum_Renormalization * lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT_CGS; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
                 dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
                 total_prob_kick += dE_over_c; // sum contributions
 
@@ -48,9 +48,9 @@ void radiation_pressure_winds_consolidated(void)
 
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
-                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS; // unit mass for kicks
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS; // for this module use lower unit mas for kicks
+                double v_wind_threshold = 15. / UNIT_VEL_IN_KMS; // unit velocity for kicks
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+                v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS; // for this module use lower unit mass for kicks
 #endif
                 double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].Hsml*All.cf_atime; // density and h in -physical- units
                 double v_grav_guess; v_grav_guess = DMIN( 1.82*(65.748/UNIT_VEL_IN_KMS)*pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25) , sqrt(All.G*(P[i].Mass + NORM_COEFF*rho_phys*h_phys*h_phys*h_phys)/h_phys) ); // don't want to 'under-kick' if there are small local characteristic velocities in the region of interest
@@ -222,6 +222,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #endif
         {
             dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+            if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
+#endif
             if(dt<=0) {continue;} // don't keep going with this loop
 
             stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i); // ionizing luminosity in cgs [will be appropriately weighted for assumed spectral shape]
@@ -236,7 +239,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             if(RHIIMAX < 2.0*h_i) {RHIIMAX=2.0*h_i;} // limit max search radius: can't be below 2x kernel size
             if(RHIIMAX > 10.0*h_i) {RHIIMAX=10.*h_i;} // limit search radius to 10x kernel size
             mionizable = NORM_COEFF*rho*RHII*RHII*RHII; // estimated ionizable gas mass in code units, based on the gas density at star location [will be rescaled]
-            double M_ionizing_emitted = (3.05e10 * PROTONMASS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized [in cgs]
+            double M_ionizing_emitted = (3.05e10 * PROTONMASS_CGS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized [in cgs]
             mionizable = DMIN( mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS ); // in code units
             if(RHII > RHIIMAX) {RHII = RHIIMAX;} // limit initial guess to max
             if(RHII < 0.5*h_i) {RHII=0.5*h_i;} // limit initial guess to above 1/2 kernel, so can find neighbors
@@ -272,7 +275,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if !defined(CHIMES_HII_REGIONS)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
-                                if((SphP[i].Ne>0.8) || (u>5.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+                                if((SphP[i].Ne>0.8) || (u>50.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
 #endif
@@ -400,7 +403,7 @@ int do_the_local_ionization(int target, double dt, int source)
     SphP[target].InternalEnergy = DMAX(SphP[target].InternalEnergy , HIIRegion_Temp / (0.59 * (5./3.-1.) * U_TO_TEMP_UNITS)); /* assume fully-ionized gas with gamma=5/3 */
     SphP[target].InternalEnergyPred = SphP[target].InternalEnergy; /* full reset of the internal energy */
 #else
-    double delta_U_of_ionization = (20.-13.6) * ((ELECTRONVOLT_IN_ERGS / PROTONMASS) / UNIT_SPECEGY_IN_CGS) * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
+    double delta_U_of_ionization = (20.-13.6) * ((ELECTRONVOLT_IN_ERGS / PROTONMASS_CGS) / UNIT_SPECEGY_IN_CGS) * (1.-DMAX(0.,DMIN(1.,SphP[target].Ne/1.5))); /* energy injected per unit mass, in code units, by ionization, assuming each atom absorbs, and mean energy of absorbed photons is given by x=18 eV here (-13.6 for energy of ionization) */
     double Theat_star = 1.38 * 3.2, Z_sol = 1.; // typical IMF-averaged temp of ionizing star=32,000 K, with effective ionization temperature parameter psi=1.38 (temp of ionized e's in units of stellar temp). Then metallicity in solar units.
 #ifdef METALS
     Z_sol = P[target].Metallicity[0]/All.SolarAbundances[0]; // set metallicity
@@ -410,6 +413,10 @@ int do_the_local_ionization(int target, double dt, int source)
     double u_post_ion_no_cooling = SphP[target].InternalEnergy + delta_U_of_ionization; // energy after ionization, before any cooling
     double u_final = DMIN( u_post_ion_no_cooling , u_eqm ); // don't heat to higher temperature than intial energy of ionization allows
     SphP[target].InternalEnergy = u_final; SphP[target].InternalEnergyPred = u_final; /* add it */
+    /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor'): note this is repeated in the 'self-shield' routine but has to be in both because otherwise this wont appear on the first timestep after which a gas cell is flagged as ionized by this subroutine */
+    double n1000 = SphP[target].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / 1000.; // density in 1000 cm^-3
+    double flux_compactHII = DMAX(0.85*pow(n1000,1./3.) , 1) * 2.6e5*n1000; // set to typical value in HII region or minimum needed to maintain f_neutral < 1e-5-ish, whichever is larger
+    SphP[target].Rad_Flux_UV += flux_compactHII; SphP[target].Rad_Flux_EUV += flux_compactHII;
 #endif
     SphP[target].Ne = 1.0 + 2.0*yhelium(target); /* set the cell to fully ionized */
 

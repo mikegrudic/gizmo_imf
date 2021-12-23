@@ -985,28 +985,28 @@ Note that these are not the only available equations-of-state in GIZMO, but just
 ##-----------------------------------------------------------------------------------------------------
 #---------------------------------------- Cosmic Rays
 #---------------------------------------- (this is developed by P. Hopkins as part of the FIRE package: the same FIRE authorship & approval policies apply, see below)
-#COSMIC_RAYS                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
-#COSMIC_RAYS_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
-#COSMIC_RAYS_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
-#COSMIC_RAYS_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
-#COSMIC_RAYS_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
-#COSMIC_RAYS_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
-#COSMIC_RAYS_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
+#COSMIC_RAY_FLUID                    # two-fluid medium with CRs as an ultrarelativistic fluid: heating/cooling, anisotropic diffusion, streaming, injection by SNe
+#CRFLUID_ALFVEN=(500.)      # solve CR transport based on Alfven-limited scattering from Thomas+Pfrommer 18, evolves CRs+resonant Alfven population; value here is maximum free-streaming speed in code units. requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states.
+#CRFLUID_M1=(500.)          # solve the CR transport in the M1 limit [second-order expansion of the collisionless boltzmann eqn]; value here is the streaming speed in code units
+#CRFLUID_DIFFUSION_MODEL=0  # determine how coefficients for CR transport scale. 0=constant diffusivity, -1=no diffusion(still stream), values >=1 correspond to different literature scalings for the coefficients (see user guide)
+#CRFLUID_ION_ALFVEN_SPEED   # assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance)
+#CRFLUID_DISABLE_STREAMING  # turn off CR streaming (propagation is purely advective+diffusion; warning: this can severely under-estimate CR losses to Alfven waves)
+#CRFLUID_DISABLE_COOLING    # turn off CR heating/cooling interactions with gas (catastrophic losses, hadronic interactions, etc; only adiabatic PdV work terms remain)
 ##-----------------------------------------------------------------------------------------------------
 ####################################################################################################
 ```
 
-**COSMIC\_RAYS**: Enable treatment of the gas as a mixed fluid of 'regular' gas and cosmic rays. This is appropriate for the limit where the cosmic ray mean free path is short, so it can be considered in the fluid limit. We then solve the appropriate equations for a two-fluid system, where the cosmic ray fluid component is an ultra-relativistic ($\gamma=4/3$) fluid. In the simplest case, cosmic ray (CR) transport by advection, diffusion, and streaming (both isotropic and anisotropic) is calculated explicitly, along with multi-fluid shocks and the Riemann solutions, and adiabatic heating/cooling of the CR. The diffusion and streaming operators are derived for both SPH and MFM/MFV modes of the code following the other diffusion operators (conduction, viscosity, etc) described above. The coefficients are calculated self-consistently in the code, following Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, and Ensslin 2011. In the weak-magnetic field case, the streaming velocity which enters into the diffusion-like propagation operator is approximated with the gas sound speed; but if MAGNETIC is on, the code uses the Alfven velocity appropriately. The coefficient is  $v_{A}\,h_{\rm CR} / |\nabla P_{\rm CR}|$, where $v_{A}$ is the Alfven speed, $h_{\rm CR}$ is the cosmic ray enthalpy, and $P_{\rm CR}$ is the cosmic ray pressure. If MAGNETIC is on, the diffusion and streaming operations are correctly done for the anisotropic case (along field lines). If COOLING is active, the cosmic ray fluid is assumed to lose energy through Coulomb interactions and decays (catastrophic cooling), and a fraction of the Coulomb interaction energy goes into heating the gas (accounted for in the cooling routines); the rates for these are calculated following Volk et al. 1996, Ensslin et al. 1997, Mannheim & Schilickeiser 1994, and Guo & Oh 2008. It is straightforward to include CR injection in different sources -- for example, in the FIRE models, CRs are injected into the gas via supernovae explosions (a fraction, typically $\sim10\%$, of each SNe ejecta kinetic energy is assumed to go into the CR population). The methods paper for this is Chan et al. 2019, MNRAS, 488, 3716 (arXiv:1812.10496), with first results. At the moment this is being used for several papers by the authors so the use of these modules follows FIRE policies (although use for simulations very different from FIRE, e.g. plasma physics/ISM physics would likely be possible at this stage, the authors must still be contacted for permissions). Additional details of the modules are described in the `notes_cosmicrays` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_cosmicrays.pdf) or in the downloads section of the BitBucket site), but a more formal and accurate description is in the methods paper.
+**COSMIC\_RAY\_FLUID**: Enable treatment of the gas as a mixed fluid of 'regular' gas and cosmic rays. This is appropriate for the limit where the cosmic ray mean free path is short, so it can be considered in the fluid limit. We then solve the appropriate equations for a two-fluid system, where the cosmic ray fluid component is an ultra-relativistic ($\gamma=4/3$) fluid. In the simplest case, cosmic ray (CR) transport by advection, diffusion, and streaming (both isotropic and anisotropic) is calculated explicitly, along with multi-fluid shocks and the Riemann solutions, and adiabatic heating/cooling of the CR. The diffusion and streaming operators are derived for both SPH and MFM/MFV modes of the code following the other diffusion operators (conduction, viscosity, etc) described above. The coefficients are calculated self-consistently in the code, following Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, and Ensslin 2011. In the weak-magnetic field case, the streaming velocity which enters into the diffusion-like propagation operator is approximated with the gas sound speed; but if MAGNETIC is on, the code uses the Alfven velocity appropriately. The coefficient is  $v_{A}\,h_{\rm CR} / |\nabla P_{\rm CR}|$, where $v_{A}$ is the Alfven speed, $h_{\rm CR}$ is the cosmic ray enthalpy, and $P_{\rm CR}$ is the cosmic ray pressure. If MAGNETIC is on, the diffusion and streaming operations are correctly done for the anisotropic case (along field lines). If COOLING is active, the cosmic ray fluid is assumed to lose energy through Coulomb interactions and decays (catastrophic cooling), and a fraction of the Coulomb interaction energy goes into heating the gas (accounted for in the cooling routines); the rates for these are calculated following Volk et al. 1996, Ensslin et al. 1997, Mannheim & Schilickeiser 1994, and Guo & Oh 2008. It is straightforward to include CR injection in different sources -- for example, in the FIRE models, CRs are injected into the gas via supernovae explosions (a fraction, typically $\sim10\%$, of each SNe ejecta kinetic energy is assumed to go into the CR population). The methods paper for this is Chan et al. 2019, MNRAS, 488, 3716 (arXiv:1812.10496), with first results. At the moment this is being used for several papers by the authors so the use of these modules follows FIRE policies (although use for simulations very different from FIRE, e.g. plasma physics/ISM physics would likely be possible at this stage, the authors must still be contacted for permissions). Additional details of the modules are described in the `notes_cosmicrays` file ([here](http://www.tapir.caltech.edu/~phopkins/public/notes_cosmicrays.pdf) or in the downloads section of the BitBucket site), but a more formal and accurate description is in the methods paper.
 
-**COSMIC\_RAYS\_ALFVEN**: Integrate CR transport based on Alfven-limited scattering from Thomas and Pfrommer 2018, which explicitly evolves the CR energy density, flux, but also the energy densities of two populations (forward and backward-propagating) resonant Alfven wave populations (Alfven waves with frequency of order the CR gyro frequency, generally under-resolved in any system where you are evolving the CRs in the fluid-like limit, as done here). The value of this parameter here is maximum free-streaming speed in code units. If this is active the diffusive and streaming-like behaviors are automatically calculated from the combined equations of motion. This requires MAGNETIC be active, as it sources almost all terms from the magnetic fields, and COOLING, as the scalings depend on detailed ionization and chemical/thermal states of the gas. This is still being tested. 
+**CRFLUID\_ALFVEN**: Integrate CR transport based on Alfven-limited scattering from Thomas and Pfrommer 2018, which explicitly evolves the CR energy density, flux, but also the energy densities of two populations (forward and backward-propagating) resonant Alfven wave populations (Alfven waves with frequency of order the CR gyro frequency, generally under-resolved in any system where you are evolving the CRs in the fluid-like limit, as done here). The value of this parameter here is maximum free-streaming speed in code units. If this is active the diffusive and streaming-like behaviors are automatically calculated from the combined equations of motion. This requires MAGNETIC be active, as it sources almost all terms from the magnetic fields, and COOLING, as the scalings depend on detailed ionization and chemical/thermal states of the gas. This is still being tested. 
 
-**COSMIC\_RAYS_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units.
+**CRFLUID\_M1**: Integrate the diffusive part of the cosmic-ray transport using the M1 moments expansion, rather than a pure diffusion equation. This is nominally more accurate (just like with radiation) since it allows for a smooth and self-consistent transition between free-streaming and diffusive limits for the CRs, at the expense of extra variables tracked and a smaller timestep if the full transport speed is used (approximately the speed of light). If a "reduced speed of light"-type approximation is desired, this parameter should be set to the value equal to the desired cosmic-ray free-streaming speed, in code units.
 
-**COSMIC\_RAYS\_DIFFUSION\_MODEL**: This determines the model for the streaming and diffusion coefficients used in cosmic-ray transport. It must be set to a valid integer. The default value (=0) will set the diffusion coefficient to a constant, equal to value of the parameterfile CosmicRayDiffusionCoeff in code units. If <0 (e.g. -1), then diffusion will be disabled (streaming can still be non-zero, along with advection). Coefficients =1 and larger use different literature models for how the diffusion and/or streaming coefficients should scale with local plasma properties. =1 is the Jokipii 1966 classical extrinsic turbulence scaling. =2 is the Snodin et al. 2016 extrinsic random-field scaling. =3 is Farber et al. 2018-like scaling with diffusivity fast in neutral gas, slow in ionized gas. =4 is Wiener et al. 2017's estimated equilibrium self-confinement motivated streaming speed for hot plasma. =5 is the Chan et al. 2018 streaming at the fast magnetosonic speed. =6 is the Hopkins et al. 2019 (in prep) equilibrium self-confinement scaling. =7 combines the self-confinement scaling (6) and extrinsic turbulence model (2). Other than constant diffusivity, these are still in testing and should only be used with the permissions of PFH and TK Chan. Note that activating the `COSMIC_RAYS_ALFVEN` flag will override any choice here.
+**CRFLUID\_DIFFUSION\_MODEL**: This determines the model for the streaming and diffusion coefficients used in cosmic-ray transport. It must be set to a valid integer. The default value (=0) will set the diffusion coefficient to a constant, equal to value of the parameterfile CosmicRayDiffusionCoeff in code units. If <0 (e.g. -1), then diffusion will be disabled (streaming can still be non-zero, along with advection). Coefficients =1 and larger use different literature models for how the diffusion and/or streaming coefficients should scale with local plasma properties. =1 is the Jokipii 1966 classical extrinsic turbulence scaling. =2 is the Snodin et al. 2016 extrinsic random-field scaling. =3 is Farber et al. 2018-like scaling with diffusivity fast in neutral gas, slow in ionized gas. =4 is Wiener et al. 2017's estimated equilibrium self-confinement motivated streaming speed for hot plasma. =5 is the Chan et al. 2018 streaming at the fast magnetosonic speed. =6 is the Hopkins et al. 2019 (in prep) equilibrium self-confinement scaling. =7 combines the self-confinement scaling (6) and extrinsic turbulence model (2). Other than constant diffusivity, these are still in testing and should only be used with the permissions of PFH and TK Chan. Note that activating the `CRFLUID_ALFVEN` flag will override any choice here.
 
-**COSMIC\_RAYS\_ION\_ALFVEN\_SPEED**: This assumes that the relevant Alfven speed governing cosmic-ray transport is not the ideal-MHD Alfven speed, but the Alfven speed for *just* the ions (applicable in the weak-coupling limit for the resonant Alfven waves at gyro-resonance). The latter can be much larger in neutral gas. This replaces specific Alfvenic terms which appear in the transport equations, but we caution that the correct behavior in this limit is not clear.
+**CRFLUID\_ION\_ALFVEN\_SPEED**: This assumes that the relevant Alfven speed governing cosmic-ray transport is not the ideal-MHD Alfven speed, but the Alfven speed for *just* the ions (applicable in the weak-coupling limit for the resonant Alfven waves at gyro-resonance). The latter can be much larger in neutral gas. This replaces specific Alfvenic terms which appear in the transport equations, but we caution that the correct behavior in this limit is not clear.
 
-**COSMIC\_RAYS\_DISABLE\_STREAMING**/**COSMIC\_RAYS\_DISABLE\_COOLING**: These disable various cosmic-ray options (all require `COSMIC_RAYS` be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. 
+**CRFLUID\_DISABLE\_STREAMING**/**CRFLUID\_DISABLE\_COOLING**: These disable various cosmic-ray options (all require `COSMIC_RAY_FLUID` be active). Disabling streaming means propagation is purely advective plus diffusion; in physical situations this can severely under-estimate CR losses to Alfven waves (i.e. severely over-estimate how much energy density can be maintained in CRs). Disabling cooling turns off the CR cooling/loss terms including catastrophic losses, hadronic interactions, and streaming losses; only the adiabatic PdV work terms remain. 
 
 
 
@@ -1274,7 +1274,7 @@ First, there is the 'top-level switch' for galaxy formation and star formation.
 ## ----------------------------------------------------------------------------------------------------
 # --- star formation law/particle spawning (additional options: otherwise all star particles will reflect IMF-averaged populations and form strictly based on a density criterion) ---- #
 ## ----------------------------------------------------------------------------------------------------
-#GALSF_SFR_CRITERION=(0+1+2)     # mix-and-match SF criteria with a bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=adds a 'catch' which weakens some kinematic criteria when forces become strongly non-Newtonian (when approach minimum force-softening) 
+#GALSF_SFR_CRITERION=(0+1+2)     # mix-and-match SF criteria with a bitflag: 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=adds a 'catch' which weakens some kinematic criteria when forces become strongly non-Newtonian (when approach minimum force-softening), 2048=time-averaged virial
 #GALSF_SFR_MOLECULAR_CRITERION   # estimates molecular/self-shielded fraction in SF-ing gas, only SF from that is allowed. Cite Krumholz & Gnedin (ApJ 2011 729 36) and Hopkins et al., 2017a, arXiv:1702.06148. requires METALS and COOLING.
 #GALSF_SFR_VIRIAL_SF_CRITERION=0 # only allow star formation in virialized sub-regions (alpha<1) (0/no value='default'; 1=0+Jeans criterion; 2=1+'strict' (zero sf if not bound)), 3=2+converging-flow+time-smoothed. 4=3+check if converging along all-3 principle axes. 5=4+Tidal Hill criterion (tidal tensor converging in all dimensions). Cite Hopkins, Narayanan, & Murray 2013 (MNRAS, 432, 2647) and Hopkins et al., 2017a, arXiv:1702.06148; (or Grudic et al. arXiv:1708.09065 for option=3,4,5)
 #GALSF_SFR_IMF_VARIATION         # determines the stellar IMF for each particle from the Guszejnov/Hopkins/Hennebelle/Chabrier/Padoan theory. Cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107
@@ -1286,11 +1286,11 @@ First, there is the 'top-level switch' for galaxy formation and star formation.
 
 These parameters control the star formation criteria (used to determine when and how star particles are spawned from gas) and algorithmic aspects of the star particle 'spawning'. Use of these specific modules is permitted, as described below, as part of the use of the development code, and users are of course encouraged to modify things like the detailed criteria for spawning star/sink particles based on their specific applications; however proper citations should be included in any published work, to the papers which developed these physics and numerical models.
 
-**GALSF\_SFR\_CRITERION**: This is the preferred flag to set the criteria for star-particle formation (rather than setting individual flags like `GALSF_SFR_MOLECULAR_CRITERION`). You set the value to a bitflag which allows users to specify any arbitrary combination of criteria for star formation (provided they are physically compatible): the bitflag is set to the sum of the values corresponding to each criterion you want to enable, including: **(0)** A density threshold (set by the `CritPhysDensity` parameter in the params file). Note because the value is `0` here, this is effectively always on, but you can essentially disable it by simply setting `CritPhysDensity` very low or zero. **(1)** A local virial criterion (self-gravitating at the resolution scale including kinetic, thermal, and magnetic energy, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=2` below (see the description below for details of what this entails and for the proper references if you use it). **(2)** Requires the gas be in a convergent flow ($\nabla\cdot{\bf v}<0$). **(4)** Require the gas cell sit at a local density and potential extremum (evaluated within kernel). **(8)** Require that there are no other sinks inside three times the gas kernel/neighbor radius, and the gas is not a valid 'interacting neighbor' of any other sink particle -- note this is usually only useful in individual-star-formation (sink-particle-type) simulations, but can be useful in galaxy scale simulations (where sinks represent black holes) in some circumstances. **(16)** Require the timescale for the gas element to free-fall onto (using a 2-body orbit) or intercept ($\sim 1/(\Delta{\bf v}\cdot \Delta {\bf r})$) the nearest sink is longer than the local dynamical collapse time -- again this is primarily for single-star sink-particle simulations. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(32)** Enforce a Hill-type criterion that the local tidal tensor is negative definite (forces are converging along all three principle axes) and that the gas cell lives inside its own Hill sphere. This is a much stronger and more rigorous (Galilean-invariant) version of a local maximum-type criterion. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(64)** Require that the thermal+magnetic Jeans mass be less than the minimum of 1000 solar masses or the gas cell mass (but no smaller than 100 solar masses). This effectively requires that the gas can fragment down to plausible star-forming scales. Cite Grudic et al. arXiv:2010.11254. **(128)** Require that the flow be converging along all three principle axes by diagonalizing the velocity shear tensor. This is a much stricter version of the converging-flow criterion, though not necessarily always more physical. **(256)** Require that the gas be self-shielding (molecular) and scale the star formation rate to the molecular fraction in the gas cell. This is identical to enabling `GALSF_SFR_MOLECULAR_CRITERION` (see description below for details and references). **(512)** Scale the star formation efficiency per free-fall time not to a constant (the default behavior), but to a multi-free-fall model based on the simulations in Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter dependence. **(1024)** Adds a purely-numerical 'catch' where the more complicated kinematic criteria are ignored if the gas kernel size approaches the minimum force softening, where the forces become non-Keplerian and so some of the criteria above (like the virial criteria) are fundamentally ill-defined. 
+**GALSF\_SFR\_CRITERION**: This is the preferred flag to set the criteria for star-particle formation (rather than setting individual flags like `GALSF_SFR_MOLECULAR_CRITERION`). You set the value to a bitflag which allows users to specify any arbitrary combination of criteria for star formation (provided they are physically compatible): the bitflag is set to the sum of the values corresponding to each criterion you want to enable, including: **(0)** A density threshold (set by the `CritPhysDensity` parameter in the params file). Note because the value is `0` here, this is effectively always on, but you can essentially disable it by simply setting `CritPhysDensity` very low or zero. **(1)** A local virial criterion (self-gravitating at the resolution scale including kinetic, thermal, and magnetic energy, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=1` below (see the description below for details of what this entails and for the proper references if you use it). **(2)** Requires the gas be in a convergent flow ($\nabla\cdot{\bf v}<0$). **(4)** Require the gas cell sit at a local density and potential extremum (evaluated within kernel). **(8)** Require that there are no other sinks inside three times the gas kernel/neighbor radius, and the gas is not a valid 'interacting neighbor' of any other sink particle -- note this is usually only useful in individual-star-formation (sink-particle-type) simulations, but can be useful in galaxy scale simulations (where sinks represent black holes) in some circumstances. **(16)** Require the timescale for the gas element to free-fall onto (using a 2-body orbit) or intercept ($\sim 1/(\Delta{\bf v}\cdot \Delta {\bf r})$) the nearest sink is longer than the local dynamical collapse time -- again this is primarily for single-star sink-particle simulations. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(32)** Enforce a Hill-type criterion that the local tidal tensor is negative definite (forces are converging along all three principle axes) and that the gas cell lives inside its own Hill sphere. This is a much stronger and more rigorous (Galilean-invariant) version of a local maximum-type criterion. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(64)** Require that the thermal+magnetic Jeans mass be less than the minimum of 1000 solar masses or the gas cell mass (but no smaller than 100 solar masses). This effectively requires that the gas can fragment down to plausible star-forming scales. Cite Grudic et al. arXiv:2010.11254. **(128)** Require that the flow be converging along all three principle axes by diagonalizing the velocity shear tensor. This is a much stricter version of the converging-flow criterion, though not necessarily always more physical. **(256)** Require that the gas be self-shielding (molecular) and scale the star formation rate to the molecular fraction in the gas cell. This is identical to enabling `GALSF_SFR_MOLECULAR_CRITERION` (see description below for details and references). **(512)** Scale the star formation efficiency per free-fall time not to a constant (the default behavior), but to a multi-free-fall model based on the simulations in Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter dependence. **(1024)** Adds a purely-numerical 'catch' where the more complicated kinematic criteria are ignored if the gas kernel size approaches the minimum force softening, where the forces become non-Keplerian and so some of the criteria above (like the virial criteria) are fundamentally ill-defined. **(2048)** Uses a time-averaged version of the virial criterion, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=2` below (see description below again).
 
 **GALSF\_SFR\_MOLECULAR\_CRITERION**: Specifically enables molecular-gas dependent star formation. This estimates the molecular fraction $f_{H2}$ in a gas particle, and corrects the calculated star formation rate by this factor (only allowing star formation from the molecules). It uses whatever function the cooling routines are also using to estimate the molecular fractions (see details on this below in the various `COOL_MOLECFRAC...` options), as a function of e.g. local column density, metallicity, radiation field, etc. In evolved galaxies, for a high density threshold for SF (e.g. $n> 100\,{\rm cm^{-3}}$), the molecular fractions are very near unity so this has no effect, but it costs almost nothing to add this criterion to simulations, and it can be useful in lower-resolution simulations to approximate regions where gas can self-shield and cool. Any publications using this module should cite both the relevant reference for where the molecular fraction estimator is taken, and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). Because of the dependence on cooling physics and metallicity, this requires METALS and COOLING be enabled. This is identical to adding the `256` option to the `GALSF_SFR_CRITERION` bitflag above.
 
-**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This specifically requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). Any publications using this module should cite both Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). Setting the option =3 will use all the criteria from "2", plus require a converging flow, plus calculate the virial parameter according to a running time-smoothed average (exponential window smoothed over the free-fall time), to reduce noise (particularly useful for star cluster or small-scale sink-particle simulations). Option =4 will use 3 plus require a convergent flow along all three principle axes (diagonalizing the shear tensor). Option =5 will use 4 plus a Hill-type criterion where we calculate tidal tensor and diagonalize it, requiring a convergent acceleration along all three principle axes with the resolution element size within its own Hill sphere. For the options =3,4,5, cite Grudic et al. arXiv:1708.09065. Setting this `=2` is identical to adding the `1` option to the `GALSF_SFR_CRITERION` bitflag above.
+**GALSF\_SFR\_VIRIAL\_SF\_CRITERION**: This specifically requires that only gas which is locally self-gravitating forms stars. Self-gravity is calculated via the local virial parameter following Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285); see that paper for details. This is useful for e.g. mergers and cosmological runs because it is adaptive -- so even if the mean galaxy density is >> your SF threshold, this will only allow SF in the bound sub-regions. However, it can be expensive, since it forces you to resolve those (often very high-density) regions. Physically, this corresponds to the results of idealized turbulent cloud simulations and observations of actual star forming regions (see e.g. Padoan et al.), which show bound clouds have SF efficiencies of ~100% per free-fall time, while unbound clouds have negligible SF. Setting to =0 is the default model. Setting =1 also requires the thermal Jeans mass be below 1000 solar masses (i.e. that fragmentation to stellar masses is possible). Setting =2 requires this and completely zeros any star formation in non-bound regions (otherwise, for numerical reasons, a region with density greater than 100 times the threshold density for star formation will be given a more tolerant criterion on the assumption it has collapsed via self-gravity). Any publications using this module should cite both Hopkins, Narayanan, & Murray 2013 (arXiv:1303.0285) and Hopkins et al., 2017a, arXiv:1702.06148 (Appendix C describes the algorithm in detail). Setting the option =3 will use all the criteria from "2", plus require a converging flow, plus calculate the virial parameter according to a running time-smoothed average (exponential window smoothed over the free-fall time), to reduce noise (particularly useful for star cluster or small-scale sink-particle simulations). Option =4 will use 3 plus require a convergent flow along all three principle axes (diagonalizing the shear tensor). Option =5 will use 4 plus a Hill-type criterion where we calculate tidal tensor and diagonalize it, requiring a convergent acceleration along all three principle axes with the resolution element size within its own Hill sphere. For the options =3,4,5, cite Grudic et al. arXiv:1708.09065. Setting this `=1` is identical to adding the `1` option to the `GALSF_SFR_CRITERION` bitflag above, `=2` is identical to the `2048` option above.
 
 **GALSF\_SFR\_IMF\_VARIATION**: Self consistently computes the IMF for each star particle from its parent gas properties at the time of formation. This uses the Hopkins/Guszejnov/Hennebelle/Chabrier model, if desired, but the default is a universal IMF. The IMF is then used self-consistently for feedback calculations throughout the simulation. This will also save and dump in snapshots a large number of properties of the star-forming clouds from which every star particle formed, for use in IMF models. This is currently in development by David Guszejnov and PFH, please contact us if you wish to use the module, as it is still in early testing phases and, while modular, requires the IMF scalings desired be input in a specific form. Users should cite Guszejnov, Hopkins, & Ma 2017, MNRAS, 472, 2107. 
 
@@ -1470,7 +1470,7 @@ These modules allow for sinks to be created and grow (as well as merge) 'on-the-
 
 
 
-**SINGLE\_STAR\_SINK\_FORMATION**: With this enabled, sink particles can be created 'on the fly' as opposed to simply in the ICs. You set the value to a bitflag which allows users to specify any arbitrary combination of criteria for star formation (provided they are physically compatible): the bitflag is set to the sum of the values corresponding to each criterion you want to enable, including: **(0)** A density threshold (set by the `CritPhysDensity` parameter in the params file). Note because the value is `0` here, this is effectively always on, but you can essentially disable it by simply setting `CritPhysDensity` very low or zero. **(1)** A local virial criterion (self-gravitating at the resolution scale including kinetic, thermal, and magnetic energy, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=2` above (see the description above for details of what this entails and for the proper references if you use it). **(2)** Requires the gas be in a convergent flow ($\nabla\cdot{\bf v}<0$). **(4)** Require the gas cell sit at a local density and potential extremum (evaluated within kernel). **(8)** Require that there are no other sinks inside three times the gas kernel/neighbor radius, and the gas is not a valid 'interacting neighbor' of any other sink particle. **(16)** Require the timescale for the gas element to free-fall onto (using a 2-body orbit) or intercept ($\sim 1/(\Delta{\bf v}\cdot \Delta {\bf r})$) the nearest sink is longer than the local dynamical collapse time. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(32)** Enforce a Hill-type criterion that the local tidal tensor is negative definite (forces are converging along all three principle axes) and that the gas cell lives inside its own Hill sphere. This is a much stronger and more rigorous (Galilean-invariant) version of a local maximum-type criterion. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(64)** Require that the thermal+magnetic Jeans mass be less than the minimum of 1e4 solar masses or 100x the gas cell mass (but no smaller than 1e-3 solar masses). Cite Grudic et al. arXiv:2010.11254. **(128)** Require that the flow be converging along all three principle axes by diagonalizing the velocity shear tensor. This is a much stricter version of the converging-flow criterion, though not necessarily always more physical. **(256)** Require that the gas be self-shielding (molecular) and scale the star formation rate to the molecular fraction in the gas cell. This is identical to enabling `GALSF_SFR_MOLECULAR_CRITERION` (see description above for details and references). **(512)** Scale the star formation efficiency per free-fall time not to a constant (the default behavior), but to a multi-free-fall model (this is generally only relevant in galaxy-scale simulations; see the description in `GALSF_SFR_CRITERION` above). **(1024)** Adds a purely-numerical 'catch' where the more complicated kinematic criteria are ignored if the gas kernel size approaches the minimum force softening, where the forces become non-Keplerian and so some of the criteria above (like the virial criteria) are fundamentally ill-defined. If all of the chosen criteria are met, a gas element is immediately converted into a sink. Each of these options involves papers that should be cited: please see the code and documentation for blackhole modules to cite the appropriate paper[s].
+**SINGLE\_STAR\_SINK\_FORMATION**: With this enabled, sink particles can be created 'on the fly' as opposed to simply in the ICs. You set the value to a bitflag which allows users to specify any arbitrary combination of criteria for star formation (provided they are physically compatible): the bitflag is set to the sum of the values corresponding to each criterion you want to enable, including: **(0)** A density threshold (set by the `CritPhysDensity` parameter in the params file). Note because the value is `0` here, this is effectively always on, but you can essentially disable it by simply setting `CritPhysDensity` very low or zero. **(1)** A local virial criterion (self-gravitating at the resolution scale including kinetic, thermal, and magnetic energy, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=1` above (see the description above for details of what this entails and for the proper references if you use it). **(2)** Requires the gas be in a convergent flow ($\nabla\cdot{\bf v}<0$). **(4)** Require the gas cell sit at a local density and potential extremum (evaluated within kernel). **(8)** Require that there are no other sinks inside three times the gas kernel/neighbor radius, and the gas is not a valid 'interacting neighbor' of any other sink particle. **(16)** Require the timescale for the gas element to free-fall onto (using a 2-body orbit) or intercept ($\sim 1/(\Delta{\bf v}\cdot \Delta {\bf r})$) the nearest sink is longer than the local dynamical collapse time. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(32)** Enforce a Hill-type criterion that the local tidal tensor is negative definite (forces are converging along all three principle axes) and that the gas cell lives inside its own Hill sphere. This is a much stronger and more rigorous (Galilean-invariant) version of a local maximum-type criterion. Cite Grudic et al. arXiv:2010.11254 for the algorithm. **(64)** Require that the thermal+magnetic Jeans mass be less than the minimum of 1e4 solar masses or 100x the gas cell mass (but no smaller than 1e-3 solar masses). Cite Grudic et al. arXiv:2010.11254. **(128)** Require that the flow be converging along all three principle axes by diagonalizing the velocity shear tensor. This is a much stricter version of the converging-flow criterion, though not necessarily always more physical. **(256)** Require that the gas be self-shielding (molecular) and scale the star formation rate to the molecular fraction in the gas cell. This is identical to enabling `GALSF_SFR_MOLECULAR_CRITERION` (see description above for details and references). **(512)** Scale the star formation efficiency per free-fall time not to a constant (the default behavior), but to a multi-free-fall model (this is generally only relevant in galaxy-scale simulations; see the description in `GALSF_SFR_CRITERION` above). **(1024)** Adds a purely-numerical 'catch' where the more complicated kinematic criteria are ignored if the gas kernel size approaches the minimum force softening, where the forces become non-Keplerian and so some of the criteria above (like the virial criteria) are fundamentally ill-defined. **(2048)** Uses a time-averaged version of the virial criterion, identical to setting `GALSF_SFR_VIRIAL_SF_CRITERION=2` below (see description above again). If all of the chosen criteria are met, a gas element is immediately converted into a sink. Each of these options involves papers that should be cited: please see the code and documentation for blackhole modules to cite the appropriate paper[s].
 
 **SINGLE\_STAR\_ACCRETION**: Enables accretion onto sinks after they form. The value chooses the model, but all are described in the blackholes documentation (please read that for details of how the different modules work in detail). Values 0-10 choose 'continuous accretion rate' models, where the accretion rate onto the sink is continuously evaluated from the gas properties of the neighbors through which the sink moves. Within this, values 0-8 specifically are identical to the corresponding value of `BH_GRAVACCRETION`: 0=estimator from Hopkins and Quataert 2010, for accretion in a gravitationally-unstable disk, 1=revision to 0 from Angles-Alcazar et al 2011, 2=fixed accretion per free-fall time from accretion radius, 3=gravito-turbulent scaling from Gammie et al., 4=fixed accretion per free fall within radius where sink dominates potential, 5=hybrid Bondi plus self-gravitating disk model, 6=fixed inflow per free-fall in collisionless Hernquist sphere, 7=hybrid model interpolating between Shu-type isothermal sphere accretion and Bondi-Hoyle, 8=Hubber-type disk-free-fall interpolation. Values 9 and 10 set `BH_BONDI=0,1` respectively, where 0 is default Bondi-Hoyle and 1 is Bondi (ignoring gas velocity). Setting this flag =10 or =11 uses the `BH_GRAVCAPTURE_GAS` flag, where accretion is not continuous but discrete, swallowing gas elements which are bound within the neighbor radius and meet some other basic criteria. =10 sets the default behavior for this flag, =11 sets it to behave like the Bate-style sinks (with a fixed, instead of adaptive, accretion radius, and an angular momentum criterion for accretion). Each of these options involves papers that should be cited: please see the code and documentation for blackhole modules to cite the appropriate paper[s].
 
@@ -1688,7 +1688,7 @@ These models also involve their own parameterfile settings, in addition to those
 
 **BH\_PHOTONMOMENTUM**: Turn on to enable BH radiation pressure feedback. This follows the mechanisms used to couple stellar radiation pressure to the gas, but with additional corrections for the non-isotropic geometry of the BH accretion disk and obscuration from the torus region, including single-scattering at the dust sublimation radius and IR scattering outside this; this follows the fitting functions taken directly from full radiative transfer calculations by N. Roth (private communication, but see Roth et al. 2012, arXiv:1204.0063, for details). You can set the strength of this mechanism in the parameterfile separately from the other BH feedback mechanisms with the multiplier `BH_Rad_MomentumFactor` (default =1). This uses the FIRE radiation pressure algorithms and implementation (Hopkins et al., arXiv:1702.06148), so its use follows FIRE policies -- it is proprietary and not free-to-use even for users of the development code, without explicit permissions from the FIRE collaboration [see notes above for the FIRE modules in the stellar feedback section].
 
-**BH\_COSMIC\_RAYS**: Turn on to enable BH feedback via cosmic rays, with explicit CR transport. Requires `COSMIC_RAYS` and appropriate choices there for CR transport. Also requires one of the BH mechanical feedback modules. CRs will be coupled alongside mechanical energy, with specified efficiency (so you can make it 'pure' CR by making mechanical energy weak, CRs large). From then on, trated as 'normal' CRs.
+**BH\_COSMIC\_RAYS**: Turn on to enable BH feedback via cosmic rays, with explicit CR transport. Requires `COSMIC_RAY_FLUID` and appropriate choices there for CR transport. Also requires one of the BH mechanical feedback modules. CRs will be coupled alongside mechanical energy, with specified efficiency (so you can make it 'pure' CR by making mechanical energy weak, CRs large). From then on, trated as 'normal' CRs.
 
 
 <a name="config-bh-additionalbhoptions"></a>
@@ -2024,7 +2024,7 @@ These flags govern snapshot outputs (what is saved and how it is saved).
 
 **IO\_DISABLE\_HDF5**: If this is set, the code will be compiled without support for input and output in the HDF5 format. You need to have the HDF5 libraries and headers installed on your computer for the code to compile otherwise (which you should do). The HDF5 format format is normally format "3" in the parameterfile. Without it, the code will resort to the un-formatted fortran binary as the only option (format "1"), which is not recommended.
 
-**OUTPUT\_ADDITIONAL\_RUNINFO**: This enables various outputs that are disabled by default. This includes outputs like 'cpu.txt' every timestep instead of only on the super-steps, far more output in the stdout outputs, checking for 'stop' files for checkpointing every timestep, outputing the extended blackhole\_details.txt files, etc. On machines with slow I/O, this can be a major slow-down and bottleneck for the code. On machines with fast I/O, this is much less of an issue. It depends strongly on the run. But most of the extra output is only needed for de-bugging.
+**OUTPUT\_ADDITIONAL\_RUNINFO**: This enables various outputs that are disabled by default. This includes outputs like 'cpu.txt' every timestep instead of only on the super-steps, far more output in the stdout outputs, checking for 'stop' files for checkpointing every timestep, outputing the extended `blackhole_details.txt` files, etc. On machines with slow I/O, this can be a major slow-down and bottleneck for the code. On machines with fast I/O, this is much less of an issue. It depends strongly on the run. But most of the extra output is only needed for de-bugging.
 
 **OUTPUT\_IN\_DOUBLEPRECISION**: Snapshots written in double-precision (single is default, even though the code uses double; this is purely to save on storage).
 
@@ -2087,7 +2087,7 @@ The remaining flags in this section all turn on/off additional (optional) output
 # --------------------
 # ----- Additional Fluid Physics and Gravity
 #COOLING_OPERATOR_SPLIT         # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
-#COOL_LOWTEMP_THIN_ONLY         # in the COOL_LOW_TEMPERATURES module, treat low-temperature cooling as optically-thin instead of interpolating between optically-thin and -thick regimes
+#COOL_LOWTEMP_THIN_ONLY         # in the COOL_LOW_TEMPERATURES module, neglect the suppression of cooling at very high surface densities due to the opacity limit (disables limiter in Eqs B29-B30, Hopins et al arXiv:1702.06148)
 #MHD_ALTERNATIVE_LEAPFROG_SCHEME # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #SUPER_TIMESTEP_DIFFUSION       # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
 #EVALPOTENTIAL                  # computes gravitational potential
@@ -2572,13 +2572,13 @@ Here, we will list and describe some of these, but this will necessarily be an i
 **TurbDiffusionCoefficient**: Multiplies the dimensionless diffusion coefficient for the Smagorinski turbulent eddy diffusion subgrid-scale model (relative to the value 'recommended' by Smagorinski in three dimensional problems). This multiplies all the diffusion rates set by `TURB_DIFFUSION_X` compile-time flags.
 
 
-    %--- Cosmic Ray + Gas Fluids (COSMIC_RAYS on)
+    %--- Cosmic Ray + Gas Fluids (COSMIC_RAY_FLUID on)
     CosmicRayDiffusionCoeff     1.0     % multiplies anisotropic diffusion/streaming coefficients
     CosmicRay_SNeFraction       0.1     % fraction of SNe ejecta kinetic energy into cosmic rays (~10%)
 
-**CosmicRayDiffusionCoeff**: Multiplies the diffusion coefficients for cosmic ray diffusion/streaming (`COSMIC_RAYS` on), by this dimensionless number. As with the diffusion coefficients above, this is often set to some "suppression factor" in pure hydro runs, to mimic the effects of magnetic fields. If MHD is on, the anisotropic cosmic ray diffusion and streaming is solved directly. The coefficients are calculated self-consistently according to the approximate relations described above.
+**CosmicRayDiffusionCoeff**: Multiplies the diffusion coefficients for cosmic ray diffusion/streaming (`COSMIC_RAY_FLUID` on), by this dimensionless number. As with the diffusion coefficients above, this is often set to some "suppression factor" in pure hydro runs, to mimic the effects of magnetic fields. If MHD is on, the anisotropic cosmic ray diffusion and streaming is solved directly. The coefficients are calculated self-consistently according to the approximate relations described above.
 
-**CosmicRay\_SNeFraction**: If `COSMIC_RAYS` and `GALSF_FB_MECHANICAL` are both on with the default FIRE physics implementation active as well, then a fraction (typically calculated and observationally inferred to be $\sim 0.1$) of the initial supernova kinetic energy of each explosion is deposited into cosmic rays.
+**CosmicRay\_SNeFraction**: If `COSMIC_RAY_FLUID` and `GALSF_FB_MECHANICAL` are both on with the default FIRE physics implementation active as well, then a fraction (typically calculated and observationally inferred to be $\sim 0.1$) of the initial supernova kinetic energy of each explosion is deposited into cosmic rays.
 
 
 
@@ -3099,15 +3099,51 @@ All files include a header block with (at minimum) the following quantities/flag
     HubbleParam = hubble parameter "h" for the run 
     Redshift = redshift of snapshot
 
+Newer versions of the code include a wide range of additional flags in the header, provided the appropriate physics is enabled at compile time (and that you are using HDF5). This makes it easier to figure out exactly how your run was set up, if you only have the snapshots. This includes, for example:
+
+    GIZMO_version = version (year) of GIZMO code
+    
+    ComovingIntegrationOn = was this simulation run in co-moving/cosmological form (1=yes)
+    Omega_Matter = cosmological omega matter (if ComovingIntegrationOn)
+    Omega_Lambda = cosmological omega lambda (if ComovingIntegrationOn)
+    Omega_Baryon = cosmological omega baryon (if ComovingIntegrationOn)
+    Omega_Radiation = cosmological omega radiation (if ComovingIntegrationOn)
+
+    UnitMass_In_CGS = user-specified unit mass in cgs (from parameterfile)
+    UnitVelocity_In_CGS = user-specified unit velocity in cgs (from parameterfile)
+    UnitLength_In_CGS = user-specified unit length in cgs (from parameterfile)
+    Internal_UnitB_In_Gauss = internal code B-units (not what is in the snapshot, but useful to check if desired setup is actually done, if MAGNETIC on) 
+    Gravitational_Constant_In_Code_Inits = gravity constant G in code units
+    
+    Minimum_Mass_For_Cell_Merge = minimum mass below which cells are merged
+    Maximum_Mass_For_Cell_Split = maximum mass above which cells are split
+    
+    Fixed_ForceSoftening_Keplerian_Kernel_Extent = 6-element table with the in-code kernel-radius-of-compact-supprt of the gravitational force softening value for each particle type, at the time of the snapshot
+    Kernel_Function_ID = value of KERNEL_FUNCTION, specifying the kernel function
+    Effective_Kernel_NeighborNumber = target effective number of cells inside the radius of compact support of one kernel
+    
+    Subfind_FOFLink_NeighborNumber = neighbor number for FOF linking for subfind (if SUBFIND is enabled)
+    
+    Solar_Abundances_Adopted = value of solar abundances assumed in code for the list of metals evolved (METALS on)
+    Metals_Atomic_Number_Or_Key = atomic number of each metals species evolved explicitly in-code; values <1 correspond to special keys, i.e. 0=all/total metallicity, -1=R-process tracer fields, -2=age-tracer fields, -3=starforge feedback tracer fields
+    
+    Radiation_RHD_Min_Bin_Freq_in_eV = if radiation-hydrodynamics is enabled, with outputs saved, this saves the minimim frequency of the explicitly-evolved radiation 'bins' which are actually saved in the code/snapshot outputs (should match the number of elements saved there, so you have a 1-to-1 correspondence), in units of eV (so this is h*nu). note a couple special keys: -1 is for RT_GENERIC_USER_FREQ, since this has no defined frequency range, and -2 for RT_FREEFREE, which evolves the bolometric (all-wavelength-integrated) free-free
+    Radiation_RHD_Max_Bin_Freq_in_eV = as Radiation_RHD_Min_Bin_Freq_in_eV, but the upper limits of the bins/intervals (same special keys)
+    
+    ... and many more, depending on the physics enabled ...
+    
+In the current versions of the code, almost every parameter of interest specified in the parameterfile will be saved to the header (e.g. if you enable cosmic rays and specify the diffusion coefficient in the parameterfile, that is saved here as `CosmicRayDiffusionCoeff_at_GV_CodeUnits`). Other useful information includes e.g. for spectrally-resolved cosmic ray methods the properties (species, charge, rigidity, etc) of each bin, or the age range of each bin for the stellar age tracer modules, etc. Please check the header files for your simulation outputs, they contain a tremendous amount of useful information!
+    
+
 Then, for *each* particle type, there are a set of structures/arrays; these are sub-divided by PARTICLE TYPE. particle type=0 is *always* gas resolution elements (we really shouldn't call them 'particles' since the code treats them as finite volume elements or even explicit, traditional fixed-grid 'cells' in some modes, but for the sake of simplicity, since the N-body particles are indeed 'particles', I'll use that term throughout this guide). The other particle types are not gas. What we chose them to represent is arbitrary and depends on the compile-time flags in the code. For the default example we are discussing here:
 
-    0 = gas
-    1 = high-resolution dark matter
-    2,3 = 'dummy' collisionless particles (low-res dark-matter particles in cosmological runs; pre-existing "disk" and "bulge" star particles in the non-cosmological runs)
-    4 = stars formed during the simulation
-    5 = black holes (usually) -- *some* of our runs use this as another reservoir for 'dummy collisionless particles'
+    0 = gas/fluid (the cells that feel local fluid-dynamic forces)
+    1 = high-resolution dark matter (in e.g. galaxy/cosmological simulations)
+    2,3 = 'dummy' collisionless particles (e.g. low-res dark-matter particles in cosmological runs; pre-existing "disk" and "bulge" star particles in the non-cosmological runs, dust grains or cosmic ray particles in simulations with explicit grain dynamics or MHD-PIC simulations)
+    4 = stars formed during the simulation (in e.g. simulations with non-sink 'star particle' formation like galaxy sims, otherwise another collisionless species)
+    5 = sink particles (e.g. black holes in galaxy simulations, or protostars or star particles in simulations with sink-particle star formation, or if no label is given, this is another dummy collisionless particle)
 
-For each particle, then, there are a wide range of data the routine will attempt to read. See the routine itself to see how these are embedded in the snapshots and extracted. Here we will outline what each quantity is. Each entry in **bold** below refers to the name of the HDF5 block, containing the data. The term in parentheses (P['x']) denotes the name of the block (usually some shorthand) which is returned by the routine `readsnap.py` (this can be trivially modified by the user). If you use `load_from_snapshot.py`, each data structure can be retrieved by asking for it with the proper name used by the HDF5 file. Here we give the description of what youre looking at.
+For each particle/cell, then, there are a wide range of data the routine will attempt to read. See the routine itself to see how these are embedded in the snapshots and extracted. Here we will outline what each quantity is. Each entry in **bold** below refers to the name of the HDF5 block, containing the data. The term in parentheses (P['x']) denotes the name of the block (usually some shorthand) which is returned by the routine `readsnap.py` (this can be trivially modified by the user). If you use `load_from_snapshot.py`, each data structure can be retrieved by asking for it with the proper name used by the HDF5 file. Here we give the description of what youre looking at.
 
 **Coordinates** (output by `readsnap.py` routine as P['p']): a [N,3] array where N is the number of particles (of the given type). Elements [i,0], [i,1], [i,3] give the x, y, z (respectively) coordinate positions of particle "i" in code units
 
@@ -3203,35 +3239,48 @@ All the above are only *some* examples of the different quantities saved, which 
 
 The code will write to standard error in general only when there is an error which is not handled by a "clean" exit/code termination within the code (so it you see a bunch of outputs to stderr, you should try to find out whats happening!). The code will output a very large amount of information to stdout. This is generally channeled through a single 'lead' process ("Task 0"), to avoid slowing down processes, but all processes are capable of writing to stdout. It is recommended that you route this to a named file so that you can track it. An example from a single timestep might look like:
 
-    Sync-Point 325, Time: 0.0204468, Systemstep: 6.10352e-05 
-    Occupied timebins: non-cells     cells       dt                 cumulative A D    avg-time  cpu-frac 
-        bin=17          193055       48133     0.000244140625           337592   *        3.75     27.9% 
-        bin=16           85365       11031     0.000122070312            96404   *        1.85     27.5% 
-     X  bin=15               1           7     0.000061035156                8 <          0.02      0.6% 
-                   ------------------------ 
-    Total active:            1           7    Sum:          8 
-    kicks will prepare for dynamic update of tree 
-    I exchange kick momenta for 6019 top-level nodes out of 14463 
-    Tree has been updated dynamically. 
-    Start gravity force computation... 
-    Begin tree force.  (presently allocated=148.246 MB) 
-    All.BunchSize=302473 
-    tree is done. 
-    gravity force computation done. 
-    Start density & tree-update computation... 
-    Hmax exchange: 0 topleaves out of 14463 
-    density & tree-update computation... 
-    Start gradient computation... 
-    gradient computation done. 
-    Start hydro-force computation... 
-    hydro force computation done. 
-    Beginning black-hole accretion 
-    Start swallowing of gas particles and black holes 
-    Accretion done: 0 gas particles swallowed, 0 BH particles swallowed 
-    predicting next timestep: 6.10352e-05 
-    0000000000 particles woken up. 
+    Sync-Point 1136365, Time: 0.168474, Redshift: 4.93562, Systemstep: 1.64792e-07, Dloga: 9.78146e-07
+    Occupied timebins: non-cells     cells       dt                 cumulative A D    avg-time  cpu-frac
+        bin=28         6761427      974907     0.002003243831         11683119   *       19.57     14.8%
+        bin=27          474946     2175185     0.001001621915          3946785   *       12.45      9.4%
+        bin=26           86245      739536     0.000500810958          1296654   *        4.56      6.9%
+        bin=25           26163      238404     0.000250405479           470873   *        2.54      7.7%
+        bin=24           10514      114898     0.000125202739           206306   *        1.85     11.2%
+        bin=23            3232       54415     0.000062601370            80894   *        1.72     20.8%
+        bin=22               7       17988     0.000031300685            23247            0.15      3.5%
+        bin=21               5        3672     0.000015650342             5252            0.07      3.1%
+        bin=20               4         870     0.000007825171             1575            0.04      3.8%
+        bin=19               3         400     0.000003912586              701            0.03      6.0%
+        bin=18               0         248     0.000001956293              298            0.02      6.6%
+     X  bin=17               0          50     0.000000978146               50 <          0.01      6.2%
+                   ------------------------
+    Total active:            0          50    Sum:         50
 
-The top section shows the distribution of particles in different timebins (as in timebin.txt discussed below), then the file notes as it goes through different stages of calculation (updating the tree, walking the tree to calculate gravitational forces, entering the density computation, hydrodynamic gradients calculation, hydrodynamic forces, black hole-specific calculations, calculating the next timestep and checking if particles need to be activated, etc). You should always monitor this output. This will be written every timestep regardless of the output options. However the amount of output will be much more extensive if the compile-time flag **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled. The extra output will be things like entering/exiting of different sub-routines, most of which is not important information (but can be useful for debugging).
+    Kick-subroutine will prepare for dynamic update of tree
+     ..exchanged kick momenta for 138 top-level nodes out of 234697
+     ..Tree has been updated dynamically
+    Start gravity force computation...
+     ..Begin tree force. (presently allocated=2687.14 MB)
+     ..gravity force computation done
+    Start hydrodynamics computation...
+     ..Hmax exchange: 13 topleaves out of 234697
+     ..density & tree-update computation done...
+     ..gradient computation done.
+     ..hydro force computation done.
+    Start mechanical feedback computation...
+     ..mechanical feedback loop: iteration -2
+     ..mechanical feedback loop: iteration -1
+     ..mechanical feedback loop: iteration 0
+     ..mechanical feedback loop: iteration 1
+    Local HII-Region photo-heating/ionization calculation
+    Local Radiation-Pressure acceleration calculation
+     ..completed local Radiation-Pressure acceleration
+    Black-hole operations begin...
+     ..closing black-hole operations
+    Cooling and Chemistry update
+    Predicting next timestep: 9.78146e-07
+
+The top section shows the distribution of particles in different timebins (as in timebin.txt discussed below), then the file notes as it goes through different stages of calculation (updating the tree, walking the tree to calculate gravitational forces, entering the density computation, hydrodynamic gradients calculation, hydrodynamic forces, black hole-specific calculations, calculating the next timestep and checking if particles need to be activated, etc). You should always monitor this output. This will be written regularly regardless of the output options. However the amount of output will be much more extensive if the compile-time flag **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled (the example above included this). The extra output will be things like entering/exiting of different sub-routines, most of which is not important information (but can be useful for debugging).
 
 
 ## info.txt (only output if **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled)
@@ -3270,42 +3319,35 @@ The first line of the block generated for each step informs you about the number
 
 In the file 'cpu.txt', you get some statistics about the total CPU consumption measured in various parts of the code while it is running. A typical output looks like this:
 
-    Step 436425, Time: 1, CPUs: 72 
-    total          543053.65  100.0% 
-    treegrav       295931.05   54.5% 
-       treebuild    29901.28    5.5% 
-       treeupdate       0.00    0.0% 
-       treewalk     60590.63   11.2% 
-       treecomm     74375.49   13.7% 
-       treeimbal    99989.17   18.4% 
-    pmgrav           1021.37    0.2% 
-    hydro           84947.04   15.6% 
-       density       6051.09    1.1% 
-       denscomm     35305.18    6.5% 
-       densimbal    11076.00    2.0% 
-       hydrofrc      5980.64    1.1% 
-       hydcomm       7340.81    1.4% 
-       hydmisc       5179.58    1.0% 
-       hydnetwork       0.00    0.0% 
-       hydimbal      4004.45    0.7% 
-       hmaxupdate     216.51    0.0% 
-    domain          99211.71   18.3% 
-    potential           0.00    0.0% 
-    predict            12.23    0.0% 
-    kicks            1819.29    0.3% 
-    i/o               639.50    0.1% 
-    peano            5688.99    1.0% 
-    sfrcool          5698.84    1.0% 
-    blackholes          0.00    0.0% 
-    fof/subfind         0.00    0.0% 
-    dummy               0.00    0.0% 
-    gas_return       5701.38    1.0% 
-    snII_fb_loop    29457.75    5.4% 
-    hII_fb_loop       761.69    0.1% 
-    localwindkik     2525.29    0.5% 
-    pre_sf_misc         0.00    0.0% 
-    cooling             0.00    0.0% 
-    misc             9637.50    1.8% 
+    Step 1146466, Time: 0.169055, CPUs: 224
+    Nactive=18, Imbal(Max/Mean)=1.17634 
+    total           44927.08  100.0%
+    tree+gravity     6913.13   15.4%
+       treebuild     1493.23    3.3%
+       treewalk      1538.67    3.4%
+       treecomm       534.70    1.2%
+       treeimbal     2858.32    6.4%
+    pm-gravity        558.37    1.2%
+    hydro/fluids    13765.43   30.6%
+       dens+grad      965.28    2.1%
+       denscomm      1713.23    3.8%
+       densimbal     2471.50    5.5%
+       hydrofrc      1872.59    4.2%
+       hydcomm       2106.64    4.7%
+       hydimbal      3287.75    7.3%
+       hmaxupdate     105.58    0.2%
+       hydmisc       1242.87    2.8%
+    domain           5736.25   12.8%
+    peano             327.15    0.7%
+    drift/splitmg    1641.10    3.7%
+    kicks             268.89    0.6%
+    io/snapshots       49.81    0.1%
+    cooling+chem     6706.17   14.9%
+    blackholes       1412.80    3.1%
+    mech_fb_loop     2656.93    5.9%
+    hII_fb_loop      1946.22    4.3%
+    localwindkik      204.51    0.5%
+    misc             2740.33    6.1%
 
 For each timestep, there is a large "block" printed out (actually this is only output on every top-level-timestep unless the **OUTPUT\_ADDITIONAL\_RUNINFO** flag is enabled). The top of the block specifies the current timestep number, simulation time, and number of CPUs used. Then for each item in the block, there is a name (specifying the task) and two numbers. The first number is the cumulative CPU consumption (**per MPI task**) for that task of the code up to this point (wallclock times in seconds), and the second is the percent of the total CPU time this corresponds to. 
 
@@ -3313,43 +3355,51 @@ The blocks shown include:
 
 **total**: Total consumption
 
-**treegrav**: Gravitational force tree computation (including tree building/construction, update/drifting, walking to find neighbors/do the interactions, communication, and the imbalance calculated as the time wasted while CPUs wait for other CPUs to finish their tree operations before the code can move forward).
+**tree+gravity**: Gravitational force tree computation. This larger category is divided into various sub-categories, including tree building/construction and update/drifting (`treebuild`), walking to find neighbors/do the interactions (`treewalk`), communication (`treecomm`), and the imbalance (`treeimbal`) calculated as the time wasted while CPUs wait for other CPUs to finish their tree operations before the code can move forward.
 
-**pmgrav**: Gravitational force computation from the PM grid on large scales (when hybrid Tree-PM mode is used)
-
-**hydro**: Hydrodynamics. This has two subsets: the "density" section includes the initial density calculation, kernel length determination, and gradients calculations. This is divided into the computation (density), communication (denscomm), and imbalance (densimbal). The "hydro" section includes the calculation of hydrodynamic forces (hydrofrc), communication, imbalance, miscellanrous, and network costs (for nuclear networks). hmaxupdate traces the cost of updating kernel lengths in the tree from the density computations.
+**hydro/fluids**: Hydrodynamics and all other related fluid dynamics, elastics, radiation-hydrodynamics, etc, calculations. This has two subsets: the "density" section includes the initial density calculation, kernel length determination, and gradients calculations. This is divided into the computation (`dens+grad`), communication (`denscomm`), and imbalance (`densimbal`). The "hydro" section includes the calculation of hydrodynamic forces and all other work in the hydro loop, such as radiation transfer between cells (`hydrofrc`), communication (`hydcomm`), imbalance (`hydimbal`), miscellaneous (`hydmisc`), and network costs (for nuclear networks). The value `hmaxupdate` traces the cost of updating kernel lengths in the tree from the density computations.
 
 **domain**: Domain decomposition.
 
-**potential**: Potential energy computation (for the energy statistics).
-
-**predict**: Drifting the particle set.
-
-**kicks**: Timestep determination and ‘kicking’ of particles.
-
-**i/o**: Writing of snapshot files.
-
 **peano**: Time needed to establish Peano-Hilbert order.
+
+**drift/splitmg**: Drifting the particle set and performing cell merge/split operations.
+
+**kicks**: Timestep determination and 'kicking' of particles.
+
+**io/snapshots**: Writing of snapshot files.
 
 **misc**: Anything that doesnt fit in the above.
 
+
 Various optional physics modules will add their own blocks to the table here, so you can diagnose how expensive the routines are. Some examples are:
 
-**cooling**: Cooling routines (only used when star formation is inactive, otherwise this is combined in sfrcool)
+**pm-gravity**: Gravitational force computation from the PM grid on large scales (when hybrid Tree-PM mode is used).
+
+**potentialeval**: Potential energy computation (for the energy statistics). If any flags are on which require "normal" evaluation of the potential throughout the run, then this is not included, because this potential calculation is done directly alongside gravity (costs included above). But if `OUTPUT_POTENTIAL` is enabled and this is not done otherwise a special call must be made before snapshots to compute this, leading to this entry appearing.
+
+**ags-nongas**: Routines which require kernel density calculations for non-fluid elements (e.g. adaptive gravitational softening for stars, self-interacting dark matter, etc) must evaluate a density-like loop, whose costs are summed here, broken up like hydro costs into the main density/kernel loop (`agsdensity`), communications (`agscomm`), imbalance (`agsimbal`), and miscellaneous (`agsmisc`).
+
+**dyndiff** and **velsmooth**: Dynamic diffusion (`TURB_DIFF_DYNAMIC`) flags will activate these, with the multi-kernel dynamic diffusion tensor calculation and smoothed velocity field construction broken into compute costs (`compute`), communication (`comm`), imbalances (`wait`), and miscellaneous (`misc`)
+
+**fof/subfind**: Cost for on-the-fly friends-of-friends structure or substructure finding (if e.g. `FOF` or `SUBFIND` is active).
+
+**cooling+chem**: Cooling routines and astro-chemical libraries (`COOLING` active). If `CHIMES` is active, an additional diagnostic of imbalance (`coolchmimbal`) is added since the large network solve can lead to large imbalances this can help diagnose.
+
+**blackholes**: Black hole physics (neighbor finding, accretion, and feedback routines), if `BLACK_HOLES` active.
+
+**grains**: Grain/dust/cosmic ray MHD-PIC dynamics (Lorentz force, drag, collisions, and other calculations specific to these flags).
 
 **sfrcool**: Time spent in cooling and star formation routines.
 
-**blackholes**: Black hole physics (neighbor finding, accretion, and feedback routines)
+**mech\_fb\_loop**: Mechanical feedback routines (e.g. supernovae, stellar mass-loss, from stellar sources, if `GALSF_FB_MECHANICAL` or `GALSF_FB_THERMAL` is active).
 
-**fof/subfind**: On-the-fly friends-of-friends group finding
+**hII\_fb\_loop**: FIRE HII photo-ionization routines (`GALSF_FB_FIRE_RT_HIIHEATING`).
 
-**gas\_return**: FIRE gas recycling/stellar wind feedback routines
+**localwindkik**: FIRE local radiation pressure calculation (`GALSF_FB_FIRE_RT_LOCALRP`).
 
-**snII\_fb\_loop**: FIRE SNe/mechanical feedback routines
+**rt\_nonfluxops**: Collects radiation-hydrodynamics operations (with `RADTRANSFER` active) not included already in the hydrodynamics solvers total above (those contain the cell-cell fluxes) and basic drift/kick operations (also already included above).
 
-**hII\_fb\_loop**: FIRE hII photo-ionization routines
-
-**localwindkik**: FIRE local radiation pressure calculation 
 
 
 ## energy.txt (only output if **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled)
@@ -3383,7 +3433,7 @@ The top line shows the current timestep number (sync-point), time, corresponding
 
 ## balance.txt
 
-This is a very technical and hard-to-parse file containing the balance information for each processor at each timestep. Consult the GADGET users guide if you need it, but you usually shouldnt. In newer versions of GIZMO, this file is not output.
+This is a rather technical and hard-to-parse file containing the balance information for each processor at each timestep. Consult the GADGET users guide if you need it, but you usually shouldnt. The opening of the file contains a key which labels each of the different categories of CPU flags, and details over each timestep the fraction of time spent in each as the code works its way through. It is more detailed than what you get from cpu.txt, but less useful often than what you would get from using code profiling tools (which is recommended for real optimization, this is more of a useful tool for debugging). In newer versions of GIZMO, this file is not output by default unless additional outputs are enabled. 
 
 
 
@@ -3398,38 +3448,43 @@ Models with star formation (`GALSF` on) will output this file. An output looks l
     0.999991 4.72152e-06 2.92239 1.09686 0 
     0.999996 7.30842e-06 3.70939 1.69782 0 
 
-Columns are: (1) simulation time, (2) expectation value of mass in stars the SF should form that timestep, (3) total SFR in code units, (4) discretized stellar mass/timestep in solar masses per year (this is here just for numerical checks), (5) total mass in stars actually spawned (new particles) that timestep. Unless **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled, this is only output on top-level or domain-level timesteps.
+Columns are: (1) simulation time, (2) expectation value of mass in stars the SF should form that timestep, (3) total SFR in code units, (4) discretized total stellar mass/timestep in solar masses per year, (5) total mass in stars actually spawned (new particles) that timestep. Unless **OUTPUT\_ADDITIONAL\_RUNINFO** is enabled, this is only output on top-level or domain-level timesteps.
 
 
 ### HIIheating.txt
 
 Models with local photoionization heating (`GALSF_FB_FIRE_RT_HIIHEATING`) will write 'HIIheating.txt'
 
-    0.999982 40 9.5362e+42 0.00970138 0.314071  
+    0.0442866 1 3.04398e+52 1 267105 1.25796 
 
-Columns are (1) simulation time, (2) number of sources emitting ionizing photons (very young stars active that timestep), (3) total ionizing photon luminosity in erg/s, (4) total gas mass ionized by those stars, (5) average size of the HII regions being created (distance from source to ionized gas element)
+Columns are (1) simulation time, (2) number of sources emitting ionizing photons (very young stars active that timestep), (3) total ionizing photon emission in photons/s, (4) total number of gas cells ionized (all or in part) by those stars, (5) total gas mass (in solar) ionized, (6) average size of the HII regions being created (distance from source to ionized gas element, in code units)
 
 
 ### MomWinds.txt
 
-Models with local radiation pressure (`GALSF_FB_FIRE_RT_LOCALRP`) will write 'MomWinds.txt'
+Models with the short-range local radiation pressure (`GALSF_FB_FIRE_RT_LOCALRP`) will write 'MomWinds.txt'
 
     0.00476074 1197 0.0362811 0.0333008 1.5 0.00392942  
 
-Columns are (1) simulation time, (2) number of particles affected by radiation pressure, (3) total photon momentum ("$dt\,L / c$") of the active stars for which the radiation pressure is being calculated (code units) for the timestep (4) total momentum actually coupled to gas (5) average velocity of the discretized "kicks" assigned to gas particles (acceleration $*$ dt) from the momentum, (6) mean infrared optical depth $\tau_{\rm IR}$ of the incident gas being illuminated (directly calculated from the IR opacity, metallicity, density of the gas). 
+Columns are (1) simulation time, (2) number of cells affected by short-range radiation pressure, (3) total photon momentum ("$dt\,L / c$") of the active stars for which the radiation pressure is being calculated (code units) for the timestep (4) total momentum actually coupled to gas (5) average velocity of the discretized "kicks" assigned to gas particles (acceleration $*$ dt) from the momentum, (6) mean infrared optical depth $\tau_{\rm IR}$ of the incident gas being illuminated (directly calculated from the IR opacity, metallicity, density of the gas). 
 
 
 ### SNeIIheating.txt
 
 Models with mechanical feedback from SNe and stellar winds (`GALSF_FB_MECHANICAL`) will write 'SNeIIheating.txt'
 
-    0.00469971 2536 7 7 6.07408 5.7401e-05 1.53389e-06  
-    0.00473022 304 0 0 0.0107007 3.05176e-05 5.32971e-08  
-    0.00476074 223674 11075 22962 22753 0.000121335 2.55594e-05  
-    0.00479126 320 1 1 0.161066 3.05176e-05 8.39359e-07  
     0.00482178 2546 9 9 7.00321 5.71995e-05 1.74019e-06  
 
-Columns are (1) simulation time, (2) number of particles active which could (potentially) have SNe, (3) total number of SNe this timestep, (4) total number of particles hosting SNe (which can be smaller than the number of SNe if there are multiple SNe per particle), (5) mean timestep of the active star particles (dt), (6), mean SNe rate of the active star particles at this time.
+Columns are (1) simulation time, (2) number of (star) particles active which could (potentially) have SNe (or stellar wind mass ejection event), (3) total number of particles which actually have at least one SNe (or event), (4) total number of SNe (or events) this timestep (this can be larger than the number of host stars if the timestep is long enough), (5) exact (non-integer) integral of the rate functions over the timestep for all events, which should equal the expectation value of the number of discrete events, given in the previous column, (6) mean timestep of the active star particles (dt), (7), mean SNe rate of the active star particles at this time.
+
+
+### blackholes.txt
+
+Models with black holes or sink particles active (`BLACK_HOLES`) will write 'blackholes.txt'
+
+    0.16714 33 0.000221363 0.000365694 0.00373909 0.00103651 0.336703
+
+Columns are (1) simulation time, (2) total number of black holes/sinks (BHs) in the simulation, (3) total mass (in code units) of all BHs (note this uses the `BH_Mass` flag, not the total dynamical mass or the reservoir mass for BH particles, but the mass nominally fully associated with the sink/BH itself), (4 ) total accretion rate (code units) summed over all BHs (again, this uses the accretion rate onto the BHs themselves, if the alpha-disk or reservoir model is turned on, not the accretion rate into said reservoir, which can be a series of delta functions depending on the accretion model employed), (5) total accretion rate in solar masses per year, (6) total of all the dynamical masses of all BH particles (i.e. including the full particle dynamical mass, plus reservoir, plus BH, which can in principle be larger than the BH by a large margin), (7) mean Eddington ratio $\langle \dot{M}_{\rm BH} / \dot{M}_{\rm Edd}(M_{\rm BH}) \rangle$ of all the BHs (note that the mean weighted by mass, or $\langle \dot{M}_{\rm BH} \rangle / \langle \dot{M}_{\rm Edd}(M_{\rm BH}) \rangle$ can be directly calculated from the information in the other columns here).
 
 ***
 

@@ -57,7 +57,11 @@ int does_particle_need_to_be_merged(int i)
         double lambda_J = Get_Gas_Fast_MHD_wavespeed_i(i) * sqrt(M_PI / (All.G * SphP[i].Density * All.cf_a3inv));
         if((lambda_J > 4. * PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT * Get_Particle_Size(i)*All.cf_atime) && (P[i].Mass < All.MaxMassForParticleSplit)) {return 1;} // de-refine
     }
-#endif    
+#endif
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
+    if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
+    if(P[i].Type==0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;}} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
+#endif
     if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
     if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
     return 0;
@@ -73,6 +77,9 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#ifdef BH_DEBUG_SPAWN_JET_TEST
+    if(P[i].ID == All.AGNWindID) {return 0;}
+#endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
     if(P[i].Type == 0)
@@ -89,6 +96,31 @@ int does_particle_need_to_be_split(int i)
 double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
+    if(P[i].Type==0)
+    {
+        double mcrit_0=1.*(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
+        double MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs); // Jeans mass, but modified with lower limit for temperature so we refine all cool gas equally, lower limit for numerical convenience for density
+        if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);} // ensure that only cells much denser than cosmic mean are eligible for refinement. use 100x so even cells outside Rvir are potentially eligible
+        // to check against hot gas in high-density ISM getting worse than a certain resolution level, we want to check that we don't down-grade the spatial resolution too much
+        double m_ref_mJ = 0.001 * MJ;
+#if defined(BH_CALC_DISTANCES)
+        double rbh = P[i].min_dist_to_bh * All.cf_atime; // distance to nearest BH
+        if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
+        {
+            double mc=1.e10, m_r1=DMIN(mcrit_0, 7.e3), m_r2=10.*m_r1, m_r3=10.*m_r2, r1=1., r2=10., r3=20.;
+            if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
+                {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
+            
+            m_ref_mJ = DMIN(m_ref_mJ , mc);
+        }
+#endif
+        double M_target = DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR; // enforce minimum refinement to 7000 Msun, and convert to code units, compare to 0.001xJeans mass, which is designed to target desired levels
+        double normal_median_mass = All.MaxMassForParticleSplit / 3.; // code median mass from ICs
+        ref_factor = DMAX(1.e-4, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
+        return ref_factor; // return it
+    }
+#endif
 /*!
  #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
     ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
@@ -475,23 +507,23 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[j].MassTrue = mass_of_new_particle * SphP[i].MassTrue;
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
             SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
             SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
             SphP[j].DtCosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRayEnergy[k_CRegy]; SphP[i].DtCosmicRayEnergy[k_CRegy] -= SphP[j].DtCosmicRayEnergy[k_CRegy];
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
             SphP[j].CosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRay_Number_in_Bin[k_CRegy]; SphP[i].CosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].CosmicRay_Number_in_Bin[k_CRegy];
             SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy]; SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy] -= SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
             for(k=0;k<3;k++)
             {
                 SphP[j].CosmicRayFlux[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFlux[k_CRegy][k]; SphP[i].CosmicRayFlux[k_CRegy][k] -= SphP[j].CosmicRayFlux[k_CRegy][k];
                 SphP[j].CosmicRayFluxPred[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayFluxPred[k_CRegy][k]; SphP[i].CosmicRayFluxPred[k_CRegy][k] -= SphP[j].CosmicRayFluxPred[k_CRegy][k];
             }
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<2;k++)
             {
                 SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] = mass_of_new_particle * SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k]; SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k] -= SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k];
@@ -772,24 +804,24 @@ void merge_particles_ij(int i, int j)
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
         SphP[j].CosmicRayEnergyPred[k_CRegy] += SphP[i].CosmicRayEnergyPred[k_CRegy];
         SphP[j].DtCosmicRayEnergy[k_CRegy] += SphP[i].DtCosmicRayEnergy[k_CRegy];
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
         SphP[j].CosmicRay_Number_in_Bin[k_CRegy] += SphP[i].CosmicRay_Number_in_Bin[k_CRegy];
         SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] += SphP[i].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
         for(k=0;k<3;k++)
         {
             SphP[j].CosmicRayFlux[k_CRegy][k] += SphP[i].CosmicRayFlux[k_CRegy][k];
             SphP[j].CosmicRayFluxPred[k_CRegy][k] += SphP[i].CosmicRayFluxPred[k_CRegy][k];
         }
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         for(k=0;k<3;k++)
         {
             SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k] += SphP[i].CosmicRayAlfvenEnergy[k_CRegy][k];

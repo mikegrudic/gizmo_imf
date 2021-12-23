@@ -97,7 +97,7 @@ struct Quantities_for_Gradients
 #ifdef DOGRAD_INTERNAL_ENERGY
     MyDouble InternalEnergy;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
     MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -317,7 +317,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 #ifdef DOGRAD_INTERNAL_ENERGY
         in->GQuant.InternalEnergy = SphP[i].InternalEnergyPred;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         for(k=0;k<N_CR_PARTICLE_BINS;k++) {in->GQuant.CosmicRayPressure[k] = Get_Gas_CosmicRayPressure(i,k);}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -419,7 +419,7 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         MIN_ADD(GasGradDataPasser[i].Minima.InternalEnergy,out->Minima.InternalEnergy,mode);
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.InternalEnergy[k],out->Gradients[k].InternalEnergy,mode);}
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         for(j=0;j<N_CR_PARTICLE_BINS;j++)
         {
             MAX_ADD(GasGradDataPasser[i].Maxima.CosmicRayPressure[j],out->Maxima.CosmicRayPressure[j],mode);
@@ -625,7 +625,7 @@ void hydro_gradient_calc(void)
 #ifdef DOGRAD_INTERNAL_ENERGY
                 SphP[i].Gradients.InternalEnergy[k] = 0;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
                 for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[i].Gradients.CosmicRayPressure[k2][k] = 0;}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -1033,7 +1033,7 @@ void hydro_gradient_calc(void)
 #ifdef DOGRAD_INTERNAL_ENERGY
             construct_gradient(SphP[i].Gradients.InternalEnergy,i);
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {construct_gradient(SphP[i].Gradients.CosmicRayPressure[k],i);}
             int is_particle_local_extremum[N_CR_PARTICLE_BINS]={0}; is_particle_local_extremum[0]=0; // test for local extremum to revert to lower-order reconstruction if necessary
 #endif
@@ -1277,7 +1277,7 @@ void hydro_gradient_calc(void)
 #endif
                 double temperature = mean_molecular_weight * (GAMMA(i)-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; // will use appropriate EOS to estimate temperature
 		double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
 		zeta_cr = u_cr * 2.2e-6 * ((1. / P[i].Mass * SphP[i].Density * All.cf_a3inv) * (UNIT_PRESSURE_IN_CGS)); // convert to ionization rate
 #endif
@@ -1289,7 +1289,7 @@ void hydro_gradient_calc(void)
 		        // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
 		        double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
-		        double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS; // density in cgs
+		        double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
                 // calculate ionization fraction in dense gas; use rate coefficients k to estimate grain charge
                 double k0 = 1.95e-4 * ag01*ag01 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
                 double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
@@ -1298,10 +1298,10 @@ void hydro_gradient_calc(void)
                 // psi solves the equation: psi = alpha * (exp[psi] - y/(1+psi)) where y=sqrt(m_ion/m_electron); note the solution for small alpha is independent of m_ion, only large alpha
                 //   (where the non-ideal effects are weak, generally) produces a difference: at very high-T, appropriate m_ion should be hydrogen+helium, but in this limit our cooling
                 //    routines will already correctly determine the ionization states. so we can safely adopt Mg as our ion of consideration
-                double y=sqrt(m_ion*PROTONMASS/ELECTRONMASS), psi_0 = 0.5188025-0.804386*log(y), psi=psi_0; // solution for large alpha [>~10]
+                double y=sqrt(m_ion*PROTONMASS_CGS/ELECTRONMASS_CGS), psi_0 = 0.5188025-0.804386*log(y), psi=psi_0; // solution for large alpha [>~10]
                 if(alpha<0.002) {psi=alpha*(1.-y)/(1.+alpha*(1.+y));} else if(alpha<10.) {psi=psi_0/(1.+0.027/alpha);} // accurate approximation for intermediate values we can use here
                 double k_e = k0 * exp(psi); // e-grain collision rate coefficient
-                double k_i = k0 * sqrt(ELECTRONMASS / (m_ion*PROTONMASS)) * (1 - psi); // i-grain collision rate coefficient
+                double k_i = k0 * sqrt(ELECTRONMASS_CGS / (m_ion*PROTONMASS_CGS)) * (1 - psi); // i-grain collision rate coefficient
                 double n_elec = zeta_cr / (ngr_ngas * k_e); // electron number density
                 double n_ion = zeta_cr / (ngr_ngas * k_i); // ion number density
                 double Z_grain = psi / psi_prefac; // mean grain charge (note this is signed, will be negative)
@@ -1323,16 +1323,16 @@ void hydro_gradient_calc(void)
                 double nu_e = nu_ei + 6.21e-9*pow(temperature/100.,0.65)/m_neutral; // Pinto & Galli 2008 for latter (e-neutral)
                 double nu_i = (xe/xi)*nu_ei + 1.57e-9/(m_neutral+m_ion); // // Pandey & Wardle 2008 for former (e-ion), Pinto & Galli 2008 for latter (i-neutral)
                 // use the cross sections to determine the hall parameters and conductivities //
-                double beta_prefac = ELECTRONCHARGE * B_Gauss / (PROTONMASS * C_LIGHT * n_eff);
+                double beta_prefac = ELECTRONCHARGE_CGS * B_Gauss / (PROTONMASS_CGS * C_LIGHT_CGS * n_eff);
                 double beta_i = beta_prefac / (m_ion * nu_i); // standard beta factors (Hall parameters)
-                double beta_e = beta_prefac / (ELECTRONMASS/PROTONMASS * nu_e);
+                double beta_e = beta_prefac / (ELECTRONMASS_CGS/PROTONMASS_CGS * nu_e);
                 double beta_g = beta_prefac / (m_grain * nu_g) * fabs(Z_grain);
                 double be_inv = 1/(1 + beta_e*beta_e), bi_inv = 1/(1 + beta_i*beta_i), bg_inv = 1/(1 + beta_g*beta_g);
                 double sigma_O = xe*beta_e + xi*beta_i + xg*fabs(Z_grain)*beta_g; // ohmic conductivity
                 double sigma_H = -xe*be_inv + xi*bi_inv - xg*Z_grain*bg_inv; // hall conductivity
                 double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*fabs(Z_grain)*beta_g*bg_inv; // pedersen conductivity
                 // now we can finally calculate the diffusivities //
-                double eta_prefac = B_Gauss * C_LIGHT / (4 * M_PI * ELECTRONCHARGE * n_eff );
+                double eta_prefac = B_Gauss * C_LIGHT_CGS / (4 * M_PI * ELECTRONCHARGE_CGS * n_eff );
                 double eta_O = eta_prefac / sigma_O;
                 double sigma_perp2 = sigma_H*sigma_H + sigma_P*sigma_P;
                 double eta_H = eta_prefac * sigma_H / sigma_perp2;
@@ -1379,6 +1379,9 @@ void hydro_gradient_calc(void)
 #if defined(RT_COMPGRAD_EDDINGTON_TENSOR) && !defined(RT_OTVET)
                     /* set the output gradient grad.(D*Prad) = D.(grad Prad), i.e. move the tensor outside the gradient. while not strictly self-consistent, this is more stable, and correct at the level of the ad-hoc M1 or OTVET closure, b/c otherwise M1 introduces unphysical behaviors from the gradients of the tensor where the ad-hoc closure relation causes changes to D [see e.g. Hopkins 'Anisotropic Diffusion in Mesh-Free Numerical Magnetohydrodynamics' Fig 8 and associated discussion]. Also works for FLD trivially. */
                     eddington_tensor_dot_vector(SphP[i].ET[k_freq],GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq],SphP[i].Gradients.Rad_E_gamma_ET[k_freq]);
+#endif
+#if defined(GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION) /* yet another hack for this problem to get the boundaries to play nicely once dust evacuated -- this is a bit redundant with other hacks, but here for safety */
+                    if(SphP[i].Interpolated_Opacity[0] < 1.e-3 * All.Dust_to_Gas_Mass_Ratio*0.75*All.Grain_Q_at_MaxGrainSize/(All.Grain_Internal_Density*All.Grain_Size_Max)) {double gmax=-1; if(P[i].GravAccel[GRAV_DIRECTION_RDI] < gmax) {P[i].GravAccel[GRAV_DIRECTION_RDI]=gmax;}}
 #endif
                 }
             }
@@ -1428,9 +1431,9 @@ void hydro_gradient_calc(void)
 #endif
             local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp, 1,d_max,SphP[i].InternalEnergyPred);
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
             stol_tmp = stol;
-#ifndef COSMIC_RAYS_M1
+#ifndef CRFLUID_M1
             for(k1=0;k1<N_CR_PARTICLE_BINS;k1++)
             {
                 local_slopelimiter(SphP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Gas_CosmicRayPressure(i,k1));
@@ -1539,10 +1542,10 @@ void hydro_gradient_calc(void)
 
 
 
-#if defined(COSMIC_RAYS) && !defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
+#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_EVOLVE_SCATTERINGWAVES) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {SphP[i].CosmicRayDiffusionCoeff[k]=0;}
             if(SphP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
-#ifndef COSMIC_RAYS_M1
+#ifndef CRFLUID_M1
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {if(is_particle_local_extremum[k]==1) {SphP[i].CosmicRayDiffusionCoeff[k] *= -1;}} // negative here codes for local extrema
 #endif
 #endif
@@ -2078,7 +2081,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     MINMAX_CHECK(du,out.Minima.InternalEnergy,out.Maxima.InternalEnergy);
                     if(swap_to_j) {MINMAX_CHECK(-du,GasGradDataPasser[j].Minima.InternalEnergy,GasGradDataPasser[j].Maxima.InternalEnergy);}
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
                     double dpCR[N_CR_PARTICLE_BINS];
                     for(k=0;k<N_CR_PARTICLE_BINS;k++)
                     {
@@ -2179,7 +2182,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef DOGRAD_INTERNAL_ENERGY
                             out.Gradients[k].InternalEnergy += wk_xyz_i * du;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
                             for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {out.Gradients[k].CosmicRayPressure[k2] += wk_xyz_i * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED
@@ -2220,7 +2223,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef DOGRAD_INTERNAL_ENERGY
                             SphP[j].Gradients.InternalEnergy[k] += wk_xyz_j * du;
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
                             for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[j].Gradients.CosmicRayPressure[k2][k] += wk_xyz_j * dpCR[k2];}
 #endif
 #ifdef DOGRAD_SOUNDSPEED

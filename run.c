@@ -52,16 +52,11 @@ void run(void)
 
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
 
-        if(All.Ti_Current >= TIMEBASE)	/* check whether we reached the final time */
+        if((All.Ti_Current >= TIMEBASE) || (All.Time > All.TimeMax)) /* check whether we reached the final time */
         {
-            if(ThisTask == 0)
-                printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);
-
-            restart(0);		/* write a restart file to allow continuation of the run for a larger value of TimeMax */
-
-            if(All.Ti_lastoutput != All.Ti_Current)	/* make a snapshot at the final time in case none has produced at this time */
-                savepositions(All.SnapshotFileCount++);	/* this will be overwritten if All.TimeMax is increased and the run is continued */
-
+            if(ThisTask == 0) {printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);}
+            restart(0); /* write a restart file to allow continuation of the run for a larger value of TimeMax */
+            if(All.Ti_lastoutput != All.Ti_Current) {savepositions(All.SnapshotFileCount++);} /* make a snapshot at the final time in case none has produced at this time; this will be overwritten if All.TimeMax is increased and the run is continued */
             break;
         }
 
@@ -239,15 +234,17 @@ void calculate_non_standard_physics(void)
     apply_excision();
 #endif
 
-#ifdef GALSF /* PFH set of feedback routines */
-    compute_stellar_feedback();
-#endif
 
 #if defined(TURB_DRIVING) && defined(TURB_DRIVING_SPECTRUMGRID)
     if(All.Time >= All.TimeNextTurbSpectrum) {powerspec_turb(All.FileNumberTurbSpectrum++); All.TimeNextTurbSpectrum += All.TimeBetTurbSpectrum;}
 #endif
 
 
+#ifdef GALSF /* PFH set of feedback routines; here because for e.g. strong SNe, obtain better stability if they are coupled discretely just -before- the hydro force is computed */
+    //compute_stellar_feedback();
+#endif
+
+    
 #ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();
@@ -277,7 +274,9 @@ void calculate_non_standard_physics(void)
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
     flag = Flag_FullStep; /* for continous injection, requires all sources and gas be active synchronously or else 2x-counts */
 #endif
-    if(flag) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps) */
+#if !defined(GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION)
+    if(flag) {rt_source_injection();} /* source injection into neighbor gas particles (only on full timesteps, if using non-discrete scheme) */
+#endif
 #endif
 #if defined(RT_DIFFUSION_CG) /* use the CG method to solve the RT diffusion equation implicitly for all particles; do only on full timesteps, requires synchronous timestepping right now */
     if(Flag_FullStep) {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
@@ -300,6 +299,10 @@ void calculate_non_standard_physics(void)
 #ifdef GALSF /**** star/sink particle formation *****/
     star_formation_parent_routine(); // top-level star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
+#endif
+
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+    int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
 #endif
 
 }

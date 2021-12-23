@@ -11,7 +11,7 @@
 * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
 */
 
-#if defined(COSMIC_RAYS_EVOLVE_SCATTERING_WAVES)
+#if defined(CRFLUID_EVOLVE_SCATTERINGWAVES)
 
 /*! To Do: with new RSOL scheme, needs some RSOL factors more carefully placed, here.
     generally can be updated to be a bit more flexible
@@ -118,7 +118,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
     //  more carefully or else we get very large over/under-shoots
 
     // first define some convenient units and dimensionless quantities, and enforce limits on values of input quantities
-    double cr_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy);
+    double cr_speed = CRFLUID_REDUCED_C_CODE(k_CRegy);
     double eCR_0 = 1.e-6*(E_B + P[i].Mass*u0) + eCR + eA[0] + eA[1] + fabs(f_CR/cr_speed); // this can be anything, just need a normalization for the characteristic energy scale of the problem //
     double ceff2_va2=(cr_speed*cr_speed)/(vA_code*vA_code), t0=1./(fac_Omega*(eCR_0/E_B)*vA2_c2), gammCR=GAMMA_COSMICRAY(k_CRegy), f_unit=vA_code*eCR_0, volume=P[i].Mass/(SphP[i].Density*All.cf_a3inv); // factors used below , and for units
     double x_e=eCR/eCR_0, x_f=f_CR/f_unit, x_up=eA[0]/eCR_0, x_um=eA[1]/eCR_0, dtau=dt_entr/t0; e_tot/=eCR_0; Min_Egy/=eCR_0; // initial values in relevant units
@@ -141,7 +141,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 
     // calculate the wave-damping rates (again in appropriate dimensionless units)
     /* ion-neutral damping: need thermodynamic information (neutral fractions, etc) to compute self-consistently */
-    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
+    G_ion_neutral = (5.77e-11 * (rho_cgs/PROTONMASS_CGS) * nh0 * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]. converted to -physical- code units
 
     int i1,i2; double v2_t=0,dv2_t=0,b2_t=0,db2_t=0,x_LL,M_A,h0,fturb_multiplier=1; // factor which will represent which cascade model we are going to use
     for(i1=0;i1<3;i1++)

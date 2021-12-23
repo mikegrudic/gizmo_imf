@@ -172,6 +172,19 @@ void find_timesteps(void)
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+	if(P[i].Type == 5){
+	    if(All.Ti_Current == 0) { // first timestep
+                P[i].dt_since_last_gas_search = GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+		P[i].do_gas_search_this_timestep = 1;
+	    } else {
+	        P[i].dt_since_last_gas_search += GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+		if(P[i].dt_since_last_gas_search > 0.49 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].BH_TimeBinGasNeighbor)){ 
+		    P[i].do_gas_search_this_timestep = 1; 
+                } else {P[i].do_gas_search_this_timestep = 0;}
+	    }
+	}
+#endif
     }
 
 
@@ -217,6 +230,9 @@ integertime get_timestep(int p,		/*!< particle index */
     double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;
     integertime ti_step; int k; k=0;
 
+#ifdef GRADUAL_SNAPSHOT_RESTART // if on the first timestep of a snapshot restart, start at the lowest allowed timestep to minimize any transient effects
+    if(RestartFlag == 2 && All.Ti_Current == 0) return 2; 
+#endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     P[p].SuperTimestepFlag = 0;
     if( (P[p].Type == 5) && P[p].is_in_a_binary ) // candidate: need to decide whether to use super timestepping for binaries
@@ -324,7 +340,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if(P[p].Type == 0) {dt_tidal = DMIN(sqrt(All.ErrTolIntAccuracy/(All.G*SphP[p].Density*All.cf_a3inv)), dt_tidal);} // gas self-gravity timescale as a bare minimum
     
     if(All.ComovingIntegrationOn){ // floor to the dynamical time of the universe
-        double rho0 = (H0_CGS*H0_CGS*(3./(8.*M_PI*GRAVITY_G))*All.cf_a3inv / UNIT_DENSITY_IN_CGS);
+        double rho0 = (H0_CGS*H0_CGS*(3./(8.*M_PI*GRAVITY_G_CGS))*All.cf_a3inv / UNIT_DENSITY_IN_CGS);
         dt_tidal = DMIN(dt_tidal, sqrt(All.ErrTolIntAccuracy / (All.G * rho0)));
     } 
 #ifdef ADAPTIVE_TREEFORCE_UPDATE
@@ -367,7 +383,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(eligible_for_hermite(p)) dt *= 1.4; // gives 10^-6 energy error per orbit for a 0.9 eccentricity binary
 #endif
     }
-#if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(NOGRAVITY)    
+#if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(SELFGRAVITY_OFF)
     if(P[p].Type == 0) {dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));}
 #endif    
 #endif // SINGLE_STAR_TIMESTEPPING
@@ -414,15 +430,19 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(GRAIN_BACKREACTION)
         if(6.*P[p].Grain_AccelTimeMin < dt_courant) {dt_courant = 6.*P[p].Grain_AccelTimeMin;}
 #endif
+#if defined(GRAIN_LORENTZFORCE) && defined(GRAIN_RDI_TESTPROBLEM)
+        if(All.Grain_Charge_Parameter != 0) {double bmag=0; for(k=0;k<3;k++) {bmag += P[p].Gas_B[k]*P[p].Gas_B[k];}
+            if(bmag>0) {double dt_gyro = 1. / ((All.Grain_Charge_Parameter/All.Grain_Size_Max) * DMIN(100.,pow(All.Grain_Size_Max/P[p].Grain_Size,2)) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}}
+#endif
 #ifdef PIC_MHD
         if(P[p].Grain_SubType==3)
         {
-            double lorentz_units = UNIT_B_IN_GAUSS * UNIT_VEL_IN_CGS * (ELECTRONCHARGE/(PROTONMASS*C_LIGHT)) / (UNIT_VEL_IN_CGS/UNIT_TIME_IN_CGS); // code velocity to CGS and B to Gauss, times base units e/(mp*c), then convert 'back' to code-units acceleration
+            double lorentz_units = UNIT_B_IN_GAUSS * UNIT_VEL_IN_CGS * (ELECTRONCHARGE_CGS/(PROTONMASS_CGS*C_LIGHT_CGS)) / (UNIT_VEL_IN_CGS/UNIT_TIME_IN_CGS); // code velocity to CGS and B to Gauss, times base units e/(mp*c), then convert 'back' to code-units acceleration
             double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE, charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio;
 #ifdef PIC_MHD_NEW_RSOL_METHOD
             lorentz_units *= PIC_SPEEDOFLIGHT_REDUCTION; // the rsol enters by slowing down the forces here, acts as a unit shift for time
 #endif
-            double beta2=0,B2; for(k=0;k<3;k++) {double b=P[i].Gas_B[k]*All.cf_a2inv, v=P[p].Vel[k]/(All.cf_atime*reduced_C); B2+=b*b; beta2+=v*v;;} /* get magnitude and unit vector for B, and vector beta [-true- beta here] */
+            double beta2=0,B2=0; for(k=0;k<3;k++) {double b=P[p].Gas_B[k]*All.cf_a2inv, v=P[p].Vel[k]/(All.cf_atime*reduced_C); B2+=b*b; beta2+=v*v;;} /* get magnitude and unit vector for B, and vector beta [-true- beta here] */
             double gamma_lorentz = 1./sqrt(DMAX(1.-DMAX(DMIN(beta2,1.),0.),MIN_REAL_NUMBER)); // calculate lorentz factor (with safety factors included to prevent accidental nan here //
             double dt_courant_pic = 0.5 / ((charge_to_mass_ratio_dimensionless/gamma_lorentz) * sqrt(B2) * lorentz_units); /* dt = 0.5/omega_gyro*/
             if(dt_courant_pic < dt_courant) dt_courant = dt_courant_pic;
@@ -431,7 +451,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt_courant < dt) dt = dt_courant;
     }
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-    if(P[p].Type>0) {double dt_inj = 0.1 * PPP[p].Hsml / C_LIGHT_CODE_REDUCED; if(dt_inj < dt) {dt = dt_inj;}}
+    if(P[p].Type>-1) {double dt_inj = 0.1 * PPP[p].Hsml / C_LIGHT_CODE_REDUCED; if(P[p].Type==4) {dt_inj*=0.25;} if(dt_inj < dt) {dt = dt_inj;}}
 #endif
 #endif
 
@@ -503,22 +523,22 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
             int k_CRegy;
             for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
             {
                 if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
                     int explicit_timestep_on, cr_diffusion_opt = 0;
-#if defined(DIFFUSION_OPTIMIZERS) || defined(COSMIC_RAYS_M1)
+#if defined(DIFFUSION_OPTIMIZERS) || defined(CRFLUID_M1)
                     cr_diffusion_opt = 1;
 #endif
                     if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
                     double kappa_cr_eff = fabs(SphP[p].CosmicRayDiffusionCoeff[k_CRegy]);
-#if defined(COSMIC_RAYS_M1)
-                    kappa_cr_eff *= COSMIC_RAYS_RSOL_CORRFAC(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
+#if defined(CRFLUID_M1)
+                    kappa_cr_eff *= CosmicRayFluid_RSOL_Corrfac(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
 #else
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
@@ -526,11 +546,11 @@ integertime get_timestep(int p,		/*!< particle index */
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * (GAMMA_COSMICRAY(k_CRegy)-1.));
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
-#if (COSMIC_RAYS_DIFFUSION_MODEL < 0)
+#if (CRFLUID_DIFFUSION_MODEL < 0)
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif
-#ifndef COSMIC_RAYS_ALT_DISABLE_STREAMING
+#ifndef CRFLUID_ALT_DISABLE_STREAMING
                     /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
                     double diffusion_from_streaming = (GAMMA_COSMICRAY(k_CRegy)/(GAMMA_COSMICRAY(k_CRegy)-1.)) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
                     if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
@@ -564,9 +584,9 @@ integertime get_timestep(int p,		/*!< particle index */
                         if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
                     }
 #else
-#ifdef COSMIC_RAYS_M1
-                    //double cr_m1_speed = COSMIC_RAY_REDUCED_C_CODE(k_CRegy); // pull for use below
-                    double cr_m1_speed = COSMIC_RAYS_M1; // if used stricter flux-limiter, can use stricter version here
+#ifdef CRFLUID_M1
+                    //double cr_m1_speed = CRFLUID_REDUCED_C_CODE(k_CRegy); // pull for use below
+                    double cr_m1_speed = CRFLUID_M1; // if used stricter flux-limiter, can use stricter version here
                     if(cr_diffusion_opt==1)
                     {
                         if(SphP[p].CosmicRayEnergy[k_CRegy] > 0)
@@ -856,7 +876,11 @@ integertime get_timestep(int p,		/*!< particle index */
         double dt_stellar_evol;
         dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        // double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR); if(mcorr > 1) {dt_stellar_evol /= mcorr;} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
+/* // below not necessary with newer code, can be safely skipped for optimization //
+        double mcorr = 1.e-4 * (P[p].Mass*UNIT_MASS_IN_SOLAR) / 0.1; // expectation of ()/X SNe per timestep -- here 0.1
+        if(star_age > 0.044) {mcorr *= 0.02;} // into Ia regime, lower SNR means we can substantially relax this mass-dependent criterion
+        if(mcorr > 1) {dt_stellar_evol /= DMIN(mcorr, 10.);} // don't use - ok to have multiple at low-res, but don't want too-big a jump or miss key stellar evolution
+*/
 #else
         double mcorr = 1.e-5 * (P[p].Mass*UNIT_MASS_IN_SOLAR);
         if(mcorr < 1 && mcorr > 0) {dt_stellar_evol /= mcorr;}
@@ -883,7 +907,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
         {
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
+#if (defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
             /* really want prefactor to be ratio of median gas mass to bh mass */
             dt_accr = 0.001 * DMAX(BPP(p).BH_Mass, All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
@@ -892,11 +916,8 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif
-#ifdef SINGLE_STAR_SINK_DYNAMICS
-            dt_accr = 0.5*All.MeanGasParticleMass / BPP(p).BH_Mdot;
-#ifdef SINGLE_STAR_FB_JETS
-            dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot);
-#endif
+#ifdef SINGLE_STAR_FB_JETS	    
+            dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot); 
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
@@ -931,7 +952,6 @@ integertime get_timestep(int p,		/*!< particle index */
             vsig += P[p].MaxFeedbackVel;
 #endif                        
             double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
-
             if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
         }
         if(P[p].StellarAge == All.Time)
@@ -956,10 +976,8 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     } // if(P[p].Type == 5)
 
-#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST) /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
-    if(P[p].Type == 5 && dt>1.e-6) {dt=1.e-6;}
-    if(P[p].Type == 0 && P[p].ID == All.AGNWindID && dt>5.e-7)
-    {double dist_rad2 = pow((P[p].Pos[0]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[1]-0.5*All.BoxSize),2.0)+pow((P[p].Pos[2]-0.5*All.BoxSize),2.0); if(sqrt(dist_rad2)<10.) {dt=5.e-7;}}
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
+    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && SphP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
 #endif
 #endif // BLACK_HOLES
     
@@ -1154,11 +1172,8 @@ int get_timestep_bin(integertime ti_step)
 #ifdef WAKEUP
 void process_wake_ups(void)
 {
-    int i, n;
+    int i, n, max_time_bin_active, bin, binold, prev, next; long long ntot;
     integertime dt_bin, ti_next_for_bin, ti_next_kick, ti_next_kick_global;
-    int max_time_bin_active;
-    int bin, binold, prev, next;
-    long long ntot;
 
     /* find the next kick time */
     for(n = 0, ti_next_kick = TIMEBASE; n < TIMEBINS; n++)
@@ -1167,7 +1182,8 @@ void process_wake_ups(void)
         {
             if(n > 0)
             {
-                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n); ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
+                dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);
+                ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
             }
             else {dt_bin = 0; ti_next_for_bin = All.Ti_Current;}
             if(ti_next_for_bin < ti_next_kick) {ti_next_kick = ti_next_for_bin;}
@@ -1185,7 +1201,7 @@ void process_wake_ups(void)
         if((ti_next_kick_global % dt_bin) == 0) {max_time_bin_active = n;}
     }
 
-    /* move the particle on the highest bin, that is active in the next timestep and that is lower than its last timebin */
+    /* move the particle into the highest bin, that is active in the next timestep and that is lower than its last timebin */
     bin = 0; for(n = 0; n < TIMEBINS; n++) {if(TimeBinCount[n] > 0) {bin = n; break;}}
     n = 0;
 

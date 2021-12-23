@@ -322,6 +322,14 @@ void init(void)
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
                 a0 *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
+#ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
+                double q_a = (0.75*All.Grain_Q_at_MaxGrainSize) / (All.Grain_Internal_Density*All.Grain_Size_Max), kappa_0 = All.Grain_Absorbed_Fraction_vs_Total_Extinction * q_a * All.Dust_to_Gas_Mass_Ratio;
+                double rho_base_setup = 1., H_scale_setup = 1.; // define in code units the -assumed- initial scaling of the base gas density and vertical scale-length (PROBLEM SPECIFIC HERE!)
+#ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
+                kappa_0 *= sqrt(All.Grain_Size_Max / All.Grain_Size_Min); // opacity must be corrected for dependence of Q on grainsize or lack thereof
+#endif
+                a0 *= exp(-kappa_0*rho_base_setup*H_scale_setup*(1.-exp(-P[i].Pos[2]/H_scale_setup))); // attenuate incident flux (and reduce acceleration) according to equilibrium expectation, if we're using single-scattering radiation pressure [otherwise comment this line out] //
+#endif
                 w0=sqrt((sqrt(1.+4.*agamma*a0*a0)-1.)/(2.*agamma)); // exact solution if no Lorentz forces and Epstein drag //
 #ifdef GRAIN_LORENTZFORCE
                 double Bmag, tL_i=0, tau2_0=0, f_tau_guess2=0; B[0]=All.BiniX; B[1]=All.BiniY; B[2]=All.BiniZ; Bmag=sqrt(B[0]*B[0]+B[1]*B[1]+B[2]*B[2]); B[0]/=Bmag; B[1]/=Bmag; B[2]/=Bmag;
@@ -336,9 +344,7 @@ void init(void)
 #endif
                 w0 /= sqrt((1.+tau2)*(1.+tau2*ct2)); // ensures normalization to unity with convention below //
                 A_cross_B[0]=A[1]*B[2]-A[2]*B[1]; A_cross_B[1]=A[2]*B[0]-A[0]*B[2]; A_cross_B[2]=A[0]*B[1]-A[1]*B[0];
-#if !defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
                 for(k=0;k<3;k++) {P[i].Vel[k]=w0*(A[k] + sqrt(tau2)*A_cross_B[k] + tau2*ct*B[k]);}
-#endif
 #ifdef BOX_SHEARING
                 // now add linearly the NHS drift solution for our shearing box setup
                 double v00 = -All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER);
@@ -464,7 +470,7 @@ void init(void)
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-		P[i].ZAMS_Mass = P[i].BH_Mass;
+                P[i].ZAMS_Mass = P[i].BH_Mass;
                 calculate_individual_stellar_luminosity(BPP(i).BH_Mdot, BPP(i).BH_Mass, i);
 #endif                
 #endif
@@ -486,6 +492,10 @@ void init(void)
                 BPP(i).BH_CountProgs = 1;
 #endif
             }
+#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+	    P[i].dt_since_last_gas_search = 0;
+	    P[i].do_gas_search_this_timestep = 1;
+#endif 
         }
 #endif
     }
@@ -588,14 +598,9 @@ void init(void)
             SphP[i].Ne = 1.0;
 #endif
 #if defined(COOL_MOLECFRAC_NONEQM)
-	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS;
-	    if(nHcgs > 10){ // dense ISM starts molecular - very approximate cutoff
-	        SphP[i].MolecularMassFraction = 1.0;
-		SphP[i].MolecularMassFraction_perNeutralH = 1.0;
-	    } else { // otherwise start atomic
-	        SphP[i].MolecularMassFraction = 0.0;
-		SphP[i].MolecularMassFraction_perNeutralH = 0.0;
-	    }
+	    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
+        if(nHcgs > 10) {SphP[i].MolecularMassFraction = 1.0; SphP[i].MolecularMassFraction_perNeutralH = 1.0;} // dense ISM starts molecular - very approximate cutoff
+            else {SphP[i].MolecularMassFraction = 0.0; SphP[i].MolecularMassFraction_perNeutralH = 0.0;} // otherwise start atomic
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -627,15 +632,15 @@ void init(void)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
         //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin
         if(RestartFlag == 2) { // if we don't directly evolve the slopes, we do write them out and read them in, so need to re-construct the correct number in bin from what we actually read, which was the -slope- information
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART)
+#if defined(CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART)
             double e0 = 0.5 * P[i].Mass * SphP[i].InternalEnergy; // snapshot from which we read does not have the full CR info, so we need to initialize it from something //
-#if (COSMIC_RAYS_EVOLVE_SPECTRUM_SPECIAL_SNAPSHOTRESTART==1)
+#if (CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART==1)
             e0 = SphP[i].CosmicRayEnergy[0]; // we had one value of energy (total) available to read in //
 #endif
             // now define the desired spectrum //
@@ -830,14 +835,14 @@ void init(void)
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
         for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
 #endif
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         for(k=0;k<N_CR_PARTICLE_BINS;k++)
         {
             SphP[i].CosmicRayEnergyPred[k]=SphP[i].CosmicRayEnergy[k]; SphP[i].CosmicRayDiffusionCoeff[k]=0; SphP[i].DtCosmicRayEnergy[k]=0;
-#ifdef COSMIC_RAYS_M1
+#ifdef CRFLUID_M1
             for(j=0;j<3;j++) {SphP[i].CosmicRayFlux[k][j]=0; SphP[i].CosmicRayFluxPred[k][j]=0;}
 #endif
-#ifdef COSMIC_RAYS_EVOLVE_SCATTERING_WAVES
+#ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(j=0;j<2;j++) {SphP[i].CosmicRayAlfvenEnergy[k][j]=0; SphP[i].CosmicRayAlfvenEnergyPred[k][j]=0; SphP[i].DtCosmicRayAlfvenEnergy[k][j]=0;}
 #endif
         }
@@ -852,6 +857,9 @@ void init(void)
 #endif
         //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         SphP[i].DtInternalEnergy = 0;
+#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+        SphP[i].CoolingIsOperatorSplitThisTimestep = 1; /* default to more conservative split */
+#endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[i].dMass = 0;
         SphP[i].DtMass = 0;
@@ -882,6 +890,9 @@ void init(void)
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
         {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(j=0;j<3;j++) {SphP[i].Rad_Flux[kf][j]=0;}}}
+#endif
+#if defined(COSMIC_RAY_SUBGRID_LEBRON)
+        SphP[i].SubGrid_CosmicRayEnergyDensity = 0;
 #endif
 
 #ifdef COOL_GRACKLE

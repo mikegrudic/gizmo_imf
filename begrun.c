@@ -230,7 +230,7 @@ void begrun(void)
     init_geofactor_table();
 #endif
 
-#if defined(COSMIC_RAYS_EVOLVE_SPECTRUM)
+#if defined(CRFLUID_EVOLVE_SPECTRUM)
     CR_initialize_multibin_quantities(); // initialize the global variables and look-up tables //
 #endif
     
@@ -381,12 +381,12 @@ void begrun(void)
         All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
         All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
         All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
 #endif
-#ifdef COSMIC_RAYS
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#ifdef COSMIC_RAY_FLUID
+#if (CRFLUID_DIFFUSION_MODEL == 0)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 #endif
@@ -510,7 +510,7 @@ void begrun(void)
 void set_units(void)
 {
   /* convert some physical input parameters to internal units */
-  if(All.G <= 0) {All.G = GRAVITY_G * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
+  if(All.G <= 0) {All.G = GRAVITY_G_CGS * UNIT_MASS_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_VEL_IN_CGS*UNIT_VEL_IN_CGS);}
 #ifdef GR_TABULATED_COSMOLOGY_G
   All.Gini = All.G;
   All.G = All.Gini * dGfak(All.TimeBegin);
@@ -545,7 +545,10 @@ void set_units(void)
   /* for historical reasons, we need to convert to "All.MaxSfrTimescale", defined as the SF timescale in code units at the critical physical
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
-    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity * meanweight / UNIT_DENSITY_IN_NHCGS)));
+    All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity / UNIT_DENSITY_IN_NHCGS)));
+#ifdef PROTECT_FROZEN_FIRE
+    All.MaxSfrTimescale /= sqrt(meanweight);
+#endif
 #endif
     set_units_sfr();
 #endif
@@ -569,12 +572,12 @@ void set_units(void)
     All.ConductionCoeff *= coefficient;
 #endif
 #ifdef VISCOSITY_BRAGINSKII
-    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS/(PROTONMASS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
+    All.ShearViscosityCoeff *= coefficient * 0.636396*sqrt(ELECTRONMASS_CGS/(PROTONMASS_CGS*meanweight_ion)); // the viscosity coefficient eta is identical in these units up to the order-unity constant, and multiplied by sqrt[m_electron/m_ion] //
     All.BulkViscosityCoeff = 0; // no bulk viscosity in the Braginskii-Spitzer formulation //
 #endif
     /* factor used for determining saturation */
     All.ElectronFreePathFactor = 8 * pow(3.0, 1.5) * pow((GAMMA_DEFAULT-1), 2) / pow(3 + 5 * HYDROGEN_MASSFRAC, 2)
-        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS, 3) / pow(ELECTRONCHARGE, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
+        / (1 + HYDROGEN_MASSFRAC) / sqrt(M_PI) / coulomb_log * pow(PROTONMASS_CGS, 3) / pow(ELECTRONCHARGE_CGS, 4) / (UNIT_DENSITY_IN_CGS) * pow(UNIT_SPECEGY_IN_CGS, 2);
 
   /* If the above value is multiplied with u^2/rho in code units (with rho being the physical density), then
    * one gets the electron mean free path in centimeters. Since we want to compare this with another length
@@ -1033,6 +1036,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Pressure_Gradient_Accel;
         id[nt++] = REAL;
 #endif
+        
+#ifdef RT_OPACITY_FROM_EXPLICIT_GRAINS
+        strcpy(tag[nt],"Grain_Q_at_MaxGrainSize");
+        addr[nt] = &All.Grain_Q_at_MaxGrainSize;
+        id[nt++] = REAL;
+#endif
 
 #endif
 #if !defined(PIC_MHD) || defined(GRAIN_FLUID_AND_PIC_BOTH_DEFINED)
@@ -1052,6 +1061,12 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.Grain_Size_Spectrum_Powerlaw;
         id[nt++] = REAL;
 #endif
+#endif
+
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) && defined(RT_GENERIC_USER_FREQ)
+        strcpy(tag[nt],"Grain_Absorbed_vs_Total_Extinction");
+        addr[nt] = &All.Grain_Absorbed_Fraction_vs_Total_Extinction;
+        id[nt++] = REAL;
 #endif
 
 #ifdef PIC_MHD
@@ -1089,13 +1104,36 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
 
-#ifdef COSMIC_RAYS
+#ifdef COSMIC_RAY_FLUID
         strcpy(tag[nt], "CosmicRay_SNeFraction");
         strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
         id[nt++] = REAL;
 #endif
 #endif
+        
+        
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
+        strcpy(tag[nt], "CosmicRay_Subgrid_Kappa_0");
+        strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Kappa_0");
+        addr[nt] = &All.CosmicRay_Subgrid_Kappa_0;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "CosmicRay_Subgrid_Vstream_0");
+        strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Vstream_0");
+        addr[nt] = &All.CosmicRay_Subgrid_Vstream_0;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt], "CosmicRay_SNeFraction");
+        strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
+        addr[nt] = &All.CosmicRay_SNeFraction;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
+        id[nt++] = REAL;
+#endif
+        
 
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
         strcpy(tag[nt], "WindMomentumLoading");
@@ -1375,8 +1413,8 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#ifdef COSMIC_RAYS
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#ifdef COSMIC_RAY_FLUID
+#if (CRFLUID_DIFFUSION_MODEL == 0)
         strcpy(tag[nt], "CosmicRayDiffusionCoeff");
         addr[nt] = &All.CosmicRayDiffusionCoeff;
         id[nt++] = REAL;
@@ -1645,6 +1683,38 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 #endif
 #endif /* MAGNETIC */
+
+#ifdef BH_WIND_SPAWN_SET_BFIELD_POLTOR
+      strcpy(tag[nt], "BH_spawn_injection_radius");
+      addr[nt] = &All.BH_spawn_rinj;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_spawn_poloidal_B");
+      addr[nt] = &All.B_spawn_pol;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_spawn_toroidal_B");
+      addr[nt] = &All.B_spawn_tor;
+      id[nt++] = REAL;
+#endif
+#ifdef BH_WIND_SPAWN_SET_JET_PRECESSION
+      strcpy(tag[nt], "BH_jet_precession_degree");
+      addr[nt] = &All.BH_jet_precess_degree;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_jet_precession_period");
+      addr[nt] = &All.BH_jet_precess_period;
+      id[nt++] = REAL;
+#endif
+#ifdef BH_DEBUG_FIX_MDOT_MBH
+      strcpy(tag[nt], "BH_fb_duty_cycle");
+      addr[nt] = &All.BH_fb_duty_cycle;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "BH_fb_period");
+      addr[nt] = &All.BH_fb_period;
+      id[nt++] = REAL;
+#endif
 
 #ifdef EOS_TABULATED
         strcpy(tag[nt], "EosTable");
@@ -2143,7 +2213,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
 #endif
 #if defined(FIRE_CRS) 
-#if (COSMIC_RAYS_DIFFUSION_MODEL == 0)
+#if (CRFLUID_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
@@ -2165,7 +2235,7 @@ void read_parameter_file(char *fname)
 #if defined(BH_WIND_SPAWN)
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
 #endif
-#if defined(COSMIC_RAYS)
+#if defined(COSMIC_RAY_FLUID)
                 if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
 #endif
 #endif
@@ -2207,15 +2277,15 @@ void read_parameter_file(char *fname)
     /* now communicate the relevant parameters to the other processes */
     MPI_Bcast(&All, sizeof(struct global_data_all_processes), MPI_BYTE, 0, MPI_COMM_WORLD);
 #ifdef CHIMES
-    if (ThisTask == 0)
-      {
-	ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf;
-	ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf;
-	ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf;
-	ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf;
-	ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf;
-	ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf;
-      }
+    if(ThisTask == 0)
+    {
+        ChimesGlobalVars.grain_temperature = (ChimesFloat) Tdust_buf;
+        ChimesGlobalVars.T_mol = (ChimesFloat) Tmol_buf;
+        ChimesGlobalVars.relativeTolerance = (ChimesFloat) relTol_buf;
+        ChimesGlobalVars.absoluteTolerance = (ChimesFloat) absTol_buf;
+        ChimesGlobalVars.explicitTolerance = (ChimesFloat) expTol_buf;
+        ChimesGlobalVars.reionisation_redshift = (ChimesFloat) z_reion_buf;
+    }
     MPI_Bcast(&ChimesGlobalVars, sizeof(struct globalVariables), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesDataPath, 256 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&ChimesEqAbundanceTable, 196 * sizeof(char), MPI_BYTE, 0, MPI_COMM_WORLD);
