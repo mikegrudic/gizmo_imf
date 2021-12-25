@@ -745,7 +745,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double wk_m_cooling = pnorm * m_cooling; // effective cooling mass for this particle
                 double boost_terminal = sqrt(1 + wk_m_cooling / dM_ejecta_in); // terminal momentum boost-factor
                 double boost_egycon = sqrt(1 + mj_preshock / dM_ejecta_in); // energy-conserving limit for coupling through neighbors
-                double mom_boost_fac = 1, mcool_mod = 2.*mj_preshock; // set default value of momentum term and dummy variable to check which [energy or momentum-conserving] solution to apply
+                double mom_boost_fac = 1; // set default value of momentum term and dummy variable to check which [energy or momentum-conserving] solution to apply
                 if(feedback_type_is_SNe == 1) // question here is whether wind-type feedback should assume kinetic energy conserved here
                 {
                     boost_terminal *= psi_cool; // appropriately re-weight boost to avoid energy conservation errors [cooling-limit]
@@ -755,7 +755,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double vcool_eff = v_cooling / psi_cool; // effective shell speed when the cooling radius is reached
 #if 0
                     double dv_eff = vcool_eff + 2.*dv_dp_phys; // effective relative velocity for determining if you can reach that shell speed. i.e. when recession velocity equals nominal cooling mass for a real solution, assuming you cool when the post-shock temperature reaches a Tcool that corresponds to the post-shock velocity for some outward vcool, giving e.g. half the desired cooling mass is obtained when you have outward v = vcool
-                    mcool_mod = wk_m_cooling; // this should be our starting point for applying the cooling solution, unless we include the compressive term, but don't want to over-shoot there
+                    double mcool_mod = wk_m_cooling; // this should be our starting point for applying the cooling solution, unless we include the compressive term, but don't want to over-shoot there
                     if(dv_eff > 0) {mcool_mod = wk_m_cooling; if(dv_dp_phys > 0) {mcool_mod *= vcool_eff / (1.e-20*vcool_eff + dv_eff);}} // use the above recession velocity information to modify the cooling mass compared to the total cell mass to determine which solution to use
                     if(mcool_mod < mj_preshock) {mom_boost_fac = DMIN(boost_terminal,boost_egycon); residual_thermal_frac=0; retain_thermal_flag=0;} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
 #else
