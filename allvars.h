@@ -326,6 +326,7 @@
 #else
 #define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
+#define CRFLUID_DIFFUSION_CORRECTION_TERMS /*! use the correction terms from Hopkins 2022 to ensure the spectrum has the correct shape under spatial transport */
 #endif
 #if (FIRE_CRS <= 0)
 #if !defined(CRFLUID_M1)
