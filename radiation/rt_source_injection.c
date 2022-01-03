@@ -105,6 +105,8 @@ void rt_source_injection_initial_operations_preloop(void)
 {
     /* first, we do a loop over the gas particles themselves. these are trivial -- they don't need to share any information,
      they just determine their own source functions. so we don't need to do any loops. and we can zero everything before the loop below. */
+    if(!(RT_SOURCES & 1)) return; // we skip this if gas cells don't have explicit source terms
+
     int j;
     for(j=0;j<NumPart;j++) {
         if(P[j].Type==0) {

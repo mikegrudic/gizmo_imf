@@ -816,7 +816,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS) && defined(CRFLUID_EVOLVE_SPECTRUM)
         double flux_diff=sqrt(dt_f_m), flux_stream=fabs(rsol_correction_factor*v_Alfven*(GAMMA_COSMICRAY(k_CRegy)*eCR)); // estimate contribution to flux from both diffusive and streaming components
         double frac_diff=flux_diff/(flux_diff+flux_stream); // fraction of flux from diffusive term
-        double alpha_v=0.,alpha_qN=0.,alpha_qE=1.,alpha_nu=-0.6,alpha_L=0.; // values of coefficients: replace hard-coded alpha_nu with lookup to actual function numerically ???
+        double alpha_v=0.,alpha_qN=0.,alpha_qE=1.,alpha_nu=-0.6,alpha_L=0.,alpha_f0=CR_return_spectral_slope_target(i,k_CRegy); // values of coefficients: replace hard-coded alpha_nu with lookup to actual function numerically, below
         double xi = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_min_rigidity_in_bin[k_CRegy]; // bin width in our units
         int kCR_p=k_CRegy, kCR_m=k_CRegy-1; // want two neighboring bins with same species
         if(k_CRegy<N_CR_PARTICLE_BINS-1) {if(CR_species_ID_in_bin[k_CRegy+1]==CR_species_ID_in_bin[k_CRegy]) {kCR_m++; kCR_p++;}} // check if can use this and next, or use this and below
@@ -825,8 +825,14 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         alpha_nu = log((beta_p*beta_p/SphP[i].CosmicRayDiffusionCoeff[kCR_p]) / (beta_m*beta_m/SphP[i].CosmicRayDiffusionCoeff[kCR_m])) / log(xi_pm); // numerically calculate the slope of the scattering-rate dependence for any functional form
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {alpha_v=1.; alpha_qE=2.;} // correct to non-relativistic values as needed
         if(beta_k<1. && beta_k>0.) {double one_minus_beta2=1.-beta_k*beta_k; alpha_v=one_minus_beta2*one_minus_beta2; alpha_qE=1.+sqrt(one_minus_beta2);} // these are exact in terms of beta, so good approx here using bin-centered beta values
-        double alpha_mu = alpha_v - (alpha_nu + alpha_L); // use value of alpha-mu for diffusive equilibrium, the regime where this term matters
-        double flux_n_over_e_factor = 1. + ((alpha_qN-alpha_qE)*(alpha_v+alpha_mu)/12.)*log(xi)*log(xi); // approximate series expansion, should use full expressions here ???
+        double alpha_mu = alpha_v - (alpha_nu + 0*alpha_L); // use value of alpha-mu for diffusive equilibrium, the regime where this term matters [alpha_L term zero'd here because we're taking really the ratio of omega_1 over omega_delta, more like omega_kappa in the reference]
+        double flux_n_over_e_factor_approx = 1. + ((alpha_qN-alpha_qE)*(alpha_v+alpha_mu)/12.)*log(xi)*log(xi); // approximate series expansion, should use full expressions here
+        double c0_a=1.+alpha_f0-alpha_l, c0_b=c0_a+2.*alpha_v-alpha_nu, c0_c=-alpha_v+0.5*alpha_nu, ln_xi=log(xi), c0_a_e=c0_a+alpha_qE, c0_b_e=c0_b+alpha_qE, c0_a_n=c0_a+alpha_qN, c0_b_n=c0_b+alpha_qN; // define a bunch of the coefficients we'll need
+        double omega_k_e = (c0_a_e/c0_b_e) * ((exp(ln_xi*c0_b_e)-1.)/(exp(ln_xi*c0_a_e)-1.)) * exp(ln_xi*c0_c); // this is the exact value for the omega_e term we need here
+        double omega_k_n = (c0_a_n/c0_b_n) * ((exp(ln_xi*c0_b_n)-1.)/(exp(ln_xi*c0_a_n)-1.)) * exp(ln_xi*c0_c); // this is the exact value for the omega_e term we need here
+        if(omega_k_e>0.1 && omega_k_e<2. && isfinite(omega_k_e)) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] *= omega_k_e;}} // correct the energy flux (what we evolve by default) by its omega [this absolute correction is less important than the relative correction below, but since we have it, let's use it]
+        double flux_n_over_e_factor = omega_k_n / omega_k_e; // exact value
+        if(flux_n_over_e_factor<0 or !isfinite(flux_n_over_e_factor)) {flux_n_over_e_factor = flux_n_over_e_factor_approx;}
         SphP[i].Flux_Number_to_Energy_Correction_Factor[k_CRegy] = 1. + (flux_n_over_e_factor-1.) * frac_diff; // equilibrium streaming solution is alpha_mu->-alpha_v such that bin-centered is exact, so mean correction applies only to flux 'portion' of this
 #endif
         if(dt_f_m>0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] += rsol_correction_factor * (DtCosmicRayFlux[k]/sqrt(dt_f_m)) * v_Alfven * (GAMMA_COSMICRAY(k_CRegy) * eCR);}} // (tilde[c]/c) * v_a * (ecr+Pcr), in same direction as gradient wants to 'push' naturally [natural direction of F]
@@ -1534,7 +1540,7 @@ double CR_return_effective_number_in_bin_in_codeunits(int target, int k_bin)
 }
 
 
-/* return the CR bin spectral slope, depending on what we use as our evolved variable */
+/* return the CR bin spectral slope, depending on what we use as our evolved variable -- note this is the slope of the 1D CR distribution function, df/dp ~ p^alpha, so e.g. N_cr = integral[dp * df/dp] */
 double CR_return_spectral_slope_target(int target, int k_bin)
 {
     //return SphP[target].CosmicRay_PwrLaw_Slopes_in_Bin[k_bin]; // evolving slopes directly
