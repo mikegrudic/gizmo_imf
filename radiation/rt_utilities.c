@@ -230,9 +230,10 @@ double rt_kappa(int i, int k_freq)
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
+        if(isnan(SphP[i].Dust_Temperature)) {PRINT_WARNING("\n NaN dust temperature for cell-ID=%llu  \n", (unsigned long long) P[i].ID);}
+        if(isnan(SphP[i].Radiation_Temperature)) {PRINT_WARNING("\n NaN gas temperature for cell-ID=%llu  \n", (unsigned long long) P[i].ID);}
         if(SphP[i].Dust_Temperature<=T_min) {SphP[i].Dust_Temperature=T_min;} // reset baseline
         if(SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
-        
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
         if(Trad <= 0) {Trad = 5600.;}
@@ -271,7 +272,7 @@ double rt_kappa(int i, int k_freq)
 #ifdef COOLING
         kappa += 0.35 * SphP[i].Ne; // Thompson scattering
 #endif
-        return kappa * fac; // convert units and return
+		return kappa * fac; // convert units and return
     }
 #endif
 #endif
@@ -313,7 +314,12 @@ double rt_absorb_frac_albedo(int i, int k_freq)
     {
         double fA_tmp = (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature))));
 #ifdef COOLING
-        fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));
+		if (rt_kappa(i,k_freq)>0){
+			fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));
+		}
+		else{
+			return 1.0; // the value should not matter if rt_kappa=0
+		}
 #endif
         return fA_tmp;
     }
@@ -765,6 +771,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             if(e0_postabs+de_postabs < f_min*e0_postabs) {slabfac *= fabs((1.-f_min)*e0_postabs)/(fabs(de_postabs)+MIN_REAL_NUMBER);}
             
             double ef = e0 * e_abs_0 + total_de_dt * dt_entr * slabfac; // gives exact solution for dE/dt = -E*abs + de , the 'reduction factor' appropriately suppresses the source term //
+            if(isnan(ef)) {PRINT_WARNING("\n ef energy prediction is NaN for cell-ID=%llu, e0=%g e_abs_0=%g abs_0=%g a0=%g total_de_dt=%g dt_entr=%g slabfac=%g Trad=%g Tdust=%g\n", (unsigned long long) P[i].ID,e0, e_abs_0,abs_0, a0, total_de_dt,dt_entr,slabfac,SphP[i].Radiation_Temperature,SphP[i].Dust_Temperature);}
             if(ef < 0) {ef=0;}
             double de_abs = e0 + total_de_dt * dt_entr - ef; // energy removed by absorption alone
             double de_emission_minus_absorption = (ef - DMAX(0, (e0 + dt_e_gamma_band * dt_entr * slabfac))); // total change, relative to what we would get with just advection (positive = net energy increase in the gas)
