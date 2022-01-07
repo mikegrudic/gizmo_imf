@@ -1782,11 +1782,12 @@ double cr_get_source_injection_rate(int i)
     }
 #endif
 #ifdef BLACK_HOLES
-    if(P[i].Type == 5) {Edot = All.BH_CosmicRay_Injection_Efficiency * BPP(i).BH_Mdot * C_LIGHT_CODE*C_LIGHT_CODE;} // injection in code units
+    if(P[i].Type == 5) {Edot = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * BPP(i).BH_Mdot * C_LIGHT_CODE*C_LIGHT_CODE;} // injection in code units
 #endif
 #endif
     if(Edot > 0) {return Edot * cr_get_source_shieldfac(i);} else {return 0;}
 }
+
 /* function to return shielding/loss factor correction */
 double cr_get_source_shieldfac(int i)
 {
