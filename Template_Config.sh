@@ -597,6 +597,8 @@
 #GALSF_SFR_VIRIAL_CONTINUOUS_THOLD=1        #- semi-continuous SF as a function of alpha_vir. set 0=step function between 1 and 0.01; 1=Padoan 2012; 2=multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter
 ##------
 #BH_DYNFRICTION_FROMTREE         #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
+#BH_RIAF_SUBEDDINGTON_MODEL      #- enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties 
+#BH_CR_SUBEDDINGTON_MODEL        #- enable an arbitrary modular variation in the CR acceleration efficiency from BHs as a function of mass, eddington ratio, spin, or other particle properties
 ##------
 #RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
 #GRAIN_RDI_TESTPROBLEM           #-
