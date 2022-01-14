@@ -204,7 +204,7 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
     double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
 #if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
-    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].Flux_Number_to_Energy_Correction_Factor[k_CRegy];} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
+    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].Flux_Number_to_Energy_Correction_Factor[k_CRegy] * SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
 #else
     if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
 #endif

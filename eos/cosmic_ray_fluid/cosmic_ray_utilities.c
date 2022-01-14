@@ -221,10 +221,11 @@ double diffusion_coefficient_constant(int target, int k_CRegy)
 #if (N_CR_PARTICLE_BINS > 1)    /* insert physics here */
 #ifdef CRFLUID_DIFFUSION_CORRECTION_TERMS
     int target_bin_centering_for_CR_quantities = -1; // the correction terms depend on these being evaluated at their bin-centered locations
+    dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target_bin_centering_for_CR_quantities,k_CRegy) * pow( CR_global_min_rigidity_in_bin[k_CRegy]*CR_global_max_rigidity_in_bin[k_CRegy] , 0.5 * 0.6 ); // assume a quasi-empirical scaling here, and for these correction terms its important that the 'bin center' being used for the zero point here is the geometric mean of the bin edges, hence the 0.5 term b/c geometric mean is sqrt[min*max] //
 #else
     int target_bin_centering_for_CR_quantities = target; // if this = target, evaluate quantities like R_GV at the CR-energy weighted mean of the bin, if =-1, evaluate them at the bin center instead: important for some subtle effects especially if using numerical derivatives for correction terms
-#endif
     dimensionless_kappa_relative_to_GV_protons = return_CRbin_beta_factor(target_bin_centering_for_CR_quantities,k_CRegy) * pow( return_CRbin_CR_rigidity_in_GV(-1,k_CRegy) , 0.6 ); // assume a quasi-empirical scaling here //
+#endif
 #endif
     return All.CosmicRayDiffusionCoeff * dimensionless_kappa_relative_to_GV_protons;
 }
@@ -838,12 +839,12 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         double xi = CR_global_max_rigidity_in_bin[k_CRegy] / CR_global_min_rigidity_in_bin[k_CRegy]; // bin width in our units
         int kCR_p=k_CRegy, kCR_m=k_CRegy-1; // want two neighboring bins with same species
         if(k_CRegy<N_CR_PARTICLE_BINS-1) {if(CR_species_ID_in_bin[k_CRegy+1]==CR_species_ID_in_bin[k_CRegy]) {kCR_m++; kCR_p++;}} // check if can use this and next, or use this and below
-        double xi_pm = CR_global_rigidity_at_bin_center[kCR_p] / CR_global_rigidity_at_bin_center[kCR_m]; // bin ratio to next bin for numerical derivative
+        double xi_pm = sqrt((CR_global_min_rigidity_in_bin[kCR_p]*CR_global_max_rigidity_in_bin[kCR_p])/(CR_global_min_rigidity_in_bin[kCR_m]*CR_global_max_rigidity_in_bin[kCR_m])); // bin ratio to next bin for numerical derivative (being careful to follow our convention of defining these at the geometric mean)
         double beta_k =return_CRbin_beta_factor(-1,k_CRegy), beta_p=return_CRbin_beta_factor(-1,kCR_p), beta_m=return_CRbin_beta_factor(-1,kCR_m); // get beta factors needed to go between scattering rates and diffusivities
         alpha_nu = log((beta_p*beta_p/SphP[i].CosmicRayDiffusionCoeff[kCR_p]) / (beta_m*beta_m/SphP[i].CosmicRayDiffusionCoeff[kCR_m])) / log(xi_pm); // numerically calculate the slope of the scattering-rate dependence for any functional form
         if(CR_check_if_bin_is_nonrelativistic(k_CRegy)) {alpha_v=1.; alpha_qE=2.;} // correct to non-relativistic values as needed
         if(beta_k<1. && beta_k>0.) {double one_minus_beta2=1.-beta_k*beta_k; alpha_v=one_minus_beta2*one_minus_beta2; alpha_qE=1.+sqrt(one_minus_beta2);} // these are exact in terms of beta, so good approx here using bin-centered beta values
-        alpha_L = -0.5*alpha_nu; // ??? this is an approximate model, since usually in steady state we end up with alpha_L roughly following this scaling //
+        alpha_L = -0.5*alpha_nu; // this is an approximate model, since usually in steady state we end up with alpha_L roughly following this scaling -- but note that to leading order in the most important quantity here which is the -ratio- of omega_n to omega_e, the alpha_L term factors out //
         double alpha_mu = alpha_v - (alpha_nu + 0*alpha_L); // use value of alpha-mu for diffusive equilibrium, the regime where this term matters [alpha_L term zero'd here because we're taking really the ratio of omega_1 over omega_delta, more like omega_kappa in the reference]
         double flux_n_over_e_factor_approx = 1. + ((alpha_qN-alpha_qE)*(alpha_v+alpha_mu)/12.)*log(xi)*log(xi); // approximate series expansion, should use full expressions here
         double c0_a=1.+DMAX(DMIN(alpha_f0,0.),-6.)-alpha_L, c0_b=c0_a+2.*alpha_v-alpha_nu, c0_c=-alpha_v+0.5*alpha_nu, ln_xi=log(xi), c0_a_e=c0_a+alpha_qE, c0_b_e=c0_b+alpha_qE, c0_a_n=c0_a+alpha_qN, c0_b_n=c0_b+alpha_qN; // define a bunch of the coefficients we'll need
@@ -852,7 +853,8 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         if(omega_k_e>0.1 && omega_k_e<2. && isfinite(omega_k_e)) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] *= omega_k_e;}} // correct the energy flux (what we evolve by default) by its omega [this absolute correction is less important than the relative correction below, but since we have it, let's use it]
         double flux_n_over_e_factor = omega_k_n / omega_k_e; // exact value
         if((flux_n_over_e_factor<0) || (!isfinite(flux_n_over_e_factor))) {flux_n_over_e_factor = flux_n_over_e_factor_approx;}
-        SphP[i].Flux_Number_to_Energy_Correction_Factor[k_CRegy] = 1. + (flux_n_over_e_factor-1.) * frac_diff; // equilibrium streaming solution is alpha_mu->-alpha_v such that bin-centered is exact, so mean correction applies only to flux 'portion' of this
+        double flux_n_over_e_factor_modulated = 1. + (flux_n_over_e_factor-1.) * frac_diff;
+        SphP[i].Flux_Number_to_Energy_Correction_Factor[k_CRegy] = DMAX(DMIN(flux_n_over_e_factor_modulated, 2.0), 0.5); // equilibrium streaming solution is alpha_mu->-alpha_v such that bin-centered is exact, so mean correction applies only to flux 'portion' of this
 #endif
         if(dt_f_m>0) {for(k=0;k<3;k++) {DtCosmicRayFlux[k] += rsol_correction_factor * (DtCosmicRayFlux[k]/sqrt(dt_f_m)) * v_Alfven * (GAMMA_COSMICRAY(k_CRegy) * eCR);}} // (tilde[c]/c) * v_a * (ecr+Pcr), in same direction as gradient wants to 'push' naturally [natural direction of F]
 #endif
