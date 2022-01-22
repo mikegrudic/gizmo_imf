@@ -373,6 +373,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef BH_GRAVCAPTURE_GAS
                         out_accreted_BH_Mass_alphaornot += FLT(f_accreted*Mass_j);
 #endif
+			double Mass_initial = Mass_j; // save this for possible IO below
                         Mass_j *= (1-f_accreted);
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         double v_kick=All.BAL_v_outflow, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k];} // DAA: default direction is radially outwards
@@ -401,7 +402,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef MAGNETIC
                         for(k=0;k<3;k++) {tempB[k]=Get_Gas_BField(j,k);} //use particle magnetic field
 #endif
-                        fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, (unsigned long long)local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID, Mass_j, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (Vel_j[0]-local.Vel[0]),(Vel_j[1]-local.Vel[1]),(Vel_j[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density); fflush(FdBhSwallowDetails);
+                        fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, (unsigned long long)local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID, Mass_initial, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (Vel_j[0]-local.Vel[0]),(Vel_j[1]-local.Vel[1]),(Vel_j[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density); fflush(FdBhSwallowDetails);
 #endif
                     }  // if(P[j].Type == 0)
                     //P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep [PFH: no longer necessary with the new way we re-initialize the SwallowIDs] */

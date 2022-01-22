@@ -371,6 +371,33 @@ OPT     += -DUSE_MPI_IN_PLACE
 ## module load fftw
 endif
 
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Anvil")
+CC       = mpicc
+CXX      = mpic++
+FC       = mpif90  # gcc/clang
+#FC       = mpif90 -nofor_main  # intel
+OPTIMIZE = -O3
+OPTIMIZE += -march=znver1 -mfma -fvectorize -mfma -mavx2 -m3dnow -floop-unswitch-aggressive -fcommon  # aocc/clang
+#OPTIMIZE += -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fomit-frame-pointer -fcommon  # gcc
+#OPTIMIZE += -march=core-avx2 -fma -ftz -fomit-frame-pointer -ipo -funroll-loops -no-prec-div -fp-model fast=2  # intel
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp  # gcc/clang
+#OPTIMIZE += -qopenmp  # intel
+endif
+MKL_INCL = -I$(C_INCLUDE_PATH)
+MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
+GSL_INCL = -I$(C_INCLUDE_PATH)
+GSL_LIBS = -L$(LIBRARY_PATH)
+FFTW_INCL= -I$(C_INCLUDE_PATH)
+FFTW_LIBS= -L$(LIBRARY_PATH)
+HDF5INCL = -I$(C_INCLUDE_PATH) -DH5_USE_16_API
+HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+# modules to load: aocc openmpi hdf5 gsl fftw
+endif
+
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Pleiades")
