@@ -749,14 +749,14 @@ void blackhole_final_operations(void)
         /* always substract the radiation energy from BPP(n).BH_Mass && P[n].Mass */
         dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-        if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
+        if(P[n].Type == 5) {dt = P[n].dt_since_last_gas_search;}
 #endif
         double dm = BPP(n).BH_Mdot * dt;
 #ifdef BH_DEBUG_FIX_MDOT_MBH
         dm=0; double period_bh=All.BH_fb_period/UNIT_TIME_IN_GYR, period_bh_on=All.BH_fb_duty_cycle*period_bh;
         if(All.BH_fb_duty_cycle>=1) {dm=BH_DEBUG_FIX_MDOT_MBH*dt;} else {if(fmod(All.Time, period_bh) < period_bh_on) {dm = 2.*(BH_DEBUG_FIX_MDOT_MBH/All.BH_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_bh_on),2) * dt;}}
 #endif
-        double radiation_loss = All.BlackHoleRadiativeEfficiency * dm;
+        double radiation_loss = evaluate_blackhole_radiative_efficiency(BPP(n).BH_Mdot,BPP(n).BH_Mass,n) * dm;
         if(radiation_loss > DMIN(P[n].Mass,BPP(n).BH_Mass)) radiation_loss = DMIN(P[n].Mass,BPP(n).BH_Mass);
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
         if(All.BlackHoleRadiativeEfficiency > 0 && All.BlackHoleRadiativeEfficiency < 1 && BPP(n).ProtoStellarStage != 7) {radiation_loss = 0;} // negligible radiation loss term unless the object is actually a compact relic

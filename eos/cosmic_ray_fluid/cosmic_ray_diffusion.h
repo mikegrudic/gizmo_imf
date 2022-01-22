@@ -203,7 +203,11 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy];}
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
     double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
+#if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
+    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].Flux_Number_to_Energy_Correction_Factor[k_CRegy] * SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
+#else
     if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
+#endif
     //CR_number_to_energy_ratio *= 0.98; // = if want a simple approximation to the difference b/t diffusivities in energy vs number: multiply by 1 - 0.103021*epsilon, where epsilon = D_diffusion (0.5-ish) - gamma_slope where L_grad[R] ~ R^gamma_slope and kappa_diffusion ~ R^D_diffusion. reasonable approx is something like gamma_slope ~ (0.5-0.75)*D_diffusion [trends towards D_diffusion in eqm]
     out.DtCosmicRay_Number_in_Bin[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;
     if(j_is_active_for_fluxes) {SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
