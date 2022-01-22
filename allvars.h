@@ -485,6 +485,31 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif // CHIMES
 
 
+
+
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) /* options for hybrid/combined FIRE+STARFORGE simulations */
+#define SINGLE_STAR_STARFORGE_DEFAULTS   /* parent flag enabling the STARFORGE modules, which themselves enable the FIRE modules */
+#define GALSF_SFR_IMF_SAMPLING           /* use discrete sampling of 'number of O-stars' so we can handle the intermediate-mass regime in at least a simple approximate manner */
+#define COOLING              /* only physical if include cooling for both sides, using same cooling functions */
+#define MAGNETIC             /* enable MHD, important for systems here */
+#define CONDUCTION           /* enable conduction */
+#define CONDUCTION_SPITZER   /* compute proper coefficients and anisotropy for conduction */
+#define VISCOSITY            /* enable viscosity */
+#define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
+#define SINGLE_STAR_FB_JETS  /* enable jets from protostars */
+#define SINGLE_STAR_FB_WINDS /* enable continuous mass-loss feedback - will also enable ssp mass-loss */
+#define SINGLE_STAR_FB_SNE   /* enable SNe feedback - will also enable ssp mechanical feedback */
+#define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
+#define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
+#define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
+#define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
+#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
+#endif // closes hybrid FIRE+STARFORGE model settings
+
+
+
+
+
 #ifdef SINGLE_STAR_STARFORGE_DEFAULTS /* bunch of options -NOT- strictly required here, but this is a temporary convenience block */
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
@@ -527,16 +552,22 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#ifndef RT_SOURCES
 #define RT_SOURCES 32
+#endif
+#ifndef RT_SPEEDOFLIGHT_REDUCTION
 #define RT_SPEEDOFLIGHT_REDUCTION (1.0e-4)
+#endif
 #define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
+#ifndef RT_CHEM_PHOTOION
 #define RT_CHEM_PHOTOION 1
+#endif
 #define RT_INFRARED
-#ifndef RT_ISRF_BACKGROUND
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND 1
 #endif
 #endif
@@ -552,10 +583,17 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define EOS_SUBSTELLAR_ISM
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_FB_RAD)
 #define RT_ISRF_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
+#endif
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) || defined(COOLING)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
+#endif
+#if defined(RT_ISRF_BACKGROUND)
+#if (RT_ISRF_BACKGROUND <= 0)
+#undef RT_ISRF_BACKGROUND /* use the negative or zero value above as a key to specifically -undefine- this variable, otherwise it will cause problems below by calling 0 to reset quantities it should not */
+#endif
 #endif
 #endif // SINGLE_STAR_STARFORGE_DEFAULTS
 

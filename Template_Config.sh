@@ -597,8 +597,6 @@
 #GALSF_SFR_VIRIAL_CONTINUOUS_THOLD=1        #- semi-continuous SF as a function of alpha_vir. set 0=step function between 1 and 0.01; 1=Padoan 2012; 2=multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter
 ##------
 #BH_DYNFRICTION_FROMTREE         #- compute dynamical friction forces on BH following the discrete DF estimator in L. Ma et al. 2021 (in prep - to be made public once methods paper is published)
-#BH_RIAF_SUBEDDINGTON_MODEL      #- enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties 
-#BH_CR_SUBEDDINGTON_MODEL        #- enable an arbitrary modular variation in the CR acceleration efficiency from BHs as a function of mass, eddington ratio, spin, or other particle properties
 ##------
 #RT_OPACITY_FROM_EXPLICIT_GRAINS #- calculate opacities back-and-forth from explicitly-resolved dust populations
 #GRAIN_RDI_TESTPROBLEM           #-
@@ -606,6 +604,7 @@
 #GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION #-
 ##------
 #FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT #- super-lagrangian refinement based on jeans mass
+#SINGLE_STAR_AND_SSP_HYBRID_MODEL=1    #- cells with mass less than this (in solar) are treated with the single-stellar evolution models, larger mass with ssp models
 ####################################################################################################-
 
 
@@ -616,6 +615,8 @@
 #BH_DEBUG_SPAWN_JET_TEST=(30.)    #- BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!)
 #BH_DEBUG_FIX_MDOT_MBH=(0.2)      #- fix BH fb mass flux and fixed BH mass
 #BH_GRAVACCRETION_STELLARFBCORR   #- account for additional acceleration-dependent retention from stellar FB in Mdot
+#BH_RIAF_SUBEDDINGTON_MODEL       #- enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties
+#BH_CR_SUBEDDINGTON_MODEL         #- enable an arbitrary modular variation in the CR acceleration efficiency from BHs as a function of mass, eddington ratio, spin, or other particle properties
 ####################################################################################################-
 
 

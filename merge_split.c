@@ -96,6 +96,12 @@ int does_particle_need_to_be_split(int i)
 double target_mass_renormalization_factor_for_mergesplit(int i)
 {
     double ref_factor=1.0;
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+    if(P[i].Type==0)
+    {
+        return 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
+    }
+#endif
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
     if(P[i].Type==0)
     {

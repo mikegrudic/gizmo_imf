@@ -531,6 +531,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
 
 
 #ifdef GALSF
+int is_particle_single_star_eligible(long i);
 double evaluate_stellar_age_Gyr(double stellar_tform);
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i);
