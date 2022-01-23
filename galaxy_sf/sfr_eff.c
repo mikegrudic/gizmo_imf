@@ -526,7 +526,6 @@ void star_formation_parent_routine(void)
                             stars_converted++;
                             sum_mass_stars += P[i].Mass;
                             
-                            P[i].Type = 4;
                             TimeBinCountSph[P[i].TimeBin]--;
                             TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
                             
@@ -611,13 +610,12 @@ void star_formation_parent_routine(void)
                                 fprintf(FdBhFormationDetails,"%g %llu %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[i].ID, P[i].Mass, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],  P[i].Vel[0], P[i].Vel[1],P[i].Vel[2], tempB[0], tempB[1], tempB[2], SphP[i].InternalEnergyPred, SphP[i].Density * All.cf_a3inv, Get_Gas_effective_soundspeed_i(i) * All.cf_afac3, Get_Particle_Size(i) * All.cf_atime, NH, dv2_abs, P[i].min_dist_to_bh ); fflush(FdBhFormationDetails);
 #endif
                             }
-#endif // SINGLE_STAR_SINK_DYNAMICS
-                            
+#endif // SINGLE_STAR_SINK_DYNAMICS			   
+			    if(P[i].Type != 5) {P[i].Type = 4;} // if we didn't set to type 5 above, default to type 4
                         } /* closes final generation from original gas particle */
                         else
                         {
                             /* here we spawn a new star particle */
-                            
                             if(NumPart + stars_spawned >= All.MaxPart)
                             {
                                 PRINT_WARNING("On Task=%d with NumPart=%d we try to spawn %d particles. Sorry, no space left...(All.MaxPart=%d)",ThisTask, NumPart, stars_spawned, All.MaxPart);
