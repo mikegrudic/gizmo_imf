@@ -1267,6 +1267,9 @@ void hydro_gradient_calc(void)
 
 
 #ifdef MHD_NON_IDEAL
+#ifdef COOLING	    
+	    if(All.Time > All.TimeBegin) // only try to get self-consistent resistivities after the first timestep, when we have calculated the self-consistent ionization state - on the first timestep default to 0 (=ideal MHD)
+#endif	      
             {
                 /* calculations below follow Wardle 2007 and Keith & Wardle 2014, for the equation sets */
                 double mean_molecular_weight = 2.38; // molecular H2, +He with solar mass fractions and metals
@@ -1288,8 +1291,8 @@ void hydro_gradient_calc(void)
 #endif
 		        // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
-		        double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
-		        double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
+		double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
+		double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
                 // calculate ionization fraction in dense gas; use rate coefficients k to estimate grain charge
                 double k0 = 1.95e-4 * ag01*ag01 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
                 double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
@@ -1306,7 +1309,7 @@ void hydro_gradient_calc(void)
                 double n_ion = zeta_cr / (ngr_ngas * k_i); // ion number density
                 double Z_grain = psi / psi_prefac; // mean grain charge (note this is signed, will be negative)
 #ifdef COOLING
-                double mu_eff=2.38, x_elec=SphP[i].Ne*HYDROGEN_MASSFRAC*mu_eff, R=x_elec*psi_prefac/ngr_ngas; psi_0=-3.787124454911839; n_elec=x_elec*n_eff/mu_eff; // R is essentially the ratio of negative charge in e- to dust: determines which regime we're in to set quantities below
+                double mu_eff=2.38, x_elec=DMAX(1e-16, SphP[i].Ne*HYDROGEN_MASSFRAC*mu_eff), R=x_elec*psi_prefac/ngr_ngas; psi_0=-3.787124454911839; n_elec=x_elec*n_eff/mu_eff; // R is essentially the ratio of negative charge in e- to dust: determines which regime we're in to set quantities below
                 if(R > 100.) {psi=psi_0;} else if(R < 0.002) {psi=R*(1.-y)/(1.+2.*y*R);} else {psi=psi_0/(1.+pow(R/0.18967,-0.5646));} // simple set of functions to solve for psi, given R above, using the same equations used to determine low-temp ion fractions
                 n_ion = n_elec * y * exp(psi)/(1.-psi); Z_grain = psi / psi_prefac; // we can immediately now calculate these from the above
 #endif
@@ -1346,6 +1349,9 @@ void hydro_gradient_calc(void)
                 SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */
                 SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = eta_ad;      /*!< Hall effect coefficient [physical units of L^2/t] */
             }
+#ifdef COOLING
+	    else {SphP[i].Eta_MHD_OhmicResistivity_Coeff = SphP[i].Eta_MHD_HallEffect_Coeff = SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;} // =0 on the first timestep, since we don't know the ionization yet
+#endif	    
 #endif
 
 
