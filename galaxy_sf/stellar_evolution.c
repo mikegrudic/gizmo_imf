@@ -482,7 +482,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 #endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
-    if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[0]/All.SolarAbundances[0]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}}
+    if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/in->Msne); // v_ej in code units
 }
@@ -637,21 +637,24 @@ void get_wind_yields(double *yields, int i)
 #endif
 
 
+#endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
+
+
+
 
 double Z_for_stellar_evol(int i)
 {
     if(i<0) {return 1;}
+#ifdef METALS
     double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES) 
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES)
     int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
 #endif
     return DMIN(DMAX(Z_solar,0.01),3.); // stellar evolution tables here are not arbitrarily extrapolable, so this is bounded //
+#else
+    return 1; // metals not evolved, return unity
+#endif
 }
-
-
-#endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
-
-
 
 
 #ifdef METALS
