@@ -322,6 +322,22 @@ double Get_Gas_Ionized_Fraction(int i)
 }
 
 
+/* returns the dust-to-metals ratio normalized to the canonical solar value of 1/2: i.e. for 'standard' conditions, should = 1, but if e.g. all dust is sublimated, = 0;
+    explicit dust formation-destruction modules should plug in here, to communicate to relevant opacity and other routines in heating/cooling/molecular chemistry cross-code */
+double return_dust_to_metals_ratio_vs_solar(int i)
+{
+    if(i<0 || P[i].Type!=0) {return 1;}
+#if defined(RT_INFRARED)
+    return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
+#endif
+#if defined(COOL_LOW_TEMPERATURES)
+    double Tdust = get_equilibrium_dust_temperature_estimate(i,0);
+    if(Tdust >= 2000.) {return 1.e-4;} else {return exp(-pow(Tdust/1000.,3));} // this hit the maximum allowed temperature in the routine if it gets >2000; for lower temps, let it smoothly cut off
+#endif
+    return 1; // default behavior
+}
+
+
 /* return an estimate of the Hydrogen molecular fraction of gas, intended for simulations of e.g. molecular clouds, galaxies, and star formation */
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0)
 {
@@ -380,7 +396,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     /* take eqm of dot[nH2] = a_H2*rho_dust*nHI [dust formation] + a_GP*nHI*ne [gas-phase formation] + b_3B*nHI*nHI*(nHI+nH2/8) [3-body collisional form] - b_H2HI*nHI*nH2 [collisional dissociation]
         - b_H2H2*nH2*nH2 [collisional mol-mol dissociation] - Gamma_H2^LW * nH2 [photodissociation] - Gamma_H2^+ [photoionization] - xi_H2*nH2 [CR ionization/dissociation] */
     double fH2=0, sqrt_T=sqrt(T), nH0=xH0*nH_cgs, n_e=x_e*nH_cgs, EXPmax=40.; // define some variables for below, including neutral H number density, free electron number, etc.
-    double a_Z  = (9.e-19 * T / (1. + 0.04*sqrt_T + 0.002*T + 8.e-6*T*T)) * (0.5*Z_Zsol) * nH_cgs * nH0; // dust formation
+    double a_Z  = (9.e-19 * T / (1. + 0.04*sqrt_T + 0.002*T + 8.e-6*T*T)) * (0.5*Z_Zsol*return_dust_to_metals_ratio_vs_solar(i)) * nH_cgs * nH0; // dust formation
     //double a_GP = (1.833e-21 * pow(T,0.88)) * nH0 * n_e; // gas-phase formation [old form, from Nickerson et al., appears to be a significant typo in their expression compared to the sources from which they extracted it]
     double a_GP = (1.833e-18 * pow(T,0.88)) * nH0 * n_e / (1. + x_e*1846.*(1.+T/20000.)/sqrt(T)); // gas-phase formation [Glover & Abel 2008, using fitting functions slightly more convenient and assuming H-->H2 much more rapid than other reactions, from Krumholz & McKee 2010; denominator factor accounts for p+H- -> H + H, instead of H2]
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * nH0; // 3-body collisional formation
