@@ -570,7 +570,7 @@ void gravity_tree(void)
 
 #ifdef RT_USE_TREECOL_FOR_NH  /* compute the effective column density that gives equivalent attenuation of a uniform background: -log(avg(exp(-tau)))/kappa */
         double attenuation=0; int kbin; // first do a sum of the columns and express columns in units of that sum, so that we're plugging O(1) values into exp and avoid overflow when we have unfortunate units. Then we just multiply by the sum at the end.
-	double kappa_photoelectric = 500. * DMAX(1e-4, P[i].Metallicity[0]/All.SolarAbundances[0]); // dust opacity in cgs
+        double kappa_photoelectric = 500. * DMAX(1e-4, (P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i)); // dust opacity in cgs
         for(kbin=0; kbin<RT_USE_TREECOL_FOR_NH; kbin++) {attenuation += exp(-P[i].ColumnDensityBins[kbin] * UNIT_SURFDEN_IN_CGS * kappa_photoelectric);}
         P[i].SigmaEff = -log(attenuation/RT_USE_TREECOL_FOR_NH) / (kappa_photoelectric * UNIT_SURFDEN_IN_CGS);       
 #endif
