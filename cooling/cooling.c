@@ -967,7 +967,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
-        if(J_UV != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
+        //if(J_UV != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // this scales off UVB spectrum, which can cause issues at high-z where its not necessarily initialized well - better to use a fixed spectrum for the local term
+        //if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*1.70 + nHe0*0.018 + nHep*1.84)*1.4e-8);} // this assumes a mean temperature of 22,000 K for ionization, more median O-star at just 10 Msun
+        if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
 #else
         if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
 #endif
@@ -2017,8 +2019,8 @@ double return_local_gammamultiplier(int target)
     {
         double local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1.0 + local_gammamultiplier / gJH0; // this needs to live here in cooling.c where gJH0 is declared as a global shared variable!
-        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
-        return DMAX(1., DMIN(1.e20, local_gammamultiplier));
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;} // check for divide-by zero errors
+        return DMAX(1., DMIN(2./gJH0, DMIN(1.e20, local_gammamultiplier))); // set a cap at large number and at value spectrum would have at extremely short distance (~1000 au) from a super-luminous O-star to prevent unphysically high values
     }
 #endif
     return 1;
