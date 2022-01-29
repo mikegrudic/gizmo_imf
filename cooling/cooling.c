@@ -348,7 +348,11 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
 #endif
 #endif
-#ifdef RT_INFRARED // need to update the dust temp with the converged solution
+#ifdef RT_INFRARED // similarly, update the dust temp with the converged solution
+#if !defined(RT_CHEM_PHOTOION)
+    double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
+    temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+#endif
     get_rt_ir_lambdadust_effective(temp, rho, &nHI, &ne_guess, target, 1);
 #endif 
 
@@ -943,11 +947,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             Lambda += LambdaMol;
 
             /* now add the dust cooling/heating terms */
-            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
+            LambdaDust = 1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * return_dust_to_metals_ratio_vs_solar(target);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989 //
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
-            if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction */
+            if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction (in some modules we solve for this explicitly - in that case can protect this more explicitly, but here, we will make a simple approximation, otherwise we run into problems. note this is not sublimation generally, but sputtering, that causes the destruction */
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
 #ifdef RT_INFRARED            
             SphP[target].LambdaDust = LambdaDust;
@@ -963,7 +967,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
-        if(J_UV != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
+        //if(J_UV != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // this scales off UVB spectrum, which can cause issues at high-z where its not necessarily initialized well - better to use a fixed spectrum for the local term
+        //if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*1.70 + nHe0*0.018 + nHep*1.84)*1.4e-8);} // this assumes a mean temperature of 22,000 K for ionization, more median O-star at just 10 Msun
+        if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
 #else
         if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
 #endif
@@ -1094,7 +1100,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         if(T < 1500.)
         {
             if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
-            kappa_eff *= P[target].Metallicity[0]/All.SolarAbundances[0];
+            kappa_eff *= (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target);
             if(kappa_eff < 0.1) {kappa_eff=0.1;}
         } else {
             /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
@@ -1599,7 +1605,7 @@ void selfshield_local_incident_uv_flux(void)
                 double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
                 double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-                tau_nuv *= (1.0e-3 + P[i].Metallicity[0]/All.SolarAbundances[0]); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
+                tau_nuv *= (1.0e-3 + (P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i)); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-DMIN(tau_nuv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
@@ -1632,8 +1638,8 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double fH2_initial = SphP[i].MolecularMassFraction_perNeutralH; // initial molecular fraction per H atom, entering this subroutine, needed for update below
     double xn_e=1, nh0=0, nHe0, nHepp, nhp, nHep, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergy;
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &xn_e, &nh0, &nhp, &nHe0, &nHep, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
-    double T=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
-    Z_Zsol=1; urad_G0=1; // initialize metal and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
+    double T=1, f_dustgas_solar=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
+    f_dustgas_solar=1; urad_G0=1; // initialize metal/dust and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
     if(SphP[i].DelayTimeHII > 0) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
@@ -1643,7 +1649,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     x_e = DMIN(DMAX(xn_e, 0.),2.); // get free electron ratio [number per H nucleon]
     double log_T=log10(T), ln_T=log(T), gamma_12=return_local_gammamultiplier(i)*gJH0/1.0e-12, shieldfac=return_uvb_shieldfac(i,gamma_12,nH_cgs,log_T), urad_from_uvb_in_G0=sqrt(shieldfac)*(gJH0/2.29e-10); // estimate UVB contribution if we have partial shielding, to full photo-dissociation rates //
 #ifdef METALS
-    Z_Zsol = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity in solar units [scale to total Z, since this mixes dust and C opacity], and enforce a low-Z floor to prevent totally unphysical behaviors at super-low Z [where there is still finite opacity in reality; e.g. Kramer's type and other opacities enforce floor around ~1e-3]
+    f_dustgas_solar=(P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i); // this is only used for the dust-phase formation rates below, so just the dust term here
 #endif
     /* get incident radiation field from whatever module we are using to track it */
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -1700,7 +1706,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = get_equilibrium_dust_temperature_estimate(i, shieldfac);
 #endif
-    double a_Z = 3.e-18*sqrt_T / ((1. +4.e-2*sqrt(T+Tdust) +2.e-3*T +8.e-6*T*T )*(1. +1.e4/exp(DMIN(EXPmax,600./Tdust)))) * Z_Zsol * nH0 * clumping_factor; // dust surface formation (assuming dust-to-metals ratio is 0.5 in all regions where this is significant), from Glover & Jappsen 2007
+    double a_Z = 3.e-18*sqrt_T / ((1. +4.e-2*sqrt(T+Tdust) +2.e-3*T +8.e-6*T*T )*(1. +1.e4/exp(DMIN(EXPmax,600./Tdust)))) * f_dustgas_solar * nH0 * clumping_factor; // dust surface formation (assuming dust-to-metals ratio is 0.5*(Z/solar)*dust-to-gas-relative-to-solar in all regions where this is significant), from Glover & Jappsen 2007
 
     //double a_GP = (1.833e-18 * pow(T,0.88)) / (1. + x_p*1846.*(1.+T/20000.)/sqrt(T)) * xH0 * x_e*nH_cgs * clumping_factor; // gas-phase formation [Glover & Abel 2008, using fitting functions slightly more convenient and assuming H-->H2 much more rapid than other reactions, from Krumholz & McKee 2010; denominator factor accounts for p+H- -> H + H, instead of H2]; note the Nickerson version of this expression omits the ne,-3 term replacing it with ne from Krumholz+McKee which makes it incorrect by a factor of ~1000 in normalization
     double k1,k2,k5,k15,k16,k17,lnTeV=ln_T-9.35915,R51_n=3.62e-17/nH_cgs; // R51_n is contribution from photo-diss assuming ISRF-like since very low-E threshold (=0.755) photons, serves only as a 'floor' here
@@ -1856,7 +1862,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
     if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
-    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0];} // constant dust-to-metals ratio
+    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target);} // constant dust-to-metals ratio
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target>=0) {n_ion_max = (All.SolarAbundances[6]/24.3)/XH;} // limit, to avoid over-ionization at low metallicities
 #endif
@@ -2013,8 +2019,8 @@ double return_local_gammamultiplier(int target)
     {
         double local_gammamultiplier = SphP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
         local_gammamultiplier = 1.0 + local_gammamultiplier / gJH0; // this needs to live here in cooling.c where gJH0 is declared as a global shared variable!
-        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;}
-        return DMAX(1., DMIN(1.e20, local_gammamultiplier));
+        if(!isfinite(local_gammamultiplier)) {local_gammamultiplier=1;} // check for divide-by zero errors
+        return DMAX(1., DMIN(2./gJH0, DMIN(1.e20, local_gammamultiplier))); // set a cap at large number and at value spectrum would have at extremely short distance (~1000 au) from a super-luminous O-star to prevent unphysically high values
     }
 #endif
     return 1;

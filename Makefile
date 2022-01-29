@@ -369,6 +369,7 @@ OPT     += -DUSE_MPI_IN_PLACE
 ## module load mkl
 ## module load hdf5
 ## module load fftw
+# NOTE: this machine does not appear to always parallelize correctly in a hybrid MPI/OpenMP (i.e. when OPENMP is enabled) setup - it can potentially assign multiple threads to the same physical core and get lousy performance. A surefire way to get the correct thread affinity is to generate a rankfile and include as an argument to mpirun, e.g. https://github.com/mikegrudic/make_rankfile
 endif
 
 #----------------------------------------------------------------------------------------------
@@ -396,6 +397,7 @@ HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
 MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 # modules to load: aocc openmpi hdf5 gsl fftw
+# NOTE: this machine does not appear to always parallelize correctly in a hybrid MPI/OpenMP (i.e. when OPENMP is enabled) setup - it can potentially assign multiple threads to the same physical core and get lousy performance. A surefire way to get the correct thread affinity is to generate a rankfile and include as an argument to mpirun, e.g. https://github.com/mikegrudic/make_rankfile
 endif
 
 
