@@ -627,10 +627,10 @@
 #--------------------------------------- nuclear network
 #-------------------------------- (these are currently non-functional and should not be used. users who wish to update them to make them functional are welcome)
 ####################################################################################################-
-#NUCLEAR_NETWORK
-#EOS_NSPECIES                   # must be set BY HAND to match the number in the species tables being read by the subroutines
-#NUCLEARNET_NEGLECT_DTDY_TERMS
-#NUCLEARNET_OUTPUT_TIMEEVOLUTION
+#NUCLEAR_NETWORK                 #- top-level switch for group
+#EOS_NSPECIES                    #- must be set BY HAND to match the number in the species tables being read by the subroutines
+#NUCLEARNET_NEGLECT_DTDY_TERMS   #- turn off certain terms
+#NUCLEARNET_OUTPUT_TIMEEVOLUTION #- additional outputs
 ####################################################################################################-
 
 
