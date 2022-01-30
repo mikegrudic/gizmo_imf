@@ -305,7 +305,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_GRAINTYPE:
 #if defined(PIC_MHD)
-            for(n = 0; n < pc; n++) {P[offset + n].Grain_SubType = *ip_int++;}
+            for(n = 0; n < pc; n++) {P[offset + n].MHD_PIC_SubType = *ip_int++;}
 #endif
             break;
 

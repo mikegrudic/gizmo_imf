@@ -302,7 +302,7 @@ void init(void)
         {
             int grain_subtype = 1; P[i].Grain_Size = 0; /* default assumption about particulate sub-type for operations below */
 #if defined(PIC_MHD)
-            grain_subtype = P[i].Grain_SubType; /* check if the 'grains' are really PIC elements */
+            grain_subtype = P[i].MHD_PIC_SubType; /* check if the 'grains' are really PIC elements */
 #endif
             /* Change grain mass to change the distribution of sizes.  Grain_Size_Spectrum_Powerlaw parameter sets d\mu/dln(R_d) ~ R_d^Grain_Size_Spectrum_Powerlaw */
             if(grain_subtype <= 2)
@@ -572,7 +572,7 @@ void init(void)
         SphP[i].Norm_hat = 0;
         SphP[i].Dynamic_numerator = 0;
         SphP[i].Dynamic_denominator = 0;
-#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
+#ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
         SphP[i].TD_DynDiffCoeff_error = 0;
 #endif
         for (u = 0; u < 3; u++) {
