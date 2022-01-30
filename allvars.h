@@ -38,7 +38,7 @@
 
 #include "GIZMO_config.h"
 /*------- Things that are always recommended (this must follow loading GIZMO_config.h!) -------*/
-#define GIZMO_VERSION     2021  /*!< code version (should be an int corresponding to the year) */
+#define GIZMO_VERSION     2022  /*!< code version (should be an int corresponding to the year) */
 #define DOUBLEPRECISION         /* using double (not floating-point) precision */
 #define PEANOHILBERT            /* sort particles on a Peano-Hilbert curve (huge optimization) */
 #define WALLCLOCK               /* track timing of different routines */
@@ -516,7 +516,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
 #define EVALPOTENTIAL 
-#define GRADUAL_SNAPSHOT_RESTART
+#define IO_GRADUAL_SNAPSHOT_RESTART
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -528,7 +528,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
-#define REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
+#define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #ifdef STARFORGE_GMC_TURBINIT
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC
@@ -2745,7 +2745,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #if defined(PIC_MHD)
-    short int Grain_SubType;
+    short int MHD_PIC_SubType;
 #endif
 
 #if defined(BLACK_HOLES)
@@ -3354,7 +3354,7 @@ extern struct sph_particle_data
   MyDouble Norm_hat;
   MyDouble Dynamic_numerator;
   MyDouble Dynamic_denominator;
-#ifdef IO_TURB_DIFF_DYNAMIC_ERROR
+#ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
   MyDouble TD_DynDiffCoeff_error;
   MyDouble TD_DynDiffCoeff_error_default;
 #endif

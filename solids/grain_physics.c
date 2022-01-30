@@ -51,7 +51,7 @@ void apply_grain_dragforce(void)
             vgas_mag = sqrt(vgas_mag) / All.cf_atime; /* convert to physical units */
             int grain_subtype = 1; /* default assumption about particulate sub-type for operations below */
 #if defined(PIC_MHD)
-            grain_subtype = P[i].Grain_SubType;
+            grain_subtype = P[i].MHD_PIC_SubType;
 #endif
             if((grain_subtype <= 2) && (dt > 0) && (P[i].Gas_Density>0) && (vgas_mag > 0)) /* only bother with particles moving wrt gas with finite gas density and timestep */
             {
@@ -172,10 +172,11 @@ void apply_grain_dragforce(void)
 #ifndef PIC_SPEEDOFLIGHT_REDUCTION
 #define PIC_SPEEDOFLIGHT_REDUCTION (1)
 #endif            
-            if((grain_subtype == 3) && (dt > 0) && (P[i].Gas_Density>0) && (vgas_mag > 0)) /* only bother with particles moving wrt gas with finite gas density and timestep */
+            if((grain_subtype >= 3) && (dt > 0) && (P[i].Gas_Density>0) && (vgas_mag > 0)) /* only bother with particles moving wrt gas with finite gas density and timestep */
             {
                 double reduced_C = PIC_SPEEDOFLIGHT_REDUCTION * C_LIGHT_CODE; /* effective speed of light for this part of the code */
                 double charge_to_mass_ratio_dimensionless = All.PIC_Charge_to_Mass_Ratio; /* dimensionless q/m in units of e/mp */
+                //if(grain_subtype==4) {charge_to_mass_ratio_dimensionless = -1836.15; /* electrons */
 
                 double lorentz_units = UNIT_B_IN_GAUSS * UNIT_VEL_IN_CGS * (ELECTRONCHARGE_CGS/(PROTONMASS_CGS*C_LIGHT_CGS)) / (UNIT_VEL_IN_CGS/UNIT_TIME_IN_CGS); // code velocity to CGS and B to Gauss, times base units e/(mp*c), then convert 'back' to code-units acceleration
 #ifdef PIC_MHD_NEW_RSOL_METHOD

@@ -218,7 +218,7 @@ double get_starformation_rate(int i, int mode)
 #endif
     if(All.ComovingIntegrationOn && SphP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
     if(SphP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
-#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS)
     if(flag==0) {SphP[i].AlphaVirial_SF_TimeSmoothed=0;} /* for time-smoothed virial param, reset to nil if fall below threshold */
 #endif
     tsfr = sqrt(All.PhysDensThresh / (SphP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
@@ -278,19 +278,19 @@ double get_starformation_rate(int i, int mode)
     alpha_vir = 1./SphP[i].AlphaVirial_SF_TimeSmoothed - 1.; /* use the rolling average below */
 #endif
     if(exceeds_force_softening_threshold) {alpha_vir /= 10.;} /* account for gravitational softening effects here, making this threshold less steep */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION <= 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'weakest' mode: reduce [do not zero] SFR if above alpha_crit, and not -too- dense */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION <= 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'weakest' mode: reduce [do not zero] SFR if above alpha_crit, and not -too- dense */
     if((alpha_vir>alpha_crit) && (SphP[i].Density*All.cf_a3inv<100.*All.PhysDensThresh)) {rateOfSF *= 0.0015;} /* PFH: note the 100x threshold limit here is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! */
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'normal' mode: zero SF if don't meet virial threshold */
+#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'normal' mode: zero SF if don't meet virial threshold */
     if(alpha_vir>alpha_crit) {rateOfSF=0;} /* simple 'hard' threshold here */
 #endif
-#if (SINGLE_STAR_SINK_FORMATION & 512) || defined(GALSF_SFR_VIRIAL_CONTINUOUS_THOLD) /* semi-continuous SF as a function of alpha_vir */
+#if (SINGLE_STAR_SINK_FORMATION & 512) || defined(GALSF_SFR_VIRIAL_CONTINUOUS) /* semi-continuous SF as a function of alpha_vir */
     double sf_eff_multiplier = 1;
     if(alpha_vir>alpha_crit) {sf_eff_multiplier = 0.01;}
-#if (GALSF_SFR_VIRIAL_CONTINUOUS_THOLD == 1)
+#if (GALSF_SFR_VIRIAL_CONTINUOUS == 1)
     sf_eff_multiplier = exp(-1.4 * DMIN(DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10),22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 [limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan] */
 #endif
-#if (GALSF_SFR_VIRIAL_CONTINUOUS_THOLD == 2) || (SINGLE_STAR_SINK_FORMATION & 512)
+#if (GALSF_SFR_VIRIAL_CONTINUOUS == 2) || (SINGLE_STAR_SINK_FORMATION & 512)
     Mach_eff_2 = DMIN(DMAX(1.e-5, Mach_eff_2/3.), 1.e4); if(!isfinite(Mach_eff_2)) {Mach_eff_2=1.e4;}
     double S_ln=log(1.+Mach_eff_2/4.), S_crit=log(alpha_vir*(1.+2.*Mach_eff_2*Mach_eff_2/(1.+Mach_eff_2*Mach_eff_2))); // Mach_eff_2 is determined by the ratio of the kinetic to the thermal terms in the virial parameter, corrected to the 1D dispersion here
     sf_eff_multiplier *= 0.5 * exp(3.*S_ln/8.) * (1. + erf((S_ln-S_crit)/sqrt(2.*S_ln))); // multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter [K+T used a definition which gives the wrong value for thermally-supported clouds]
