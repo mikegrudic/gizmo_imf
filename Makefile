@@ -1117,7 +1117,7 @@ OPTIMIZE =  -O2 -xHost -funroll-loops -no-prec-div -fast-transcendentals -fp-mod
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 	OPTIMIZE += -qopenmp -parallel   # openmp required compiler flags
 endif
-$(FC)    =  $(CC)
+FC       =  $(CC)
 GSL_INCL =  -I/cita/modules/gsl-2.1-intel-19.1.3/include/gsl
 GSL_LIBS =  -L/cita/modules/gsl/2.7.1-intel-19.1.3/lib -mkl
 FFTW_INCL=  -I/cita/modules/fftw/3.3.10-intelmpi/include
