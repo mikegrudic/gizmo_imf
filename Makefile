@@ -427,7 +427,8 @@ MPICHLIB =
 OPT     += -DUSE_MPI_IN_PLACE
 endif
 ## modules to load:
-##     module load comp-intel mpi-hpe/mpt pkgconfig
+##     module load comp-intel mpi-hpe/mpt pkgconfig (older setup)
+##     module load comp-intel mpi-hpe/mpt pkgsrc/2021Q2 (newer setup)
 ## also add this to your .bashrc (after loading the modules above):
 ##     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PKGSRC_BASE/lib
 ## FFTW: Pleiades does not have an MPI-enabled FFTW, so install your own version in your home directory
