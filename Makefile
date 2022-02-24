@@ -1,3 +1,4 @@
+
 #-----------------------------------------------------------------
 #
 # You might be looking for the compile-time Makefile options of the code...
@@ -329,6 +330,30 @@ OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_
 #   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.]
 #   I am using ~3gb/core for low task numbers, lower still for higher task numbers. 
 ##
+endif
+
+#----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"CaltechHPC")
+CC       =  mpicc
+CXX      =  mpic++
+FC       =  mpif90 -nofor_main
+OPTIMIZE = -O2 -xCORE-AVX2
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -qopenmp
+endif
+GMP_INCL = #
+GMP_LIBS = #
+MKL_INCL = -I$(CPATH)
+MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
+GSL_INCL = -I$(CPATH)
+GSL_LIBS = -L$(LIBRARY_PATH)
+FFTW_INCL= -I$(CPATH)
+FFTW_LIBS= -L$(LIBRARY_PATH)
+HDF5INCL = -I$(CPATH) -DH5_USE_16_API
+HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK
+# Compiles with following modules:   1) intel/20.1    2) hdf5/1.10.1   3) gsl/2.4       4) fftw/3.3.7
 endif
 
 
