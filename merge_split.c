@@ -99,6 +99,12 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
     if(P[i].Type==0)
     {
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+        int k; double dx,r2; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.smbh_pos_for_refinement[0])*All.cf_atime; r2+=dx*dx;}
+        double r_pc = sqrt(r2) * UNIT_LENGTH_IN_PC;
+        double r_0 = 2000.;
+        if(r_pc < r_0; {return DMAX(1.e-7 , r_pc/r_0);}
+#endif
         return 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
     }
 #endif

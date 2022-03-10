@@ -2532,6 +2532,10 @@ extern struct global_data_all_processes
 #ifdef EOS_TABULATED
     char EosTable[100];
 #endif
+    
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    double smbh_pos_for_refinement[3];
+#endif
 
 #ifdef NUCLEAR_NETWORK
   char EosSpecies[100];

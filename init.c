@@ -149,7 +149,9 @@ void init(void)
      number, the total amount of memory requested for the BH tree on a single processor scales proportional
      to PartAllocFactor*TreeAllocFactor. */
 
-
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    double All.smbh_pos_for_refinement[0]=All.smbh_pos_for_refinement[1]=All.smbh_pos_for_refinement[2]=0;
+#endif
 
 #ifdef BOX_PERIODIC
     if(All.ComovingIntegrationOn) {check_omega();}

@@ -33,6 +33,9 @@ void find_timesteps(void)
     int i, bin, binold, prev, next;
     integertime ti_step, ti_step_old, ti_min;
     double aphys;
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    double xyz_local[3]={-MAX_REAL_NUMBER,-MAX_REAL_NUMBER,-MAX_REAL_NUMBER}, xyz_global[3];
+#endif
 
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
         find_dt_displacement_constraint(All.cf_hubble_a * All.cf_atime * All.cf_atime);
@@ -185,8 +188,17 @@ void find_timesteps(void)
 	    }
 	}
 #endif
+        
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    if(P[i].Type == 3 && P[i].Mass > 0) {xyz_local[0]=P[i].Pos[0]; xyz_local[1]=P[i].Pos[1]; xyz_local[2]=P[i].Pos[2];} // active on this processor, set
+#endif
+        
     }
 
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    MPI_Allreduce(xyz_local, xyz_global, 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(xyz_global[0] > -1.e10) {All.smbh_pos_for_refinement[0] = xyz_global[0]; All.smbh_pos_for_refinement[1] = xyz_global[1]; All.smbh_pos_for_refinement[2] = xyz_global[2];} // variable was updated, update global variable as needed
+#endif
 
 
 #ifdef PMGRID
