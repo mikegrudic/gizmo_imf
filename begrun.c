@@ -785,29 +785,25 @@ void read_parameter_file(char *fname)
 
   if(sizeof(long long) != 8)
     {
-      if(ThisTask == 0)
-	printf("\nType `long long' is not 64 bit on this platform. Stopping.\n\n");
+      if(ThisTask == 0) {printf("\nType `long long' is not 64 bit on this platform. Stopping.\n\n");}
       endrun(0);
     }
 
   if(sizeof(int) != 4)
     {
-      if(ThisTask == 0)
-	printf("\nType `int' is not 32 bit on this platform. Stopping.\n\n");
+      if(ThisTask == 0) {printf("\nType `int' is not 32 bit on this platform. Stopping.\n\n");}
       endrun(0);
     }
 
   if(sizeof(float) != 4)
     {
-      if(ThisTask == 0)
-	printf("\nType `float' is not 32 bit on this platform. Stopping.\n\n");
+      if(ThisTask == 0) {printf("\nType `float' is not 32 bit on this platform. Stopping.\n\n");}
       endrun(0);
     }
 
   if(sizeof(double) != 8)
     {
-      if(ThisTask == 0)
-	printf("\nType `double' is not 64 bit on this platform. Stopping.\n\n");
+      if(ThisTask == 0) {printf("\nType `double' is not 64 bit on this platform. Stopping.\n\n");}
       endrun(0);
     }
 
@@ -815,7 +811,7 @@ void read_parameter_file(char *fname)
   if(ThisTask == 0)		/* read parameter file on process 0 */
     {
       nt = 0;
-      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[nt], "-null[invalid_tag_name]-");}
+      for(j=0;j<MAXTAGS;j++) {strcpy(alternate_tag[j], "-");}
 
       strcpy(tag[nt], "InitCondFile");
       strcpy(alternate_tag[nt], "Initial_Conditions_File");
@@ -2169,7 +2165,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
                 if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
                 if(strcmp("SnapFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 snapshot format (=%d) \n",tag[i],alternate_tag[i],All.SnapFormat); continue;}
-                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 24-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
+                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 48-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
                 if(strcmp("CpuTimeBetRestartFile",tag[i])==0) {*((double *)addr[i])=3450.; printf("Tag %s (%s) not set in parameter file: defaulting to write restart checkpoints just under every hour (=%g) \n",tag[i],alternate_tag[i],All.CpuTimeBetRestartFile); continue;}
 #if !defined(COOLING) && !defined(GALSF) && !defined(EOS_HELMHOLTZ) && !defined(EOS_ELASTIC) && !defined(EOS_TILLOTSON)
                 if(strcmp("UnitLength_in_cm",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitLength_in_cm); continue;}
@@ -2221,22 +2217,21 @@ void read_parameter_file(char *fname)
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
 #endif
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
-                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
-                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
-                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
-                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
-                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
-                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of hpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
+                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
+                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to no Eddington-limit in accretion from disk to sink (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
+                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to arbitrary small value which will be ignored later (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
+                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to sinks beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
+                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to no augment of sink neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
+                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to some large size of order a few in code units (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
                 if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
-                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
-                if(strcmp("BH_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.BH_Rad_MomentumFactor); continue;}
-                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
-                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
+                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to a reference radiative efficiency, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
+                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume one third is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
+                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
 #endif
 #if defined(FIRE_BHS)
-                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
-                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
+                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
+                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting no Eddington-limit in accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
                 if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=0.7e-8; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
                 if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=8.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
                 if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of hpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
