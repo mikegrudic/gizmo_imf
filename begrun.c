@@ -1514,6 +1514,8 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 
         strcpy(tag[nt], "BAL_wind_particle_mass");
+        strcpy(alternate_tag[nt], "Cell_Spawn_Mass_ratio");
+        strcpy(tag[nt], "");
         addr[nt] = &All.BAL_wind_particle_mass;
         id[nt++] = REAL;
 #endif
@@ -2218,6 +2220,20 @@ void read_parameter_file(char *fname)
 #endif
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
 #endif
+#if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
+                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
+                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
+                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
+                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
+                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
+                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of hpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
+                if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
+                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
+                if(strcmp("BH_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.BH_Rad_MomentumFactor); continue;}
+                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
+                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
+                if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#endif
 #if defined(FIRE_BHS)
                 if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins+Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
                 if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Eddington-limited accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
@@ -2360,14 +2376,20 @@ void read_parameter_file(char *fname)
 #endif
 #endif // sph
 #ifdef DIVBCLEANING_DEDNER
+#ifdef MHD_CONSTRAINED_GRADIENT
+    All.DivBcleanParabolicSigma = 1.0;
+#else
     All.DivBcleanParabolicSigma = 0.2;
+#endif
     All.DivBcleanHyperbolicSigma = 1.0;
 #endif
 
 #ifdef TURB_DIFF_DYNAMIC
     All.TurbDynamicDiffIterations = 0; /* D. Rennehan: This has NOT been tested above 0 */
 #endif
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
     if(All.ComovingIntegrationOn) {All.ErrTolForceAcc = 0.005; All.ErrTolIntAccuracy = 0.05;}
+#endif
     All.MaxNumNgbDeviation = All.DesNumNgb / 640.;
 #ifdef GALSF
     All.MaxNumNgbDeviation = All.DesNumNgb / 64.;
@@ -2401,6 +2423,13 @@ void read_parameter_file(char *fname)
     /* determines tree cell-opening criterion: 0 for Barnes-Hut, 1 for relative criterion: this
      should only be changed if you -really- know what you're doing! */
 
+#if defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION)
+    if(All.ErrTolIntAccuracy > 0.01) {All.ErrTolIntAccuracy = 0.01;}
+    if(All.MaxRMSDisplacementFac > 0.125) {All.MaxRMSDisplacementFac = 0.125;}
+    if(All.ErrTolTheta > 0.5) {All.ErrTolTheta = 0.5;}
+    if(All.MaxNumNgbDeviation > 0.05) {All.MaxNumNgbDeviation > 0.05;}
+#endif
+    
 #if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
     if(All.CourantFac > 0.2) {All.CourantFac = 0.2;}
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */

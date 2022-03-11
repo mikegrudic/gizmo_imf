@@ -151,7 +151,7 @@ int N_gas;			/*!< number of gas particles on the LOCAL processor  */
 int N_stars;
 #endif
 #ifdef BH_WIND_SPAWN
-double  MaxUnSpanMassBH;
+double  Max_Unspawned_MassUnits_fromSink;
 #endif
 
 long long Ntype[6];		/*!< total number of particles of each type */

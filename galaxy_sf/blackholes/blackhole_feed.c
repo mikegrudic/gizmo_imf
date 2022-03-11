@@ -202,7 +202,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         if(P[j].Type == 5)  /* we may have a black hole merger -- check below if allowed */
                             if((local.ID != P[j].ID) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && (P[j].Mass < local.Mass) && (P[j].Mass < 10*All.MeanGasParticleMass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && (P[j].Mass < local.Mass) && (P[j].Mass < 10.*P[j].Sink_Formation_Mass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                             {
                                 if((vrel < vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))

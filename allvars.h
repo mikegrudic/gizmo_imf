@@ -524,7 +524,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
-#define DEVELOPER_MODE
+//#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
@@ -1882,7 +1882,7 @@ extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 extern int N_stars;
 #endif
 #ifdef BH_WIND_SPAWN
-extern double MaxUnSpanMassBH;
+extern double Max_Unspawned_MassUnits_fromSink;
 #endif
 
 extern long long Ntype[6];	/*!< total number of particles of each type */
@@ -2774,6 +2774,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
+    MyFloat Sink_Formation_Mass; /* initial mass of sink when it formed */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */

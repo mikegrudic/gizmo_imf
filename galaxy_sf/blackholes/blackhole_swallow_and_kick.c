@@ -567,9 +567,9 @@ void spawn_bh_wind_feedback(void)
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type == 5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
-            if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*All.BAL_wind_particle_mass) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
+            if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*target_mass_for_wind_spawning(i)) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-            if((P[i].Mass <= 3.5*All.MeanGasParticleMass) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
+            if((P[i].Mass <= 3.5*BPP(i).Sink_Formation_Mass) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
             if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif
@@ -748,13 +748,13 @@ void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  dou
 int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned )
 {
     double total_mass_in_winds = BPP(i).unspawned_wind_mass;
-    int n_particles_split   = (int) floor( total_mass_in_winds / All.BAL_wind_particle_mass ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
+    int n_particles_split   = (int) floor( total_mass_in_winds / target_mass_for_wind_spawning(i) ); /* if we set BH_WIND_SPAWN we presumably wanted to do this in an exactly-conservative manner, which means we want to have an even number here. */
     int k=0; long j;
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if (P[i].ProtoStellarStage == 6) {
-        n_particles_split = (int) floor( total_mass_in_winds / (All.MeanGasParticleMass) );
-        if (P[i].BH_Mass == 0){ // last batch to be spawned
+        n_particles_split = (int) floor( total_mass_in_winds / (P[i].Sink_Formation_Mass) );
+        if(P[i].BH_Mass == 0) { // last batch to be spawned
             n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
             printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
             P[i].Mass = 0; // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
@@ -778,7 +778,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
-    double mass_of_new_particle = All.BAL_wind_particle_mass;
+    double mass_of_new_particle = target_mass_for_wind_spawning(i);
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].ProtoStellarStage == 6) {mass_of_new_particle = total_mass_in_winds/(double) n_particles_split;} // ejecta will have the gas mass resolution except the last batch which will lower masses
 #endif
@@ -961,7 +961,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
         /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
         P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-        if(mass_of_new_particle >= 0.5*All.MeanGasParticleMass) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
+        if(mass_of_new_particle >= 0.5*BPP(i).Sink_Formation_Mass) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
 #endif
 
         P[j].ID_child_number = P[i].ID_child_number; P[i].ID_child_number +=1; P[j].ID_generation = P[i].ID; // this allows us to track spawned particles by giving them unique sub-IDs
@@ -1060,6 +1060,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
     return n_particles_split;
 }
 #endif
+
+
+
+/* simple routine that evaluates the target cell mass for the spawning subroutine */
+double target_mass_for_wind_spawning(int i)
+{
+#ifdef SINGLE_STAR_AND_SSP_HYBRID_MODEL
+    return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
+#endif
+    return All.BAL_wind_particle_mass;
+}
 
 
 #endif // top-level flag

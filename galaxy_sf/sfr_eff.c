@@ -543,7 +543,8 @@ void star_formation_parent_routine(void)
                             {
                                 P[i].Type = 5;
                                 num_bhformed++;
-                                P[i].BH_Mass = All.SeedBlackHoleMass; // if desired to make this appreciable fraction of particle mass, please do so in params file
+                                P[i].BH_Mass = DMAX(All.SeedBlackHoleMass, DMIN(0.5*P[i].Mass , 0.01/UNIT_MASS_IN_SOLAR)); // if desired to make this appreciable fraction of particle mass, please do so in params file
+                                P[i].Sink_Formation_Mass = P[i].Mass; // save the mass we had at the time of sink formation, because we will use this later to understand how the sink has grown
 #ifdef HERMITE_INTEGRATION
                                 P[i].AccretedThisTimestep = 0;
 #endif
@@ -591,9 +592,9 @@ void star_formation_parent_routine(void)
                                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
                                 P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
                                 P[i].ProtoStellarStage = 0;
-                                P[i].Mass_D = P[i].Mass; //Initially all the gas has Deuterium
-                                P[i].ZAMS_Mass = 0; //init as zero, does not mean anything while we are in the protostellar stage
-                                P[i].StarLuminosity_Solar = 0; //Start with zero luminosity
+                                P[i].Mass_D = P[i].Mass; // initially all the gas has Deuterium
+                                P[i].ZAMS_Mass = 0; // init as zero, does not mean anything while we are in the protostellar stage
+                                P[i].StarLuminosity_Solar = 0; // start with zero luminosity
                                 if (P[i].Mass*UNIT_MASS_IN_SOLAR < 0.012) {P[i].ProtoStellarRadius_inSolar =  5.24 * pow(P[i].Mass*UNIT_MASS_IN_SOLAR, 1./3);} // constant density
                                 else {P[i].ProtoStellarRadius_inSolar = 10. * (P[i].Mass*UNIT_MASS_IN_SOLAR);} // M propto R above this mass
 #endif
@@ -606,7 +607,7 @@ void star_formation_parent_routine(void)
                                 dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
                                                     + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) + (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
                                            (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) - (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-                                //Saves at formation sink properties in a table: 0:Time 1:ID 2:Mass 3-5:Position 6-8:Velocity 9-11:Magnetic field 12:Internal energy 13:Density 14:cs_effective 15:particle size 16:local surface density 17:local velocity dispersion 18: distance to closest BH
+                                // saves at formation sink properties in a table: 0:Time 1:ID 2:Mass 3-5:Position 6-8:Velocity 9-11:Magnetic field 12:Internal energy 13:Density 14:cs_effective 15:particle size 16:local surface density 17:local velocity dispersion 18: distance to closest BH
                                 fprintf(FdBhFormationDetails,"%g %llu %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[i].ID, P[i].Mass, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],  P[i].Vel[0], P[i].Vel[1],P[i].Vel[2], tempB[0], tempB[1], tempB[2], SphP[i].InternalEnergyPred, SphP[i].Density * All.cf_a3inv, Get_Gas_effective_soundspeed_i(i) * All.cf_afac3, Get_Particle_Size(i) * All.cf_atime, NH, dv2_abs, P[i].min_dist_to_bh ); fflush(FdBhFormationDetails);
 #endif
                             }

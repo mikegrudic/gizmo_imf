@@ -929,7 +929,7 @@ integertime get_timestep(int p,		/*!< particle index */
             dt_accr = 0.05 * DMAX(BPP(p).BH_Mass , All.MaxMassForParticleSplit) / BPP(p).BH_Mdot;
 #endif
 #ifdef SINGLE_STAR_FB_JETS	    
-            dt_accr = DMIN(dt_accr, All.BAL_wind_particle_mass / BPP(p).BH_Mdot); 
+            dt_accr = DMIN(dt_accr, target_mass_for_wind_spawning(p) / BPP(p).BH_Mdot); 
 #endif
         } // if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
 #ifdef BH_SEED_GROWTH_TESTS
@@ -975,7 +975,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // SINGLE_STAR_TIMESTEPPING
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {double dt_spawn = All.BAL_wind_particle_mass / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = target_mass_for_wind_spawning(p) / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject

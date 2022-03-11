@@ -212,8 +212,8 @@ void GravAccel_GMCTurbInit()
     {
         double dp[3]; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k] - 0.5*All.BoxSize;}
         double r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2], r = sqrt(r2);
-	double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
-	double menc = DMIN(M,M*pow(r/R,3)) + DMAX(0,3*M*log(r/R)); // uniform sphere plus a r^-3 surrounding halo with density matched at the sphere radius
+        double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
+        double menc = DMIN(M,M*pow(r/R,3)) + DMAX(0,3*M*log(r/R)); // uniform sphere plus a r^-3 surrounding halo with density matched at the sphere radius
         for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * STARFORGE_GMC_ALPHA * menc * dp[k]/(r2*r);}
     }
 #endif

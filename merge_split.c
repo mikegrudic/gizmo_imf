@@ -15,7 +15,7 @@
 #include "./proto.h"
 #include "./kernel.h"
 #ifdef BH_WIND_SPAWN
-#define MASS_THRESHOLD_FOR_WINDPROMO (DMAX(5.*All.BAL_wind_particle_mass,0.25*All.MaxMassForParticleSplit))
+#define MASS_THRESHOLD_FOR_WINDPROMO(i) (DMAX(5.*target_mass_for_wind_spawning(i),0.25*All.MaxMassForParticleSplit))
 #endif /* define a mass threshold for this model above which a 'hyper-element' has accreted enough to be treated as 'normal' */
 
 
@@ -47,7 +47,7 @@ int does_particle_need_to_be_merged(int i)
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
         if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
-        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
 #endif
@@ -103,7 +103,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
         int k; double dx,r2; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.smbh_pos_for_refinement[0])*All.cf_atime; r2+=dx*dx;}
         double r_pc = sqrt(r2) * UNIT_LENGTH_IN_PC;
         double r_0 = 2000.;
-        if(r_pc < r_0; {return DMAX(1.e-7 , r_pc/r_0);}
+        if(r_pc < r_0) {return DMAX(1.e-7 , r_pc/r_0);}
 #endif
         return 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
     }
@@ -256,18 +256,20 @@ void merge_and_split_particles(void)
 #ifdef BH_WIND_SPAWN
                         if(P[i].ID==All.AGNWindID)
                         {
-                            if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)
+                            if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
                             {
-                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)) {do_allow_merger=1;}
+                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger=1;}
                             } else if(do_allow_merger) {
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
                                 if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
-                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))) {do_allow_merger = 0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #else
                                 if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
+                                if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #endif
                             }
                         }

@@ -249,13 +249,13 @@ void calculate_non_standard_physics(void)
     CPU_Step[CPU_MISC] += measure_time();
     blackhole_accretion();
 #ifdef BH_WIND_SPAWN
-    double MaxUnSpanMassBH_global;
-    MPI_Allreduce(&MaxUnSpanMassBH, &MaxUnSpanMassBH_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    if(MaxUnSpanMassBH_global > (BH_WIND_SPAWN)*All.BAL_wind_particle_mass)
+    double Max_Unspawned_MassUnits_fromSink_global;
+    MPI_Allreduce(&Max_Unspawned_MassUnits_fromSink, &Max_Unspawned_MassUnits_fromSink_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(Max_Unspawned_MassUnits_fromSink_global > 1)
     {
         spawn_bh_wind_feedback();
         rearrange_particle_sequence();
-        MaxUnSpanMassBH=MaxUnSpanMassBH_global=0.;
+        Max_Unspawned_MassUnits_fromSink=Max_Unspawned_MassUnits_fromSink_global=0.;
     }
 #endif
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_BLACKHOLES] += measure_time();
