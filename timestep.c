@@ -243,7 +243,7 @@ integertime get_timestep(int p,		/*!< particle index */
     integertime ti_step; int k; k=0;
 
 #ifdef IO_GRADUAL_SNAPSHOT_RESTART // if on the first timestep of a snapshot restart, start at the lowest allowed timestep to minimize any transient effects
-    if(RestartFlag == 2 && All.Ti_Current == 0) return 2; 
+    if(RestartFlag == 2 && All.Ti_Current == 0) {return 2;}
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     P[p].SuperTimestepFlag = 0;

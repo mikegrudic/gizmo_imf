@@ -249,16 +249,16 @@ void init(void)
         P[i].Potential = 0;
 #endif
 #ifdef GALSF
-        if(RestartFlag == 0)
-        {
-            P[i].StellarAge = 0;
+        if(RestartFlag == 0) {P[i].StellarAge = 0;}
 #ifdef GALSF_SFR_IMF_VARIATION
-            P[i].IMF_Mturnover = 2.0; /* gives a solar-type IMF for our calculations in current code */
+        if(RestartFlag == 0) {P[i].IMF_Mturnover = 2.0;} /* gives a solar-type IMF for our calculations in current code */
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
-            P[i].IMF_NumMassiveStars = 0;
+        if(RestartFlag == 0) {P[i].IMF_NumMassiveStars = 0;}
+#ifdef SINGLE_STAR_AND_SSP_HYBRID_MODEL
+        if(RestartFlag == 2) {P[i].IMF_NumMassiveStars = 0;}
 #endif
-        }
+#endif
 #endif
 
         if(RestartFlag != 1)

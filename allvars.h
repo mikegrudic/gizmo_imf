@@ -504,6 +504,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
 #define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define PARTICLE_EXCISION
+#endif
 #endif // closes hybrid FIRE+STARFORGE model settings
 
 
@@ -525,10 +528,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
+#endif
 #ifdef STARFORGE_GMC_TURBINIT
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC

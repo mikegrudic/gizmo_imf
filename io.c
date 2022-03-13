@@ -1319,13 +1319,13 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
 #elif defined(OUTPUT_TEMPERATURE)
-	    for(n = 0; n < pc; pindex++)
+            for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-		    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units                                                                                                                                                  
-		    temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);		  
-		    *fp++ = (MyOutputFloat) temp;
-		    n++;
+                    double u, ne, nh0 = 0, mu = 1, temp, nHeII, nhp, nHe0, nHepp; u = DMAX(All.MinEgySpec, SphP[pindex].InternalEnergy); // needs to be in code units
+                    temp = ThermalProperties(u, SphP[pindex].Density * All.cf_a3inv, pindex, &mu, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+                    *fp++ = (MyOutputFloat) temp;
+                    n++;
                 }	    
 #endif
             break;

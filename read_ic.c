@@ -862,7 +862,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
+#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINKRAD
 #endif
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
@@ -871,7 +871,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef PIC_MHD
                    && blocknr != IO_GRAINTYPE
 #endif
-#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_R_PROTOSTAR
                    && blocknr != IO_MASS_D_PROTOSTAR
                    && blocknr != IO_ZAMS_MASS
@@ -921,6 +921,19 @@ void read_file(char *fname, int readTask, int lastTask)
 
 #if !defined(RADTRANSFER)
             if(RestartFlag == 2 && blocknr == IO_RADGAMMA) {continue;}
+#endif
+
+#if !defined(EOS_CARRIES_TEMPERATURE)
+            if(RestartFlag == 2 && blocknr == IO_EOSTEMP) {continue;}
+#endif
+            
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+            if(RestartFlag == 2 && blocknr == IO_RADGAMMA) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_EDDINGTON_TENSOR) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_OSTAR) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_HII) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_HeI) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_HeII) {continue;}
 #endif
 
 #if defined(IO_MOLECFRAC_NOT_IN_ICFILE)

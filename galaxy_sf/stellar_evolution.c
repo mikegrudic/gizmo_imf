@@ -27,7 +27,7 @@ int is_particle_single_star_eligible(long i)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) // here's the interesting regime, where we have some criterion for deciding which cells are eligible for 'single-star' status
         if(P[i].Type == 5) {return 1;} // all type-5 elements are assumed sinks
         if(P[i].Type == 0) {
-            if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 1;} else {return 0;} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
+            if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
         }
 #else
         return 1; // no hybrid model, so all particles satisfying these criteria are automatically single-star eligible
