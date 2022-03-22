@@ -34,7 +34,7 @@ void find_timesteps(void)
     integertime ti_step, ti_step_old, ti_min;
     double aphys;
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    double xyz_local[3]={-MAX_REAL_NUMBER,-MAX_REAL_NUMBER,-MAX_REAL_NUMBER}, xyz_global[3], special_particle_active_with_this_index=-1;
+    double xyz_local[3]={-MAX_REAL_NUMBER,-MAX_REAL_NUMBER,-MAX_REAL_NUMBER}, xyz_global[3]; int special_particle_active_with_this_index=-1;
 #endif
 
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
@@ -211,7 +211,7 @@ void find_timesteps(void)
     MPI_Allreduce(&mass_to_sum_local, &mass_to_sum_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
     if(xyz_global[0] > -1.e10) { // this indicates that the special particle was active on one task
         All.SMBH_SpecialParticle_Position_ForRefinement[0] = xyz_global[0]; All.SMBH_SpecialParticle_Position_ForRefinement[1] = xyz_global[1]; All.SMBH_SpecialParticle_Position_ForRefinement[2] = xyz_global[2]; // variable was updated, update global variable as needed
-        if(special_particle_active_on_this_task>=0) {P[special_particle_active_with_this_index].Mass += mass_to_add_global;} // the special particle lives here with this id, so we can update it with this mass
+        if(special_particle_active_with_this_index>=0) {P[special_particle_active_with_this_index].Mass += mass_to_sum_global;} // the special particle lives here with this id, so we can update it with this mass
         All.Mass_Accreted_By_SpecialSMBHParticle = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
     }
 #endif
