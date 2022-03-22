@@ -363,14 +363,17 @@ void apply_excision(void)
 {
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     /* we will excise -any- cells or particles which fall inside the force softening kernel of the central SMBH particle */
-    if(All.smbh_pos_for_refinement[0] > -1.e10)
+    if(All.SMBH_SpecialParticle_Position_ForRefinement[0] > -1.e10)
     {
         int i,k; double excision_radius = All.ForceSoftening[3];
         double excision_radius2 = excision_radius*excision_radius;
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         {
-            double r2=0; for(k=0;k<3;k++) {double dp=P[i].Pos[k]-All.smbh_pos_for_refinement[k]; r2+=dp*dp;}
-            if(r2 < excision_radius2) {P[i].Mass=0;}
+            if(P[i].Type != 3) /* don't excise the SMBH itself! */
+            {
+                double r2=0; for(k=0;k<3;k++) {double dp=P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k]; r2+=dp*dp;}
+                if(r2 < excision_radius2) {All.Mass_Accreted_By_SpecialSMBHParticle+=P[i].Mass; P[i].Mass=0;}
+            }
         }
     }
 #else

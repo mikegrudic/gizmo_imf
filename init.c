@@ -150,7 +150,8 @@ void init(void)
      to PartAllocFactor*TreeAllocFactor. */
 
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    All.smbh_pos_for_refinement[0]=All.smbh_pos_for_refinement[1]=All.smbh_pos_for_refinement[2]=0;
+    All.SMBH_SpecialParticle_Position_ForRefinement[0]=All.SMBH_SpecialParticle_Position_ForRefinement[1]=All.SMBH_SpecialParticle_Position_ForRefinement[2]=0;
+    All.Mass_Accreted_By_SpecialSMBHParticle=0;
 #endif
 
 #ifdef BOX_PERIODIC

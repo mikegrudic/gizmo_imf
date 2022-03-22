@@ -39,6 +39,9 @@ int does_particle_need_to_be_merged(int i)
 #ifdef GRAIN_RDI_TESTPROBLEM
     return 0;
 #endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[i].Type==3) {return 0;}
+#endif
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID)
     {
@@ -100,10 +103,32 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
     if(P[i].Type==0)
     {
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-        int k; double dx,r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.smbh_pos_for_refinement[k])*All.cf_atime; r2+=dx*dx;}
-        double r_pc = sqrt(r2) * UNIT_LENGTH_IN_PC;
-        double r_0 = 2000.;
-        if(r_pc < r_0) {return DMAX(1.e-7 , r_pc/r_0);}
+        double dt_to_ramp_refinement = 0.00001;
+        double minimum_refinement_mass_in_solar = 0.01;
+        
+        double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
+        if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);}
+        double m_ref_mJ = 0.001 * MJ; int k; double dx,r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k])*All.cf_atime; r2+=dx*dx;}
+        double rbh = sqrt(r2) * UNIT_LENGTH_IN_PC/1000.;
+        if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
+        {
+            double mc=1.e10, m_r1=DMIN(mcrit_0, 7.e3), m_r2=10.*m_r1, m_r3=10.*m_r2, r1=1., r2=10., r3=20.;
+            if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
+            {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
+            m_ref_mJ = DMIN(m_ref_mJ , mc);
+        }
+        double r_pc = rbh*1000.,r0, f0=1, target_slope=1.;
+        double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
+        
+        r0=1000.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        r0=10.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        r0=1.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+
+        double M_target = f0 * DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR;
+        double M_min_absolute = minimum_refinement_mass_in_solar / UNIT_MASS_IN_SOLAR; // arbitrarily set minimum mass for refinement at any level
+        double normal_median_mass = All.MaxMassForParticleSplit / 3.;
+        ref_factor = DMAX(M_min_absolute / normal_median_mass, DMIN( M_target / normal_median_mass , 1));
+        return ref_factor;
 #endif
         return 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
     }
@@ -1080,6 +1105,9 @@ void rearrange_particle_sequence(void)
 /* function to apply -optional- cell excision for special cases where e.g. cells go far outside of the desired 'zoom-in region' or target region of a multi-scale simulation */
 void apply_pm_hires_region_clipping_selection(int i)
 {
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[i].Type==3) {return;}
+#endif
 #ifdef PM_HIRES_REGION_CLIPPING
     int clip_flag = 0; // flag for clipping
     if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
