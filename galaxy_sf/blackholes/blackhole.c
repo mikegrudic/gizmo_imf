@@ -88,7 +88,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
-    double hinv = 1./All.ForceSoftening[5], fac=2.*All.G*m_eff/All.cf_atime;
+    double hinv = 1./SinkParticle_GravityKernelRadius, fac=2.*All.G*m_eff/All.cf_atime;
 #if defined(BH_REPOSITION_ON_POTMIN)
     return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
 #endif
@@ -124,15 +124,15 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     if(v2 < 1)
     {
         double apocenter = dr_code / (1.-v2); // furthest distance the cell -could- get from the sink, on a purely radial orbit [ignoring internal energy effects, in e.g. a Keplerian potential, this is approximately twice the equivalent circular orbit, while for a highly-eccentric orbit, this is exactly the apocentric radius]
-        double apocenter_max = 2.*All.ForceSoftening[5]; //  = few x epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
+        double apocenter_max = 2.*SinkParticle_GravityKernelRadius; //  = few x epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
         if(dr_code>sink_radius) {return 0;} else {return 1;} // simply yes-no, if bound and within sink radius, gets accreted
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(BH_SEED_GROWTH_TESTS)
-        double r_j = All.ForceSoftening[P[j].Type];
+        double r_j = ForceSoftening_KernelRadius(j);
         if(P[j].Type == 0) {r_j = DMAX(r_j , PPP[j].Hsml);}
-        apocenter_max = DMAX(10.0*All.ForceSoftening[5],DMIN(50.0*All.ForceSoftening[5],r_j));
-        if(P[j].Type == 5) {apocenter_max = DMIN(apocenter_max , 1.*All.ForceSoftening[5]);}
+        apocenter_max = DMAX(10.0*SinkParticle_GravityKernelRadius,DMIN(50.0*SinkParticle_GravityKernelRadius,r_j));
+        if(P[j].Type == 5) {apocenter_max = DMIN(apocenter_max , 1.*SinkParticle_GravityKernelRadius);}
 #endif
         if(apocenter < apocenter_max) {bound = 1;}
     }
@@ -262,18 +262,13 @@ void set_blackhole_mdot(int i, int n, double dt)
             rmax_for_bhar_units = rmax_for_bhar * UNIT_LENGTH_IN_PC / 100.; /* r0/100pc */
             f0_for_bhar = 0.31*f_disk_for_bhar*f_disk_for_bhar*pow(mdisk_for_bhar_units,-1./3.); /* dimensionless factor for equations */
             mgas_in_racc = BlackholeTempInfo[i].Mgas_in_Kernel; r0_accretion = rmax_for_bhar; // -total- gas mass inside of search radius [rmax_for_bhar]
-/*
-#if (BH_GRAVACCRETION >= 1)
-            r0_accretion = 3.*All.ForceSoftening[5]*All.cf_atime; // set to some fixed multiple of the force softening, which is effectively not changing below low redshifts for the BH, and gives a constant physical anchor point
-#endif
-*/
             mgas_in_racc = (4.*M_PI/3.) * (BPP(n).DensAroundStar*All.cf_a3inv) * r0_accretion*r0_accretion*r0_accretion; // use -local- estimator of gas mass in accretion radius //
 
             fac = 5.0 / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); // basic normalization (use alpha=5, midpoint of values alpha=[1,10] from Hopkins and Quataert 2011 //
             fac *= pow(f_disk_for_bhar, 3./2.) * pow(bh_mass_units,1./6.) / (1. + f0_for_bhar/fgas_for_bhar); // dimensionless dependence on f_disk and m_bh (latter is weak)
             mdot = fac * mdisk_for_bhar_units * pow(rmax_for_bhar_units,-3./2.); // these are the quantities which scale strongly with the scale where we evaluate the BHAR
 #if (BH_GRAVACCRETION >= 1)
-            r0_accretion = DMAX(rmax_for_bhar , 3.*All.ForceSoftening[5]*All.cf_atime); // set to some fixed multiple of the force softening, which is effectively not changing below low redshifts for the BH, and gives a constant physical anchor point
+            r0_accretion = DMAX(rmax_for_bhar , 3.*SinkParticle_GravityKernelRadius*All.cf_atime); // set to some fixed multiple of the force softening, which is effectively not changing below low redshifts for the BH, and gives a constant physical anchor point
 #endif
             mdot *= pow(r0_accretion/rmax_for_bhar , 3./2.); // scales to estimator value at specified 'accretion radius' r0_accretion, assuming f_disk, etc constant and M_enclosed is a constant-density profile //
 
@@ -368,14 +363,14 @@ void set_blackhole_mdot(int i, int n, double dt)
             below captures the same physics with considerably less potential to extrapolate to rather odd scalings in extreme regimes :
            mdot = (2.45/(UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR)) * pow( 0.1 , 8./7.) * // normalization, then viscous disk 'alpha'
              pow( BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR/1.e8 , -5./14. ) * pow( BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR/1.e8 , 10./7. ) * // mbh , m_disk dependence
-             pow( DMIN(0.2,DMIN(PPP[n].Hsml,All.ForceSoftening[5])*All.cf_atime*UNIT_LENGTH_IN_PC) , -25./14. ); // r_disk dependence */
+             pow( DMIN(0.2,DMIN(PPP[n].Hsml,SinkParticle_GravityKernelRadius)*All.cf_atime*UNIT_LENGTH_IN_PC) , -25./14. ); // r_disk dependence */
         double t_acc_disk = (4.2e7/UNIT_TIME_IN_YR) * pow((BPP(n).BH_Mass_AlphaDisk+BPP(n).BH_Mass) / BPP(n).BH_Mass_AlphaDisk, 0.4); /* shakura-sunyaev disk, integrated out to Q~1 radius, approximately */
 #ifdef BH_TIMESCALE_SET
         double f_disk_bh = BPP(n).BH_Mass_AlphaDisk / BPP(n).BH_Mass; t_acc_disk = (BH_TIMESCALE_SET/UNIT_TIME_IN_YR) / sqrt( f_disk_bh * (1 + f_disk_bh) );
 #endif
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double reff = All.ForceSoftening[5], Gm_i = 1./(All.G*P[n].Mass);
+        double reff = SinkParticle_GravityKernelRadius, Gm_i = 1./(All.G*P[n].Mass);
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
         double cs_min = 0.2 / UNIT_VEL_IN_KMS;
         reff = All.G*P[n].Sink_Formation_Mass/(cs_min*cs_min), Gm_i = 1./(All.G*P[n].Sink_Formation_Mass); // effectively setting the value to the freefall time the particle has when it forms, for both 'size' of disk and 'effective mass' (for dynamical time below)
@@ -458,7 +453,7 @@ void set_blackhole_mdot(int i, int n, double dt)
     lmag = P[n].Mass * sqrt(lmag); // this stores the magnitude of the _total_ angular momentum (mass * length * vel) internal to the sink
     return_timescale = P[n].Mass / mdot_eff; // rate of angular momentum return is (total angular momentum) / (return timescale) - here set to (total mass / mdot). Set this for your desired prescription.
     angmom_toreturn = lmag * DMIN(0.5, dt/return_timescale); // the actual angular momentum we will return this timestep (with a mild limiter so we don't dump it all at once)
-    angmom_toreturn = DMIN(angmom_toreturn, 0.1 * All.G * (P[n].Mass+BlackholeTempInfo[i].Mgas_in_Kernel) * BlackholeTempInfo[i].Mgas_in_Kernel / DMAX(P[n].Hsml, All.ForceSoftening[5]) * dt); // this limiter explicitly ensures that we never apply a torquing force that is comparable in magnitude to the gravitational force: L < (small fraction) * G Mtot Mgas / R * dt (ie. torque is less than torque needed to change the orbit within an orbital time)
+    angmom_toreturn = DMIN(angmom_toreturn, 0.1 * All.G * (P[n].Mass+BlackholeTempInfo[i].Mgas_in_Kernel) * BlackholeTempInfo[i].Mgas_in_Kernel / DMAX(P[n].Hsml, SinkParticle_GravityKernelRadius) * dt); // this limiter explicitly ensures that we never apply a torquing force that is comparable in magnitude to the gravitational force: L < (small fraction) * G Mtot Mgas / R * dt (ie. torque is less than torque needed to change the orbit within an orbital time)
     if(jmag>0 && lmag>0) {BlackholeTempInfo[i].angmom_norm_topass_in_swallowloop = angmom_toreturn / sqrt(jmag);} /* this should be in units such that, times CODE radius and (code=physical) ang-mom, gives CODE velocity: looks ok at present */
 #endif
 
@@ -742,7 +737,7 @@ void blackhole_final_operations(void)
         else { P[n].AccretedThisTimestep = 0; }
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, All.ForceSoftening[5]);} // update sink radius if simulation has it dynamically evolving. 
+        if(All.ComovingIntegrationOn) {P[n].SinkRadius = DMIN(P[n].SinkRadius, SinkParticle_GravityKernelRadius);} // update sink radius if simulation has it dynamically evolving.
 #endif
 
         /* Correct for the mass loss due to radiation and BAL winds */
@@ -815,7 +810,7 @@ void blackhole_final_operations(void)
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
         if(P[n].ProtoStellarStage == 6) { // Star old enough to go out with a boom
-            double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[n].Type], PPP[n].Hsml);
+            double eps = DMIN(KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(n), PPP[n].Hsml);
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[n].SinkRadius);
 #endif

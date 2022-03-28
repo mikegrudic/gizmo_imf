@@ -217,9 +217,10 @@ void gravity_tree(void)
                 place = DataIndexTable[j].Index;
 
                 /* assign values (input-function to pass in memory) */
-                GravDataIn[j].Type = P[place].Type;
-                GravDataIn[j].OldAcc = P[place].OldAcc;
                 for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
+                GravDataIn[j].Type = P[place].Type;
+                GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
+                GravDataIn[j].OldAcc = P[place].OldAcc;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
@@ -239,11 +240,8 @@ void gravity_tree(void)
                 }
                 else {P[place].is_in_a_binary=0; /* setting values to zero just to be sure */}
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING)
-                GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];
-#endif
 #if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(COSMIC_RAY_SUBGRID_LEBRON)
-                if( (P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type]) ) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
+                if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;} else {GravDataIn[j].AGS_zeta = 0;}
@@ -521,9 +519,10 @@ void gravity_tree(void)
 #ifdef GDE_DISTORTIONTENSOR /* for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary */
         if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
         /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
-        P[i].tidal_tensorps[0][0] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
-        P[i].tidal_tensorps[1][1] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
-        P[i].tidal_tensorps[2][2] += P[i].Mass / (All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type] * All.ForceSoftening[P[i].Type]) * 10.666666666667;
+        double soft_gde = ForceSoftening_KernelRadius(i), fac_gde = P[i].Mass / (soft_gde*soft_gde*soft_gde) * 10.666666666667;
+        P[i].tidal_tensorps[0][0] += fac_gde;
+        P[i].tidal_tensorps[1][1] += fac_gde;
+        P[i].tidal_tensorps[2][2] += fac_gde;
 #endif
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} // units //
 #ifdef COMPUTE_JERK_IN_GRAVTREE
@@ -821,7 +820,7 @@ void subtract_companion_gravity(int i)
     /* Remove contribution to gravitational field and tidal tensor from the stars in the binary to the center of mass */
     double u, dr, fac, fac2, h, h_inv, h3_inv, u2, tidal_tensorps[3][3]; int i1, i2;
     dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
-    h = All.ForceSoftening[5];  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
+    h = SinkParticle_GravityKernelRadius;  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
     fac = P[i].comp_Mass / (dr*dr*dr); fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
     if(dr < h) /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
     {

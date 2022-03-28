@@ -607,7 +607,7 @@ integertime find_next_outputtime(integertime ti_curr)
       else {next = All.TimeBegin + ti_next * All.Timebase_interval;}
 
       if(ThisTask == 0)
-	printf("\nSetting next time for snapshot file to Time_next= %g  (DumpFlag=%d)\n", next, DumpFlag);
+	printf("\nSetting next time for snapshot file to Time_next= %.16g  (DumpFlag=%d)\n", next, DumpFlag);
 
     }
 
@@ -646,22 +646,22 @@ void output_log_messages(void)
         {
             z = 1.0 / (All.Time) - 1;
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "Sync-Point %lld, Time: %g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
+            fprintf(FdInfo, "Sync-Point %lld, Time: %.10g, Redshift: %g, Nf = %d%09d, Systemstep: %g, Dloga: %g\n",
                     (long long) All.NumCurrentTiStep, All.Time, z, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
             fflush(FdInfo);
-            fprintf(FdTimebin, "Sync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+            fprintf(FdTimebin, "Sync-Point %lld, Time: %.10g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
 #endif
-            printf("\nSync-Point %lld, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+            printf("\nSync-Point %lld, Time: %.10g, Redshift: %g, Systemstep: %g, Dloga: %g\n", (long long) All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
         }
         else
         {
 #ifndef IO_REDUCED_MODE
-            fprintf(FdInfo, "Sync-Point %lld, Time: %g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
+            fprintf(FdInfo, "Sync-Point %lld, Time: %.10g, Nf = %d%09d, Systemstep: %g\n", (long long) All.NumCurrentTiStep,
                     All.Time, (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), All.TimeStep);
             fflush(FdInfo);
-            fprintf(FdTimebin, "Sync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
+            fprintf(FdTimebin, "Sync-Point %lld, Time: %.10g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
 #endif
-            printf("\nSync-Point %lld, Time: %g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
+            printf("\nSync-Point %lld, Time: %.10g, Systemstep: %g\n", (long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         }
 
         for(i = 1, tot_cumulative[0] = tot_count[0]; i < TIMEBINS; i++) {tot_cumulative[i] = tot_count[i] + tot_cumulative[i - 1];}
@@ -791,7 +791,7 @@ void write_cpu_log(void)
 #endif
   if(ThisTask == 0)
     {
-      fprintf(FdCPU, "Step %lld, Time: %g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
+      fprintf(FdCPU, "Step %lld, Time: %.10g, CPUs: %d\n",(long long) All.NumCurrentTiStep, All.Time, NTask);
       fprintf(FdCPU, "Nactive=%lld, Imbal(Max/Mean)=%g \n", (long long) GlobNumForceUpdate, (max_CPU_Step[0]/(MIN_REAL_NUMBER + avg_CPU_Step[0])-1.)*NTask+1.);
       fprintf(FdCPU,
 	      "total         %10.2f  %5.1f%%\n"

@@ -1941,6 +1941,10 @@ double CR_rad_decay_coeff[N_CR_PARTICLE_BINS]; /*!< radioactive decay coefficien
 int CR_species_ID_active_list[N_CR_PARTICLE_SPECIES]; /*!< holds the list of species ids to loop over */
 #endif
 
+
+#define SinkParticle_GravityKernelRadius (All.ForceSoftening[5])
+
+
 extern struct topnode_data
 {
   peanokey Size;
@@ -3426,22 +3430,20 @@ extern struct data_nodelist
 
 extern struct gravdata_in
 {
+    int Type;
     MyFloat Pos[3];
+    MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     MyFloat Vel[3];
 #endif
-    int Type;
 #if defined(BH_DYNFRICTION_FROMTREE)
     MyFloat BH_Mass;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
-    MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;
-#endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
     MyFloat min_bh_t_orbital;   /*!<orbital time for binary */

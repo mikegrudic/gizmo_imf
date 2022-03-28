@@ -206,13 +206,13 @@ void merge_and_split_particles(void)
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
             int n_search_min = 32;
             int n_search_max = 320;
-            double h_search_max = 10. * All.ForceSoftening[P[i].Type];
-            double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
+            double h_search_max = 10. * ForceSoftening_KernelRadius(i);
+            double h_search_min = 0.1 * ForceSoftening_KernelRadius(i);
             double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
             h_guess = PPP[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
 #else
-            h_guess = 5.0 * All.ForceSoftening[P[i].Type];
+            h_guess = 5.0 * ForceSoftening_KernelRadius(i);
 #endif
             startnode=All.MaxPart;
             do {
@@ -249,11 +249,10 @@ void merge_and_split_particles(void)
                     }
                 } // for(n=0; n<numngb_inbox; n++)
             }
-            //printf("Particle %d clipping %d low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,do_clipping,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
             if(do_clipping)
             {
                 /* ok, the particle has neighbors but is completely surrounded by high-res particles, it should be clipped */
-                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,ForceSoftening_KernelRadius(i),NITER);
                 Ptmp[i].flag = -1;
             }
         }
@@ -431,7 +430,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     */ // the change above appears to cause some numerical instability //
 #ifndef SELFGRAVITY_OFF
-    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
+    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * ForceSoftening_KernelRadius(i));
 #endif
 #ifdef BOX_BND_PARTICLES
     if(P[i].Type != 0 && P[i].ID == 0) {d_r *= 1.e-3;}

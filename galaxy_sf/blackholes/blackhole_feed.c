@@ -118,7 +118,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     double h_i = local.Hsml, wk, dwk, vrel, vesc, dpos[3], dvel[3], f_accreted; f_accreted=1;
     if((local.Mass<0)||(h_i<=0)) {return 0;}
-    double w, p, r2, r, u, sink_radius=All.ForceSoftening[5], h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = All.ForceSoftening[5]; p=0; w=0;
+    double w, p, r2, r, u, sink_radius=SinkParticle_GravityKernelRadius, h_i2 = h_i * h_i, hinv = 1 / h_i, hinv3 = hinv * hinv * hinv, ags_h_i = SinkParticle_GravityKernelRadius; p=0; w=0;
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
@@ -178,7 +178,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if (BH_REPOSITION_ON_POTMIN == 2)
                         if( boundedness_function < 0 )
                         {
-                            double wt_rsoft = r / (3.*All.ForceSoftening[5]); // normalization arbitrary here, just using for convenience for function below
+                            double wt_rsoft = r / (3.*SinkParticle_GravityKernelRadius); // normalization arbitrary here, just using for convenience for function below
                             boundedness_function *= 1./(1. + wt_rsoft*wt_rsoft); // this down-weights particles which are very far away, relative to the user-defined force softening scale, which should define some 'confidence radius' of resolution around the BH particle
                         }
                         potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)

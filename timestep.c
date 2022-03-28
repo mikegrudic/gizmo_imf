@@ -324,37 +324,20 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
         dt = flag * UNIT_INTEGERTIME_IN_PHYSICAL; /* convert dloga to physical timestep  */
-
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / (dt * dt);
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / (dt * dt);
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-        if(P[p].Type==0) {ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / (dt * dt);}
-#endif
+        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p) / (dt * dt);
         *aphys = ac;
         return flag;
     }
-
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * All.ForceSoftening[P[p].Type] / ac);
-
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * PPP[p].AGS_Hsml / ac);
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-    if(P[p].Type == 0) {dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * PPP[p].Hsml / ac);}
-#endif
+    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p) / ac);
 
 #if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
-        if((All.ComovingIntegrationOn))
+        if((All.ComovingIntegrationOn)) // sort of a hack here, but acceptable in applications
         {
-            double ags_h = DMAX(PPP[p].Hsml, All.ForceSoftening[P[p].Type]);
-            ags_h = DMIN(ags_h, 10.*All.ForceSoftening[P[p].Type]);
+            double h_min = All.ForceSoftening[P[p].Type], ags_h = DMIN(DMAX(PPP[p].Hsml, h_min), 10.*h_min);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            ags_h = DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml,All.ForceSoftening[P[p].Type]));
-            ags_h = DMIN(ags_h, DMAX(100.*All.ForceSoftening[P[p].Type] , 10.*PPP[p].AGS_Hsml));
+            ags_h = DMIN(DMAX(PPP[p].AGS_Hsml , DMAX(PPP[p].Hsml, h_min)) , DMAX(100.*h_min, 10.*PPP[p].AGS_Hsml));
 #endif
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
@@ -394,7 +377,7 @@ integertime get_timestep(int p,		/*!< particle index */
 	         // take a short timestep, so we better not super-timestep otherwise we risk messing up that star's integration. But if it is consistent with the above, then we can safely super-timestep
 	        double Mtot=P[p].comp_Mass+P[p].Mass, dr=0,dv=0,dv_dot_dx=0, binary_dt_2body=0;
 	        for(k=0;k<3;k++) {dr+=P[p].comp_dx[k]*P[p].comp_dx[k]; dv+=P[p].comp_dv[k]*P[p].comp_dv[k]; dv_dot_dx+=P[p].comp_dx[k]*P[p].comp_dv[k];}
-            double r_effective = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * All.ForceSoftening[5]; // plummer-equivalent softening
+            double r_effective = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * ForceSoftening_KernelRadius(p); // plummer-equivalent softening
 	        dr += r_effective*r_effective; // add in quadrature for simple softening estimate
             dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
             double dt_2body_base = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
@@ -674,7 +657,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double radacc = return_flux_limiter(p,kf) * (sqrt(gradErad) / SphP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
                     if(gradErad > 0 && radacc > 0)
                     {
-                        double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMIN(All.ForceSoftening[0], PPP[p].Hsml) / radacc);
+                        double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(ForceSoftening_KernelRadius(p), PPP[p].Hsml) / radacc);
                         if(dt_radacc < dt_rad) {dt_rad = dt_radacc;}
                     }
 #endif
@@ -972,7 +955,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-            double eps = DMAX( KERNEL_CORE_SIZE*All.ForceSoftening[5], BPP(p).BH_dr_to_NearestGasNeighbor);
+            double eps = DMAX( KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), BPP(p).BH_dr_to_NearestGasNeighbor);
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, BPP(p).SinkRadius);
 #endif
@@ -1004,7 +987,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
-            double eps = DMIN(KERNEL_CORE_SIZE*All.ForceSoftening[P[p].Type], PPP[p].Hsml);
+            double eps = DMIN(KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), PPP[p].Hsml);
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[p].SinkRadius);
 #endif
@@ -1040,11 +1023,11 @@ integertime get_timestep(int p,		/*!< particle index */
         {
             double ahydro = sqrt(SphP[p].HydroAccel[0]*SphP[p].HydroAccel[0] + SphP[p].HydroAccel[1]*SphP[p].HydroAccel[1] + SphP[p].HydroAccel[2]*SphP[p].HydroAccel[2]);
             PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_grav=%g accel_hydro=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n Hsml=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
-                          (unsigned long long) P[p].ID, dt, dt_courant*All.cf_hubble_a, sqrt(2*All.ErrTolIntAccuracy*All.cf_atime*All.ForceSoftening[P[p].Type] / ac)*All.cf_hubble_a,
+                          (unsigned long long) P[p].ID, dt, dt_courant*All.cf_hubble_a, sqrt(2*All.ErrTolIntAccuracy*All.cf_atime*ForceSoftening_KernelRadius(p) / ac)*All.cf_hubble_a,
                           ac, agrav, ahydro, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0]/All.cf_atime, P[p].Vel[1]/All.cf_atime, P[p].Vel[2]/All.cf_atime,
                           PPP[p].Hsml*All.cf_atime, SphP[p].Density*All.cf_a3inv, SphP[p].InternalEnergy, SphP[p].DtInternalEnergy, P[p].Particle_DivVel*All.cf_a2inv,
                           SphP[p].Pressure*All.cf_a3inv, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
-                          csnd, All.ForceSoftening[P[p].Type]*All.cf_atime, P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
+                          csnd, ForceSoftening_KernelRadius(p)*All.cf_atime, P[p].Mass, P[p].Type, SphP[p].ConditionNumber, PPP[p].NumNgb,
                           SphP[p].NV_T[0][0],SphP[p].NV_T[0][1],SphP[p].NV_T[0][2],SphP[p].NV_T[1][0],SphP[p].NV_T[1][1],SphP[p].NV_T[1][2],SphP[p].NV_T[2][0],SphP[p].NV_T[2][1],SphP[p].NV_T[2][2]);
         }
         else // if(P[p].Type == 0)

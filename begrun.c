@@ -2165,7 +2165,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
                 if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
                 if(strcmp("SnapFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 snapshot format (=%d) \n",tag[i],alternate_tag[i],All.SnapFormat); continue;}
-                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 48-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
+                if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 24-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
                 if(strcmp("CpuTimeBetRestartFile",tag[i])==0) {*((double *)addr[i])=3450.; printf("Tag %s (%s) not set in parameter file: defaulting to write restart checkpoints just under every hour (=%g) \n",tag[i],alternate_tag[i],All.CpuTimeBetRestartFile); continue;}
 #if !defined(COOLING) && !defined(GALSF) && !defined(EOS_HELMHOLTZ) && !defined(EOS_ELASTIC) && !defined(EOS_TILLOTSON)
                 if(strcmp("UnitLength_in_cm",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: will default to assume code units are cgs (=%g), if conversion to physical units for e.g. cooling are needed \n",tag[i],alternate_tag[i],All.UnitLength_in_cm); continue;}
@@ -2225,9 +2225,11 @@ void read_parameter_file(char *fname)
                 if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to some large size of order a few in code units (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
                 if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
                 if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to a reference radiative efficiency, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
+#if defined(BH_WIND_SPAWN)
                 if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume one third is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
                 if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#endif
 #endif
 #if defined(FIRE_BHS)
                 if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}

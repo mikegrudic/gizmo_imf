@@ -1066,10 +1066,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int nu
 /* simple routine that evaluates the target cell mass for the spawning subroutine */
 double target_mass_for_wind_spawning(int i)
 {
+#ifdef BH_WIND_SPAWN
 #ifdef SINGLE_STAR_AND_SSP_HYBRID_MODEL
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #endif
     return All.BAL_wind_particle_mass;
+#else
+    return 0; // no well-defined answer, this shouldn't be called in this instance
+#endif
 }
 
 

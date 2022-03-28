@@ -482,7 +482,7 @@ void init(void)
                 BPP(i).BH_Dust_Mass = 0;
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-                BPP(i).SinkRadius = All.ForceSoftening[5];
+                BPP(i).SinkRadius = All.SofteningTable[P[i].Type];
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
@@ -545,7 +545,7 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         PPPZ[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {PPP[i].AGS_Hsml = PPP[i].Hsml;} else {PPP[i].AGS_Hsml = All.ForceSoftening[0];}
+        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {PPP[i].AGS_Hsml = PPP[i].Hsml;} else {PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];}
 #endif
 #endif
 
@@ -1137,14 +1137,11 @@ void setup_smoothinglengths(void)
 #if NUMDIMS == 1
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
+                    double soft = All.SofteningTable[P[i].Type];
 #ifndef SELFGRAVITY_OFF
-                    if(All.SofteningTable[P[i].Type] != 0)
-                    {
-                        if((PPP[i].Hsml>100.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                            {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
-                    }
+                    if(soft != 0) {if((PPP[i].Hsml>100.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = soft;}}
 #else
-                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}
+                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = soft;}
 #endif
 #endif // INPUT_READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
@@ -1210,16 +1207,16 @@ void ags_setup_smoothinglengths(void)
                         no = p;
                     }
                     PPP[i].AGS_Hsml = 2. * pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
-                    if(All.SofteningTable[P[i].Type] != 0)
+                    double soft = All.SofteningTable[P[i].Type];
+                    if(soft != 0)
                     {
-                        if((PPP[i].AGS_Hsml>1e6*All.ForceSoftening[P[i].Type])||(PPP[i].AGS_Hsml<=1e-3*All.ForceSoftening[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0))
-                            PPP[i].AGS_Hsml = 1e2 * All.ForceSoftening[P[i].Type]; /* random guess to get things started here, thats all */
+                        if((PPP[i].AGS_Hsml>1e6*soft)||(PPP[i].AGS_Hsml<=1e-3*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].AGS_Hsml = 1.e2*soft;} /* random guess to get things started here, thats all */
                     }
                 } else {
                     PPP[i].AGS_Hsml = PPP[i].Hsml;
                 }
             } else {
-                PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type]; /* not AGS-active, use fixed softening */
+                PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type]; /* not AGS-active, use fixed softening */
             }
         }
     }
@@ -1250,10 +1247,8 @@ void disp_setup_smoothinglengths(void)
                     no = p;
                 }
                 SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
-                if(All.SofteningTable[P[i].Type] != 0)
-                {
-                    if((SphP[i].HsmlDM >1000.*All.SofteningTable[P[i].Type])||(PPP[i].Hsml<=0.01*All.SofteningTable[P[i].Type])||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {SphP[i].HsmlDM = All.SofteningTable[P[i].Type];}
-                }
+                double soft = All.SofteningTable[P[i].Type];
+                if(soft != 0) {if((SphP[i].HsmlDM >1000.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {SphP[i].HsmlDM = soft;}}
             }
         }
     }

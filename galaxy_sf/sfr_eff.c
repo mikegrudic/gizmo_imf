@@ -183,7 +183,7 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     double Rcrit = PPP[i].Hsml;
     Z_threshold_solar = 0.1; /* based on Linhao's paper, we need to allow formation at somewhat higher metallicity or we tail to get BHs in the central density concentrations when they form */
 #if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
-    Rcrit = All.ForceSoftening[0]; /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
+    Rcrit = ForceSoftening_KernelRadius(i); /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
 #endif
     Rcrit = DMAX( Rcrit , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime)); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #ifdef BH_CALC_DISTANCES
@@ -506,7 +506,7 @@ void star_formation_parent_routine(void)
                         P[i].BH_CountProgs = 1;
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-                        P[i].SinkRadius = All.ForceSoftening[P[i].Type];
+                        P[i].SinkRadius = ForceSoftening_KernelRadius(i);
 #endif
                         P[i].BH_Mdot = 0;
                         P[i].DensAroundStar = SphP[i].Density;
@@ -556,13 +556,13 @@ void star_formation_parent_routine(void)
 #endif
                                 TreeReconstructFlag = 1;
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-                                P[i].SinkRadius = All.ForceSoftening[5];
+                                P[i].SinkRadius = ForceSoftening_KernelRadius(i);
                                 double cs = 0.2 / UNIT_VEL_IN_KMS;
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(EOS_GMC_BAROTROPIC)
                                 double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
                                 if(nHcgs > 1e10) cs *= pow(nHcgs/1e10, 1./5); // if we're getting opacity-limited then we can set a smaller sink radius, since cs ~ n^1/5
 #endif
-                                P[i].SinkRadius = DMAX(0.79 * P[i].Mass * All.G / (cs * cs), All.ForceSoftening[5]); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where cell length = Jeans length/2
+                                P[i].SinkRadius = DMAX(0.79 * P[i].Mass * All.G / (cs * cs), ForceSoftening_KernelRadius(i)); // volume-equivalent particle radius R= (3V/(4PI))^(1/3) at the density where cell length = Jeans length/2
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
                                 P[i].min_bh_t_orbital=MAX_REAL_NUMBER; P[i].comp_dx[0]=P[i].comp_dx[1]=P[i].comp_dx[2]=P[i].comp_dv[0]=P[i].comp_dv[1]=P[i].comp_dv[2]=P[i].is_in_a_binary = 0;

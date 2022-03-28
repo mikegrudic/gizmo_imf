@@ -166,7 +166,7 @@ void drift_particle(int i, integertime time1)
         PPP[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
         if(PPP[i].AGS_Hsml < minsoft) {PPP[i].AGS_Hsml = minsoft;}
         if(PPP[i].AGS_Hsml > maxsoft) {PPP[i].AGS_Hsml = maxsoft;}
-    } else {PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];} /* non-AGS-active particles use fixed softening */
+    } else {PPP[i].AGS_Hsml = ForceSoftening_KernelRadius(i);} /* non-AGS-active particles use fixed softening */
 #endif
     
 #ifdef DM_FUZZY
