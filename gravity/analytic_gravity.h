@@ -212,8 +212,8 @@ void GravAccel_GMCTurbInit()
     {
         double dp[3]; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k] - 0.5*All.BoxSize;}
         double r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2], r = sqrt(r2);
-	double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
-	double menc = DMIN(M,M*pow(r/R,3)) + DMAX(0,3*M*log(r/R)); // uniform sphere plus a r^-3 surrounding halo with density matched at the sphere radius
+        double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
+        double menc = DMIN(M,M*pow(r/R,3)) + DMAX(0,3*M*log(r/R)); // uniform sphere plus a r^-3 surrounding halo with density matched at the sphere radius
         for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * STARFORGE_GMC_ALPHA * menc * dp[k]/(r2*r);}
     }
 #endif
@@ -361,6 +361,22 @@ void GravAccel_PaczynskyWiita()
 #ifdef PARTICLE_EXCISION
 void apply_excision(void)
 {
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    /* we will excise -any- cells or particles which fall inside the force softening kernel of the central SMBH particle */
+    if(All.SMBH_SpecialParticle_Position_ForRefinement[0] > -1.e10)
+    {
+        int i,k; double excision_radius = All.ForceSoftening[3];
+        double excision_radius2 = excision_radius*excision_radius;
+        for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+        {
+            if(P[i].Type != 3) /* don't excise the SMBH itself! */
+            {
+                double r2=0; for(k=0;k<3;k++) {double dp=P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k]; r2+=dp*dp;}
+                if(r2 < excision_radius2) {All.Mass_Accreted_By_SpecialSMBHParticle+=P[i].Mass; P[i].Mass=0;}
+            }
+        }
+    }
+#else
     double EXCISION_MASS = 0; // mass of the excised object. Used to move the excision boundary so as to capture bound objects. If zero the excision boundary will not move
     double EXCISION_INIT_RADIUS = 0; // initial excision radius
     double EXCISION_ETA = 1; // remove particles with radius < EXCISION_ETA R_excision
@@ -379,6 +395,7 @@ void apply_excision(void)
             if(r < excision_radius) {P[i].Mass = 0;}
         }
     }
+#endif
 }
 #endif
 

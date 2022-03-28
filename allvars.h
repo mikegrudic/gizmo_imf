@@ -504,6 +504,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
 #define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define PARTICLE_EXCISION
+#endif
 #endif // closes hybrid FIRE+STARFORGE model settings
 
 
@@ -516,7 +519,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
 #define EVALPOTENTIAL 
+#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
+#endif
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -524,11 +529,13 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
-#define DEVELOPER_MODE
+//#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
+#endif
 #ifdef STARFORGE_GMC_TURBINIT
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC
@@ -1882,7 +1889,7 @@ extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
 extern int N_stars;
 #endif
 #ifdef BH_WIND_SPAWN
-extern double MaxUnSpanMassBH;
+extern double Max_Unspawned_MassUnits_fromSink;
 #endif
 
 extern long long Ntype[6];	/*!< total number of particles of each type */
@@ -1933,6 +1940,10 @@ double CR_frag_coeff[N_CR_PARTICLE_BINS]; /*!< total coefficients for fragmentat
 double CR_rad_decay_coeff[N_CR_PARTICLE_BINS]; /*!< radioactive decay coefficients (pre-computed for ease, also because of dilation dependence) */
 int CR_species_ID_active_list[N_CR_PARTICLE_SPECIES]; /*!< holds the list of species ids to loop over */
 #endif
+
+
+#define SinkParticle_GravityKernelRadius (All.ForceSoftening[5])
+
 
 extern struct topnode_data
 {
@@ -2532,6 +2543,11 @@ extern struct global_data_all_processes
 #ifdef EOS_TABULATED
     char EosTable[100];
 #endif
+    
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    double SMBH_SpecialParticle_Position_ForRefinement[3];
+    double Mass_Accreted_By_SpecialSMBHParticle;
+#endif
 
 #ifdef NUCLEAR_NETWORK
   char EosSpecies[100];
@@ -2770,6 +2786,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
+    MyFloat Sink_Formation_Mass; /* initial mass of sink when it formed */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
@@ -3413,22 +3430,20 @@ extern struct data_nodelist
 
 extern struct gravdata_in
 {
+    int Type;
     MyFloat Pos[3];
+    MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     MyFloat Vel[3];
 #endif
-    int Type;
 #if defined(BH_DYNFRICTION_FROMTREE)
     MyFloat BH_Mass;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
-    MyFloat Soft;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;
-#endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
     MyFloat min_bh_t_orbital;   /*!<orbital time for binary */
