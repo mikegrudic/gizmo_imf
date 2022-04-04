@@ -1862,7 +1862,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
     if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
-    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target);} // constant dust-to-metals ratio
+    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target) + 1.e-15;} // constant dust-to-metals ratio [floor purely numerical here, needed to avoid a spurious divergence below]
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target>=0) {n_ion_max = (All.SolarAbundances[6]/24.3)/XH;} // limit, to avoid over-ionization at low metallicities
 #endif

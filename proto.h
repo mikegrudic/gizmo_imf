@@ -122,6 +122,23 @@ static inline double MINMOD_G(double a, double b) {return a;}
 static inline double sigmoid_sqrt(double x) {return 0.5*(1 + x/sqrt(1+x*x));} /* Sigmoid ("turn-on") function (1 + x/(1+x^2))/2, interpolates between 0 as x->-infty and 1 as x->infty. Useful for cheaply doing smooth fits of e.g. EOS where different thermo processes turn on at certain temps */
 
 
+
+static inline double ForceSoftening_KernelRadius(int p)
+{
+#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return PPP[p].AGS_Hsml;}
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS)
+    if(P[p].Type == 0) {return PPP[p].Hsml;}
+#endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
+#endif
+    return All.ForceSoftening[P[p].Type];
+}
+
+
+
 #ifdef BOX_SHEARING
 void calc_shearing_box_pos_offset(void);
 #endif

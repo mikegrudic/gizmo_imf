@@ -409,7 +409,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
             P[j].SwallowTime = MAX_REAL_NUMBER; // initialize as a large number before looking
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-            if(kernel->r < DMAX(P[j].Hsml, All.ForceSoftening[5])) {
+            if(kernel->r < DMAX(P[j].Hsml, SinkParticle_GravityKernelRadius)) {
                 #pragma omp atomic write
                 P[j].BH_Ngb_Flag = 1; // note that this particle is inside of a BH's kernel function
             }
@@ -677,7 +677,7 @@ void density(void)
 #ifdef BLACK_HOLES
                 if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-		        if(P[i].Type == 5) {minsoft = All.ForceSoftening[5] / All.cf_atime;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
+		        if(P[i].Type == 5) {minsoft = SinkParticle_GravityKernelRadius;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
                 if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
 #endif

@@ -27,7 +27,7 @@ int is_particle_single_star_eligible(long i)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) // here's the interesting regime, where we have some criterion for deciding which cells are eligible for 'single-star' status
         if(P[i].Type == 5) {return 1;} // all type-5 elements are assumed sinks
         if(P[i].Type == 0) {
-            if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 1;} else {return 0;} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
+            if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
         }
 #else
         return 1; // no hybrid model, so all particles satisfying these criteria are automatically single-star eligible
@@ -365,8 +365,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     if(is_particle_single_star_eligible(i)) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     {
 #if defined(SINGLE_STAR_FB_WINDS)
-        double fire_wind_rel_mass_res = 1e-4; //relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass
-        D_RETURN_FRAC = fire_wind_rel_mass_res * (All.MeanGasParticleMass)/ P[i].Mass;
+        double fire_wind_rel_mass_res = 1e-4; /* relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass */
+        D_RETURN_FRAC = (fire_wind_rel_mass_res * P[i].Sink_Formation_Mass) / P[i].Mass;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
         if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
         p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
@@ -924,7 +924,7 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     if(BPP(n).ProtoStellarStage != 5) {return 0;}
     double m_solar = BPP(n).Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
     if (m_solar < minimum_stellarmass_for_winds_solar){return 0.0;} //no winds for low mass stars
-    //Winds are for MS only: we are assuming that METALS are also on
+    // winds are for MS only: we are assuming that METALS are also on
     double ZZ = BPP(n).Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
@@ -934,25 +934,25 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     wind_mass_loss_rate = pow(10.0,logmdot_wind) / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
 
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(P[n].StellarAge) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
-    //Let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
-    if ( set_mode && (wind_mass_loss_rate>0) ){
-        //Let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
+    // let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
+    if ( set_mode && (wind_mass_loss_rate>0) ) {
+        // let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
         double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
-        double N_wind = wind_mass_loss_rate * t_wind / All.BAL_wind_particle_mass;
+        double N_wind = wind_mass_loss_rate * t_wind / target_mass_for_wind_spawning(n);
 
         int old_wind_mode = P[n].wind_mode;
         if (N_wind >= n_particles_for_discrete_wind_spawn){
-            P[n].wind_mode = 1; //we can spawn enough particles per wind time
+            P[n].wind_mode = 1; // we can spawn enough particles per wind time
         } else{
-            P[n].wind_mode = 2; //we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
+            P[n].wind_mode = 2; // we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
 #ifdef SINGLE_STAR_FB_JETS
-        double spawning_min_wind_jet_mom_ratio = 10.0; //If winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
-        if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ //we want to spawn winds but we have jets too
+        double spawning_min_wind_jet_mom_ratio = 10.0; // if winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
+        if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ // we want to spawn winds but we have jets too
             double jet_mom_inj = single_star_jet_velocity(n) * P[n].BH_Mdot;
             double wind_mom_inj = v_wind * wind_mass_loss_rate;
-            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P[n].wind_mode = 2;} //we switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
+            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P[n].wind_mode = 2;} //w e switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
         }
 #endif
         if (old_wind_mode != P[n].wind_mode){
@@ -962,18 +962,16 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     return wind_mass_loss_rate;
 }
 
-double singlestar_WR_lifetime_Gyr(int n){ //Calculate lifetime for star in Wolf-Rayet Phase
+double singlestar_WR_lifetime_Gyr(int n) { // calculate lifetime for star in Wolf-Rayet Phase
     double m_solar = BPP(n).Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
-    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
-    if (m_solar<=20.0){return 0.;} //No WR phase below that
-    //Using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
-    return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) );
+    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; // relative metallicity to solar
+    if (m_solar<=20.0){return 0.;} // no WR phase below that
+    return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) ); // using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
 }
 
 
-double single_star_wind_velocity(int n){
-    /* Let's get the wind velocity for MS stars */
-    double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); //effective temperature in K
+double single_star_wind_velocity(int n) { /* Let's get the wind velocity for MS stars */
+    double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); // effective temperature in K
     double v_esc = (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
     if(T_eff < 1.25e4){ return 0.7 * v_esc;}  // Lamers 1995
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}

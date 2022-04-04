@@ -392,7 +392,7 @@ int do_the_local_ionization(int target, double dt, int source)
     // set the quantities desired for this age bin specifically: need a softened radius, for use here //
     double dp[3],r2=0,stellar_mass=P[source].Mass*UNIT_MASS_IN_SOLAR; for(k=0;k<3;k++) {dp[k]=P[source].Pos[k]-P[target].Pos[k];}
     NEAREST_XYZ(dp[0],dp[1],dp[2],1); for(k=0;k<3;k++) {dp[k]*=All.cf_atime*UNIT_LENGTH_IN_CGS; r2+=dp[k]*dp[k];} // separation in cgs
-    double eps_cgs=KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER*All.ForceSoftening[P[source].Type]*All.cf_atime*UNIT_LENGTH_IN_CGS; // plummer equivalent softening
+    double eps_cgs=KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER*ForceSoftening_KernelRadius(source)*All.cf_atime*UNIT_LENGTH_IN_CGS; // plummer equivalent softening
     r2+=eps_cgs*eps_cgs; // gravitational Softening (cgs units)
     SphP[target].Chimes_fluxPhotIon_HII[age_bin] = (1.0 - All.Chimes_f_esc_ion) * chimes_ion_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux of H-ionising photons per second seen by the star particle
     SphP[target].Chimes_G0_HII[age_bin] = (1.0 - All.Chimes_f_esc_G0) * chimes_G0_luminosity(stellar_age_myr, stellar_mass) / r2; // cgs flux in the 6-13.6 eV band

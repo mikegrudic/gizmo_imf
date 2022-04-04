@@ -15,7 +15,7 @@
 #include "./proto.h"
 #include "./kernel.h"
 #ifdef BH_WIND_SPAWN
-#define MASS_THRESHOLD_FOR_WINDPROMO (DMAX(5.*All.BAL_wind_particle_mass,0.25*All.MaxMassForParticleSplit))
+#define MASS_THRESHOLD_FOR_WINDPROMO(i) (DMAX(5.*target_mass_for_wind_spawning(i),0.25*All.MaxMassForParticleSplit))
 #endif /* define a mass threshold for this model above which a 'hyper-element' has accreted enough to be treated as 'normal' */
 
 
@@ -39,6 +39,9 @@ int does_particle_need_to_be_merged(int i)
 #ifdef GRAIN_RDI_TESTPROBLEM
     return 0;
 #endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[i].Type==3) {return 0;}
+#endif
 #ifdef BH_WIND_SPAWN
     if(P[i].ID == All.AGNWindID)
     {
@@ -47,7 +50,7 @@ int does_particle_need_to_be_merged(int i)
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
         if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
-        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
 #endif
@@ -99,6 +102,34 @@ double target_mass_renormalization_factor_for_mergesplit(int i)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
     if(P[i].Type==0)
     {
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+        double dt_to_ramp_refinement = 0.00001;
+        double minimum_refinement_mass_in_solar = 0.01;
+        
+        double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
+        if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);}
+        double m_ref_mJ = 0.001 * MJ; int k; double dx,r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k])*All.cf_atime; r2+=dx*dx;}
+        double rbh = sqrt(r2) * UNIT_LENGTH_IN_PC/1000.;
+        if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
+        {
+            double mc=1.e10, m_r1=DMIN(mcrit_0, 7.e3), m_r2=10.*m_r1, m_r3=10.*m_r2, r1=1., r2=10., r3=20.;
+            if(rbh<r1) {mc=m_r1;} else {if(rbh<r2) {mc=m_r1*exp(log(m_r2/m_r1)*log(rbh/r1)/log(r2/r1));} else
+            {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
+            m_ref_mJ = DMIN(m_ref_mJ , mc);
+        }
+        double r_pc = rbh*1000.,r0, f0=1, target_slope=1.;
+        double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
+        
+        r0=1000.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        r0=10.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        r0=1.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+
+        double M_target = f0 * DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR;
+        double M_min_absolute = minimum_refinement_mass_in_solar / UNIT_MASS_IN_SOLAR; // arbitrarily set minimum mass for refinement at any level
+        double normal_median_mass = All.MaxMassForParticleSplit / 3.;
+        ref_factor = DMAX(M_min_absolute / normal_median_mass, DMIN( M_target / normal_median_mass , 1));
+        return ref_factor;
+#endif
         return 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
     }
 #endif
@@ -175,13 +206,13 @@ void merge_and_split_particles(void)
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
             int n_search_min = 32;
             int n_search_max = 320;
-            double h_search_max = 10. * All.ForceSoftening[P[i].Type];
-            double h_search_min = 0.1 * All.ForceSoftening[P[i].Type];
+            double h_search_max = 10. * ForceSoftening_KernelRadius(i);
+            double h_search_min = 0.1 * ForceSoftening_KernelRadius(i);
             double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
             h_guess = PPP[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
 #else
-            h_guess = 5.0 * All.ForceSoftening[P[i].Type];
+            h_guess = 5.0 * ForceSoftening_KernelRadius(i);
 #endif
             startnode=All.MaxPart;
             do {
@@ -218,11 +249,10 @@ void merge_and_split_particles(void)
                     }
                 } // for(n=0; n<numngb_inbox; n++)
             }
-            //printf("Particle %d clipping %d low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,do_clipping,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
             if(do_clipping)
             {
                 /* ok, the particle has neighbors but is completely surrounded by high-res particles, it should be clipped */
-                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,All.ForceSoftening[P[i].Type],NITER);
+                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,ForceSoftening_KernelRadius(i),NITER);
                 Ptmp[i].flag = -1;
             }
         }
@@ -250,18 +280,20 @@ void merge_and_split_particles(void)
 #ifdef BH_WIND_SPAWN
                         if(P[i].ID==All.AGNWindID)
                         {
-                            if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)
+                            if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
                             {
-                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO)) {do_allow_merger=1;}
+                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger=1;}
                             } else if(do_allow_merger) {
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
                                 if(vr_tmp > 0) {do_allow_merger=0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
 #if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
-                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))) {do_allow_merger = 0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #else
                                 if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
+                                if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #endif
                             }
                         }
@@ -398,7 +430,7 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
     d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     */ // the change above appears to cause some numerical instability //
 #ifndef SELFGRAVITY_OFF
-    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[P[i].Type]);
+    d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * ForceSoftening_KernelRadius(i));
 #endif
 #ifdef BOX_BND_PARTICLES
     if(P[i].Type != 0 && P[i].ID == 0) {d_r *= 1.e-3;}
@@ -1072,6 +1104,9 @@ void rearrange_particle_sequence(void)
 /* function to apply -optional- cell excision for special cases where e.g. cells go far outside of the desired 'zoom-in region' or target region of a multi-scale simulation */
 void apply_pm_hires_region_clipping_selection(int i)
 {
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[i].Type==3) {return;}
+#endif
 #ifdef PM_HIRES_REGION_CLIPPING
     int clip_flag = 0; // flag for clipping
     if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts

@@ -1010,6 +1010,11 @@ void get_background_isrf_urad(int i, double *urad){
 void rt_set_simple_inits(int RestartFlag)
 {
     if(RestartFlag==1) return;
+    int flag_to_reset_values_on_startup = 0;
+    if(RestartFlag==0) {flag_to_reset_values_on_startup = 1;}
+#ifdef SINGLE_STAR_AND_SSP_HYBRID_MODEL
+    if(RestartFlag==2) {flag_to_reset_values_on_startup = 1;}
+#endif
     
     int i; for(i = 0; i < NumPart; i++)
     {
@@ -1042,7 +1047,7 @@ void rt_set_simple_inits(int RestartFlag)
 #endif
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
-                if(RestartFlag==0) {SphP[i].Rad_E_gamma[k] = MIN_REAL_NUMBER;}
+                if(flag_to_reset_values_on_startup) {SphP[i].Rad_E_gamma[k] = MIN_REAL_NUMBER;}
                 SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
                 SphP[i].Rad_Je[k] = 0; SphP[i].Rad_Kappa[k] = rt_kappa(i,k);
 #ifdef RT_FLUXLIMITER
@@ -1050,12 +1055,12 @@ void rt_set_simple_inits(int RestartFlag)
 #endif
 
 #ifdef RT_INFRARED
-                if(RestartFlag==0 && k==RT_FREQ_BIN_INFRARED){ // only initialize the IR energy if starting a new run, otherwise use what's in the snapshot
+                if(flag_to_reset_values_on_startup && k==RT_FREQ_BIN_INFRARED){ // only initialize the IR energy if starting a new run, otherwise use what's in the snapshot
                     SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT_CGS) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
                 }
 #endif
 #ifdef RT_ISRF_BACKGROUND
-                if(RestartFlag == 0) {SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
+                if(flag_to_reset_values_on_startup) {SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
 #endif
 #ifdef RT_EVOLVE_ENERGY
                 SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] = 0;
