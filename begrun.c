@@ -1511,7 +1511,6 @@ void read_parameter_file(char *fname)
 
         strcpy(tag[nt], "BAL_wind_particle_mass");
         strcpy(alternate_tag[nt], "Cell_Spawn_Mass_ratio");
-        strcpy(tag[nt], "");
         addr[nt] = &All.BAL_wind_particle_mass;
         id[nt++] = REAL;
 #endif
