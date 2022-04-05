@@ -3636,6 +3636,7 @@ enum iofields
   IO_BH_DIST,
   IO_ACRB,
   IO_SINKRAD,
+  IO_SINK_FORM_MASS,
   IO_POT,
   IO_ACCEL,
   IO_HII,
