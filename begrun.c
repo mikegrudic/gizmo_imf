@@ -2423,7 +2423,7 @@ void read_parameter_file(char *fname)
     if(All.ErrTolIntAccuracy > 0.01) {All.ErrTolIntAccuracy = 0.01;}
     if(All.MaxRMSDisplacementFac > 0.125) {All.MaxRMSDisplacementFac = 0.125;}
     if(All.ErrTolTheta > 0.5) {All.ErrTolTheta = 0.5;}
-    if(All.MaxNumNgbDeviation > 0.05) {All.MaxNumNgbDeviation > 0.05;}
+    if(All.MaxNumNgbDeviation > 0.05) {All.MaxNumNgbDeviation = 0.05;}
 #endif
     
 #if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)

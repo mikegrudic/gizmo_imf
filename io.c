@@ -1107,6 +1107,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_SINK_FORM_MASS:
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) P[pindex].Sink_Formation_Mass;
+                    n++;
+                }
+#endif
+            break;	    
+
         case IO_TIDALTENSORPS:   /* 3x3 configuration-space tidal tensor that is driving the GDE */
 #ifdef OUTPUT_TIDAL_TENSOR
             for(n = 0; n < pc; pindex++)
@@ -1783,6 +1794,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
+        case IO_SINK_FORM_MASS:
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
@@ -2064,6 +2076,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_BHMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
+        case IO_SINK_FORM_MASS:
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
@@ -2385,6 +2398,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_UNSPMASS:
         case IO_ACRB:
         case IO_SINKRAD:
+        case IO_SINK_FORM_MASS:
         case IO_BHMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
@@ -2725,6 +2739,13 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
+
+        case IO_SINK_FORM_MASS:
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+            return 1;
+#endif
+            break;
+	    
 
         case IO_BHMASS:
 #ifdef BLACK_HOLES
@@ -3178,6 +3199,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_SINKRAD:
             strncpy(label, "SRAD", 4);
             break;
+        case IO_SINK_FORM_MASS:
+            strncpy(label, "SMAS", 4);
+            break;	    
         case IO_BHMDOT:
             strncpy(label, "BHMD", 4);
             break;
@@ -3558,6 +3582,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_SINKRAD:
             strcpy(buf, "SinkRadius");
             break;
+        case IO_SINK_FORM_MASS:
+            strcpy(buf, "SinkInitialMass");
+            break;	    
         case IO_BHMDOT:
             strcpy(buf, "BH_Mdot");
             break;

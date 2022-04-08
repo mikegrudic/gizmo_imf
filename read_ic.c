@@ -534,6 +534,12 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {P[offset + n].SinkRadius = *fp++;}
 #endif
             break;
+
+        case IO_SINK_FORM_MASS:
+#ifdef SINGLE_STAR_SINK_DYNAMICS
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_Formation_Mass = *fp++;}
+#endif
+            break;	    
             
         case IO_MOLECULARFRACTION:
 #if defined(COOL_MOLECFRAC_NONEQM) & !defined(IO_MOLECFRAC_NOT_IN_ICFILE)
@@ -865,6 +871,9 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINKRAD
 #endif
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(INPUT_READ_SINKPROPS)
+                   && blocknr != IO_SINK_FORM_MASS
+#endif		   
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
                    && blocknr != IO_CHIMES_ABUNDANCES
 #endif
