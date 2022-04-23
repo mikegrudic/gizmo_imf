@@ -99,14 +99,15 @@ void run(void)
 
 #ifdef GALSF_SUBGRID_WINDS
 #if (GALSF_SUBGRID_WIND_SCALING==2)
-        // Need to figure out how frequently we calculate this; below is pretty rough //
+/*
 #ifdef PMGRID
-        if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05)
+        //if(All.Ti_Current == All.PM_Ti_endstep && get_random_number(1+All.Ti_Current) < 0.05) // compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient ? not ideal for many applications, in fact, now only acts on active //
 #else
-        if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)
+        //if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) // only acts on top-level timebin -- only enable this if you are trying to radically reduce the number of operations of this mode //
 #endif
+*/
         {
-            disp_density(); /* compute the DM velocity dispersion around gas particles every 20 PM steps, should be sufficient */
+            disp_density();
         }
 #endif
 #endif
