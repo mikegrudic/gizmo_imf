@@ -518,7 +518,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
-#define EVALPOTENTIAL 
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
