@@ -536,11 +536,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #endif
-#ifdef STARFORGE_GMC_TURBINIT
+#if ( defined(STARFORGE_GMC_TURBINIT) || defined(STARFORGE_FILAMENT_TURBINIT) )
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC
 #define SELFGRAVITY_OFF
-#define STARFORGE_GMC_ALPHA 2.0 //target virial parameter for TurbSphere runs, note that the driving strength needs to be set self-consistently (i.e., by trail and error)
+#define STARFORGE_GMC_ALPHA 2.0 //target virial parameter for TurbSphere and si runs, note that the driving strength needs to be set self-consistently (i.e., by trial and error)
 #endif
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
