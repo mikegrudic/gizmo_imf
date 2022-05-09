@@ -540,7 +540,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC
 #define SELFGRAVITY_OFF
-#define STARFORGE_GMC_ALPHA 2.0 //target virial parameter for TurbSphere and si runs, note that the driving strength needs to be set self-consistently (i.e., by trial and error)
+#if !defined(STARFORGE_GMC_ALPHA)
+#define STARFORGE_GMC_ALPHA 2.0 //target virial parameter for TurbSphere and similar runs, note that the driving strength needs to be set self-consistently (i.e., by trial and error)
+#endif
 #endif
 #define BH_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
