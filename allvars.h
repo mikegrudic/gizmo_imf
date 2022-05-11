@@ -522,6 +522,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
+#ifndef STARS_ONLY_SNAPSHOT_FREQUENCY
+#define STARS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
+#endif
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #define ADAPTIVE_GRAVSOFT_FORGAS

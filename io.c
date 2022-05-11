@@ -35,7 +35,7 @@ static int n_info;
 void savepositions(int num)
 {
     size_t bytes;
-    char buf[500];
+    char buf[500], outputdir[100];
     int n, filenr, gr, ngroups, primaryTask, lastTask;
 
     CPU_Step[CPU_MISC] += measure_time();
@@ -84,6 +84,14 @@ void savepositions(int num)
         }
 #endif
 
+        sprintf(outputdir, "%s", All.OutputDir)
+#if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
+        if !( All.SnapshotFileCount % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) )
+        {
+            sprintf(outputdir, "%s/stars_only", All.OutputDir)
+            mkdir(outputdir, 02755)
+        }
+#endif
 
         /* determine global and local particle numbers */
         for(n = 0; n < 6; n++)
@@ -101,16 +109,16 @@ void savepositions(int num)
         {
             if(ThisTask == 0)
             {
-                sprintf(buf, "%s/snapdir_%03d", All.OutputDir, num);
+                sprintf(buf, "%s/snapdir_%03d", outputdir, num);
                 mkdir(buf, 02755);
             }
             MPI_Barrier(MPI_COMM_WORLD);
         }
 
         if(All.NumFilesPerSnapshot > 1)
-            sprintf(buf, "%s/snapdir_%03d/%s_%03d.%d", All.OutputDir, num, All.SnapshotFileBase, num, filenr);
+            sprintf(buf, "%s/snapdir_%03d/%s_%03d.%d", outputdir, num, All.SnapshotFileBase, num, filenr);
         else
-            sprintf(buf, "%s%s_%03d", All.OutputDir, All.SnapshotFileBase, num);
+            sprintf(buf, "%s%s_%03d", outputdir, All.SnapshotFileBase, num);
 
 
         ngroups = All.NumFilesPerSnapshot / All.NumFilesWrittenInParallel;
@@ -4016,7 +4024,11 @@ void write_file(char *fname, int writeTask, int lastTask)
 
                 for(type = 0; type < 6; type++)
                 {
+#if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
+                    if ( typelist[type] && ( (type!=0) || !( All.SnapshotFileCount % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
+#else
                     if(typelist[type])
+#endif
                     {
 #ifdef HAVE_HDF5
                         if(ThisTask == writeTask && All.SnapFormat == 3 && header.npart[type] > 0)
