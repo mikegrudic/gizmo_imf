@@ -86,7 +86,7 @@ void savepositions(int num)
 
         sprintf(outputdir, "%s", All.OutputDir);
 #if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
-        if !( All.SnapshotFileCount % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) )
+        if( (All.SnapshotFileCount-1) % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) )
         {
             sprintf(outputdir, "%s/stars_only", All.OutputDir);
             mkdir(outputdir, 02755);
@@ -118,7 +118,7 @@ void savepositions(int num)
         if(All.NumFilesPerSnapshot > 1)
             sprintf(buf, "%s/snapdir_%03d/%s_%03d.%d", outputdir, num, All.SnapshotFileBase, num, filenr);
         else
-            sprintf(buf, "%s%s_%03d", outputdir, All.SnapshotFileBase, num);
+            sprintf(buf, "%s/%s_%03d", outputdir, All.SnapshotFileBase, num);
 
 
         ngroups = All.NumFilesPerSnapshot / All.NumFilesWrittenInParallel;
@@ -4025,7 +4025,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                 for(type = 0; type < 6; type++)
                 {
 #if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
-                    if ( typelist[type] && ( (type!=0) || !( All.SnapshotFileCount % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
+                    if ( typelist[type] && ( (type!=0) || !( (All.SnapshotFileCount-1) % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
 #else
                     if(typelist[type])
 #endif
