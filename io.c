@@ -84,7 +84,7 @@ void savepositions(int num)
         }
 #endif
 
-        sprintf(outputdir, "%s", All.OutputDir)
+        sprintf(outputdir, "%s", All.OutputDir);
 #if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
         if !( All.SnapshotFileCount % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) )
         {
