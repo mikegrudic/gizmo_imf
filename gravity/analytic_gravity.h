@@ -232,11 +232,11 @@ void GravAccel_FilamentTurbInit()
         double dp[3]; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k] - 0.5*All.BoxSize;}
         double r = sqrt(dp[1]*dp[1]+dp[2]*dp[2]) + P[i].Hsml, lambda = r/STARFORGE_FILAMENT_RADIUS; //define cylindrical radius and lambda rescaled radius
         double R2 = STARFORGE_FILAMENT_RADIUS*STARFORGE_FILAMENT_RADIUS; //shorthand
-
+        double num_scaling_factor = 2.0 ; //additional scaling found numerically to make the stirring run reproduce the right alpha and filament length (similarly determined numerical factor added to MakeCloud)
         /* Potential for an infinite cylinder along the x axis with rho = rho0/(1+(r/R)^2)^(3/2) (i.e., p=3 Plummer profile) */
         double rho_uniform = STARFORGE_FILAMENT_MASS / (R2*STARFORGE_FILAMENT_LENGTH*M_PI); //density that a uniform cylinder would have
         double menc = STARFORGE_FILAMENT_MASS * ( 1.0 - pow(1+lambda*lambda,-0.5) ); //enclosed mass at radius r
-        double cyl_grav_accel_rad = 2.0*All.G/STARFORGE_FILAMENT_LENGTH * STARFORGE_GMC_ALPHA * menc /r; //gravitational acceleration for an *infinite* cylinder
+        double cyl_grav_accel_rad = 2.0*All.G/STARFORGE_FILAMENT_LENGTH * STARFORGE_GMC_ALPHA * num_scaling_factor * menc /r; //gravitational acceleration for an *infinite* cylinder with
         /* Get the truncation in the x direction for having a finite cylinder. We use an approximate formula, for simplicity calculated along the axis of a uniform cylinder */
         double dx = abs(dp[0]) + P[i].Hsml;
         double dx1 = dx - STARFORGE_FILAMENT_LENGTH/2.0, dx2 = dx + STARFORGE_FILAMENT_LENGTH/2.0;
@@ -248,7 +248,7 @@ void GravAccel_FilamentTurbInit()
         else{ //expression for the x component of the accceleration inside the cylinder (approximate)
             x_expr = STARFORGE_FILAMENT_LENGTH + 2*dx1 + sqrt( dx1*dx1 + R2 ) - sqrt( pow(STARFORGE_FILAMENT_LENGTH+dx1,2.0) + R2);
         }
-        P[i].GravAccel[0] += (-2.0)*M_PI*All.G*rho_uniform * STARFORGE_GMC_ALPHA * x_expr * dp[0]/dx; //add z component
+        P[i].GravAccel[0] += (-2.0)*M_PI*All.G*rho_uniform * STARFORGE_GMC_ALPHA * num_scaling_factor * x_expr * dp[0]/dx; //add z component
         /* Apply truncated radial acceleration */
         for(k=1;k<3;k++) {P[i].GravAccel[k] += -cyl_grav_accel_rad * x_trunc_factor * dp[k]/r;} //add radial component
     }
