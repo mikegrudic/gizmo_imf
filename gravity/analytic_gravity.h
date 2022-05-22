@@ -218,7 +218,7 @@ void GravAccel_GMCTurbInit()
         double r2 = dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2], r = sqrt(r2);
         double M = 0.808 * All.TotN_gas * All.MeanGasParticleMass, R=All.BoxSize/10; // these are for the default settings of MakeCloud's uniform sphere IC, adjust for your problem!
         double menc = DMIN(M,M*pow(r/R,3)) + DMAX(0,3*M*log(r/R)); // uniform sphere plus a r^-3 surrounding halo with density matched at the sphere radius
-        for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * STARFORGE_GMC_ALPHA * menc * dp[k]/(r2*r);}
+        for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * STARFORGE_GMC_TURBINIT * menc * dp[k]/(r2*r);}
     }
 #endif
 }
@@ -236,7 +236,7 @@ void GravAccel_FilamentTurbInit()
         /* Potential for an infinite cylinder along the x axis with rho = rho0/(1+(r/R)^2)^(3/2) (i.e., p=3 Plummer profile) */
         double rho_uniform = STARFORGE_FILAMENT_MASS / (R2*STARFORGE_FILAMENT_LENGTH*M_PI); //density that a uniform cylinder would have
         double menc = STARFORGE_FILAMENT_MASS * ( 1.0 - pow(1+lambda*lambda,-0.5) ); //enclosed mass at radius r
-        double cyl_grav_accel_rad = 2.0*All.G/STARFORGE_FILAMENT_LENGTH * STARFORGE_GMC_ALPHA * num_scaling_factor * menc /r; //gravitational acceleration for an *infinite* cylinder with
+        double cyl_grav_accel_rad = 2.0*All.G/STARFORGE_FILAMENT_LENGTH * STARFORGE_FILAMENT_TURBINIT * num_scaling_factor * menc /r; //gravitational acceleration for an *infinite* cylinder with
         /* Get the truncation in the x direction for having a finite cylinder. We use an approximate formula, for simplicity calculated along the axis of a uniform cylinder */
         double dx = abs(dp[0]) + P[i].Hsml;
         double dx1 = dx - STARFORGE_FILAMENT_LENGTH/2.0, dx2 = dx + STARFORGE_FILAMENT_LENGTH/2.0;
@@ -248,7 +248,7 @@ void GravAccel_FilamentTurbInit()
         else{ //expression for the x component of the accceleration inside the cylinder (approximate)
             x_expr = STARFORGE_FILAMENT_LENGTH + 2*dx1 + sqrt( dx1*dx1 + R2 ) - sqrt( pow(STARFORGE_FILAMENT_LENGTH+dx1,2.0) + R2);
         }
-        P[i].GravAccel[0] += (-2.0)*M_PI*All.G*rho_uniform * STARFORGE_GMC_ALPHA * num_scaling_factor * x_expr * dp[0]/dx; //add z component
+        P[i].GravAccel[0] += (-2.0)*M_PI*All.G*rho_uniform * STARFORGE_FILAMENT_TURBINIT * num_scaling_factor * x_expr * dp[0]/dx; //add z component
         /* Apply truncated radial acceleration */
         for(k=1;k<3;k++) {P[i].GravAccel[k] += -cyl_grav_accel_rad * x_trunc_factor * dp[k]/r;} //add radial component
     }
