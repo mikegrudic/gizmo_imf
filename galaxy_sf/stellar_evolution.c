@@ -855,15 +855,15 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
 #ifdef SINGLE_STAR_RELICS
-                if(P[n].BH_Mass > 25./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic
+                if(P[n].BH_Mass < 7./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (should be a white dwarf here - for now treat as compact relic)
+                if(P[n].BH_Mass > 25./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
 #endif
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
 #if defined(BH_ALPHADISK_ACCRETION) && !defined(SINGLE_STAR_RELICS)
                 BPP(n).BH_Mass_AlphaDisk = 0; // probably does not matter, but let's make sure these don't cause issues
                 P[n].Mass = P[n].BH_Mass;
 #endif
-                //Save properties of SN progenitor
-                //This is an unsafe and lazy way of fixing it, but it seems unlikely that two tasks will have SNs at the same time, so probably fne
+                // Save properties of SN progenitor.
                 char buf[200];
                 FILE *FdBhSNDetails2;
                 sprintf(buf, "%s%s", All.OutputDir, "SN_details_STARFORGE.txt");

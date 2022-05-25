@@ -49,7 +49,7 @@ int does_particle_need_to_be_merged(int i)
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
-        if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+        //if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
         if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
 #endif
     }
@@ -282,18 +282,15 @@ void merge_and_split_particles(void)
                         {
                             if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
                             {
-                                if((P[j].ID!=All.AGNWindID) || (P[j].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger=1;}
+                                if((P[j].ID != All.AGNWindID) || (P[j].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger *= 1;} else {do_allow_merger = 0;}
                             } else if(do_allow_merger) {
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
-                                if(vr_tmp > 0) {do_allow_merger=0;}
+                                if(vr_tmp > 0) {do_allow_merger = 0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
-#if defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS)
-                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
-#else
+                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
+#if !(defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS))
                                 if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
-                                if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
-                                if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
 #endif
                             }
                         }
@@ -576,21 +573,24 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
 #if (NUMDIMS > 1)        
         double norm=0, dp[3]; int m; dp[0]=dp[1]=dp[2]=0;
 
-        // get the eigenvector of NV_T that has the smallest eigenvalue (= sparsest sampling direction)
+        // get the eigenvector of NV_T that has the largest eigenvalue (= sparsest sampling direction, if assume equal-mass particles, for our definition of NV_T)
         double nvt[NUMDIMS*NUMDIMS]={0}; for(k=0;k<NUMDIMS;k++) {for(m=0;m<NUMDIMS;m++) {nvt[NUMDIMS*k + m]=SphP[i].NV_T[k][m];}} // auxiliary array to store NV_T in for feeding to GSL eigen routine
         gsl_matrix_view M = gsl_matrix_view_array(nvt,NUMDIMS,NUMDIMS); gsl_vector *eigvals = gsl_vector_alloc(NUMDIMS); gsl_matrix *eigvecs = gsl_matrix_alloc(NUMDIMS,NUMDIMS);
         gsl_eigen_symmv_workspace *v = gsl_eigen_symmv_alloc(NUMDIMS); gsl_eigen_symmv(&M.matrix, eigvals, eigvecs, v);
-        int min_eigvec_index = 0; double min_eigval = MAX_REAL_NUMBER;
-        for(k=0;k<NUMDIMS;k++) {if(gsl_vector_get(eigvals,k) < min_eigval){min_eigval = gsl_vector_get(eigvals,k); min_eigvec_index=k;}}
+        int min_eigvec_index = 0; double max_eigval = -MAX_REAL_NUMBER; //
+        for(k=0;k<NUMDIMS;k++) {if(gsl_vector_get(eigvals,k) > max_eigval) {max_eigval = gsl_vector_get(eigvals,k); min_eigvec_index=k;}}
         for(k=0;k<NUMDIMS;k++) {dp[k] = gsl_matrix_get(eigvecs, k, min_eigvec_index);}
         gsl_eigen_symmv_free(v); gsl_vector_free(eigvals); gsl_matrix_free(eigvecs);
         for(k=0;k<NUMDIMS;k++) {norm += dp[k] * dp[k];}
         if(norm > 0)
         {
-            norm = 1/sqrt(norm); for(k=0;k<NUMDIMS;k++) {dp[k] *= norm;}
+            norm = 1/sqrt(norm);
+            double qq = get_random_number(63432*k + 84*i + 99*j + 358453 + 84537*ThisTask);
+            if(qq < 0.5) {norm *= -1.;} // randomly decide which direction along principle axis to orient split (since this is arbitrary, this helps prevent accidental collisions)
+            for(k=0;k<NUMDIMS;k++) {dp[k] *= norm;}
             dx=d_r*dp[0]; dy=d_r*dp[1]; dz=d_r*dp[2];
-            /* rotate to 90-degree offset from above orientation, if using the density gradient */
-            // if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {dz = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r * dp[1]/dz; dy = d_r * dp[0]/dz; dz = 0.0;}
+            /* rotate to 90-degree offset from above orientation, if using the density gradient, to get uniform sampling (otherwise get 'ridges' along sampled axis) */
+            //if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {double dr2d = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r*dp[1]/dr2d; dy = d_r*dp[0]/dr2d; dz = d_r*dp[2];}
         }
 #endif
 #ifdef WAKEUP  /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */

@@ -351,7 +351,7 @@ double get_starformation_rate(int i, int mode)
 
 #if (SINGLE_STAR_SINK_FORMATION & 8) /* restrict to cell which neither 'sees' or 'is seen by' a sink too close */
     if(P[i].BH_Ngb_Flag) {rateOfSF=0;} /* cell cannot be 'seen' by -any- sink as a potential interacting neighbor */
-    if(P[i].min_dist_to_bh < P[i].Hsml){rateOfSF=0;} /* cell does not overlap with a sink */
+    if(P[i].min_dist_to_bh < P[i].Hsml) {rateOfSF=0;} /* cell does not overlap with a sink */
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 16) /* restrict to cells which have a local SF time or free-fall time shorter than their free-fall time onto the nearest sink */

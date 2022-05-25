@@ -518,7 +518,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
-#define EVALPOTENTIAL 
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
@@ -3173,9 +3172,12 @@ extern struct sph_particle_data
   MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
 #if (GALSF_SUBGRID_WIND_SCALING==2)
-  MyFloat HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
+  MyFloat  HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
   MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
-  MyDouble DM_Vx, DM_Vy, DM_Vz, DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
+  MyDouble DM_Vx;
+  MyDouble DM_Vy;
+  MyDouble DM_Vz;
+  MyDouble DM_VelDisp; /*!< surrounding DM velocity and velocity dispersion */
 #endif
 #endif
 
