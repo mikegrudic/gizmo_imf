@@ -342,6 +342,9 @@ void add_turb_accel()
         if(P[i].Type == 0)
         {
             double fx = 0, fy = 0, fz = 0;
+#ifdef _OPENMP
+#pragma omp parallel for reduction(+:fx) reduction(+:fy) reduction(+:fz) // parallelize the sum reduction over the different wavenumbers
+#endif
             for(m=0; m<StNModes; m++) // calc force
             {
                 double kxx = StMode[3*m+0]*P[i].Pos[0], kyy = StMode[3*m+1]*P[i].Pos[1], kzz = StMode[3*m+2]*P[i].Pos[2];
