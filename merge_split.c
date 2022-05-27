@@ -36,6 +36,9 @@ int does_particle_need_to_be_merged(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
+#endif
 #ifdef GRAIN_RDI_TESTPROBLEM
     return 0;
 #endif
@@ -49,8 +52,7 @@ int does_particle_need_to_be_merged(int i)
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
         if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
-        //if(P[i].Mass < (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
-        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i)) {return 1;}
+        if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i,0)) {return 1;}
 #endif
     }
 #endif
@@ -65,8 +67,8 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
     if(P[i].Type==0) {if(Get_Particle_Size(i)*All.cf_atime*UNIT_LENGTH_IN_PC < 700.) {return 0;}} // if too high-res spatially, this equiv to size for m=7000 msun for nH=1e-3, dont let de-refine
 #endif
-    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 0;}
-    if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+    if((P[i].Type>0) && (P[i].Mass > 0.5*All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i,0))) {return 0;}
+    if(P[i].Mass <= (All.MinMassForParticleMerger*target_mass_renormalization_factor_for_mergesplit(i,0))) {return 1;}
     return 0;
 #endif
 }
@@ -80,10 +82,13 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
+#endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     if(P[i].ID == All.AGNWindID) {return 0;}
 #endif
-    if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i))) {return 1;}
+    if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i,1))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
     if(P[i].Type == 0)
     {
@@ -95,8 +100,8 @@ int does_particle_need_to_be_split(int i)
 #endif
 }
 
-/*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines */
-double target_mass_renormalization_factor_for_mergesplit(int i)
+/*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines; split_key tells you if this is for a split (1) or merge (0) */
+double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 {
     double ref_factor=1.0;
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
@@ -604,6 +609,10 @@ void split_particle_i(int i, int n_particles_split, int i_nearest)
      any other operations on the particles */
     P[i].Pos[0] += dx; P[j].Pos[0] -= dx; P[i].Pos[1] += dy; P[j].Pos[1] -= dy; P[i].Pos[2] += dz; P[j].Pos[2] -= dz;
 
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    P[i].Time_Of_Last_MergeSplit = All.Time; P[j].Time_Of_Last_MergeSplit = All.Time;
+#endif
+    
     /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
 #ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP    
     long bin = P[i].TimeBin;
@@ -870,6 +879,10 @@ void merge_particles_ij(int i, int j)
     }
 #endif
 
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    P[i].Time_Of_Last_MergeSplit = All.Time; P[j].Time_Of_Last_MergeSplit = All.Time;
+#endif
+    
     /* finally zero out the particle mass so it will be deleted */
     P[i].Mass = 0;
     P[j].Mass = mtot;
@@ -1138,3 +1151,18 @@ void apply_pm_hires_region_clipping_selection(int i)
 #endif
     return; // done
 }
+
+
+
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+/* subroutine to check if too little time has passed since the last merge-split, in which case we won't allow it again */
+int check_if_sufficient_mergesplit_time_has_passed(int i)
+{
+    double N_timesteps_fac = 100.; // require > N timesteps before next merge/split
+    double dtime_code = All.Time - P[i].Time_Of_Last_MergeSplit; // time [in code units] since last merge/split
+    double dt_incodescale = (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * All.cf_hubble_a) * All.cf_atime; // timestep converted appropriately to code units [physical if non-comoving, else scale factor]
+    if(dtime_code < N_timesteps_fac*dt_incodescale) {return 0;} // not enough time passed, prohibit
+    if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-6) {return 0;}} // also enforce an absolute time limit
+    return 1; // otherwise, if no check so far to reject, allow this merge/split
+}
+#endif

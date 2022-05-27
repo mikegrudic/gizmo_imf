@@ -2904,6 +2904,10 @@ extern ALIGN(32) struct particle_data
     integertime dt_step;
 #endif
 
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    MyFloat Time_Of_Last_MergeSplit;
+#endif
+    
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */

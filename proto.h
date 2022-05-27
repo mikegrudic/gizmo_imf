@@ -45,7 +45,10 @@ long long report_comittable_memory(long long *MemTotal,
 void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
-double target_mass_renormalization_factor_for_mergesplit(int i);
+double target_mass_renormalization_factor_for_mergesplit(int i, int split_key);
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+int check_if_sufficient_mergesplit_time_has_passed(int i);
+#endif
 void merge_particles_ij(int i, int j);
 //void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
 void split_particle_i(int i, int n_particles_split, int i_nearest);

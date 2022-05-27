@@ -233,8 +233,7 @@ void init(void)
         
 
 #ifdef KEEP_DM_HSML_AS_GUESS
-        if(RestartFlag != 1)
-            P[i].DM_Hsml = -1;
+        if(RestartFlag != 1) {P[i].DM_Hsml = -1;}
 #endif
 
 #ifdef PMGRID
@@ -243,7 +242,6 @@ void init(void)
         P[i].Ti_begstep = 0;
         P[i].Ti_current = (integertime)0;
         P[i].TimeBin = 0;
-
         if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS) {P[i].OldAcc = 0;}	/* Do not zero in 2lpt case as masses are stored here */
 
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
@@ -293,6 +291,9 @@ void init(void)
             P[i].AgeDeposition_ThisTimeStep = 0;
 #endif
 #endif
+#endif
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+            P[i].Time_Of_Last_MergeSplit = All.TimeBegin;
 #endif
         }
 
