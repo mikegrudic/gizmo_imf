@@ -1024,6 +1024,7 @@ void density(void)
 #if defined(GRAIN_FLUID)
             if((1 << P[i].Type) & (GRAIN_PTYPES))
             {
+                int k;
                 if(P[i].Gas_Density > 0)
                 {
                     P[i].Gas_InternalEnergy /= P[i].Gas_Density;
