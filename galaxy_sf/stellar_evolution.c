@@ -26,9 +26,7 @@ int is_particle_single_star_eligible(long i)
     {
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) // here's the interesting regime, where we have some criterion for deciding which cells are eligible for 'single-star' status
         if(P[i].Type == 5) {return 1;} // all type-5 elements are assumed sinks
-        if(P[i].Type == 0) {
-            if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
-        }
+        if(P[i].Type == 0) {if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;}} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
 #else
         return 1; // no hybrid model, so all particles satisfying these criteria are automatically single-star eligible
 #endif
@@ -393,7 +391,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
         /* updated fit. separates the more robust line-driven winds [massive-star-dominated] component, and -very- uncertain AGB. extremely good fits to updated STARBURST99 result for a 3-part Kroupa IMF (0.3,1.3,2.3 slope, 0.01-0.08-0.5-100 Msun, 8-120 SNe/BH cutoff, wind model evolution, Geneva v40 [rotating, Geneva 2013 updated tracks, at all metallicities available, ~0.1-1 solar], sampling times 1e4-2e10 yr at high resolution */
         double f1=3.*pow(ZZ,0.87), f2=20.*pow(ZZ,0.45), f3=0.6*ZZ, t1=0.0017, t2=0.004, t3=0.02, t=star_age; /* fit parameters for 'massive star' mass-loss */
         if(t<=t1) {p=f1;} else if(t<=t2) {p=f1*pow(t/t1,log(f2/f1)/log(t2/t1));} else if(t<=t3) {p=f2*pow(t/t2,log(f3/f2)/log(t3/t2));} else {p=f3*pow(t/t3,-3.1);} /* piecewise continuous function linking constant early and rapid late decay */
-        double f_agb=0.01, t_agb=1.; p += f_agb/((1. + pow(t/t_agb,1.1)) * (1. + 0.01/(t/t_agb))); /* add AGB component. note that essentially no models [any of the SB99 geneva or padova tracks, or NuGrid, or recent other MESA models] predict a significant dependence on metallicity (that shifts slightly when the 'bump' occurs, but not the overall loss rate), so this term is effectively metallicity-independent */
+        // double f_agb=0.01, t_agb=1.; p += f_agb/((1. + pow(t/t_agb,1.1)) * (1. + 0.01/(t/t_agb))); /* add AGB component. note that essentially no models [any of the SB99 geneva or padova tracks, or NuGrid, or recent other MESA models] predict a significant dependence on metallicity (that shifts slightly when the 'bump' occurs, but not the overall loss rate), so this term is effectively metallicity-independent */
+        double f_agb=0.1, t_agb=0.8, x_agb=t_agb/DMAX(t,1.e-4); x_agb*=x_agb; p += f_agb * pow(x_agb,0.8) * (exp(-DMIN(50.,x_agb*x_agb*x_agb)) + 1./(100. + x_agb)); /* May 28, 2022: re-fit AGB component based on inputs from Caleb Choban: previous model for FIRE-3 doesn't make sense for stars 1.5-4 Msol, can't possibly give sub-Chandrasekhar WDs or the correct initial-final mass relation. Here we re-fit the AGB mass loss for the Geneva v00 (rotating models show too little), 2013 tracks, 1x solar, times at same resolution as above, using the 'Empirical' wind prescription in STARBURST99. Have validated that nothing else, including wind specific energies, changes - only the mass-loss rates */
 #endif
         if(star_age < 0.1) {p *= calculate_relative_light_to_mass_ratio_from_imf(star_age,i);} // late-time independent of massive stars
         p *= All.StellarMassLoss_Rate_Renormalization * (dt*UNIT_TIME_IN_GYR); // fraction of particle mass expected to return in the timestep //

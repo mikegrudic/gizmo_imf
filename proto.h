@@ -49,9 +49,8 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key);
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 int check_if_sufficient_mergesplit_time_has_passed(int i);
 #endif
-void merge_particles_ij(int i, int j);
-//void split_particle_i(int i, int n_particles_split, int i_nearest, double r2_nearest);
-void split_particle_i(int i, int n_particles_split, int i_nearest);
+int merge_particles_ij(int i, int j);
+int split_particle_i(int i, int n_particles_split, int i_nearest);
 double gamma_eos(int i);
 void do_first_halfstep_kick(void);
 void do_second_halfstep_kick(void);

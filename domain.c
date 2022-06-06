@@ -39,8 +39,11 @@
  */
 
 
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#define REDUC_FAC      0.90 /* need to give more 'padding' here to allow for aggressive dynamic splitting */
+#else
 #define REDUC_FAC      0.98
-
+#endif
 
 /*! toGo[task*NTask + partner] gives the number of particles in task 'task'
  *  that have to go to task 'partner'

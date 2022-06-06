@@ -274,9 +274,6 @@
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
 #define OUTPUT_POSITIONS_IN_DOUBLE          /*! need to output positions in double, otherwise get some real problems */
 #endif
-#if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
-#define ALLOW_IMBALANCED_GASPARTICLELOAD
-#endif
 
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS) /* check if a numerical value is set */
 #if (FIRE_PHYSICS_DEFAULTS == 1)
@@ -665,7 +662,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
+#endif
 #endif
 
 #if (defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_WINDS)) && !defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)

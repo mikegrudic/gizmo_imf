@@ -262,8 +262,12 @@ double get_starformation_rate(int i, int mode)
 #endif
 
 #if defined(GALSF_SFR_VIRIAL_SF_CRITERION) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
-    double k_cs = 1. * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
+    double v_eff_touse = v_fast;
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    v_eff_touse = cs_eff;
+#endif
+    double k_cs = 1. * v_eff_touse / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) & !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(cell_can_be_singlestar) {k_cs *= M_PI;} // use a stricter version here, because the relevant pre-factor depends on whether we expect Jeans collapse at the thermal limit to be resolved or un-resolved
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)

@@ -936,7 +936,7 @@ void read_file(char *fname, int readTask, int lastTask)
             if(RestartFlag == 2 && blocknr == IO_EOSTEMP) {continue;}
 #endif
             
-#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(SINGLE_STAR_RESTART_FROM_FIRESIM)
             if(RestartFlag == 2 && blocknr == IO_RADGAMMA) {continue;}
             if(RestartFlag == 2 && blocknr == IO_EDDINGTON_TENSOR) {continue;}
             if(RestartFlag == 2 && blocknr == IO_OSTAR) {continue;}

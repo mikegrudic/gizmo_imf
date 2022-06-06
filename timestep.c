@@ -443,7 +443,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #if defined(GRAIN_LORENTZFORCE) && defined(GRAIN_RDI_TESTPROBLEM)
         if(All.Grain_Charge_Parameter != 0) {double bmag=0; for(k=0;k<3;k++) {bmag += P[p].Gas_B[k]*P[p].Gas_B[k];}
-            if(bmag>0) {double dt_gyro = 1. / ((All.Grain_Charge_Parameter/All.Grain_Size_Max) * DMIN(100.,pow(All.Grain_Size_Max/P[p].Grain_Size,2)) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}}
+            if(bmag>0) {double dt_gyro = 1. / ((All.Grain_Charge_Parameter*sqrt(1.)/((All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS)*(All.Grain_Size_Max/UNIT_LENGTH_IN_CGS))) * DMIN(100.,pow(All.Grain_Size_Max/P[p].Grain_Size,2)) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}} /* this gives t_Lorentz in code units; sqrt[1] reflects expected unity mean density definition, hard-coded for rdi testproblem options here */
 #endif
 #ifdef PIC_MHD
         if(P[p].MHD_PIC_SubType>=3)
