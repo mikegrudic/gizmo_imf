@@ -2255,18 +2255,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         no = nop->u.d.nextnode;
                         continue;
                     }
-#ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
-		    if(nop->N_BH > 0)
-		    {
-			if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len))	      
-			{
-			    /* open cell */
-			    no = nop->u.d.nextnode;
-			    continue;				
-			}
-		    }
-#endif
-
                     /* check in addition whether we lie inside the cell */
 
                     if(GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
@@ -2280,6 +2268,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             }
                         }
                     }
+#endif
+#ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
+		    if(nop->N_BH > 0)
+		    {
+		        if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)) // we have a star within the specified radius
+			{
+			    /* open cell */
+			    no = nop->u.d.nextnode;
+			    continue;				
+			}
+		    }
 #endif
                 }
 
