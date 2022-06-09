@@ -2255,6 +2255,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         no = nop->u.d.nextnode;
                         continue;
                     }
+#ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
+		    if(nop->N_BH > 0)
+		    {
+			if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len))	      
+			{
+			    /* open cell */
+			    no = nop->u.d.nextnode;
+			    continue;				
+			}
+		    }
+#endif
 
                     /* check in addition whether we lie inside the cell */
 
@@ -2298,6 +2309,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                 }
 #endif
+
+
 
                 if(TakeLevel >= 0) {nop->GravCost += 1.0;}
                 no = nop->u.d.sibling;	/* ok, node can be used */
