@@ -230,7 +230,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #else			    
 			    int k2; for(k2=RT_FREQ_BIN_H0; k2 < RT_FREQ_BIN_H0 + 4; k2++) { stellum += local.Luminosity[k2]; } // add up total ionizing photon energy
 #endif			    
-			    stellum /= local.Luminosity[RT_FREQ_BIN_H0] / (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) / local.Dt * UNIT_LUM_IN_CGS; // convert energy to luminosity in cgs
+			    stellum *= 1. / (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) / local.Dt * UNIT_LUM_IN_CGS; // convert energy to luminosity in cgs
 			}
                         double RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
                         if(DMAX(r, Get_Particle_Size(j))*All.cf_atime < RHII) {do_donation = 0;} // don't inject ionizing photons outside the Stromgren radius
