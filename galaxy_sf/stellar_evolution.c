@@ -141,7 +141,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
 #else
             if(star_age < t0) {lm_ssp=500.;} else {double log_age=log10(star_age/t0); lm_ssp=470.*pow(10.,-2.24*log_age-4.2*log_age*log_age) + 60.*pow(10.,-3.6*log_age);}
 #endif
-            if(star_age < 0.033) {lm_ssp *= 1.e-4 + calculate_relative_light_to_mass_ratio_from_imf(star_age, i, 1);}
+            if(star_age < 0.033) {lm_ssp *= 1.e-4 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);}
             if(star_age >= tmax) {return 0;} // skip since old stars don't contribute
             return lm_ssp * SOLAR_LUM_CGS * (P[i].Mass*UNIT_MASS_IN_SOLAR); // converts to cgs luminosity [lm_ssp is in Lsun/Msun, here]
         } // (P[i].Type != 5)
@@ -268,7 +268,7 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     if(star_age>t_Ia_min) {RSNe += norm_Ia * 7.94e-5 * pow(star_age,-1.1) / fabs(pow(t_Ia_min/0.1,-0.1) - 0.61);} // Ia DTD following Maoz & Graur 2017, ApJ, 848, 25
 #endif
 
-    double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i); // account for higher # of O-stars with a different IMF
+    double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1); // account for higher # of O-stars with a different IMF
     if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING
     if(star_age>agemax && P[i].IMF_NumMassiveStars>0) {RSNe += 2.516e-4*renorm;} // account for un-exploded O-stars
@@ -398,7 +398,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
         // double f_agb=0.01, t_agb=1.; p += f_agb/((1. + pow(t/t_agb,1.1)) * (1. + 0.01/(t/t_agb))); /* add AGB component. note that essentially no models [any of the SB99 geneva or padova tracks, or NuGrid, or recent other MESA models] predict a significant dependence on metallicity (that shifts slightly when the 'bump' occurs, but not the overall loss rate), so this term is effectively metallicity-independent */
         double f_agb=0.1, t_agb=0.8, x_agb=t_agb/DMAX(t,1.e-4); x_agb*=x_agb; p += f_agb * pow(x_agb,0.8) * (exp(-DMIN(50.,x_agb*x_agb*x_agb)) + 1./(100. + x_agb)); /* May 28, 2022: re-fit AGB component based on inputs from Caleb Choban: previous model for FIRE-3 doesn't make sense for stars 1.5-4 Msol, can't possibly give sub-Chandrasekhar WDs or the correct initial-final mass relation. Here we re-fit the AGB mass loss for the Geneva v00 (rotating models show too little), 2013 tracks, 1x solar, times at same resolution as above, using the 'Empirical' wind prescription in STARBURST99. Have validated that nothing else, including wind specific energies, changes - only the mass-loss rates */
 #endif
-        if(star_age < 0.033) {p *= 0.01 + calculate_relative_light_to_mass_ratio_from_imf(star_age, i, 1);} // late-time independent of massive stars
+        if(star_age < 0.033) {p *= 0.01 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);} // late-time independent of massive stars
         p *= All.StellarMassLoss_Rate_Renormalization * (dt*UNIT_TIME_IN_GYR); // fraction of particle mass expected to return in the timestep //
         p = 1.0 - exp(-p); // need to account for p>1 cases //
     }
