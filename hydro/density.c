@@ -947,6 +947,7 @@ void density(void)
 
 
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
+                    int k1, k2;
                     for(k1 = 0; k1 < 3; k1++)
                         for(k2 = 0; k2 < 3; k2++)
                         {
