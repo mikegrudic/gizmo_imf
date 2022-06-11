@@ -546,7 +546,7 @@ But, you ask, what if I want to make GIZMO act more like code X? Well, you shoul
 **GADGET**: Turn on the compiler flags:
 ```bash
 HYDRO_DENSITY_SPH
-DISABLE_SPH_PARTICLE_WAKEUP
+DISABLE_GAS_CELL_WAKEUP
 SPH_DISABLE_CD10_ARTVISC
 SPH_DISABLE_PM_CONDUCTIVITY
 ```
@@ -810,9 +810,9 @@ You should read the section on [Fluid (Hydro) Solvers](#hydro) for more details 
 
 
 
-**HYDRO\_PRESSURE\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "pressure-energy" formulation from Hopkins 2013. This will move the SPH particles with the fluid, so any `HYDRO_FIX_MESH_MOTION` setting is ignored.
+**HYDRO\_PRESSURE\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "pressure-energy" formulation from Hopkins 2013. This will move the gas cell/particles with the fluid, so any `HYDRO_FIX_MESH_MOTION` setting is ignored.
 
-**HYDRO\_DENSITY\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "density" formulation from Springel and Hernquist 2002. This will move the SPH particles with the fluid, so any `HYDRO_FIX_MESH_MOTION` setting is ignored.
+**HYDRO\_DENSITY\_SPH**: Use SPH to solve hydro, specifically the Lagrangian "density" formulation from Springel and Hernquist 2002. This will move the gas cell/particles with the fluid, so any `HYDRO_FIX_MESH_MOTION` setting is ignored.
 
 **SPH\_DISABLE\_CD10\_ARTVISC**: This option is relevant if and only if you are using one of the SPH methods. If turned on, it will disable the matrix-based higher-order gradient switch from Cullen & Dehnen 2010 for the SPH artificial viscosity (a switch to attempt to "turn down" artificial viscosity away from shocks). Instead, the older Morris 1987 constant artificial viscosity + Balsara switch method (as in GADGET) is used.
 
@@ -2319,7 +2319,7 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
-#DISABLE_SPH_PARTICLE_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
+#DISABLE_GAS_CELL_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
 #DO_UPWIND_TIME_CENTERING       # this (and DO_HALFSTEP_FOR_MESHLESS_METHODS) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing)
 #DISABLE_SURFACE_VOLCORR        # disables HYDRO_KERNEL_SURFACE_VOLCORR if it would be set by default (e.g. if EOS_ELASTIC is enabled)
 #HYDRO_EXPLICITLY_INTEGRATE_VOLUME # explicitly integrate the kernel continuity equation for cell volumes (giving e.g. densities), as in e.g. Monaghan 2000, but with a term that relaxes the integrated cell volume back to the explicitly evaluated kernel calculation on a timescale ~10 t_cross where t_cross ~ MAX(H_kernel , L_grad) / MIN(cs_eff) where L_grad is the density gradient scale length and cs_eff the minimum sound/torsion/tension wave speed. This module ONLY makes sense for strictly fixed-mass (SPH/MFM) methods
@@ -2437,7 +2437,7 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 
 **FORCE\_ENTROPIC\_EOS\_BELOW**: This allows you to set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities (approach mach numbers) are below this threshold relative to the sound speed, it uses the entropic EOS. This is designed to reduce numerical diffusivity much more accurately than the alternative 'energy-entropy' switch above, but this value can be important in highly sub-sonic problems
 
-**DISABLE\_SPH\_PARTICLE\_WAKEUP**: This turns off the codes ability to "wake up" particles: i.e. to move a particle from a large timestep to a smaller one (by default, if the signal velocity of a particle increases, or it is more than a factor of ~2 larger timestep than its neighbor particles, it is forced into shorter timesteps). Disabling this can lead to severe errors in poorly-resolved flows (because particles might "move through" each other), so this flag should only be activated for debugging.
+**DISABLE\_GAS\_CELL\_WAKEUP**: This turns off the codes ability to "wake up" particles: i.e. to move a particle from a large timestep to a smaller one (by default, if the signal velocity of a particle increases, or it is more than a factor of ~2 larger timestep than its neighbor particles, it is forced into shorter timesteps). Disabling this can lead to severe errors in poorly-resolved flows (because particles might "move through" each other), so this flag should only be activated for debugging.
 
 **DO\_UPWIND\_TIME\_CENTERING**: This (and `DO_HALFSTEP_FOR_MESHLESS_METHODS`) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing). 
 
@@ -2577,7 +2577,7 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 <a name="config-debug-loadbalance"></a>
 ### _Load-Balancing_ 
 
-**ALLOW\_IMBALANCED\_GASPARTICLELOAD**: Increases All.MaxPartSph (maximum number of SPH particles allowed per MPI task, default is PartAllocFac*Number of gas particles/Number of Tasks) to All.MaxPart (same using all particles instead of gas elements): can allow better load-balancing in some cases, but uses more memory. But try this flag if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason). It can help to declare 'up front' the memory useage, preventing this error even though the mean memory footprint is larger. This is essentially required if you are running simulations that involve lots of element-splitting, as one is continuously creating new gas resolution elements, which will overflow memory because of how they have to be ranked.
+**ALLOW\_IMBALANCED\_GASPARTICLELOAD**: Increases All.MaxPartSph (maximum number of gas cells allowed per MPI task, default is PartAllocFac*Number of gas particles/Number of Tasks) to All.MaxPart (same using all particles instead of gas elements): can allow better load-balancing in some cases, but uses more memory. But try this flag if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason). It can help to declare 'up front' the memory useage, preventing this error even though the mean memory footprint is larger. This is essentially required if you are running simulations that involve lots of element-splitting, as one is continuously creating new gas resolution elements, which will overflow memory because of how they have to be ranked.
 
 **SEPARATE\_STELLARDOMAINDECOMP**: This will completely separate the star particles in the domain decomposition and memory structures. The implementation is incomplete -- it should only be used for specific debugging.
 

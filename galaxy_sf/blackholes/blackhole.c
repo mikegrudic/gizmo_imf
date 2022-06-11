@@ -157,8 +157,8 @@ double bh_angleweight_localcoupling(int j, double cos_theta, double r, double H_
     double V_i = 4.*M_PI/3. * H_bh*H_bh*H_bh / (All.DesNumNgb * All.BlackHoleNgbFactor); // this is approximate, will be wrong (but ok b/c just increases weight to neighbors) when not enough neighbors found //
     if(V_i<0 || isnan(V_i)) {V_i=0;}
     if(V_j<0 || isnan(V_j)) {V_j=0;}
-    double sph_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
-    wk = 0.5 * (1. - 1./sqrt(1. + sph_area / (M_PI*r*r))); // corresponding geometric weight //
+    double face_area = fabs(V_i*V_i*dwk + V_j*V_j*dwk_j); // effective face area //
+    wk = 0.5 * (1. - 1./sqrt(1. + face_area / (M_PI*r*r))); // corresponding geometric weight //
 #if defined(BH_FB_VOLUMEWEIGHTED)
     wk = 0.5 * (V_j/V_i) * (V_i*wk + V_j*wk_j); // weight in the limit N_particles >> 1 for equal-mass particles (accounts for self-shielding if some in dense disk)
 #endif

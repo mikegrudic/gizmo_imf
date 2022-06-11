@@ -131,7 +131,7 @@ void find_timesteps(void)
             TimeBinCount[binold]--;
             if(P[i].Type == 0)
             {
-                TimeBinCountSph[binold]--;
+                TimeBinCountGas[binold]--;
 #ifdef GALSF
                 TimeBinSfr[binold] -= SphP[i].Sfr;
                 TimeBinSfr[bin] += SphP[i].Sfr;
@@ -172,7 +172,7 @@ void find_timesteps(void)
                 PrevInTimeBin[i] = NextInTimeBin[i] = -1;
             }
             TimeBinCount[bin]++;
-            if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
+            if(P[i].Type == 0) {TimeBinCountGas[bin]++;}
             P[i].TimeBin = bin;
         }
 
@@ -1249,7 +1249,7 @@ void process_wake_ups(void)
 		integertime tend = All.Ti_Current;
 
 		TimeBinCount[binold]--;
-		if(P[i].Type == 0) {TimeBinCountSph[binold]--;}
+		if(P[i].Type == 0) {TimeBinCountGas[binold]--;}
 
 		prev = PrevInTimeBin[i];
 		next = NextInTimeBin[i];
@@ -1272,7 +1272,7 @@ void process_wake_ups(void)
 		    PrevInTimeBin[i] = NextInTimeBin[i] = -1;
 		}
 		TimeBinCount[bin]++;
-		if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
+		if(P[i].Type == 0) {TimeBinCountGas[bin]++;}
 		P[i].TimeBin = bin;
         if(TimeBinActive[bin]) {NumForceUpdate++;}
 		n++;
@@ -1282,7 +1282,7 @@ void process_wake_ups(void)
 		if(tend < tstart)
 		{
 		    do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
-		    set_predicted_sph_quantities_for_extra_physics(i);
+		    set_predicted_quantities_for_extra_physics(i);
 		}
 		P[i].Ti_begstep = All.Ti_Current;
 		P[i].dt_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);

@@ -350,13 +350,9 @@ void force_drift_node(int no, integertime time1)
 
 
 
-/*! This function updates the hmax-values in tree nodes that hold SPH
- *  particles. These values are needed to find all neighbors in the
- *  hydro-force computation.  Since the Hsml-values are potentially changed
- *  in the SPH-density computation, force_update_hmax() should be carried
- *  out just before the hydrodynamical SPH forces are computed, i.e. after
- *  density().
- */
+/*! This function updates the hmax-values in tree nodes that hold gas cells. These values are needed to find all neighbors in the
+ *  hydro-force computation.  Since the Hsml-values are potentially changed in the fluid-density computation, force_update_hmax() should be carried
+ *  out just before the hydrodynamical forces are computed, i.e. after density(). */
 void force_update_hmax(void)
 {
   int i, no, ta, totDomainNumChanged;

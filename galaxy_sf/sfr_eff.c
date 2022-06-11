@@ -111,7 +111,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
-    double mu = 0.01 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun
+    double mu = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
 #endif
@@ -474,7 +474,7 @@ void star_formation_parent_routine(void)
                     {
                         /* make a BH particle */
                         P[i].Type = 5;
-                        TimeBinCountSph[P[i].TimeBin]--;
+                        TimeBinCountGas[P[i].TimeBin]--;
                         num_bhformed++;
                         Stars_converted++;
                         stars_converted++;
@@ -530,7 +530,7 @@ void star_formation_parent_routine(void)
                             stars_converted++;
                             sum_mass_stars += P[i].Mass;
                             
-                            TimeBinCountSph[P[i].TimeBin]--;
+                            TimeBinCountGas[P[i].TimeBin]--;
                             TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
                             
                             P[i].StellarAge = All.Time;

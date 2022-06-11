@@ -97,7 +97,7 @@ void compute_additional_forces_for_all_particles(void);
 
 
 void set_cosmo_factors_for_current_time(void);
-void drift_sph_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
+void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
 
 void set_non_standard_physics_for_current_time(void);
 void calculate_non_standard_physics(void);
@@ -157,8 +157,8 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, 
 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
-void set_predicted_sph_quantities_for_extra_physics(int i);
-void do_sph_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
+void set_predicted_quantities_for_extra_physics(int i);
+void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt);
 #endif
@@ -406,7 +406,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 #ifdef MAGNETIC
 void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r);
 #endif
-int blackhole_spawn_particle_wind_shell( int i, int dummy_sph_i_to_clone, int num_already_spawned );
+int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_already_spawned );
 void spawn_bh_wind_feedback(void);
 #endif
 int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
@@ -554,7 +554,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
 int is_particle_single_star_eligible(long i);
 double evaluate_stellar_age_Gyr(double stellar_tform);
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
-double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i);
+double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i, int mode);
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
 double return_probability_of_this_forming_bh_from_seed_model(int i);
 
@@ -783,7 +783,6 @@ void peano_hilbert_order(void);
 double pot_integrand(double xx);
 void predict(double time);
 void predict_collisionless_only(double time);
-void predict_sph_particles(double time);
 void prepare_decouple(void);
 void read_ic(char *fname);
 int read_outputlist(char *fname);
@@ -799,7 +798,6 @@ void savepositions(int num);
 void savepositions_ioformat1(int num);
 double my_second(void);
 void set_softenings(void);
-void set_sph_kernel(void);
 void set_units(void);
 void setup_smoothinglengths(void);
 void apply_special_boundary_conditions(int i, double mass_for_dp, int mode);

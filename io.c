@@ -3759,7 +3759,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
  *  Each snapshot file contains a header first, then particle positions,
  *  velocities and ID's.  Then particle masses are written for those particle
  *  types with zero entry in MassTable.  After that, first the internal
- *  energies u, and then the density is written for the SPH particles.  If
+ *  energies u, and then the density is written for the gas cells.  If
  *  cooling is enabled, mean molecular weight and neutral hydrogen abundance
  *  are written for the gas particles. This is followed by the gas kernel
  *  length and further blocks of information, depending on included physics

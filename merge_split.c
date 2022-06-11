@@ -404,7 +404,7 @@ void merge_and_split_particles(void)
 int split_particle_i(int i, int n_particles_split, int i_nearest)
 {
     double mass_of_new_particle;
-    if( ((P[i].Type==0) && (NumPart + n_particles_split >= All.MaxPartSph)) || ((P[i].Type!=0) && (NumPart + n_particles_split >= All.MaxPart)) )
+    if( ((P[i].Type==0) && (NumPart + n_particles_split >= All.MaxPartGas)) || ((P[i].Type!=0) && (NumPart + n_particles_split >= All.MaxPart)) )
     {
         printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart); fflush(stdout);
         return 0;
@@ -488,7 +488,7 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     {
         /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
         SphP[j] = SphP[i];
-        //memcpy(SphP[j],SphP[i],sizeof(struct sph_particle_data)); // safer copy to make sure we don't just end up with a pointer re-direct
+        //memcpy(SphP[j],SphP[i],sizeof(struct gas_cell_data)); // safer copy to make sure we don't just end up with a pointer re-direct
         /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[i].ConditionNumber *= 10.0;
         SphP[j].ConditionNumber = SphP[i].ConditionNumber;
@@ -991,7 +991,7 @@ void rearrange_particle_sequence(void)
     int i, j, flag = 0, flag_sum, j_next;
     int count_elim, count_gaselim, count_bhelim, tot_elim, tot_gaselim, tot_bhelim;
     struct particle_data psave;
-    struct sph_particle_data sphsave;
+    struct gas_cell_data gascellsave;
 #ifdef CHIMES
     struct gasVariables gasVarsSave;
 #endif
@@ -1032,13 +1032,13 @@ void rearrange_particle_sequence(void)
                 P[i] = P[j]; /* now set the pointer equal to this new P[j] */
                 P[j] = psave; /* now set the P[j] equal to the old, saved pointer */
                 /* so we've swapped the two P[i] and P[j] */
-                sphsave = SphP[i];
+                gascellsave = SphP[i];
                 SphP[i] = SphP[j];
-                SphP[j] = sphsave;  /* have the gas particle take its sph pointer with it */
+                SphP[j] = gascellsave;  /* have the gas particle take its gas/fluid cell pointer with it */
 #ifdef MAINTAIN_TREE_IN_REARRANGE
                 swap_treewalk_pointers(i,j);
 #endif
-#ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from SphP */
+#ifdef CHIMES /* swap chimes-specific 'gasvars' structure which is separate from the default code gas cell structure */
                 gasVarsSave = ChimesGasVars[i]; ChimesGasVars[i] = ChimesGasVars[j]; ChimesGasVars[j] = gasVarsSave;
                 /* Old particle (now at position j) is no longer a gas particle, so delete its abundance array. */
                 free_gas_abundances_memory(&(ChimesGasVars[j]), &ChimesGlobalVars);
@@ -1063,7 +1063,7 @@ void rearrange_particle_sequence(void)
 
             if(P[i].Type == 0)
             {
-                TimeBinCountSph[P[i].TimeBin]--;
+                TimeBinCountGas[P[i].TimeBin]--;
 
                 P[i] = P[N_gas - 1];
                 SphP[i] = SphP[N_gas - 1];
@@ -1089,7 +1089,7 @@ void rearrange_particle_sequence(void)
             {
                 if(P[i].Type == 5) {count_bhelim++;} /* record elimination if BH */
                 P[i] = P[NumPart - 1]; /* re-directs pointer for this particle to pointer at final particle -- so we
-                                        swap the two; note that ordering -does not- matter among the non-SPH particles
+                                        swap the two; note that ordering -does not- matter among the non-fluid/gas cells
                                         so its fine if this mixes up the list ordering of different particle types */
 #ifdef MAINTAIN_TREE_IN_REARRANGE
                 swap_treewalk_pointers(i, NumPart - 1);

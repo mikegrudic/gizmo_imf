@@ -20,7 +20,7 @@
 
 /*! This function reads the initial conditions, and allocates storage for the
  *  tree(s). Various variables of the particle data are initialised and An
- *  intial domain decomposition is performed. If SPH particles are present,
+ *  intial domain decomposition is performed. If gas cells are present,
  *  the initial gas kernel lengths are determined.
  */
 void init(void)
@@ -517,7 +517,7 @@ void init(void)
     All.PM_Ti_endstep = All.PM_Ti_begstep = 0;
 #endif
 
-    for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
+    for(i = 0; i < N_gas; i++)	/* initialize gas/fluid cell properties */
     {
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
 
@@ -823,7 +823,7 @@ void init(void)
 
 
     density();
-    for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
+    for(i = 0; i < N_gas; i++)	/* initialize gas/fluid cell properties */
     {
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
@@ -931,7 +931,7 @@ void init(void)
         double mass_min = MAX_REAL_NUMBER;
         double mass_max = -MAX_REAL_NUMBER;
         double mass_tot = 0;
-        for(i = 0; i < N_gas; i++)	/* initialize sph_properties */
+        for(i = 0; i < N_gas; i++)	/* initialize gas/fluid cell properties */
         {
             mass_tot += P[i].Mass;
             if(P[i].Mass > mass_max) mass_max = P[i].Mass;

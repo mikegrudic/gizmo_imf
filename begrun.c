@@ -58,7 +58,7 @@ void begrun(void)
 #endif
 
       printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
-      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct sph_particle_data));
+      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct gas_cell_data));
 
     }
 
@@ -2370,7 +2370,8 @@ void read_parameter_file(char *fname)
 #ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
     All.ArtMagDispConst = 1.0;
 #endif
-#endif // sph
+#endif
+    
 #ifdef DIVBCLEANING_DEDNER
 #ifdef MHD_CONSTRAINED_GRADIENT
     All.DivBcleanParabolicSigma = 1.0;
