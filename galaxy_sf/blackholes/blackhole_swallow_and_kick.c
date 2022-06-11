@@ -298,9 +298,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     if(P[j].Type == 5)  /* this is a BH-BH merger */
                     {
 #ifdef BH_OUTPUT_MOREINFO
-                        fprintf(FdBhMergerDetails,"%g  %u %g %2.7f %2.7f %2.7f  %u %g %2.7f %2.7f %2.7f\n", All.Time,  local.ID,local.BH_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdBhMergerDetails);
+                        fprintf(FdBhMergerDetails,"%g  %llu %g %2.7f %2.7f %2.7f  %llu %g %2.7f %2.7f %2.7f\n", All.Time,  (unsigned long long)local.ID,local.BH_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdBhMergerDetails);
 #elif !defined(IO_REDUCED_MODE)
-                        fprintf(FdBlackHolesDetails,"ThisTask=%d, time=%g: id=%u swallows %u (%g %g)\n", ThisTask, All.Time, local.ID, P[j].ID, local.BH_Mass, BPP(j).BH_Mass); fflush(FdBlackHolesDetails);
+                        fprintf(FdBlackHolesDetails,"ThisTask=%d, time=%g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.BH_Mass, BPP(j).BH_Mass); fflush(FdBlackHolesDetails);
 #endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
                         /* the true dynamical mass of the merging BH is Mass_j/BH_INCREASE_DYNAMIC_MASS unless exceeded by physical growth

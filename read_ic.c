@@ -1383,7 +1383,7 @@ void find_block(char *label, FILE * fd)
         FBSKIP;
         if(blksize != 8)
         {
-            printf("Incorrect Format (blksize=%u)!\n", blksize);
+            printf("Incorrect Format (blksize=%llu)!\n", (unsigned long long)blksize);
             endrun(1891);
         }
         else

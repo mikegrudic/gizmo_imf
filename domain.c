@@ -61,7 +61,10 @@ extern int old_MaxPart, new_MaxPart;
 #define KD_COUNT_GAS_IN_DOMAIN
 #define KD_COUNT_STARS_IN_DOMAIN
 static int *toGoStars, *toGetStars, *list_N_stars, *list_loadstars;
-//static double *list_workstars;
+static double *list_workstars;
+#define N_DOMAINDECOMP_QUEUES 4
+#else
+#define N_DOMAINDECOMP_QUEUES 3
 #endif
 
 static struct local_topnode_data
@@ -1282,7 +1285,7 @@ struct queue_data
   int *previous;
   double *value;
 }
-queues[3];
+queues[N_DOMAINDECOMP_QUEUES];
 
 struct tasklist_data
 {
@@ -1318,7 +1321,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
   double value, target_max_balance, best_balance;
   double tot_work, tot_load, tot_loadactivegas;
 #ifdef SEPARATE_STELLARDOMAINDECOMP
-  double target_load_activestars_balance,tot_loadactivestars;
+  double target_load_activestars_balance, tot_loadactivestars;
 #endif
 
 
@@ -1391,7 +1394,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
   qsort(domainAssign, multipledomains * NTask, sizeof(struct domain_segments_data), domain_sort_load);
 
   /* initialize three queues */
-  for(q = 0; q < 3; q++)
+  for(q = 0; q < N_DOMAINDECOMP_QUEUES; q++)
     {
       queues[q].next = (int *) mymalloc("queues[q].next", NTask * sizeof(int));
       queues[q].previous = (int *) mymalloc("queues[q].previous", NTask * sizeof(int));
@@ -1412,7 +1415,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
   for(n = 0; n < multipledomains * NTask; n++)
     {
       /* need to decide, which of the tasks that has the lowest load in one of the three quantities is best */
-      for(q = 0, best_balance = 1.0e30, best_queue = 0; q < 3; q++)
+      for(q = 0, best_balance = 1.0e30, best_queue = 0; q < N_DOMAINDECOMP_QUEUES; q++)
 	{
 	  target = queues[q].first;
 
@@ -1453,12 +1456,8 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 #endif
       tasklist[target].count++;
 
-      /* now we need to remove the element 'target' from the 3 queue's and reinsert it */
-#ifdef SEPARATE_STELLARDOMAINDECOMP
-    for(q = 0; q < 4; q++)
-#else
-    for(q = 0; q < 3; q++)
-#endif
+      /* now we need to remove the element 'target' from the N_DOMAINDECOMP_QUEUES queue's and reinsert it */
+    for(q = 0; q < N_DOMAINDECOMP_QUEUES; q++)
     {
 	  switch (q)
 	    {
@@ -1547,7 +1546,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
     }
 
   /* free the queues */
-  for(q = 2; q >= 0; q--)
+  for(q = N_DOMAINDECOMP_QUEUES-1; q >= 0; q--)
     {
       myfree(queues[q].value);
       myfree(queues[q].previous);
@@ -1690,7 +1689,7 @@ int domain_countToGo(size_t nlimit)
                     nlimit -= sizeof(struct gas_cell_data);
                 }
 #ifdef SEPARATE_STELLARDOMAINDECOMP
-                if(((P[n].Type & 15) == 4) || ((P[n].Type & 15) == 5)) {toGoStars[DomainTask[no]] += 1;}
+                if(((P[n].Type & 15) == 4) || ((P[n].Type & 15) == 5)) {toGoStars[DomainTask[no]] += 1;} // ???
 #endif
                 P[n].Type |= 16;    /* flag this particle for export */
             }
@@ -2406,8 +2405,8 @@ void domain_sumCost(void)
 #ifdef SEPARATE_STELLARDOMAINDECOMP
   int *local_domainCountStars;
   float *local_domainWorkStars;
-  local_domainCountStars = (int *) mymalloc("local_domainCountStars", NTopnodes * sizeof(int));
   local_domainWorkStars = (float *) mymalloc("local_domainWorkStars", NTopnodes * sizeof(float));
+  local_domainCountStars = (int *) mymalloc("local_domainCountStars", NTopnodes * sizeof(int));
 #endif
 
 

@@ -811,7 +811,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 dm_D = mass_D - BPP(n).Mass_D; // get the tota change in D mass in the protostar
                 rel_dr = r/(BPP(n).ProtoStellarRadius_inSolar/UNIT_LENGTH_IN_SOLAR)-1.0; // get the actual relative change over the whole timestep
             }
-            printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*UNIT_MASS_IN_SOLAR,rel_dr,dm*UNIT_MASS_IN_SOLAR, dm_D*UNIT_MASS_IN_SOLAR, Tc, Pc*UNIT_PRESSURE_IN_CGS, rhoc*UNIT_DENSITY_IN_CGS, beta, dt*UNIT_TIME_IN_MYR, n_ad, lum_int*UNIT_LUM_IN_SOLAR, lum_I*UNIT_LUM_IN_SOLAR, lum_D*UNIT_LUM_IN_SOLAR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle, P[n].ZAMS_Mass );
+            printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*UNIT_MASS_IN_SOLAR,rel_dr,dm*UNIT_MASS_IN_SOLAR, dm_D*UNIT_MASS_IN_SOLAR, Tc, Pc*UNIT_PRESSURE_IN_CGS, rhoc*UNIT_DENSITY_IN_CGS, beta, dt*UNIT_TIME_IN_MYR, n_ad, lum_int*UNIT_LUM_IN_SOLAR, lum_I*UNIT_LUM_IN_SOLAR, lum_D*UNIT_LUM_IN_SOLAR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle, P[n].ZAMS_Mass );
 #endif
             // Check whether the star can progress to the next state
             // move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
@@ -845,7 +845,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             BPP(n).StellarAge = All.Time; // store the time of the last promotion
             if(BPP(n).ProtoStellarStage == 5) {P[n].ZAMS_Mass = P[n].BH_Mass;} // store the mass at which we reached the main sequence
 #ifdef PS_EVOL_OUTPUT_MOREINFO
-            printf("%u promoted to %d \n",P[n].ID,(stage+stage_increase)); //Debug message
+            printf("%llu promoted to %d \n",(unsigned long long)P[n].ID,(stage+stage_increase)); //Debug message
 #endif
         } //increase evolutionary stage if the particle satisfies the requirements
     }
@@ -871,7 +871,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 FILE *FdBhSNDetails2;
                 sprintf(buf, "%s%s", All.OutputDir, "SN_details_STARFORGE.txt");
                 FdBhSNDetails2 = fopen(buf, "a");
-                fprintf(FdBhSNDetails2, "%g %u %g %g %g %g %g %g %g \n", All.Time, P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails2);
+                fprintf(FdBhSNDetails2, "%g %llu %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails2);
                 fclose(FdBhSNDetails2);
             }
 #endif
@@ -909,7 +909,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     if(BPP(n).ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
 #endif
-    {printf("PS evolution t: %g sink ID: %u mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, P[n].ID,BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR,BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR, BPP(n).SinkRadius, P[n].ZAMS_Mass );}
+    {printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,BPP(n).BH_Mass*UNIT_MASS_IN_SOLAR,BPP(n).ProtoStellarRadius_inSolar,BPP(n).ProtoStellarStage, BPP(n).BH_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk*UNIT_MASS_IN_SOLAR, BPP(n).SinkRadius, P[n].ZAMS_Mass );}
 #endif
     return;
 }
