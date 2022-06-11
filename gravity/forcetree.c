@@ -697,10 +697,12 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(pa->Type == 5)
                     {
                         bh_mass += pa->Mass;    /* actual value is not used for distances */
-			N_BH += 1;
                         bh_pos_times_mass[0] += pa->Pos[0] * pa->Mass;  /* positition times mass; divide by total mass later */
                         bh_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
                         bh_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
+                        N_BH += 1;
+#endif
 #ifdef SINGLE_STAR_TIMESTEPPING
                         bh_mom[0] += pa->Vel[0] * pa->Mass;
                         bh_mom[1] += pa->Vel[1] * pa->Mass;
@@ -856,22 +858,23 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #ifdef BH_CALC_DISTANCES
         Nodes[no].bh_mass = bh_mass;
-	Nodes[no].N_BH = N_BH;
-        if(bh_mass > 0)
-            {
-                Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
-                Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
-                Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
-                Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
-                Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
-                Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
-
+        Nodes[no].N_BH = N_BH;
+#endif
+        if(bh_mass > 0)
+        {
+            Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
+            Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
+            Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
+            Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
+            Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
+            Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-                Nodes[no].MaxFeedbackVel = max_feedback_vel;
+            Nodes[no].MaxFeedbackVel = max_feedback_vel;
 #endif                        
 #endif
-            }
+        }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
         Nodes[no].s_dm[0] = s_dm[0];
@@ -973,8 +976,8 @@ void force_exchange_pseudodata(void)
         MyFloat bh_mass;
         MyFloat bh_pos[3];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
-        MyFloat bh_vel[3];
         int N_BH;
+        MyFloat bh_vel[3];
 #ifdef  SINGLE_STAR_FB_TIMESTEPLIMIT
         MyFloat MaxFeedbackVel;
 #endif        
@@ -1301,13 +1304,13 @@ void force_treeupdate_pseudos(int no)
             bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
             bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
+            N_BH += Nodes[p].N_BH;
             bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
             bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
             bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
             if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(max_feedback_vel, Nodes[p].MaxFeedbackVel);}
 #endif
-            N_BH += Nodes[p].N_BH;
 #endif
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1455,7 +1458,9 @@ void force_treeupdate_pseudos(int no)
 #endif
 #ifdef BH_CALC_DISTANCES
     Nodes[no].bh_mass = bh_mass;
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
     Nodes[no].N_BH = N_BH;
+#endif
     if(bh_mass > 0)
         {
             Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;
@@ -2271,17 +2276,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         }
                     }
 #endif
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
 #ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
-		    if(nop->N_BH > 0)
-		    {
-		        if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)) // we have a star within the specified radius
-			{
-			    /* open cell */
-			    no = nop->u.d.nextnode;
-			    continue;				
-			}
-		    }
+                    if(nop->N_BH > 0)
+                    {
+                        if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)) // we have a star within the specified radius
+                        {
+                            /* open cell */
+                            no = nop->u.d.nextnode;
+                            continue;
+                        }
+                    }
 #endif
+#endif
+                    
                 }
 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
