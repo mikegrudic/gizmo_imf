@@ -627,15 +627,15 @@ void output_log_messages(void)
 {
   double z;
   int i, j;
-  long long tot, tot_sph;
+  long long tot, tot_gas;
   long long tot_count[TIMEBINS];
-  long long tot_count_sph[TIMEBINS];
+  long long tot_count_gas[TIMEBINS];
   long long tot_cumulative[TIMEBINS];
   int weight, corr_weight;
   double sum, avg_CPU_TimeBin[TIMEBINS], frac_CPU_TimeBin[TIMEBINS];
 
   sumup_large_ints(TIMEBINS, TimeBinCount, tot_count);
-  sumup_large_ints(TIMEBINS, TimeBinCountSph, tot_count_sph);
+  sumup_large_ints(TIMEBINS, TimeBinCountGas, tot_count_gas);
 
 #if defined(IO_SUPPRESS_TIMEBIN_STDOUT)
     if((ThisTask == 0) && (All.HighestActiveTimeBin>=(TIMEBINS-IO_SUPPRESS_TIMEBIN_STDOUT)))
@@ -688,21 +688,21 @@ void output_log_messages(void)
 #ifndef IO_REDUCED_MODE
         fprintf(FdTimebin,"Occupied timebins: non-cells     cells       dt                 cumulative A D    avg-time  cpu-frac\n");
 #endif
-        for(i = TIMEBINS - 1, tot = tot_sph = 0; i >= 0; i--)
-            if(tot_count_sph[i] > 0 || tot_count[i] > 0)
+        for(i = TIMEBINS - 1, tot = tot_gas = 0; i >= 0; i--)
+            if(tot_count_gas[i] > 0 || tot_count[i] > 0)
             {
-                printf(" %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
+                printf(" %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_gas[i], tot_count_gas[i],
                        GET_INTEGERTIME_FROM_TIMEBIN(i) * All.Timebase_interval, tot_cumulative[i], (i == All.HighestActiveTimeBin) ? '<' : ' ',
                        (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ', avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
 #ifndef IO_REDUCED_MODE
-                fprintf(FdTimebin," %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_sph[i], tot_count_sph[i],
+                fprintf(FdTimebin," %c  bin=%2d      %10llu  %10llu   %16.12f       %10llu %c %c  %10.2f    %5.1f%%\n", TimeBinActive[i] ? 'X' : ' ', i, tot_count[i] - tot_count_gas[i], tot_count_gas[i],
                         GET_INTEGERTIME_FROM_TIMEBIN(i) * All.Timebase_interval, tot_cumulative[i], (i == All.HighestActiveTimeBin) ? '<' : ' ',
                         (tot_cumulative[i] > All.TreeDomainUpdateFrequency * All.TotNumPart) ? '*' : ' ', avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
 #endif
                 if(TimeBinActive[i])
                 {
                     tot += tot_count[i];
-                    tot_sph += tot_count_sph[i];
+                    tot_gas += tot_count_gas[i];
                 }
             }
         printf("               ------------------------\n");
@@ -712,17 +712,17 @@ void output_log_messages(void)
 #ifdef PMGRID
         if(All.PM_Ti_endstep == All.Ti_Current)
         {
-            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
+            printf("PM-Step. Total: %10llu  %10llu    Sum: %10llu\n\n", tot - tot_gas, tot_gas, tot);
 #ifndef IO_REDUCED_MODE
-            fprintf(FdTimebin, "PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            fprintf(FdTimebin, "PM-Step. Total: %10llu  %10llu    Sum: %10llu\n", tot - tot_gas, tot_gas, tot);
 #endif
         }
         else
 #endif
         {
-            printf("Total active:   %10llu  %10llu    Sum: %10llu\n\n", tot - tot_sph, tot_sph, tot);
+            printf("Total active:   %10llu  %10llu    Sum: %10llu\n\n", tot - tot_gas, tot_gas, tot);
 #ifndef IO_REDUCED_MODE
-            fprintf(FdTimebin, "Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_sph, tot_sph, tot);
+            fprintf(FdTimebin, "Total active:   %10llu  %10llu    Sum: %10llu\n", tot - tot_gas, tot_gas, tot);
 #endif
         }
 #ifndef IO_REDUCED_MODE

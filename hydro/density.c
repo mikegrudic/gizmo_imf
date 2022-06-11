@@ -548,7 +548,7 @@ void density(void)
                 if(ags_density_isactive(i) && (P[i].Type > 0)) {PPP[i].Particle_DivVel = 0;}
 #endif
 
-                // inverse of SPH volume element (to satisfy constraint implicit in Lagrange multipliers)
+                // inverse of fluid volume element (to satisfy constraint implicit in Lagrange multipliers)
                 if(PPP[i].DhsmlNgbFactor > -0.9) {PPP[i].DhsmlNgbFactor = 1 / (1 + PPP[i].DhsmlNgbFactor);} else {PPP[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
                 P[i].Particle_DivVel *= PPP[i].DhsmlNgbFactor;
 
@@ -947,6 +947,7 @@ void density(void)
 
 
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
+                    int k1, k2;
                     for(k1 = 0; k1 < 3; k1++)
                         for(k2 = 0; k2 < 3; k2++)
                         {
@@ -1024,6 +1025,7 @@ void density(void)
 #if defined(GRAIN_FLUID)
             if((1 << P[i].Type) & (GRAIN_PTYPES))
             {
+                int k;
                 if(P[i].Gas_Density > 0)
                 {
                     P[i].Gas_InternalEnergy /= P[i].Gas_Density;

@@ -111,7 +111,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
     gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
-    double mu = 0.01 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun
+    double mu = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
 #endif
@@ -262,8 +262,12 @@ double get_starformation_rate(int i, int mode)
 #endif
 
 #if defined(GALSF_SFR_VIRIAL_SF_CRITERION) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
-    double k_cs = 1. * v_fast / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
-#if defined(SINGLE_STAR_SINK_DYNAMICS)
+    double v_eff_touse = v_fast;
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    v_eff_touse = cs_eff;
+#endif
+    double k_cs = 1. * v_eff_touse / (Get_Particle_Size(i)*All.cf_atime), alpha_crit; alpha_crit = 1.0; /* effective wavenumber for thermal+B-field+CR+whatever internal energy support, and threshold virial parameter */
+#if defined(SINGLE_STAR_SINK_DYNAMICS) & !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(cell_can_be_singlestar) {k_cs *= M_PI;} // use a stricter version here, because the relevant pre-factor depends on whether we expect Jeans collapse at the thermal limit to be resolved or un-resolved
 #endif
 #if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
@@ -470,7 +474,7 @@ void star_formation_parent_routine(void)
                     {
                         /* make a BH particle */
                         P[i].Type = 5;
-                        TimeBinCountSph[P[i].TimeBin]--;
+                        TimeBinCountGas[P[i].TimeBin]--;
                         num_bhformed++;
                         Stars_converted++;
                         stars_converted++;
@@ -526,7 +530,7 @@ void star_formation_parent_routine(void)
                             stars_converted++;
                             sum_mass_stars += P[i].Mass;
                             
-                            TimeBinCountSph[P[i].TimeBin]--;
+                            TimeBinCountGas[P[i].TimeBin]--;
                             TimeBinSfr[P[i].TimeBin] -= SphP[i].Sfr;
                             
                             P[i].StellarAge = All.Time;

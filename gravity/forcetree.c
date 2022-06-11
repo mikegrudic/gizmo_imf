@@ -2506,15 +2506,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-		r_target = sqrt(pow(pos_x - center[0],2) + pow(pos_y - center[1],2) + pow(pos_z - center[2],2)); // distance of target point from box center
-		if(r_source < r_target){
-		    dx = center[0] - pos_x;
-   		    dy = center[1] - pos_y;
-		    dz = center[2] - pos_z;
-		    fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);
-		} else {
-           	    fac = 0;
-		}
+                r_target = sqrt(pow(pos_x - center[0],2) + pow(pos_y - center[1],2) + pow(pos_z - center[2],2)); // distance of target point from box center
+                if(r_source < r_target) {
+                    dx = center[0] - pos_x;
+                    dy = center[1] - pos_y;
+                    dz = center[2] - pos_z;
+                    fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);
+                } else {
+                    fac = 0;
+                }
 #endif
                 acc_x += FLT(dx * fac);
                 acc_y += FLT(dy * fac);
@@ -2530,9 +2530,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
                         double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
+                        /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
                         acc_x += fac_df * dvx_h;
                         acc_y += fac_df * dvy_h;
                         acc_z += fac_df * dvz_h;
+                        /* perpendicular deflection component bx_im = P[distant particle/node] - P[bh], so positive = accel -towards- P[ext], but this is the residual term (after subtracting the homogeneous term), which points in the opposite direction */
+                        double fac_df_p = -fac_df / (b_impact * a_im + MIN_REAL_NUMBER);
+                        acc_x += fac_df_p * bx_im;
+                        acc_y += fac_df_p * by_im;
+                        acc_z += fac_df_p * bz_im;
                     }
                 }
 #endif

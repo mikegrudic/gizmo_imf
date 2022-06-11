@@ -19,7 +19,7 @@
  *
  * If gas particles are presented, the `interior' of the local domain is determined. This region is guaranteed
  * to contain only particles local to the processor. This information will be used to reduce communication in
- * the hydro part.  The density for active SPH particles is computed next. If the number of neighbours should
+ * the hydro part.  The density for active gas/fluid cells is computed next. If the number of neighbours should
  * be outside the allowed bounds, it will be readjusted by the function ensure_neighbours(), and for those
  * particle, the densities are recomputed accordingly. Finally, the hydrodynamical forces are added.
  */
@@ -64,13 +64,7 @@ void compute_hydro_densities_and_forces(void)
         ags_density();
 #endif
         force_update_hmax();	/* update kernel lengths in tree */
-        /*! This function updates the hmax-values in tree nodes that hold SPH
-         *  particles. These values are needed to find all neighbors in the
-         *  hydro-force computation.  Since the Hsml-values are potentially changed
-         *  in the SPH-denity computation, force_update_hmax() should be carried
-         *  out before the hydrodynamical SPH forces are computed, i.e. after
-         *  density().
-         */
+        /*! This function updates the hmax-values in tree nodes that hold gas. These values are needed to find all neighbors in the hydro-force computation.  Since the Hsml-values are potentially changed in the gas-denity computation, force_update_hmax() should be carried out before the hydrodynamical forces are computed, i.e. after density(). */
 
         PRINT_STATUS(" ..density & tree-update computation done...");
 

@@ -108,7 +108,11 @@ void GravAccel_RDITestProblem()
 #ifdef GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE
             acc *= All.Grain_Size_Max / P[i].Grain_Size;
 #endif
-            if((1 << P[i].Type) & (GRAIN_PTYPES))
+            int grain_subtype = 1;
+#if defined(PIC_MHD)
+            grain_subtype = P[i].MHD_PIC_SubType; /* check if the 'grains' are really PIC elements */
+#endif
+            if(((1 << P[i].Type) & (GRAIN_PTYPES)) && (grain_subtype <= 2))
             {
                 P[i].GravAccel[GRAV_DIRECTION_RDI] += acc * cos(All.Vertical_Grain_Accel_Angle * M_PI/180.);
                 P[i].GravAccel[0] += acc * sin(All.Vertical_Grain_Accel_Angle * M_PI/180.);

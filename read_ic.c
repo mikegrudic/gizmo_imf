@@ -750,9 +750,9 @@ void read_file(char *fname, int readTask, int lastTask)
         for(i = 0; i < 6; i++) {All.MassTable[i] = header.mass[i];}
 
         All.MaxPart = (int) (All.PartAllocFactor * (All.TotNumPart / NTask));
-        All.MaxPartSph = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
+        All.MaxPartGas = (int) (All.PartAllocFactor * (All.TotN_gas / NTask));	/* sets the maximum number of particles that may reside on a processor */
 #ifdef ALLOW_IMBALANCED_GASPARTICLELOAD
-        All.MaxPartSph = All.MaxPart; // PFH: increasing All.MaxPartSph according to this line can allow better load-balancing in some cases. however it leads to more memory problems
+        All.MaxPartGas = All.MaxPart; // PFH: increasing All.MaxPartGas according to this line can allow better load-balancing in some cases. however it leads to more memory problems
         // (PFH: needed to revert the change -- i.e. INCLUDE the line above: commenting it out, while it improved memory useage, causes some instability in the domain decomposition for
         //   sufficiently irregular trees. overall more stable behavior with the 'buffer', albeit at the expense of memory )
 #endif
@@ -817,9 +817,9 @@ void read_file(char *fname, int readTask, int lastTask)
 
         if(type == 0)
         {
-            if(N_gas + n_for_this_task > All.MaxPartSph)
+            if(N_gas + n_for_this_task > All.MaxPartGas)
             {
-                printf("Not enough space on task=%d for SPH particles (space for %d, need at least %lld)\n", ThisTask, All.MaxPartSph, N_gas + n_for_this_task);
+                printf("Not enough space on task=%d for gas/fluid cells (space for %d, need at least %lld)\n", ThisTask, All.MaxPartGas, N_gas + n_for_this_task);
                 fflush(stdout);
                 endrun(172);
             }
@@ -936,7 +936,7 @@ void read_file(char *fname, int readTask, int lastTask)
             if(RestartFlag == 2 && blocknr == IO_EOSTEMP) {continue;}
 #endif
             
-#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(SINGLE_STAR_RESTART_FROM_FIRESIM)
             if(RestartFlag == 2 && blocknr == IO_RADGAMMA) {continue;}
             if(RestartFlag == 2 && blocknr == IO_EDDINGTON_TENSOR) {continue;}
             if(RestartFlag == 2 && blocknr == IO_OSTAR) {continue;}
@@ -1383,7 +1383,7 @@ void find_block(char *label, FILE * fd)
         FBSKIP;
         if(blksize != 8)
         {
-            printf("Incorrect Format (blksize=%u)!\n", blksize);
+            printf("Incorrect Format (blksize=%llu)!\n", (unsigned long long)blksize);
             endrun(1891);
         }
         else

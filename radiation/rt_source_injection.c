@@ -283,7 +283,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += dE * (RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*local.Vel[kv]/All.cf_atime);}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                    double qtau=(0.75*All.Grain_Q_at_MaxGrainSize)/(All.Grain_Internal_Density*All.Grain_Size_Max), e0=(P[j].Mass/SphP[j].Density)*All.Vertical_Grain_Accel/qtau,tau_tot=All.Dust_to_Gas_Mass_Ratio*qtau,flux_egy_0=C_LIGHT_CODE_REDUCED*DMAX(SphP[j].Rad_E_gamma[k],SphP[j].Rad_E_gamma_Pred[k])/(1.+3.*tau_tot),f0=DMAX(flux_egy_0,DMAX(C_LIGHT_CODE_REDUCED*e0,DMAX(SphP[j].Rad_Flux[k][2],SphP[j].Rad_Flux_Pred[k][2])));
+                    double qtau=(0.75*All.Grain_Q_at_MaxGrainSize)/((All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS)*(All.Grain_Size_Max/UNIT_LENGTH_IN_CGS)), e0=(P[j].Mass/SphP[j].Density)*All.Vertical_Grain_Accel/qtau,tau_tot=All.Dust_to_Gas_Mass_Ratio*qtau,flux_egy_0=C_LIGHT_CODE_REDUCED*DMAX(SphP[j].Rad_E_gamma[k],SphP[j].Rad_E_gamma_Pred[k])/(1.+3.*tau_tot),f0=DMAX(flux_egy_0,DMAX(C_LIGHT_CODE_REDUCED*e0,DMAX(SphP[j].Rad_Flux[k][2],SphP[j].Rad_Flux_Pred[k][2])));
                     dfluxes[0]=0; dfluxes[1]=0; dfluxes[2]=f0; /* for now, for this special problem setup, we have everything hard-coded here to ensure it obeys the desired flux boundary condition */
                     {
                         #pragma omp atomic

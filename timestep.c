@@ -131,7 +131,7 @@ void find_timesteps(void)
             TimeBinCount[binold]--;
             if(P[i].Type == 0)
             {
-                TimeBinCountSph[binold]--;
+                TimeBinCountGas[binold]--;
 #ifdef GALSF
                 TimeBinSfr[binold] -= SphP[i].Sfr;
                 TimeBinSfr[bin] += SphP[i].Sfr;
@@ -172,7 +172,7 @@ void find_timesteps(void)
                 PrevInTimeBin[i] = NextInTimeBin[i] = -1;
             }
             TimeBinCount[bin]++;
-            if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
+            if(P[i].Type == 0) {TimeBinCountGas[bin]++;}
             P[i].TimeBin = bin;
         }
 
@@ -443,7 +443,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 #if defined(GRAIN_LORENTZFORCE) && defined(GRAIN_RDI_TESTPROBLEM)
         if(All.Grain_Charge_Parameter != 0) {double bmag=0; for(k=0;k<3;k++) {bmag += P[p].Gas_B[k]*P[p].Gas_B[k];}
-            if(bmag>0) {double dt_gyro = 1. / ((All.Grain_Charge_Parameter/All.Grain_Size_Max) * DMIN(100.,pow(All.Grain_Size_Max/P[p].Grain_Size,2)) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}}
+            if(bmag>0) {double dt_gyro = 1. / ((All.Grain_Charge_Parameter*sqrt(1.)/((All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS)*(All.Grain_Size_Max/UNIT_LENGTH_IN_CGS))) * DMIN(100.,pow(All.Grain_Size_Max/P[p].Grain_Size,2)) * sqrt(bmag)); if(dt_gyro>0 && dt_gyro<dt_courant) {dt_courant=dt_gyro;}}} /* this gives t_Lorentz in code units; sqrt[1] reflects expected unity mean density definition, hard-coded for rdi testproblem options here */
 #endif
 #ifdef PIC_MHD
         if(P[p].MHD_PIC_SubType>=3)
@@ -1249,7 +1249,7 @@ void process_wake_ups(void)
 		integertime tend = All.Ti_Current;
 
 		TimeBinCount[binold]--;
-		if(P[i].Type == 0) {TimeBinCountSph[binold]--;}
+		if(P[i].Type == 0) {TimeBinCountGas[binold]--;}
 
 		prev = PrevInTimeBin[i];
 		next = NextInTimeBin[i];
@@ -1272,7 +1272,7 @@ void process_wake_ups(void)
 		    PrevInTimeBin[i] = NextInTimeBin[i] = -1;
 		}
 		TimeBinCount[bin]++;
-		if(P[i].Type == 0) {TimeBinCountSph[bin]++;}
+		if(P[i].Type == 0) {TimeBinCountGas[bin]++;}
 		P[i].TimeBin = bin;
         if(TimeBinActive[bin]) {NumForceUpdate++;}
 		n++;
@@ -1282,7 +1282,7 @@ void process_wake_ups(void)
 		if(tend < tstart)
 		{
 		    do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
-		    set_predicted_sph_quantities_for_extra_physics(i);
+		    set_predicted_quantities_for_extra_physics(i);
 		}
 		P[i].Ti_begstep = All.Ti_Current;
 		P[i].dt_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);

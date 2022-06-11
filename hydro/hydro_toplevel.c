@@ -26,9 +26,10 @@
  rho_code = rho_physical * a^3 (from length/mass scaling)
  InternalEnergy_code = InternalEnergy_physical
  Pressure_code =
-    InternalEnergy_code * rho_code * (gamma-1) = Pressure_physical * a^3 (energy SPH)
-    -- the distinction between these cases and e.g. entropy sph (now depricated)
-        should be taken care of in the factors
+    InternalEnergy_code * rho_code * (gamma-1) = Pressure_physical * a^3 (energy formulations)
+    -- the distinction between these cases, i.e. all standard/default modes of the code in which
+        we evolve the energy, and e.g. entropy sph (now depricated, but possible if the right flags
+        are set in older versions fo the code) should be taken care of in the factors
         All.cf_afac1/2/3, which will correctly assign between the two --
  B_code = a*a * B_physical (comoving magnetic fields)
  Phi_code = B_code*v_code = a^3 * Phi_physical (damping field for Dedner divergence cleaning)
@@ -619,7 +620,7 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #endif
 
 #if defined(MAGNETIC)
-    /* can't just do DtB += out-> DtB, because for SPH methods, the induction equation is solved in the density loop; need to simply add it here */
+    /* can't just do DtB += out-> DtB, because for some hydro methods, the induction equation is solved in the density loop; need to simply add it here */
     for(k=0;k<3;k++) {SphP[i].DtB[k] += out->DtB[k]; SphP[i].Face_Area[k] += out->Face_Area[k];}
     SphP[i].divB += out->divB;
 #if defined(DIVBCLEANING_DEDNER)
