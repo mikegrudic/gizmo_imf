@@ -697,6 +697,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     if(pa->Type == 5)
                     {
                         bh_mass += pa->Mass;    /* actual value is not used for distances */
+			N_BH += 1;
                         bh_pos_times_mass[0] += pa->Pos[0] * pa->Mass;  /* positition times mass; divide by total mass later */
                         bh_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
                         bh_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
@@ -855,6 +856,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
 #ifdef BH_CALC_DISTANCES
         Nodes[no].bh_mass = bh_mass;
+	Nodes[no].N_BH = N_BH;
         if(bh_mass > 0)
             {
                 Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
@@ -864,7 +866,7 @@ void force_update_node_recursive(int no, int sib, int father)
                 Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
                 Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
                 Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
-                Nodes[no].N_BH = N_BH;
+
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                 Nodes[no].MaxFeedbackVel = max_feedback_vel;
 #endif                        
@@ -1453,6 +1455,7 @@ void force_treeupdate_pseudos(int no)
 #endif
 #ifdef BH_CALC_DISTANCES
     Nodes[no].bh_mass = bh_mass;
+    Nodes[no].N_BH = N_BH;
     if(bh_mass > 0)
         {
             Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;
@@ -1465,7 +1468,6 @@ void force_treeupdate_pseudos(int no)
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
             Nodes[no].MaxFeedbackVel = max_feedback_vel;
 #endif            
-            Nodes[no].N_BH = N_BH;
 #endif
         }
 #endif
@@ -2255,7 +2257,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         no = nop->u.d.nextnode;
                         continue;
                     }
-
                     /* check in addition whether we lie inside the cell */
 
                     if(GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
@@ -2269,6 +2270,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             }
                         }
                     }
+#endif
+#ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
+		    if(nop->N_BH > 0)
+		    {
+		        if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)) // we have a star within the specified radius
+			{
+			    /* open cell */
+			    no = nop->u.d.nextnode;
+			    continue;				
+			}
+		    }
 #endif
                 }
 
@@ -2298,6 +2310,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                 }
 #endif
+
+
 
                 if(TakeLevel >= 0) {nop->GravCost += 1.0;}
                 no = nop->u.d.sibling;	/* ok, node can be used */

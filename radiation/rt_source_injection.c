@@ -218,8 +218,20 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #ifdef RT_REPROCESS_INJECTED_PHOTONS // conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum.
                     double dE_donation=0; int donation_bin=rt_get_donation_target_bin(k), do_donation=0; if(donation_bin > -1){do_donation = 1;}
 #ifdef RT_CHEM_PHOTOION  // figure out if we have enough photons to carve a Stromgren sphere through this cell. If yes, inject ionizing radiation, otherwise more accurate to downgrade it to model an unresolved HII region
-                    if(k==RT_FREQ_BIN_H0) {
-                        double stellum=0; if(local.Dt > 0) {stellum = local.Luminosity[k] / (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) / local.Dt * UNIT_LUM_IN_CGS;}
+#if (RT_CHEM_PHOTOION==1)
+		    if(k == RT_FREQ_BIN_H0) { // just one ionizing bin
+#else 
+                    if((k >= RT_FREQ_BIN_H0) && (k < RT_FREQ_BIN_H0 + 4)) { // do this block for all ionizing bins
+#endif
+                        double stellum=0;
+			if(local.Dt > 0) {
+#if (RT_CHEM_PHOTOION==1)			  
+			    stellum = local.Luminosity[RT_FREQ_BIN_H0];
+#else			    
+			    int k2; for(k2=RT_FREQ_BIN_H0; k2 < RT_FREQ_BIN_H0 + 4; k2++) { stellum += local.Luminosity[k2]; } // add up total ionizing photon energy
+#endif			    
+			    stellum *= 1. / (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) / local.Dt * UNIT_LUM_IN_CGS; // convert energy to luminosity in cgs
+			}
                         double RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
                         if(DMAX(r, Get_Particle_Size(j))*All.cf_atime < RHII) {do_donation = 0;} // don't inject ionizing photons outside the Stromgren radius
                     }
