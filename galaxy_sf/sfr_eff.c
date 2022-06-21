@@ -356,7 +356,7 @@ double get_starformation_rate(int i, int mode)
 #if (SINGLE_STAR_SINK_FORMATION & 8) /* restrict to cell which neither 'sees' or 'is seen by' a sink too close */
     if(P[i].BH_Ngb_Flag) {rateOfSF=0;} /* cell cannot be 'seen' by -any- sink as a potential interacting neighbor */
     if(P[i].min_dist_to_bh < P[i].Hsml) {rateOfSF=0;} /* cell does not overlap with a sink */
-#if (defined(COOLING) || defiend(EOS_GMC_BAROTROPIC)) // if the simulation has opacity limit physics
+#if (defined(COOLING) || defined(EOS_GMC_BAROTROPIC)) // if the simulation has opacity limit physics
     if(P[i].min_dist_to_bh * UNIT_LENGTH_IN_AU < 0.1){rateOfSF=0;} /* distance to nearest sink is much greater than the size of a Larson core (at least a few AU), else the core should be accreted by the pre-existing protostar star */
 #endif
 #endif
