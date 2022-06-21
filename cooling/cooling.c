@@ -1097,12 +1097,12 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         surface_density *= 0.2 * UNIT_SURFDEN_IN_CGS; // converts to cgs; 0.2 is a tuning factor so that the Masunaga & Inutsuka 2000 solution is reproduced
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
-        if(T < 1500.)
-        {
-            if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
-            kappa_eff *= (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target);
-            if(kappa_eff < 0.1) {kappa_eff=0.1;}
-        } else {
+	
+	if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
+        kappa_eff *= (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); // cutoff in dust opacity is now built into return_dust_to_metals_ratio_vs_solar
+        if(kappa_eff < 0.1) {kappa_eff=0.1;}
+	
+        if(T>1500.){
             /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
             double k_electron = 0.2 * (1. + HYDROGEN_MASSFRAC); //0.167 * n_elec; /* Thompson scattering (non-relativistic) */
             double k_molecular = 0.1 * P[target].Metallicity[0]; /* molecular line opacities */
@@ -1110,7 +1110,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             double k_Kramers = 4.0e25 * (1.+HYDROGEN_MASSFRAC) * (P[target].Metallicity[0]+0.001) * rho / (T*T*T*sqrt(T)); /* free-free, bound-free, bound-bound transitions */
             double k_radiative = k_molecular + 1./(1./k_Hminus + 1./(k_electron+k_Kramers)); /* approximate interpolation between the above opacities */
             double k_conductive = 2.6e-7 * n_elec * T*T/(rho*rho); //*(1+pow(rho/1.e6,0.67) /* e- thermal conductivity can dominate at low-T, high-rho, here it as expressed as opacity */
-            kappa_eff = 1./(1./k_radiative + 1./k_conductive); /* effective opacity including both heat carriers (this is exact) */
+            kappa_eff += 1./(1./k_radiative + 1./k_conductive); /* effective opacity including both heat carriers (this is exact) */
         }
         double tau_eff = kappa_eff * surface_density;
         double Lambda_Thick_BlackBody = 5.67e-5 * (T*T*T*T) * effective_area / ((1.+tau_eff) * nHcgs);
