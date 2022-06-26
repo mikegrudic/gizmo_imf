@@ -207,9 +207,15 @@
 #if defined(CBE_INTEGRATOR)
 #define CBE_INTEGRATOR_NBASIS CBE_INTEGRATOR
 #ifdef CBE_INTEGRATOR_SECONDMOMENT
-#define CBE_INTEGRATOR_NMOMENTS 10
+#if (BOX_SPATIAL_DIMENSION==1) || defined(ONEDIM)
+#define CBE_INTEGRATOR_NMOMENTS 3  /* [0-norm,1-mom,1-second] */
+#elif (BOX_SPATIAL_DIMENSION==2) || defined(TWODIMS)
+#define CBE_INTEGRATOR_NMOMENTS 6  /* [0-norm,2-mom,3-symm-tensor] */
 #else
-#define CBE_INTEGRATOR_NMOMENTS 4
+#define CBE_INTEGRATOR_NMOMENTS 10  /* 10 non-trivial moments [0th/norm, 3-mom, 6-symm-tensor] */
+#endif
+#else
+#define CBE_INTEGRATOR_NMOMENTS ((BOX_SPATIAL_DIMENSION)+1)
 #endif
 #endif
 
@@ -2945,6 +2951,9 @@ extern ALIGN(32) struct particle_data
 #ifdef CBE_INTEGRATOR
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];         /* moments per basis function */
     double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];      /* time-derivative of moments per basis function */
+#ifdef CBE_INTEGRATOR_WITHGRADIENTS
+    CBE_basis_moments_Gradients[CBE_INTEGRATOR_NBASIS][3]; /* gradients of the scalar weight of each basis function */
+#endif
 #endif
 }
  *P,				/*!< holds particle data on local processor */

@@ -110,7 +110,7 @@ void compute_hydro_densities_and_forces(void)
 
 void compute_additional_forces_for_all_particles(void)
 {
-#ifdef DM_FUZZY
+#if defined(DM_FUZZY) || defined(CBE_INTEGRATOR_WITHGRADIENTS)
     DMGrad_gradient_calc();
 #endif
 #if defined(DM_FUZZY) || defined(CBE_INTEGRATOR) || defined(DM_SIDM)
