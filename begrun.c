@@ -1866,7 +1866,7 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.TurbDriving_Global_SolenoidalFraction;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "ST_SpectForm"); // driving pwr-spec: 0=Ek~const; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
+        strcpy(tag[nt], "ST_SpectForm"); // driving pwr-spec: 0=Ek~k^-1; 1=sharp-peak at kc; 2=Ek~k^(-5/3); 3=Ek~k^-2
         strcpy(alternate_tag[nt], "TurbDrive_DrivingSpectrum");
         addr[nt] = &All.TurbDriving_Global_DrivingSpectrumKey;
         id[nt++] = INT;

@@ -58,7 +58,9 @@
 #if !defined(LONG_INTEGER_TIME)
 #define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
 #endif
-
+#if !defined(MPISENDRECV_SIZELIMIT)
+#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
+#endif
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
@@ -207,9 +209,15 @@
 #if defined(CBE_INTEGRATOR)
 #define CBE_INTEGRATOR_NBASIS CBE_INTEGRATOR
 #ifdef CBE_INTEGRATOR_SECONDMOMENT
-#define CBE_INTEGRATOR_NMOMENTS 10
+#if (BOX_SPATIAL_DIMENSION==1) || defined(ONEDIM)
+#define CBE_INTEGRATOR_NMOMENTS 3  /* [0-norm,1-mom,1-second] */
+#elif (BOX_SPATIAL_DIMENSION==2) || defined(TWODIMS)
+#define CBE_INTEGRATOR_NMOMENTS 6  /* [0-norm,2-mom,3-symm-tensor] */
 #else
-#define CBE_INTEGRATOR_NMOMENTS 4
+#define CBE_INTEGRATOR_NMOMENTS 10  /* 10 non-trivial moments [0th/norm, 3-mom, 6-symm-tensor] */
+#endif
+#else
+#define CBE_INTEGRATOR_NMOMENTS ((BOX_SPATIAL_DIMENSION)+1)
 #endif
 #endif
 
@@ -1069,13 +1077,16 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 /*------- Things that are always recommended -------*/
 
 
+#ifdef MPISENDRECV_SIZELIMIT
+#undef MPI_Sendrecv
+#define MPI_Sendrecv MPI_Sizelimited_Sendrecv
+#endif
+
 #ifdef MPISENDRECV_CHECKSUM
+#undef MPI_Sendrecv
 #define MPI_Sendrecv MPI_Check_Sendrecv
 #endif
 
-#ifdef MPISENDRECV_SIZELIMIT
-#define MPI_Sendrecv MPI_Sizelimited_Sendrecv
-#endif
 
 #include "tags.h"
 #include <assert.h>
@@ -2945,6 +2956,9 @@ extern ALIGN(32) struct particle_data
 #ifdef CBE_INTEGRATOR
     double CBE_basis_moments[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];         /* moments per basis function */
     double CBE_basis_moments_dt[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS];      /* time-derivative of moments per basis function */
+#ifdef CBE_INTEGRATOR_WITHGRADIENTS
+    CBE_basis_moments_Gradients[CBE_INTEGRATOR_NBASIS][3]; /* gradients of the scalar weight of each basis function */
+#endif
 #endif
 }
  *P,				/*!< holds particle data on local processor */

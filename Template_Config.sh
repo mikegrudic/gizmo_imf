@@ -598,11 +598,10 @@
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging: slower, but fixes memory errors during exchange in the domain decomposition (ANY RUN with >2e9 particles MUST SET THIS OR FAIL!)
 #FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging
-#MPISENDRECV_SIZELIMIT=100      # MPI debugging
-#MPISENDRECV_CHECKSUM           # MPI debugging
+#MPISENDRECV_SIZELIMIT=100      # MPI debugging: force all MPI_Sendrecv calls to use the "size-limited" version which checks for the minimum of int, buffersize, or this value in MB as the maximum number of bytes it can send/receive (otherwise it breaks it into chunks). should never hurt, just gives slightly slower communication calls because of the extra checks.
+#MPISENDRECV_CHECKSUM           # MPI debugging: force all MPI_Sendrecv calls to use the "checksummed" version which checks for communication and appropriate values. useful for debugging but not normally desired (adds a significant cost multiplier)
 #DONOTUSENODELIST               # MPI debugging
-#NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
-                                #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
+#NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
 #USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW). Thanks to Takashi Okamoto.
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
 #DISABLE_ALIGNED_ALLOC          # disable calls to 'aligned_alloc', needed for older C99-only versions of GCC compilers [everything C11+ -should- be compatible and not need this]

@@ -610,13 +610,9 @@ void force_update_node_recursive(int no, int sib, int father)
                                 count_particles++;
                         }
 
-                        if(Extnodes[p].hmax > hmax)
-                            hmax = Extnodes[p].hmax;
-
-                        if(Extnodes[p].vmax > vmax)
-                            vmax = Extnodes[p].vmax;
-                        if(Extnodes[p].divVmax > divVmax)
-                            divVmax = Extnodes[p].divVmax;
+                        if(Extnodes[p].hmax > hmax) {hmax = Extnodes[p].hmax;}
+                        if(Extnodes[p].vmax > vmax) {vmax = Extnodes[p].vmax;}
+                        if(Extnodes[p].divVmax > divVmax) {divVmax = Extnodes[p].divVmax;}
 
                         /* update of the maximum gravitational softening in the node */
                         if(Nodes[p].maxsoft > maxsoft)
@@ -1326,12 +1322,9 @@ void force_treeupdate_pseudos(int no)
             vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
             vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
 
-            if(Extnodes[p].hmax > hmax)
-                hmax = Extnodes[p].hmax;
-            if(Extnodes[p].vmax > vmax)
-                vmax = Extnodes[p].vmax;
-            if(Extnodes[p].divVmax > divVmax)
-                divVmax = Extnodes[p].divVmax;
+            if(Extnodes[p].hmax > hmax) {hmax = Extnodes[p].hmax;}
+            if(Extnodes[p].vmax > vmax) {vmax = Extnodes[p].vmax;}
+            if(Extnodes[p].divVmax > divVmax) {divVmax = Extnodes[p].divVmax;}
 
             if(Nodes[p].u.d.mass > 0)
             {
@@ -2110,7 +2103,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dy = nop->u.d.s[1] - pos_y;
                 dz = nop->u.d.s[2] - pos_z;
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-		r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
+                r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
 #endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
                 dvx = Extnodes[no].vs[0] - vel_x;
