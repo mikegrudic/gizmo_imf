@@ -70,17 +70,16 @@ void force_kick_node(int i, MyDouble * dp)
 
       for(j = 0; j < 3; j++)
 	{
-	  Extnodes[no].dp[j] += dp[j];
+        Extnodes[no].dp[j] += dp[j];
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
         Extnodes[no].rt_source_lum_dp[j] += rt_source_lum_dp[j];
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
-	  Extnodes[no].dp_dm[j] += dp_dm[j];
+        Extnodes[no].dp_dm[j] += dp_dm[j];
 #endif
 	}
 
-      if(Extnodes[no].vmax < vmax)
-	Extnodes[no].vmax = vmax;
+      if(Extnodes[no].vmax < vmax) {Extnodes[no].vmax = vmax;}
 
       Nodes[no].u.d.bitflags |= (1 << BITFLAG_NODEHASBEENKICKED);
       Extnodes[no].Ti_lastkicked = All.Ti_Current;

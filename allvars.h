@@ -58,7 +58,9 @@
 #if !defined(LONG_INTEGER_TIME)
 #define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
 #endif
-
+#if !defined(MPISENDRECV_SIZELIMIT)
+#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
+#endif
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
@@ -1075,13 +1077,16 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 /*------- Things that are always recommended -------*/
 
 
+#ifdef MPISENDRECV_SIZELIMIT
+#undef MPI_Sendrecv
+#define MPI_Sendrecv MPI_Sizelimited_Sendrecv
+#endif
+
 #ifdef MPISENDRECV_CHECKSUM
+#undef MPI_Sendrecv
 #define MPI_Sendrecv MPI_Check_Sendrecv
 #endif
 
-#ifdef MPISENDRECV_SIZELIMIT
-#define MPI_Sendrecv MPI_Sizelimited_Sendrecv
-#endif
 
 #include "tags.h"
 #include <assert.h>

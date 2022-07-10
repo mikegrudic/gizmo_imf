@@ -1057,30 +1057,30 @@ void domain_exchange(void)
 	{
 	  if(count_gas[target] > 0 || count_recv_gas[target] > 0)
 	    {
-	      MPI_Sendrecv(partBuf + offset_gas[target], count_gas[target] * sizeof(struct particle_data),
+            MPI_Sizelimited_Sendrecv(partBuf + offset_gas[target], count_gas[target] * sizeof(struct particle_data),
 			   MPI_BYTE, target, TAG_PDATA_GAS,
 			   P + offset_recv_gas[target], count_recv_gas[target] * sizeof(struct particle_data),
 			   MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-	      MPI_Sendrecv(gasBuf + offset_gas[target], count_gas[target] * sizeof(struct gas_cell_data),
+            MPI_Sizelimited_Sendrecv(gasBuf + offset_gas[target], count_gas[target] * sizeof(struct gas_cell_data),
 			   MPI_BYTE, target, TAG_GASDATA,
 			   SphP + offset_recv_gas[target],
 			   count_recv_gas[target] * sizeof(struct gas_cell_data), MPI_BYTE, target,
 			   TAG_GASDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #ifdef CHIMES 
-	      MPI_Sendrecv(gasChimesBuf + offset_gas[target], count_gas[target] * sizeof(struct gasVariables),
+            MPI_Sizelimited_Sendrecv(gasChimesBuf + offset_gas[target], count_gas[target] * sizeof(struct gasVariables),
 			   MPI_BYTE, target, TAG_CHIMESDATA, ChimesGasVars + offset_recv_gas[target],
 			   count_recv_gas[target] * sizeof(struct gasVariables), MPI_BYTE, target,
 			   TAG_CHIMESDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 #ifdef CHIMES_USE_DOUBLE_PRECISION
-	      MPI_Sendrecv(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
+            MPI_Sizelimited_Sendrecv(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
 			   count_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, TAG_ABUNDATA, 
 			   gasAbundancesRecvBuf + ((offset_recv_gas[target] - offset_recv_gas[0]) * ChimesGlobalVars.totalNumberOfSpecies),
 			   count_recv_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, 
 			   TAG_ABUNDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 #else 
-	      MPI_Sendrecv(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
+            MPI_Sizelimited_Sendrecv(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
 			   count_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, TAG_ABUNDATA, 
 			   gasAbundancesRecvBuf + ((offset_recv_gas[target] - offset_recv_gas[0]) * ChimesGlobalVars.totalNumberOfSpecies),
 			   count_recv_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, 
@@ -1088,7 +1088,7 @@ void domain_exchange(void)
 #endif 
 #endif 
 
-	      MPI_Sendrecv(keyBuf + offset_gas[target], count_gas[target] * sizeof(peanokey),
+            MPI_Sizelimited_Sendrecv(keyBuf + offset_gas[target], count_gas[target] * sizeof(peanokey),
 			   MPI_BYTE, target, TAG_KEY_GAS,
 			   Key + offset_recv_gas[target], count_recv_gas[target] * sizeof(peanokey),
 			   MPI_BYTE, target, TAG_KEY_GAS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
