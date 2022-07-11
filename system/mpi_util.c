@@ -118,7 +118,7 @@ void mpi_distribute_items_to_tasks(void *data, int task_offset, int *n_items, in
 
 #ifdef MPISENDRECV_CHECKSUM
 
-// #undef MPI_Sendrecv // shouldn't be needed the way this is called and defined previously
+#undef MPI_Sendrecv // need to undef before being called below so don't get stuck in loop here
 
 int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                        int dest, int sendtag, void *recvbufreal, int recvcount,
@@ -387,7 +387,7 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
 
 
-// #undef MPI_Sendrecv // not needed because already set at a higher level
+#undef MPI_Sendrecv // need to undef before being called below so don't get stuck in loop here
 
 int MPI_Sizelimited_Sendrecv(void *sendbuf0, size_t sendcount, MPI_Datatype sendtype,
                              int dest, int sendtag, void *recvbuf0, size_t recvcount,

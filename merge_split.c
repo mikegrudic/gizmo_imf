@@ -125,14 +125,17 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         double r_pc = rbh*1000.,r0, f0=1, target_slope=1.0;
         double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
 
-        double dtau = (All.Time - All.TimeBegin) / dt_to_ramp_refinement, dtdelay=0.1, tfinal=1.;
+        double t_00 = All.TimeBegin;
+        double dtau = (All.Time - t_00) / dt_to_ramp_refinement, dtdelay=0.1, tfinal=1.;
         if(dtau < dtdelay) {slope=0;} else {slope=target_slope * (1. - exp(- ((dtau-dtdelay) / (tfinal - dtdelay)) ));} // alt model
 
+        if(dtau < dtdelay) {slope=0;} else {slope = target_slope * (dtau-dtdelay) / (tfinal - dtdelay);}
         r0=1000.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
-        //r0=100.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
-        if(dtau < 2.*dtdelay) {slope*=0;} else if(dtau < 3.*dtdelay) {slope*=(dtau-2.*dtdelay)/dtdelay;} // alt model
+        if(dtau < 2.*dtdelay) {slope*=0;} else if(dtau < 3.*dtdelay) {slope*=(dtau-2.*dtdelay)/dtdelay;}
+        r0=100.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        if(dtau < 4.*dtdelay) {slope*=0;} else if(dtau < 5.*dtdelay) {slope*=(dtau-4.*dtdelay)/dtdelay;}
         r0=10.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
-        if(dtau < 4.*dtdelay) {slope*=0;} else if(dtau < 5.*dtdelay) {slope*=(dtau-4.*dtdelay)/dtdelay;} // alt model
+        if(dtau < 6.*dtdelay) {slope*=0;} else if(dtau < 7.*dtdelay) {slope*=(dtau-6.*dtdelay)/dtdelay;}
         r0=1.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
 
         double M_target = f0 * DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR;
