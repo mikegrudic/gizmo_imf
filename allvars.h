@@ -58,9 +58,9 @@
 #if !defined(LONG_INTEGER_TIME)
 #define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
 #endif
-#if !defined(MPISENDRECV_SIZELIMIT)
-#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
-#endif
+//#if !defined(MPISENDRECV_SIZELIMIT)
+//#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
+//#endif
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */

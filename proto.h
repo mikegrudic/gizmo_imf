@@ -205,9 +205,10 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                        int dest, int sendtag, void *recvbufreal, int recvcount,
                        MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status * status);
 
-int MPI_Sizelimited_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
-			     int dest, int sendtag, void *recvbuf, int recvcount,
-			     MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status * status);
+int MPI_Sizelimited_Sendrecv(void *sendbuf0, size_t sendcount, MPI_Datatype sendtype,
+                             int dest, int sendtag, void *recvbuf0, size_t recvcount,
+                             MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm,
+                             MPI_Status *status);
 
 int mpi_calculate_offsets(int *send_count, int *send_offset, int *recv_count, int *recv_offset, int send_identical);
 void sort_based_on_field(void *data, int field_offset, int n_items, int item_size, void **data2ptr);
