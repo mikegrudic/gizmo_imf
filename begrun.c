@@ -476,6 +476,9 @@ void begrun(void)
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     single_star_SN_init_directions();
 #endif
+#ifdef RT_RAD_PRESSURE_OUTPUT
+    {int i; for(i=0;i<NumPart;i++) {int k; for(k=0;k<3;k++) {SphP[i].Rad_Accel[k]=0;}}}
+#endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
     rt_init_intensity_directions();

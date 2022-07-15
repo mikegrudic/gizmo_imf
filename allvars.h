@@ -3288,9 +3288,6 @@ extern struct gas_cell_data
 #else
 #define Rad_E_gamma_Pred Rad_E_gamma        /*! define a useful shortcut for use throughout code so we don't have to worry about Pred-vs-true difference */
 #endif
-#ifdef RT_RAD_PRESSURE_OUTPUT
-    MyFloat Rad_Accel[3];
-#endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
 #endif
@@ -3321,11 +3318,14 @@ extern struct gas_cell_data
     MyFloat Rad_Flux[N_RT_FREQ_BINS][3];
 #define Rad_Flux_Pred Rad_Flux
 #endif
-    
+
+#ifdef RT_RAD_PRESSURE_OUTPUT
+    MyFloat Rad_Accel[3];
+#endif
+
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyFloat SubGrid_CosmicRayEnergyDensity;
 #endif
-
 
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */
@@ -3663,6 +3663,7 @@ enum iofields
   IO_SINK_FORM_MASS,
   IO_POT,
   IO_ACCEL,
+  IO_HYDROACCEL,
   IO_HII,
   IO_HeI,
   IO_HeII,
@@ -3687,6 +3688,8 @@ enum iofields
   IO_AMDC,
   IO_PHI,
   IO_GRADPHI,
+  IO_GRADRHO,
+  IO_GRADVEL,
   IO_COOLRATE,
   IO_TIDALTENSORPS,
   IO_GDE_DISTORTIONTENSOR,

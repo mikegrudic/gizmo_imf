@@ -746,13 +746,29 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #ifdef PMGRID
                     for(k = 0; k < 3; k++) {fp[k] += (MyOutputFloat) (All.cf_a2inv * P[pindex].GravPM[k]);}
 #endif
+#ifndef OUTPUT_HYDROACCELERATION
                     if(P[pindex].Type == 0) {for(k = 0; k < 3; k++) {fp[k] += (MyOutputFloat) SphP[pindex].HydroAccel[k];}}
+#endif
                     fp += 3;
                     n++;
                 }
 #endif
             break;
 
+            
+        case IO_HYDROACCEL:        /* 'hydro' acceleration */
+#ifdef OUTPUT_HYDROACCELERATION
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    if(P[pindex].Type == 0) {for(k = 0; k < 3; k++) {fp[k] = (MyOutputFloat) SphP[pindex].HydroAccel[k];}}
+                    fp += 3;
+                    n++;
+                }
+#endif
+            break;
+
+            
         case IO_DTENTR:		/* rate of change of internal energy */
 #ifdef OUTPUT_CHANGEOFENERGY
             for(n = 0; n < pc; pindex++)
@@ -947,6 +963,34 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+            
+        case IO_GRADRHO:        /* density gradient */
+#if defined(OUTPUT_GRADIENT_RHO)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Gradients.Density[k] * All.cf_a2inv*All.cf_a2inv);} // output in physical units
+                    fp += 3;
+                    n++;
+                }
+#endif
+            break;
+
+                                                               
+        case IO_GRADVEL:        /* velocity gradients */
+#if defined(OUTPUT_GRADIENT_VEL)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    int k1,k2;
+                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {fp[k1*3 + k2] = (MyOutputFloat) (SphP[pindex].Gradients.Velocity[k1][k2] * All.cf_a2inv);}} // output in physical units
+                    fp += 9;
+                    n++;
+                }
+#endif
+            break;
+
+            
         case IO_COOLRATE:		/* current cooling rate of particle  */
 #ifdef OUTPUT_COOLRATE
             for(n = 0; n < pc; pindex++)
@@ -1738,9 +1782,11 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_VEL:
         case IO_PARTVEL:
         case IO_ACCEL:
+        case IO_HYDROACCEL:
         case IO_BFLD:
         case IO_INIB:
         case IO_GRADPHI:
+        case IO_GRADRHO:
         case IO_RAD_ACCEL:
         case IO_VORT:
         case IO_BH_ANGMOM:
@@ -1955,6 +2001,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 #endif
 
+        case IO_GRADVEL:
         case IO_EOS_STRESS_TENSOR:
         case IO_TIDALTENSORPS:
         case IO_SHEET_ORIENTATION:
@@ -2034,8 +2081,10 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_INIB:
         case IO_PARTVEL:
         case IO_ACCEL:
+        case IO_HYDROACCEL:
         case IO_BFLD:
         case IO_GRADPHI:
+        case IO_GRADRHO:
         case IO_RAD_ACCEL:
         case IO_VORT:
         case IO_BH_ANGMOM:
@@ -2203,6 +2252,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 #endif
             break;
 
+        case IO_GRADVEL:
         case IO_TIDALTENSORPS:
         case IO_SHEET_ORIENTATION:
         case IO_EOS_STRESS_TENSOR:
@@ -2287,6 +2337,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
 
         case IO_PARTVEL:
         case IO_RAD_ACCEL:
+        case IO_HYDROACCEL:
         case IO_RADGAMMA:
         case IO_RAD_FLUX:
         case IO_EDDINGTON_TENSOR:
@@ -2320,6 +2371,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AMDC:
         case IO_PHI:
         case IO_GRADPHI:
+        case IO_GRADRHO:
+        case IO_GRADVEL:
         case IO_COOLRATE:
         case IO_EOSTEMP:
         case IO_EOSABAR:
@@ -2641,6 +2694,12 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
+        case IO_HYDROACCEL:
+#ifdef OUTPUT_HYDROACCELERATION
+            return 1;
+#endif
+            break;
+
         case IO_DTENTR:
 #ifdef OUTPUT_CHANGEOFENERGY
             return 1;
@@ -2725,6 +2784,18 @@ int blockpresent(enum iofields blocknr)
         case IO_PHI:
         case IO_GRADPHI:
 #if defined(DIVBCLEANING_DEDNER) && defined(OUTPUT_BFIELD_DIVCLEAN_INFO)
+            return 1;
+#endif
+            break;
+
+        case IO_GRADRHO:
+#if defined(OUTPUT_GRADIENT_RHO)
+            return 1;
+#endif
+            break;
+
+        case IO_GRADVEL:
+#if defined(OUTPUT_GRADIENT_VEL)
             return 1;
 #endif
             break;
@@ -3135,6 +3206,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_ACCEL:
             strncpy(label, "ACCE", 4);
             break;
+        case IO_HYDROACCEL:
+            strncpy(label, "ACCH", 4);
+            break;
         case IO_DTENTR:
             strncpy(label, "ENDT", 4);
             break;
@@ -3182,6 +3256,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_GRADPHI:
             strncpy(label, "GPHI", 4);
+            break;
+        case IO_GRADRHO:
+            strncpy(label, "GRHO", 4);
+            break;
+        case IO_GRADVEL:
+            strncpy(label, "GVEL", 4);
             break;
         case IO_COOLRATE:
             strncpy(label, "COOR", 4);
@@ -3518,6 +3598,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_ACCEL:
             strcpy(buf, "Acceleration");
             break;
+        case IO_HYDROACCEL:
+            strcpy(buf, "HydroAcceleration");
+            break;
         case IO_DTENTR:
             strcpy(buf, "RateOfChangeOfInternalEnergy");
             break;
@@ -3565,6 +3648,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_GRADPHI:
             strcpy(buf, "DivBcleaningFunctionGradPhi");
+            break;
+        case IO_GRADRHO:
+            strcpy(buf, "DensityGradient");
+            break;
+        case IO_GRADVEL:
+            strcpy(buf, "VelocityGradient");
             break;
         case IO_COOLRATE:
             strcpy(buf, "CoolingRate");
