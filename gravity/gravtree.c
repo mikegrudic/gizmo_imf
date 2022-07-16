@@ -563,7 +563,7 @@ void gravity_tree(void)
                 for(k=0;k<3;k++) {radacc[k] += acc_norm * (flux_i[k] - vdot_h[k]);} // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
             }
 #if defined(RT_RAD_PRESSURE_OUTPUT)
-            for(k=0;k<3;k++) {SphP[i].Rad_Accel[k] += radacc[k];} // here units are the same as hydroaccel, so no extra comoving units 
+            for(k=0;k<3;k++) {SphP[i].Rad_Accel[k] = radacc[k];} // here units are the same as hydroaccel, so no extra comoving units 
 #else
             for(k=0;k<3;k++) {P[i].GravAccel[k] += radacc[k] / All.cf_a2inv;} // convert into our code units for GravAccel, which are comoving gm/r^2 units //
 #endif
