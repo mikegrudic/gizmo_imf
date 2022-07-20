@@ -362,7 +362,9 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
+#if !defined(BH_REPOSITION_ON_POTMIN)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#endif
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)
 #define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
@@ -960,6 +962,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
 #define EVALPOTENTIAL
+#endif
+
+#if defined(BH_REPOSITION_ON_POTMIN)
+#if (BH_REPOSITION_ON_POTMIN < 0)
+#undef BH_REPOSITION_ON_POTMIN // this is a key to un-define this variable if it is set, useful for some of the preset variable packages above //
+#endif
 #endif
 
 #if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
