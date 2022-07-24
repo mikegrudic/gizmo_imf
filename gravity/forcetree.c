@@ -1611,8 +1611,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_TREECOL_FOR_NH
     double gasmass, angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 #endif
-#ifdef COMPUTE_JERK_IN_GRAVTREE
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double dvx, dvy, dvz;
+#endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
     double jerk[3] = {0,0,0};
 #endif
     double pos_x, pos_y, pos_z, aold;
