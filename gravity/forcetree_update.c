@@ -281,10 +281,7 @@ void force_drift_node(int no, integertime time1)
 	  terminate("inconsistency in drift node");
 	}
 
-      if(Nodes[no].u.d.mass)
-	fac = 1 / Nodes[no].u.d.mass;
-      else
-	fac = 0;
+      if(Nodes[no].u.d.mass) {fac = 1 / Nodes[no].u.d.mass;} else {fac = 0;}
 
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
         double fac_stellar_lum;
@@ -294,11 +291,7 @@ void force_drift_node(int no, integertime time1)
 
 #ifdef DM_SCALARFIELD_SCREENING
       double fac_dm;
-
-      if(Nodes[no].mass_dm)
-	fac_dm = 1 / Nodes[no].mass_dm;
-      else
-	fac_dm = 0;
+      if(Nodes[no].mass_dm) {fac_dm = 1 / Nodes[no].mass_dm;} else {fac_dm = 0;}
 #endif
 
       for(j = 0; j < 3; j++)

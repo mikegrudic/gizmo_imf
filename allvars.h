@@ -362,7 +362,7 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
-#if !defined(BH_REPOSITION_ON_POTMIN)
+#if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #endif
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
@@ -3851,6 +3851,9 @@ extern ALIGN(32) struct NODE
 #ifdef RT_USE_TREECOL_FOR_NH
   MyFloat gasmass;
 #endif
+#ifdef BH_DYNFRICTION_FROMTREE
+  long N_part;   /*!< number of particles+cells in the tree node */
+#endif
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
 #ifdef CHIMES_STELLAR_FLUXES
@@ -3872,7 +3875,7 @@ extern ALIGN(32) struct NODE
   MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
   MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
-    int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+  int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */

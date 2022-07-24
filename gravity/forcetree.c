@@ -463,7 +463,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     Nodes[last].u.d.nextnode = no;
             }
             else
-                Nextnode[last] = no;
+                {Nextnode[last] = no;}
         }
 
         last = no;
@@ -604,10 +604,11 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                         if(Nodes[p].u.d.mass > 0)
                         {
-                            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
-                                count_particles += 2;
-                            else
-                                count_particles++;
+#ifdef BH_DYNFRICTION_FROMTREE
+                            count_particles += Nodes[p].N_part; // we're saving the number of particles in the node, so simply add it
+#else
+                            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // we will assume 1 particle unless the node has multiples then 2
+#endif
                         }
 
                         if(Extnodes[p].hmax > hmax) {hmax = Extnodes[p].hmax;}
@@ -615,8 +616,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         if(Extnodes[p].divVmax > divVmax) {divVmax = Extnodes[p].divVmax;}
 
                         /* update of the maximum gravitational softening in the node */
-                        if(Nodes[p].maxsoft > maxsoft)
-                            maxsoft = Nodes[p].maxsoft;
+                        if(Nodes[p].maxsoft > maxsoft) {maxsoft = Nodes[p].maxsoft;}
 
                     }
                 }
@@ -897,11 +897,10 @@ void force_update_node_recursive(int no, int sib, int father)
         Extnodes[no].dp[1] = 0;
         Extnodes[no].dp[2] = 0;
 
-        if(count_particles > 1)	/* this flags that the node represents more than one particle */
-            multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
-        else
-            multiple_flag = 0;
-
+#ifdef BH_DYNFRICTION_FROMTREE
+        Nodes[no].N_part = count_particles; /* save this value */
+#endif
+        if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;} /* this flags that the node represents more than one particle */
         Nodes[no].u.d.bitflags = multiple_flag;
         Nodes[no].maxsoft = maxsoft;
         Nodes[no].u.d.sibling = sib;
@@ -948,6 +947,9 @@ void force_exchange_pseudodata(void)
         MyFloat hmax;
         MyFloat vmax;
         MyFloat divVmax;
+#ifdef BH_DYNFRICTION_FROMTREE
+        long N_part;
+#endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         MyFloat maxsoft;
 #endif
@@ -1023,6 +1025,9 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].bitflags = Nodes[no].u.d.bitflags;
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
             DomainMoment[i].maxsoft = Nodes[no].maxsoft;
+#endif
+#ifdef BH_DYNFRICTION_FROMTREE
+            DomainMoment[i].N_part = Nodes[no].N_part;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
             DomainMoment[i].cr_injection = Nodes[no].cr_injection;
@@ -1120,10 +1125,12 @@ void force_exchange_pseudodata(void)
                     Extnodes[no].hmax = DomainMoment[i].hmax;
                     Extnodes[no].vmax = DomainMoment[i].vmax;
                     Extnodes[no].divVmax = DomainMoment[i].divVmax;
-                    Nodes[no].u.d.bitflags =
-                    (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
+                    Nodes[no].u.d.bitflags = (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                     Nodes[no].maxsoft = DomainMoment[i].maxsoft;
+#endif
+#ifdef BH_DYNFRICTION_FROMTREE
+                    Nodes[no].N_part = DomainMoment[i].N_part;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
                     Nodes[no].cr_injection = DomainMoment[i].cr_injection;
@@ -1259,8 +1266,7 @@ void force_treeupdate_pseudos(int no)
     {
         if(p >= All.MaxPart && p < All.MaxPart + MaxNodes)	/* internal node */
         {
-            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
-                force_treeupdate_pseudos(p);
+            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL)) {force_treeupdate_pseudos(p);}
 
             mass += (Nodes[p].u.d.mass);
             s[0] += (Nodes[p].u.d.mass * Nodes[p].u.d.s[0]);
@@ -1328,14 +1334,14 @@ void force_treeupdate_pseudos(int no)
 
             if(Nodes[p].u.d.mass > 0)
             {
-                if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES))
-                    count_particles += 2;
-                else
-                    count_particles++;
+#ifdef BH_DYNFRICTION_FROMTREE
+                count_particles += Nodes[p].N_part; // saved, so directly add
+#else
+                if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // not recorded so save =1 minimum or 2 if multiples flag set
+#endif
             }
 
-            if(Nodes[p].maxsoft > maxsoft)
-                maxsoft = Nodes[p].maxsoft;
+            if(Nodes[p].maxsoft > maxsoft) {maxsoft = Nodes[p].maxsoft;}
         }
         else
             endrun(6767);		/* may not happen */
@@ -1484,12 +1490,10 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].divVmax = divVmax;
     Extnodes[no].Flag = GlobFlag;
 
-
-    if(count_particles > 1)
-        multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);
-    else
-        multiple_flag = 0;
-
+#ifdef BH_DYNFRICTION_FROMTREE
+    Nodes[no].N_part = count_particles; // record
+#endif
+    if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;}
     Nodes[no].u.d.bitflags &= (~BITFLAG_MASK);	/* this clears the bits */
     Nodes[no].u.d.bitflags |= multiple_flag;
     Nodes[no].maxsoft = maxsoft;
@@ -2531,6 +2535,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
                         double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
+                        /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
+                        {
+                            double m_j=mass; /* single particle */ if(no >= maxPart) {m_j=mass/(nop->N_part);} /* estimate mean mass of the particles in the node */
+                            if(bh_mass > m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
+                        }
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
                         acc_x += fac_df * dvx_h;
                         acc_y += fac_df * dvy_h;
@@ -3043,11 +3052,9 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                             DataIndexTable[nexp].IndexGet = nexp;
                         }
 
-                        DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] =
-                        DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                        DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] = DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
 
-                        if(exportnodecount[task] < NODELISTLENGTH)
-                            DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
+                        if(exportnodecount[task] < NODELISTLENGTH) {DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;}
                     }
                     no = Nextnode[no - MaxNodes];
                     continue;
@@ -3401,10 +3408,8 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                             nsend_local[task]++;
                         }
 
-                        DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] =
-                        DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
-                        if(Exportnodecount[task] < NODELISTLENGTH)
-                            DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
+                        DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] = DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                        if(Exportnodecount[task] < NODELISTLENGTH) {DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;}
                     }
                     no = Nextnode[no - MaxNodes];
                     continue;
@@ -3611,8 +3616,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             if(listindex < NODELISTLENGTH)
             {
                 no = GravDataGet[target].NodeList[listindex];
-                if(no >= 0)
-                    no = Nodes[no].u.d.nextnode;	/* open it */
+                if(no >= 0) {no = Nodes[no].u.d.nextnode;}	/* open it */
             }
         }
     }
@@ -3716,10 +3720,8 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                             nsend_local[task]++;
                         }
 
-                        DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] =
-                        DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
-                        if(Exportnodecount[task] < NODELISTLENGTH)
-                            DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
+                        DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]++] = DomainNodeIndex[no - (All.MaxPart + MaxNodes)];
+                        if(Exportnodecount[task] < NODELISTLENGTH) {DataNodeList[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;}
                     }
                     no = Nextnode[no - MaxNodes];
                     continue;
@@ -3787,8 +3789,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
             if(listindex < NODELISTLENGTH)
             {
                 no = GravDataGet[target].NodeList[listindex];
-                if(no >= 0)
-                    no = Nodes[no].u.d.nextnode;	/* open it */
+                if(no >= 0) {no = Nodes[no].u.d.nextnode;}	/* open it */
             }
         }
     }
@@ -3832,8 +3833,7 @@ void force_treeallocate(int maxnodes, int maxpart)
        (Extnodes_base =
         (struct extNODE *) mymalloc("Extnodes_base", bytes = (MaxNodes + 1) * sizeof(struct extNODE))))
     {
-        printf("failed to allocate memory for %d tree-extnodes (%g MB).\n",
-               MaxNodes, bytes / (1024.0 * 1024.0));
+        printf("failed to allocate memory for %d tree-extnodes (%g MB).\n", MaxNodes, bytes / (1024.0 * 1024.0));
         endrun(3);
     }
     allbytes += bytes;
