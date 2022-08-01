@@ -413,7 +413,7 @@ void gravity_tree(void)
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
-                if(P[place].Type==0) SphP[place].SubGrid_CosmicRayEnergyDensity += GravDataOut[j].SubGrid_CosmicRayEnergyDensity;
+                if(P[place].Type==0) {SphP[place].SubGrid_CosmicRayEnergyDensity += GravDataOut[j].SubGrid_CosmicRayEnergyDensity;}
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}

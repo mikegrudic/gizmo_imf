@@ -2631,7 +2631,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(ptype==0 && r>0 && cr_injection>0 && All.Time>All.TimeBegin)
             {
                 double kappa_0 = All.CosmicRay_Subgrid_Kappa_0, vst_0 = All.CosmicRay_Subgrid_Vstream_0; // in code units
-                double r_phys = sqrt(r*r + soft*soft/4.) * All.cf_atime, t_max = evaluate_stellar_age_Gyr(All.TimeBegin)/UNIT_TIME_IN_GYR; // make sure we're working in physical code units, and assign max time to formation at begin time, and include very crude 'softening' term here to prevent divergennce as r->0
+                double r_phys = sqrt(r*r + soft*soft/4.) * All.cf_atime, t_max = DMIN(1., evaluate_stellar_age_Gyr(All.TimeBegin))/UNIT_TIME_IN_GYR; // make sure we're working in physical code units, and assign max time to formation at begin time, and include very crude 'softening' term here to prevent divergennce as r->0: for our default parameters can't be too large here or we get unphysically large CR halos compared to reality, b/c of large effective streaming terms
                 double r_max = 0.5*t_max*vst_0 * (1. + sqrt(1. + 16.*kappa_0/(vst_0*vst_0*t_max))); // maximum stream distance
 #ifdef PMGRID
                 r_max = DMIN(r_max , 0.5*rcut*All.cf_atime); // truncate before reach the boundary of the grid to avoid numerical errors there

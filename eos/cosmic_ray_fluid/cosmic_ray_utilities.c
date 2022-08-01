@@ -1799,6 +1799,7 @@ double cr_get_source_injection_rate(int i)
         agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4; // inputs for newer SNe rate (and newer Ia rate below)
         if(star_age<agemin) {RSNe=0;} else if(star_age<=agebrk) {RSNe=f1*pow(star_age/agemin,log(f2/f1)/log(agebrk/agemin));} else if(star_age<=agemax) {RSNe=f2*pow(star_age/agebrk,log(f3/f2)/log(agemax/agebrk));} else {RSNe=0;} // core-collapse; updated with same stellar evolution models for wind mass loss [see there for references]. simple 2-part power-law provides extremely-accurate fit. models predict a totally negligible metallicity-dependence.
         double t_Ia_min=agemax, norm_Ia=1.6e-3; if(star_age>t_Ia_min) {RSNe += norm_Ia * 7.94e-5 * pow(star_age,-1.1) / fabs(pow(t_Ia_min/0.1,-0.1) - 0.61);} // Ia DTD following Maoz & Graur 2017, ApJ, 848, 25
+        if(star_age < 0.04) {RSNe = 3.0e-4;} else {RSNe = DMIN(3.e-4 , RSNe);} /* replace this with a 'time smoothed' version over the last ~100+ Myr */
 #else
         if(star_age>agemin) {if(star_age<=agebrk) {RSNe=5.408e-4;} else {if(star_age<=agemax) {RSNe=2.516e-4;}}} // core-collapse rate [super-simple 2-piece constant] //
         if(star_age>agemax) {RSNe=5.3e-8 + 1.6e-5*exp(-0.5*((star_age-0.05)/0.01)*((star_age-0.05)/0.01));} // Ia (prompt Gaussian+delay, Manucci+06)
@@ -1807,7 +1808,11 @@ double cr_get_source_injection_rate(int i)
     }
 #endif
 #ifdef BLACK_HOLES
-    if(P[i].Type == 5) {Edot = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * BPP(i).BH_Mdot * C_LIGHT_CODE*C_LIGHT_CODE;} // injection in code units
+    if(P[i].Type == 5) {
+        double mdot_eff = BPP(i).BH_Mdot; // code units
+        mdot_eff = DMIN( mdot_eff , BPP(i).BH_Mdot / (1000./UNIT_TIME_IN_MYR) ); // if time-averaging over ~Gyr, can't have time-averaged injection rate above Mbh/<t> more or less (modulo order-one corrections for all this)
+        Edot = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * mdot_eff * C_LIGHT_CODE*C_LIGHT_CODE; // injection in code units
+    }
 #endif
 #endif
     if(Edot > 0) {return Edot * cr_get_source_shieldfac(i);} else {return 0;}
