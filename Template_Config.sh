@@ -292,7 +292,7 @@
 #BH_DYNFRICTION=0               # apply explicit dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas]; 1=[DM+stars]; =2[stars]; >2 simply multiplies the DF force by this number (cite Tremmel, Governato, Volonteri, & Quinn,2015, MNRAS, 451, 1868)
 #BH_DYNFRICTION_FROMTREE        # compute dynamical friction forces on BH following the discrete DF estimator in Linhao Ma et al., arXiv:2101.02727. This is a more flexible, general, and less noisy and more accurate version of the traditional Chandrasekhar dynamical friction formula. Cite L Ma et al. 2021 and 2022 if used, and contact author L. Ma for applications as testing is still ongoing.
 #BH_DRAG=1                      # drag force on BH due to accretion; =1 uses actual mdot, =2 boost as if BH is accreting at eddington. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
-#BH_REPOSITION_ON_POTMIN=2      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [=0 'jumps', =1 to "jump" onto STARS only, =2 moves smoothly with damped velocity to most-bound particle]
+#BH_REPOSITION_ON_POTMIN=2      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [-1=disabled, =0 'jumps', =1 to "jump" onto STARS only, =2 moves smoothly with damped velocity to most-bound particle]
 ## ----------------------------------------------------------------------------------------------------
 # ----- accretion models (modules for gas or other particle accretion)
 ## ----------------------------------------------------------------------------------------------------
@@ -466,8 +466,11 @@
 #OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
 #OUTPUT_TIDAL_TENSOR            # writes tidal tensor (computed in gravity) to snapshots
 #OUTPUT_ACCELERATION            # output physical acceleration of each particle in snapshots
+#OUTPUT_HYDROACCELERATION       # output the 'hydrodynamic' (includes -all- stress tensor terms) acceleration. if enabled with 'OUTPUT_ACCELERATION', that will output the gravitational acceleration, so the sum of the two is the total
 #OUTPUT_CHANGEOFENERGY          # outputs rate-of-change of internal energy of gas particles in snapshots
 #OUTPUT_VORTICITY               # outputs the vorticity vector
+#OUTPUT_GRADIENT_RHO            # outputs the gradients of the gas density field
+#OUTPUT_GRADIENT_VEL            # outputs the full velocity gradient tensor field for the gas
 #OUTPUT_BFIELD_DIVCLEAN_INFO    # outputs the phi, phi-gradient, and numerical div-B fields used for de-bugging MHD simulations
 #OUTPUT_TIMESTEP                # outputs timesteps for each particle
 #OUTPUT_COOLRATE                # outputs cooling rate, and conduction rate if enabled

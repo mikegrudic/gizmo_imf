@@ -58,9 +58,9 @@
 #if !defined(LONG_INTEGER_TIME)
 #define LONG_INTEGER_TIME   /* always recommended: on modern machines the memory overhead cost of this is negligible */
 #endif
-#if !defined(MPISENDRECV_SIZELIMIT)
-#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
-#endif
+//#if !defined(MPISENDRECV_SIZELIMIT)
+//#define MPISENDRECV_SIZELIMIT /* define but without an explicit memory value so it uses the buffersize defaults instead */
+//#endif
 
 #define DO_PREPROCESSOR_EXPAND_(VAL)  VAL ## 1
 #define EXPAND_PREPROCESSOR_(VAL)     DO_PREPROCESSOR_EXPAND_(VAL) /* checks for a NON-ZERO value of this parameter */
@@ -362,7 +362,9 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
+#if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#endif
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)
 #define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
@@ -960,6 +962,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
 #define EVALPOTENTIAL
+#endif
+
+#if defined(BH_REPOSITION_ON_POTMIN)
+#if (BH_REPOSITION_ON_POTMIN < 0)
+#undef BH_REPOSITION_ON_POTMIN // this is a key to un-define this variable if it is set, useful for some of the preset variable packages above //
+#endif
 #endif
 
 #if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
@@ -3288,9 +3296,6 @@ extern struct gas_cell_data
 #else
 #define Rad_E_gamma_Pred Rad_E_gamma        /*! define a useful shortcut for use throughout code so we don't have to worry about Pred-vs-true difference */
 #endif
-#ifdef RT_RAD_PRESSURE_OUTPUT
-    MyFloat Rad_Accel[3];
-#endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
 #endif
@@ -3321,11 +3326,14 @@ extern struct gas_cell_data
     MyFloat Rad_Flux[N_RT_FREQ_BINS][3];
 #define Rad_Flux_Pred Rad_Flux
 #endif
-    
+
+#ifdef RT_RAD_PRESSURE_OUTPUT
+    MyFloat Rad_Accel[3];
+#endif
+
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyFloat SubGrid_CosmicRayEnergyDensity;
 #endif
-
 
 #ifdef EOS_GENERAL
     MyFloat SoundSpeed;                   /* Sound speed */
@@ -3663,6 +3671,7 @@ enum iofields
   IO_SINK_FORM_MASS,
   IO_POT,
   IO_ACCEL,
+  IO_HYDROACCEL,
   IO_HII,
   IO_HeI,
   IO_HeII,
@@ -3687,6 +3696,8 @@ enum iofields
   IO_AMDC,
   IO_PHI,
   IO_GRADPHI,
+  IO_GRADRHO,
+  IO_GRADVEL,
   IO_COOLRATE,
   IO_TIDALTENSORPS,
   IO_GDE_DISTORTIONTENSOR,
@@ -3840,6 +3851,9 @@ extern ALIGN(32) struct NODE
 #ifdef RT_USE_TREECOL_FOR_NH
   MyFloat gasmass;
 #endif
+#ifdef BH_DYNFRICTION_FROMTREE
+  long N_part;   /*!< number of particles+cells in the tree node */
+#endif
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
 #ifdef CHIMES_STELLAR_FLUXES
@@ -3861,7 +3875,7 @@ extern ALIGN(32) struct NODE
   MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
   MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
-    int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+  int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
   MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */

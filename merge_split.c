@@ -43,6 +43,7 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
     if(P[i].Type==3) {return 0;}
 #endif
 #ifdef BH_WIND_SPAWN
@@ -122,14 +123,14 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
             {if(rbh<r3) {mc=m_r2*exp(log(m_r3/m_r2)*log(rbh/r2)/log(r3/r2));} else {mc=m_r3*pow(rbh/r3,3);}}}
             m_ref_mJ = DMIN(m_ref_mJ , mc);
         }
-        double r_pc = rbh*1000.,r0, f0=1, target_slope=1.0;
+        double r_pc = rbh*1000.,r0, f0=1, target_slope=1.2;
         double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
 
         double t_00 = All.TimeBegin;
         double dtau = (All.Time - t_00) / dt_to_ramp_refinement, dtdelay=0.1, tfinal=1.;
         if(dtau < dtdelay) {slope=0;} else {slope=target_slope * (1. - exp(- ((dtau-dtdelay) / (tfinal - dtdelay)) ));} // alt model
 
-        if(dtau < dtdelay) {slope=0;} else {slope = target_slope * (dtau-dtdelay) / (tfinal - dtdelay);}
+        if(dtau < dtdelay) {slope=0;} else {if(dtau>tfinal) {slope=target_slope;} else {slope = target_slope * (dtau-dtdelay) / (tfinal - dtdelay);}}
         r0=1000.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
         if(dtau < 2.*dtdelay) {slope*=0;} else if(dtau < 3.*dtdelay) {slope*=(dtau-2.*dtdelay)/dtdelay;}
         r0=100.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
@@ -1169,6 +1170,7 @@ void apply_pm_hires_region_clipping_selection(int i)
 int check_if_sufficient_mergesplit_time_has_passed(int i)
 {
     double N_timesteps_fac = 30.; // require > N timesteps before next merge/split, default was 100, but can be more aggressive - something between 10-100 works well in practice [definitely shorter than 10 can cause problems]
+    if(P[i].Time_Of_Last_MergeSplit <= All.TimeBegin) {N_timesteps_fac *= 10. * get_random_number(832LL*i + 890345645LL + 83457LL*ThisTask + 12313403LL*P[i].ID);} // spread initial timing out over a broader range so it doesn't all happen at once after the startup
     double dtime_code = All.Time - P[i].Time_Of_Last_MergeSplit; // time [in code units] since last merge/split
     double dt_incodescale = (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * All.cf_hubble_a) * All.cf_atime; // timestep converted appropriately to code units [physical if non-comoving, else scale factor]
     if(dtime_code < N_timesteps_fac*dt_incodescale) {return 0;} // not enough time passed, prohibit

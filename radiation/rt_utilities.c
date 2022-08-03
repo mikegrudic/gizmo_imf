@@ -1026,9 +1026,6 @@ void rt_set_simple_inits(int RestartFlag)
             SphP[i].Radiation_Temperature = DMIN(All.InitGasTemp,100.); //SphP[i].Dust_Temperature;
             SphP[i].Dt_Rad_E_gamma_T_weighted_IR = 0;
 #endif
-#ifdef RT_RAD_PRESSURE_OUTPUT
-            for(k=0;k<3;k++) {SphP[i].Rad_Accel[k]=0;}
-#endif
 #ifdef RT_CHEM_PHOTOION
             SphP[i].HII = MIN_REAL_NUMBER;
             SphP[i].HI = 1.0 - SphP[i].HII;

@@ -413,7 +413,7 @@ void gravity_tree(void)
                 if(P[place].Type==0) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {SphP[place].Rad_Flux[kf][k2] += GravDataOut[j].Rad_Flux[kf][k2];}}}
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
-                if(P[place].Type==0) SphP[place].SubGrid_CosmicRayEnergyDensity += GravDataOut[j].SubGrid_CosmicRayEnergyDensity;
+                if(P[place].Type==0) {SphP[place].SubGrid_CosmicRayEnergyDensity += GravDataOut[j].SubGrid_CosmicRayEnergyDensity;}
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 {int i1tt,i2tt; for(i1tt=0;i1tt<3;i1tt++) {for(i2tt=0;i2tt<3;i2tt++) {P[place].tidal_tensorps[i1tt][i2tt] += GravDataOut[j].tidal_tensorps[i1tt][i2tt];}}}
@@ -562,7 +562,11 @@ void gravity_tree(void)
                 for(k=0;k<3;k++) {vdot_h[k] = erad_i * (vel_i[k] + vdotflux*flux_i[k]/flux_mag2);} // calculate volume integral of scattering coefficient t_inv * (gas_vel . [e_rad*I + P_rad_tensor]), which gives an additional time-derivative term. this is the P term //
                 for(k=0;k<3;k++) {radacc[k] += acc_norm * (flux_i[k] - vdot_h[k]);} // note these 'vdoth' terms shouldn't be included in FLD, since its really assuming the entire right-hand-side of the flux equation reaches equilibrium with the pressure tensor, which gives the expression in rt_utilities
             }
+#if defined(RT_RAD_PRESSURE_OUTPUT)
+            for(k=0;k<3;k++) {SphP[i].Rad_Accel[k] = radacc[k];} // here units are the same as hydroaccel, so no extra comoving units 
+#else
             for(k=0;k<3;k++) {P[i].GravAccel[k] += radacc[k] / All.cf_a2inv;} // convert into our code units for GravAccel, which are comoving gm/r^2 units //
+#endif
         }
 #endif
 #endif
