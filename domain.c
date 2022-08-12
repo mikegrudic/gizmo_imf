@@ -1689,7 +1689,7 @@ int domain_countToGo(size_t nlimit)
                     nlimit -= sizeof(struct gas_cell_data);
                 }
 #ifdef SEPARATE_STELLARDOMAINDECOMP
-                if(((P[n].Type & 15) == 4) || ((P[n].Type & 15) == 5)) {toGoStars[DomainTask[no]] += 1;} // ???
+                if(((P[n].Type & 15) == 4) || ((P[n].Type & 15) == 5)) {toGoStars[DomainTask[no]] += 1;} 
 #endif
                 P[n].Type |= 16;    /* flag this particle for export */
             }

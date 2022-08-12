@@ -725,7 +725,8 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                     if(pa->Type == 0)
                     {
-                        if(PPP[p].Hsml > hmax) {hmax = PPP[p].Hsml;}
+                        double htmp = DMIN(ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT, PPP[p].Hsml);
+                        if(htmp > hmax) {hmax = htmp;}
                         divVel = P[p].Particle_DivVel;
                         if(divVel > divVmax) {divVmax = divVel;}
                     }
@@ -1577,7 +1578,7 @@ void force_add_star_to_tree(int igas, int istar)
     Nextnode[istar] = no; // order correctly
     Father[istar] = Father[igas]; // set parent node to be the same
     // update parent node properties [maximum softening, speed] for opening criteria
-    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, P[igas].Hsml);
+    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT));
     double vmax = Extnodes[Father[igas]].vmax;
     int k; for(k=0; k<3; k++) {if(fabs(P[istar].Vel[k]) > vmax) {vmax = fabs(P[istar].Vel[k]);}}
     Extnodes[Father[igas]].vmax = vmax;

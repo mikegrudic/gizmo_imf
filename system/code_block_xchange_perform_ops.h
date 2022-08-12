@@ -71,7 +71,9 @@ be copy-pasted and can be generically optimized in a single place */
         {
             place = DataIndexTable[j].Index;
             INPUTFUNCTION_NAME(&DATAIN_NAME[j], place, loop_iteration);
+#ifndef DONOTUSENODELIST
             memcpy(DATAIN_NAME[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+#endif
         }
 
         /* ok now we have to figure out if there is enough memory to handle all the tasks sending us their data, and if not, break it into sub-chunks */
