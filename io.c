@@ -1488,6 +1488,28 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_RAD_TEMP:
+#if defined(RADTRANSFER) && defined(RT_INFRARED)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) SphP[pindex].Radiation_Temperature;
+                    n++;
+                }
+#endif
+            break;
+
+        case IO_DUST_TEMP:
+#if defined(RADTRANSFER) && defined(RT_INFRARED)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) SphP[pindex].Dust_Temperature;
+                    n++;
+                }
+#endif
+            break;
+            
         case IO_RAD_FLUX:
 #if defined(OUTPUT_RT_RAD_FLUX) && defined(RT_EVOLVE_FLUX)
             for(n = 0; n < pc; pindex++)
@@ -1820,6 +1842,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
+        case IO_RAD_TEMP:
+        case IO_DUST_TEMP:
         case IO_IDEN:
         case IO_UNSPMASS:
         case IO_CRATE:
@@ -2104,6 +2128,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
+        case IO_RAD_TEMP:
+        case IO_DUST_TEMP:
         case IO_IDEN:
         case IO_UNSPMASS:
         case IO_CRATE:
@@ -2339,6 +2365,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_RAD_ACCEL:
         case IO_HYDROACCEL:
         case IO_RADGAMMA:
+        case IO_RAD_TEMP:
+        case IO_DUST_TEMP:
         case IO_RAD_FLUX:
         case IO_EDDINGTON_TENSOR:
         case IO_U:
@@ -2524,6 +2552,18 @@ int blockpresent(enum iofields blocknr)
 
         case IO_RADGAMMA:
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
+            return 1;
+#endif
+            break;
+
+        case IO_RAD_TEMP:
+#if defined(RADTRANSFER) && defined(RT_INFRARED)
+            return 1;
+#endif
+            break;
+
+        case IO_DUST_TEMP:
+#if defined(RADTRANSFER) && defined(RT_INFRARED)
             return 1;
 #endif
             break;
@@ -3374,6 +3414,12 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_RADGAMMA:
             strncpy(label, "RADG", 4);
             break;
+        case IO_RAD_TEMP:
+            strncpy(label, "RADT", 4);
+            break;
+        case IO_DUST_TEMP:
+            strncpy(label, "DTMP", 4);
+            break;
         case IO_RAD_FLUX:
             strncpy(label, "RADF", 4);
             break;
@@ -3498,6 +3544,12 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_RADGAMMA:
             strcpy(buf, "PhotonEnergy");
+            break;
+        case IO_RAD_TEMP:
+            strcpy(buf, "IRBand_Radiation_Temperature");
+            break;
+        case IO_DUST_TEMP:
+            strcpy(buf, "Dust_Temperature");
             break;
         case IO_RAD_FLUX:
             strcpy(buf, "PhotonFluxDensity");
