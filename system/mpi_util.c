@@ -386,8 +386,9 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 #endif
 
 
-
+#ifdef MPISENDRECV_SIZELIMIT
 #undef MPI_Sendrecv // need to undef before being called below so don't get stuck in loop here
+#endif
 
 int MPI_Sizelimited_Sendrecv(void *sendbuf0, size_t sendcount, MPI_Datatype sendtype,
                              int dest, int sendtag, void *recvbuf0, size_t recvcount,

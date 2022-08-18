@@ -831,7 +831,7 @@ void blackhole_final_operations(void)
 #endif
 #endif
         BPP(n).unspawned_wind_mass += dm_wind;
-	double n_unspawned = BPP(n).unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(n)); // number of spawned gas cells that can be made from the mass in the reservoir
+        double n_unspawned = BPP(n).unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(n)); // number of spawned gas cells that can be made from the mass in the reservoir
         if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
 #endif
 

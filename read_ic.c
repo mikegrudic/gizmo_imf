@@ -565,6 +565,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_HYDROACCEL:
         case IO_DTENTR:
         case IO_RAD_ACCEL:
+        case IO_RAD_TEMP:
+        case IO_DUST_TEMP:
         case IO_GDE_DISTORTIONTENSOR:
         case IO_CRATE:
         case IO_HRATE:
