@@ -373,10 +373,10 @@ void force_update_hmax(void)
         while(no >= 0)
         {
             force_drift_node(no, All.Ti_Current);
-            
-            if(PPP[i].Hsml > Extnodes[no].hmax || divVel > Extnodes[no].divVmax)
+            double htmp = DMIN(PPP[i].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT);
+            if(htmp > Extnodes[no].hmax || divVel > Extnodes[no].divVmax)
             {
-                if(PPP[i].Hsml > Extnodes[no].hmax) {Extnodes[no].hmax = PPP[i].Hsml;}
+                if(htmp > Extnodes[no].hmax) {Extnodes[no].hmax = htmp;}
                 if(divVel > Extnodes[no].divVmax) {Extnodes[no].divVmax = divVel;}
                 
                 if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node */

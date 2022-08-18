@@ -1463,6 +1463,11 @@ typedef unsigned long long peanokey;
 #endif
 
 
+#ifndef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
+#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (All.MaxHsml)
+#endif
+
+
 /* some flags for the field "flag_ic_info" in the file header */
 #define FLAG_ZELDOVICH_ICS     1
 #define FLAG_SECOND_ORDER_ICS  2
@@ -3715,6 +3720,8 @@ enum iofields
   IO_EOSCOMP,
   IO_PARTVEL,
   IO_RADGAMMA,
+  IO_RAD_TEMP,
+  IO_DUST_TEMP,
   IO_RAD_ACCEL,
   IO_RAD_FLUX,
   IO_EDDINGTON_TENSOR,

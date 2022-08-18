@@ -131,7 +131,7 @@ static inline double ForceSoftening_KernelRadius(int p)
     if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return PPP[p].AGS_Hsml;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    if(P[p].Type == 0) {return PPP[p].Hsml;}
+    if(P[p].Type == 0) {return DMIN(PPP[p].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT);}
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
