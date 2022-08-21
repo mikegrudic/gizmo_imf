@@ -740,6 +740,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#ifdef RT_USE_TREECOL_FOR_NH
+#if !defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
+#define GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
+#endif
+#endif
+
 #ifdef ADAPTIVE_TREEFORCE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
 #ifndef TIDAL_TIMESTEP_CRITERION 
 #define TIDAL_TIMESTEP_CRITERION // need this to estimate the dynamical time
@@ -3855,7 +3861,7 @@ extern ALIGN(32) struct NODE
 
   double GravCost;
   integertime Ti_current;
-#ifdef RT_USE_TREECOL_FOR_NH
+#if defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
   MyFloat gasmass;
 #endif
 #ifdef BH_DYNFRICTION_FROMTREE
