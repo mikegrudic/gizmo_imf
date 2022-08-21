@@ -487,19 +487,24 @@ void set_blackhole_new_mass(int i, int n, double dt)
     for BH_WIND_KICK + BH_GRAVCAPTURE_GAS
         - the ratio of BH/disk growth-to-outflow rate is enforced explicitly in blackhole_swallow_and_kick */
 
+    double dMBH_continuous_accretion; dMBH_continuous_accretion = BPP(n).BH_Mdot * dt;
 #ifdef BH_ALPHADISK_ACCRETION
-    BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;   // mdot comes from the disk - no mass loss here regarless of BAL model -
-    double dm_alphadisk = ( BlackholeTempInfo[i].mdot_alphadisk - BPP(n).BH_Mdot ) * dt;
-    if(dm_alphadisk < -BPP(n).BH_Mass_AlphaDisk) {BPP(n).BH_Mass_AlphaDisk=0;} else {BPP(n).BH_Mass_AlphaDisk += dm_alphadisk;}
+    BPP(n).BH_Mass += dMBH_continuous_accretion;   // mdot comes from the disk - no mass loss here regardless of BAL model -
+    double dm_alphadisk = BlackholeTempInfo[i].mdot_alphadisk * dt - dMBH_continuous_accretion;
+    if(dm_alphadisk < -BPP(n).BH_Mass_AlphaDisk) {dm_alphadisk=-BPP(n).BH_Mass_AlphaDisk; BPP(n).BH_Mass_AlphaDisk=0;} else {BPP(n).BH_Mass_AlphaDisk += dm_alphadisk;}
     if(BPP(n).BH_Mass_AlphaDisk<0) {BPP(n).BH_Mass_AlphaDisk=0;}
     if(P[n].Mass<0) {P[n].Mass=0;}
+    dMBH_continuous_accretion += dm_alphadisk;
 #else // #ifdef BH_ALPHADISK_ACCRETION
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_SPAWN)
-    BPP(n).BH_Mass += BPP(n).BH_Mdot * dt / All.BAL_f_accretion; // accrete the winds first, then remove the wind mass in the final loop
+    BPP(n).BH_Mass += dMBH_continuous_accretion / All.BAL_f_accretion; // accrete the winds first, then remove the wind mass in the final loop
 #else
-    BPP(n).BH_Mass += BPP(n).BH_Mdot * dt;
+    BPP(n).BH_Mass += dMBH_continuous_accretion;
 #endif
 #endif // #else BH_ALPHADISK_ACCRETION
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+    BPP(n).BH_AccretionDeficit += dMBH_continuous_accretion; // this is mass continuously accreted, which needs to be stochastically 'caught up to'
+#endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
     double mtot = BlackholeTempInfo[i].Mgas_in_Kernel + BPP(n).Mass;
     for(k=0; k<3; k++) { BlackholeTempInfo[i].BH_SurroundingGasCOM[k] /= mtot;} // this now stores the COM of the sink-gas system, relative to the sink position
@@ -722,6 +727,9 @@ void blackhole_final_operations(void)
             for(k=0;k<3;k++) {P[n].B[k] += BlackholeTempInfo[i].accreted_B[k];}
 #endif
             P[n].Mass += BlackholeTempInfo[i].accreted_Mass;
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+            P[n].BH_AccretionDeficit += BlackholeTempInfo[i].BH_AccretionDeficit;
+#endif
             BPP(n).BH_Mass += BlackholeTempInfo[i].accreted_BH_Mass;
 #ifdef BH_ALPHADISK_ACCRETION
             BPP(n).BH_Mass_AlphaDisk += BlackholeTempInfo[i].accreted_BH_Mass_alphadisk;

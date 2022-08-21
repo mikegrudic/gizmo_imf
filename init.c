@@ -501,9 +501,12 @@ void init(void)
 #endif
             }
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-	    P[i].dt_since_last_gas_search = 0;
-	    P[i].do_gas_search_this_timestep = 1;
+            P[i].dt_since_last_gas_search = 0;
+            P[i].do_gas_search_this_timestep = 1;
 #endif 
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+            if(RestartFlag != 1) {BPP(i).BH_AccretionDeficit = 0;}
+#endif
         }
 #endif
     }
