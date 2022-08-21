@@ -126,7 +126,7 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
-#undef
+#undef NGB_ONLY_OPEN_NODES_CONTAINING_GAS
 }
 
 /* this is the same as above, but the simpler un-threaded version, useful for historical reasons and because some sub-routines use 
