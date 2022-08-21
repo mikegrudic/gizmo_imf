@@ -296,7 +296,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             if(SwallowID_j < local.ID)
                             {
                                 //double dm_toacc = bh_mass_withdisk - (local.Mass + mass_markedswallow); -- old model, used total mass as 'target' which can be a problem
-                                double dm_to_acc = local.BH_AccretionDeficit - mass_markedswallow; // amount of continuous accretion 'deficit' integrated for these BHs
+                                double dm_toacc = local.BH_AccretionDeficit - mass_markedswallow; // amount of continuous accretion 'deficit' integrated for these BHs
                                 if(dm_toacc>0) {p=dm_toacc*wk/local.Density;} else {p=0;}
 #ifdef BH_WIND_KICK /* DAA: for stochastic winds (BH_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance black hole growth */
                                 if(f_accreted>0) {p /= f_accreted; if((bh_mass_withdisk - local.Mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * local.Mdot * local.Dt * wk / local.Density;}} /* DAA: compute outflow probability when "bh_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */

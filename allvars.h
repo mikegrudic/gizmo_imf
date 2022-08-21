@@ -310,6 +310,15 @@
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
+#if defined(FIRE_TEST_OPTIMIZERS)
+#if defined(FIRE_BHS)
+#define BH_EXCISION_NONGAS
+#define BH_EXCISION_GAS
+#endif
+#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT=(0.1)
+#define TIDAL_TIMESTEP_CRITERION
+#endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
@@ -362,6 +371,9 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
+#if defined(GALSF_SFR_IMF_SAMPLING) && !defined(BH_REPOSITION_ON_POTMIN)
+#define BH_DYNFRICTION_FROMTREE     /* use this module as a default in sufficiently high-resolution simulations*/
+#endif
 #if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #endif
