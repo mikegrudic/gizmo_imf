@@ -2685,6 +2685,9 @@ extern ALIGN(32) struct particle_data
 #if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0))
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    double tidal_tensor_mag_prev;                /*!< saved frobenius norm of the tidal tensor, from the previous timestep >*/
+#endif
 #ifdef PMGRID
     double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
 #endif

@@ -136,6 +136,9 @@ static inline double ForceSoftening_KernelRadius(int p)
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
+#if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
+    if(((P[p].Type == 1) || (P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
+#endif
     return All.ForceSoftening[P[p].Type];
 }
 
