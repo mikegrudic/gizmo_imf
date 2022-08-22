@@ -167,7 +167,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                     for(k=0;k<3;k++) {dpos[k] = P[j].Pos[k] - local.Pos[k]; dvel[k]=P[j].Vel[k]-local.Vel[k];}
                     NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); r2=0; for(k=0;k<3;k++) {r2 += dpos[k]*dpos[k];}
                     NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
-                    if(r2 < h_i2 || r2 < PPP[j].Hsml*PPP[j].Hsml)
+                    double heff_j = DMAX( PPP[j].Hsml , ForceSoftening_KernelRadius(j) );
+                    if(r2 < h_i2 || r2 < heff_j*heff_j)
                     {
                         vrel=0; for(k=0;k<3;k++) {vrel += dvel[k]*dvel[k];}
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* relative velocity in physical units. do this once and use below */
@@ -208,7 +209,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         if(P[j].Type == 5)  /* we may have a black hole merger -- check below if allowed */
                             if((local.ID != P[j].ID) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < PPP[j].Hsml) && (r < sink_radius) && ((P[j].Mass < local.Mass) || ((P[j].Mass == local.Mass) && (P[j].ID < local.ID))) && (P[j].Mass < 10.*P[j].Sink_Formation_Mass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
+                            if((r < 1.0001*P[j].min_dist_to_bh) && (r < heff_j) && (r < sink_radius) && ((P[j].Mass < local.Mass) || ((P[j].Mass == local.Mass) && (P[j].ID < local.ID))) && (P[j].Mass < 10.*P[j].Sink_Formation_Mass)) /* only merge away stuff that is within the softening radius, and is no more massive that a few gas particles */
 #endif
                             {
                                 if((vrel < vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
@@ -229,7 +230,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if defined(BH_EXCISION_NONGAS) /* for the excision of non-gas particles which are 'too close', we can follow a very simple procedure here */
                         if((P[j].Type > 0) && (P[j].Type < 5) && (SwallowID_j < local.ID)) // valid [non-gas, non-bh] particle not already marked to swallow
                         {
-                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 2.*vesc) && (r < (All.ForceSoftening[5]+All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
+                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.707*vesc) && (r < (All.ForceSoftening[5]+All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
                         }
 #endif
                         
@@ -239,7 +240,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         if((P[j].Type != 5) && (SwallowID_j < local.ID)) // we have a particle not already marked to swallow
                         {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                            double eps = DMAX( r , DMAX(P[j].Hsml , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER); // plummer-equivalent
+                            double eps = DMAX( r , DMAX(heff_j , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER); // plummer-equivalent
 			                if(eps*eps*eps /(P[j].Mass + local.Mass) <= P[j].SwallowTime)
 #endif
 #if defined(BH_ALPHADISK_ACCRETION)
