@@ -371,7 +371,7 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
-#if defined(GALSF_SFR_IMF_SAMPLING) && !defined(BH_REPOSITION_ON_POTMIN)
+#if defined(GALSF_SFR_IMF_SAMPLING) && !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE)
 #define BH_DYNFRICTION_FROMTREE     /* use this module as a default in sufficiently high-resolution simulations*/
 #endif
 #if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
