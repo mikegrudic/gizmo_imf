@@ -32,7 +32,7 @@
     when particles fall below some minimum mass threshold */
 int does_particle_need_to_be_merged(int i)
 {
-    if(P[i].Mass <= 0) return 0;
+    if(P[i].Mass <= 0) {return 0;}
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
@@ -41,6 +41,9 @@ int does_particle_need_to_be_merged(int i)
 #endif
 #ifdef GRAIN_RDI_TESTPROBLEM
     return 0;
+#endif
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+    if(P[i].Type==4) {return evaluate_starstar_merger_for_starcluster_eligibility(i);}
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
@@ -85,6 +88,9 @@ int does_particle_need_to_be_split(int i)
 #else
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
+#endif
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+    if(P[i].Type==4) {return 0;}
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
     if(P[i].ID == All.AGNWindID) {return 0;}
@@ -278,7 +284,7 @@ void merge_and_split_particles(void)
         if((P[i].Type==0)&&(TimeBinActive[P[i].TimeBin])) /* default mode, only gas particles merged */
 #endif
         {
-            /* we have a gas particle, ask if it needs to be merged */
+            /* we have a gas [or eligible star] particle, ask if it needs to be merged */
             if(does_particle_need_to_be_merged(i))
             {
                 /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
@@ -292,8 +298,11 @@ void merge_and_split_particles(void)
                     {
                         j = Ngblist[n]; double m_eff = P[j].Mass; int do_allow_merger = 0; // boolean flag to check
                         if((P[j].Mass >= P[i].Mass) && (P[i].Mass+P[j].Mass < All.MaxMassForParticleSplit)) {do_allow_merger = 1;}
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+                        if(P[i].Type==4 && P[j].Type==4) {m_eff=evaluate_starstar_merger_for_starcluster_particle_pair(i,j); if(m_eff<=0) {do_allow_merger=0;} else {do_allow_merger=1;}}
+#endif
 #ifdef BH_WIND_SPAWN
-                        if(P[i].ID==All.AGNWindID)
+                        if(P[i].ID==All.AGNWindID && P[i].Type==0)
                         {
                             if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
                             {
@@ -356,8 +365,7 @@ void merge_and_split_particles(void)
     // No tree-walk is allowed below here
     for (i = 0; i < NumPart; i++) {
 #ifdef PM_HIRES_REGION_CLIPDM
-        if (Ptmp[i].flag == -1) {
-            // clipping
+        if (Ptmp[i].flag == -1) { // clipping
             P[i].Type = 1; // 'graduate' to high-res DM particle
             P[i].Mass = All.MassOfClippedDMParticles; // set mass to the 'safe' mass of typical high-res particles
         }
@@ -680,9 +688,18 @@ int merge_particles_ij(int i, int j)
             P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
 #endif
         }
-        PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS);
+        PPP[j].Hsml = pow(pow(PPP[j].Hsml,NUMDIMS)+pow(PPP[i].Hsml,NUMDIMS),1.0/NUMDIMS); // volume-conserving to leading order //
 #ifdef METALS
-        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
+        for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} // metal-mass conserving //
+#endif
+#ifdef GALSF
+        if(P[i].Type==4 && P[j].Type==4) // couple extra potentially-important fields to carry for star particles
+        {
+#ifdef GALSF_SFR_IMF_SAMPLING
+            P[j].IMF_NumMassiveStars += P[i].IMF_NumMassiveStars; // O-star number conserving //
+#endif
+            P[j].StellarFormationTime = wt_j*P[j].StellarFormationTime + wt_i*P[i].StellarFormationTime; // average formation time //
+        }
 #endif
         /* finally zero out the particle mass so it will be deleted */
         P[i].Mass = 0;
@@ -1162,6 +1179,52 @@ void apply_pm_hires_region_clipping_selection(int i)
 #endif
     return; // done
 }
+
+
+
+
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+/* check if a star-star particle pair is eligible to be merged within this model context, when representing essentially degenerate kinematic information (sub-softening) */
+double evaluate_starstar_merger_for_starcluster_particle_pair(int i, int j)
+{
+    if(evaluate_starstar_merger_for_starcluster_eligibility(j)) // already evaluated i, make sure j is also eligible
+    {
+        double eta_position = 0.1, eta_velocity2 = 2.; // variables for below, defined for convenience here
+        
+        // consider separation and relative velocities
+        int k; double dp[3], r2=0; for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];} // calculate separation
+        NEAREST_XYZ(dp[0],dp[1],dp[2],-1); // correct for box appropriately
+        for(k=0;k<3;k++) {r2+=dp[k]*dp[k];} // squared position difference
+        
+        double threshold_separation = eta_position * All.ForceSoftening[4]; // threshold separation to consider
+        if(r2 > threshold_separation*threshold_separation) {return -1;} // only allow if sufficiently close
+        
+        double dv[3], v2=0; for(k=0;k<3;k++) {dv[k]=P[j].Vel[k]-P[i].Vel[k];} // calculate separation
+        NGB_SHEARBOX_BOUNDARY_VELCORR_(P[i].Pos,P[j].Pos,dv,-1); // correct for box appropriately
+        for(k=0;k<3;k++) {v2+=dv[k]*dv[k];} // squared velocity difference
+        v2 *= All.cf_a2inv; // physical
+        
+        double threshold_velocity2 = eta_velocity2 * All.G*(P[i].Mass+P[j].Mass)/(All.cf_atime*sqrt(r2)); // threshold 'escape' velocity to consider
+        if(v2 > threshold_velocity2) {return -1;} // only allow if relative velocity is sufficiently low (bound)
+        
+        return dr; // we'll use this as our threshold criterion (considering the closest pair which meets all our criteria)
+    }
+    return -1; // default to no merger allowed
+}
+
+/* check if a star is -potentially- eligible to enter this subroutine for looking for a merger pair companion, which can only occur if it is sufficiently old and in a very dense region, otherwise it will not be allowed */
+int evaluate_starstar_merger_for_starcluster_eligibility(int i)
+{
+    if(All.Time <= All.TimeBegin) {return 0;} // don't allow on first timestep
+    if(P[i].Type != 4) {return 0;} // only stars
+    if(evaluate_stellar_age_Gyr(P[i].StellarAge) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    double r_NGB = 1.35 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number
+    if(r_NGB > 0.1*All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing much smaller than softening)
+#endif
+    return 1; // allow this particle to -consider- the possibility of a merger
+}
+#endif
 
 
 

@@ -503,7 +503,7 @@ void gravity_tree(void)
 #endif
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* final operations to compute the diagonalized tidal tensor and related quantities */
-#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
+#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
         double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
 #ifdef PMGRID
         for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] += P[i].tidal_tensorpsPM[j][k];}

@@ -467,6 +467,11 @@ void read_file(char *fname, int readTask, int lastTask);
 
 void get_Tab_IO_Label(enum iofields blocknr, char *label);
 
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+double evaluate_starstar_merger_for_starcluster_particle_pair(int i, int j);
+int evaluate_starstar_merger_for_starcluster_eligibility(int i);
+#endif
+
 
 void long_range_init_regionsize(void);
 

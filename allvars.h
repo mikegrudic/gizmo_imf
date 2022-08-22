@@ -2690,7 +2690,7 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0))
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0)) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
