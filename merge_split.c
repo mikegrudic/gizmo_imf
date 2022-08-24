@@ -698,7 +698,7 @@ int merge_particles_ij(int i, int j)
 #ifdef GALSF_SFR_IMF_SAMPLING
             P[j].IMF_NumMassiveStars += P[i].IMF_NumMassiveStars; // O-star number conserving //
 #endif
-            P[j].StellarFormationTime = wt_j*P[j].StellarFormationTime + wt_i*P[i].StellarFormationTime; // average formation time //
+            P[j].StellarAge = wt_j*P[j].StellarAge + wt_i*P[i].StellarAge; // average formation time //
         }
 #endif
         /* finally zero out the particle mass so it will be deleted */
@@ -1207,7 +1207,7 @@ double evaluate_starstar_merger_for_starcluster_particle_pair(int i, int j)
         double threshold_velocity2 = eta_velocity2 * All.G*(P[i].Mass+P[j].Mass)/(All.cf_atime*sqrt(r2)); // threshold 'escape' velocity to consider
         if(v2 > threshold_velocity2) {return -1;} // only allow if relative velocity is sufficiently low (bound)
         
-        return dr; // we'll use this as our threshold criterion (considering the closest pair which meets all our criteria)
+        return r2; // we'll use this as our threshold criterion (considering the closest pair which meets all our criteria)
     }
     return -1; // default to no merger allowed
 }

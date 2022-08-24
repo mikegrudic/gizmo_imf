@@ -7,27 +7,26 @@
 #include "../allvars.h"
 #include "../proto.h"
 
-#ifdef USE_FFTW3
-#include <fftw3-mpi.h>
-#include "myfftw3.h"
-#endif
 
 /*! \file longrange.c
- *  \brief driver routines for computation of long-range gravitational PM force
+ *  \brief Driver routines for computation of long-range gravitational PM force
  */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * significantly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
-
 #ifdef PMGRID
 
-/*! Driver routine to call initializiation of periodic or/and non-periodic FFT
- *  routines.
- */
+#ifdef USE_FFTW3
+#include <fftw3-mpi.h>
+#include "myfftw3.h"
+#endif
+
+
+/*! Driver routine to call initializiation of periodic or/and non-periodic FFT routines. */
 void long_range_init(void)
 {
 #ifdef USE_FFTW3

@@ -240,9 +240,6 @@ void gravity_tree(void)
                 }
                 else {P[place].is_in_a_binary=0; /* setting values to zero just to be sure */}
 #endif
-#if (defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(COSMIC_RAY_SUBGRID_LEBRON)) && !(defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL))
-                if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].Soft = PPP[place].Hsml;} else {GravDataIn[j].Soft = All.ForceSoftening[P[place].Type];}
-#endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if((P[place].Type == 0) && (PPP[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;} else {GravDataIn[j].AGS_zeta = 0;}
 #endif
@@ -733,34 +730,32 @@ void sum_top_level_node_costfactors(void)
 }
 
 
-/*! This function sets the (comoving) softening length of all particle types in the table All.SofteningTable[...].
+/*! This function sets the (comoving) softening length of all particle types in the table All.ForceSoftening[...].
  We check that the physical softening length is bounded by the Softening-MaxPhys values */
 void set_softenings(void)
 {
+    int i; double soft[6];
+    soft[0] = All.SofteningGas;
+    soft[1] = All.SofteningHalo;
+    soft[2] = All.SofteningDisk;
+    soft[3] = All.SofteningBulge;
+    soft[4] = All.SofteningStars;
+    soft[5] = All.SofteningBndry;
     if(All.ComovingIntegrationOn)
     {
-        if(All.SofteningGas * All.Time > All.SofteningGasMaxPhys) {All.SofteningTable[0] = All.SofteningGasMaxPhys / All.Time;} else {All.SofteningTable[0] = All.SofteningGas;}
-        if(All.SofteningHalo * All.Time > All.SofteningHaloMaxPhys) {All.SofteningTable[1] = All.SofteningHaloMaxPhys / All.Time;} else {All.SofteningTable[1] = All.SofteningHalo;}
-        if(All.SofteningDisk * All.Time > All.SofteningDiskMaxPhys) {All.SofteningTable[2] = All.SofteningDiskMaxPhys / All.Time;} else {All.SofteningTable[2] = All.SofteningDisk;}
-        if(All.SofteningBulge * All.Time > All.SofteningBulgeMaxPhys) {All.SofteningTable[3] = All.SofteningBulgeMaxPhys / All.Time;} else {All.SofteningTable[3] = All.SofteningBulge;}
-        if(All.SofteningStars * All.Time > All.SofteningStarsMaxPhys) {All.SofteningTable[4] = All.SofteningStarsMaxPhys / All.Time;} else {All.SofteningTable[4] = All.SofteningStars;}
-        if(All.SofteningBndry * All.Time > All.SofteningBndryMaxPhys) {All.SofteningTable[5] = All.SofteningBndryMaxPhys / All.Time;} else {All.SofteningTable[5] = All.SofteningBndry;}
+        double soft_temp[6], cf_atime = 1./All.Time;
+        soft_temp[0] = All.SofteningGasMaxPhys * cf_atime;
+        soft_temp[1] = All.SofteningHaloMaxPhys * cf_atime;
+        soft_temp[2] = All.SofteningDiskMaxPhys * cf_atime;
+        soft_temp[3] = All.SofteningBulgeMaxPhys * cf_atime;
+        soft_temp[4] = All.SofteningStarsMaxPhys * cf_atime;
+        soft_temp[5] = All.SofteningBndryMaxPhys * cf_atime;
+        for(i=0; i<6; i++) {if(soft_temp[i]<soft[i]) {soft[i]=soft_temp[i];}}
     }
-    else
-    {
-        All.SofteningTable[0] = All.SofteningGas;
-        All.SofteningTable[1] = All.SofteningHalo;
-        All.SofteningTable[2] = All.SofteningDisk;
-        All.SofteningTable[3] = All.SofteningBulge;
-        All.SofteningTable[4] = All.SofteningStars;
-        All.SofteningTable[5] = All.SofteningBndry;
-    }
-    int i; for(i = 0; i < 6; i++) {All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];} 
-    /* set the minimum gas kernel length to be used this timestep */
-    All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0];
+    for(i=0; i<6; i++) {All.ForceSoftening[i] = soft[i] / KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;}
+    All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0]; /* set the minimum gas kernel length to be used this timestep */
 #ifndef SELFGRAVITY_OFF
-    if(All.MinHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0])
-        {All.MinHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];}
+    if(All.MinHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]) {All.MinHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];}
 #endif
 }
 

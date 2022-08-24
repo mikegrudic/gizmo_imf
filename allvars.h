@@ -260,6 +260,9 @@
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
 #define STOP_WHEN_BELOW_MINTIMESTEP         /*! this is general good practice */
+#if !defined(MULTIPLEDOMAINS)
+#define MULTIPLEDOMAINS 32                  /*! slightly closer to our usual default, but users should feel free to adjust */
+#endif
 
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
@@ -315,9 +318,11 @@
 #define BH_EXCISION_NONGAS
 #define BH_EXCISION_GAS
 #endif
-#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
 #define TIDAL_TIMESTEP_CRITERION
+#endif
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -1284,8 +1289,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 
 #define  NODELISTLENGTH      8
 
-
-#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-4) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
+#define  EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-4) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
                                                             we set it to a global value here so that other sub-routines will know not to force particle separations below this */
 
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -2257,24 +2261,14 @@ extern struct global_data_all_processes
   /* adjusts accuracy of time-integration */
   double ErrTolIntAccuracy;	/*!< accuracy tolerance parameter \f$ \eta \f$ for timestep criterion. The timesteps is \f$ \Delta t = \sqrt{\frac{2 \eta eps}{a}} \f$ */
   double MinSizeTimestep,	/*!< minimum allowed timestep. Normally, the simulation terminates if the timestep determined by the timestep criteria falls below this limit. */
-    MaxSizeTimestep;		/*!< maximum allowed timestep */
+         MaxSizeTimestep;		/*!< maximum allowed timestep */
   double MaxRMSDisplacementFac;	/*!< this determines a global timestep criterion for cosmological simulations in comoving coordinates.  To this end, the code computes the rms velocity
-				   of all particles, and limits the timestep such that the rms displacement is a fraction of the mean particle separation (determined from the
-				   particle mass and the cosmological parameters). This parameter specifies this fraction. */
+				   of all particles, and limits the timestep such that the rms displacement is a fraction of the mean particle separation (determined from the particle mass and the cosmological parameters). This parameter specifies this fraction. */
   int MaxMemSize;
   double CourantFac;		/*!< Courant factor */
 
   /* frequency of tree reconstruction/domain decomposition */
   double TreeDomainUpdateFrequency;	/*!< controls frequency of domain decompositions  */
-#ifdef TURB_DRIVING
-    double TurbInjectedEnergy;
-    double TurbDissipatedEnergy;
-#if defined(TURB_DRIVING_SPECTRUMGRID)
-    double TimeBetTurbSpectrum;
-    double TimeNextTurbSpectrum;
-    int FileNumberTurbSpectrum;
-#endif
-#endif
 
   /* gravitational and hydrodynamical softening lengths (given in terms of an `equivalent' Plummer softening length)
    * five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars */
@@ -2296,8 +2290,7 @@ extern struct global_data_all_processes
     SofteningStarsMaxPhys,	/*!< for type 4 */
     SofteningBndryMaxPhys;	/*!< for type 5 */
 
-  double SofteningTable[6];	/*!< current (comoving) gravitational softening lengths for each particle type */
-  double ForceSoftening[6];	/*!< the same, but multiplied by a factor 2.8 - at that scale the force is Newtonian */
+  double ForceSoftening[6];	/*!< current (comoving) gravitational softening lengths for each particle type -- multiplied by a factor 1/KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER to define the maximum kernel extent - at that scale the force is Newtonian */
 
   /*! If particle masses are all equal for one type, the corresponding entry in MassTable is set to this value, * allowing the size of the snapshot files to be reduced */
   double MassTable[6];
@@ -2316,6 +2309,16 @@ extern struct global_data_all_processes
     char OutputListFlag[MAXLEN_OUTPUTLIST];
     int OutputListLength;		/*!< number of times stored in table of desired output times */
 
+#ifdef TURB_DRIVING
+    double TurbInjectedEnergy;
+    double TurbDissipatedEnergy;
+#if defined(TURB_DRIVING_SPECTRUMGRID)
+    double TimeBetTurbSpectrum;
+    double TimeNextTurbSpectrum;
+    int FileNumberTurbSpectrum;
+#endif
+#endif
+    
 #ifdef RADTRANSFER
     integertime Radiation_Ti_begstep;
     integertime Radiation_Ti_endstep;
@@ -2649,7 +2652,7 @@ All;
  */
 extern ALIGN(32) struct particle_data
 {
-    short int Type;                 /*!< flags particle type.  0=gas, 1=halo, 2=disk, 3=bulge, 4=stars, 5=bndry */
+    short int Type;                 /*!< flags particle type.  0=gas, 1=halo/high-res dm, 2=alt dm/disk/collisionless, 3=pic/dust/bulge/alt dm, 4=new stars, 5=sink */
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
@@ -3924,8 +3927,7 @@ extern ALIGN(32) struct NODE
 #endif
 }
  *Nodes_base,			/*!< points to the actual memory allocated for the nodes */
- *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
-				   gives the first allocated node */
+ *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 
 
 extern struct extNODE

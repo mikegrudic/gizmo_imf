@@ -526,8 +526,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
             if(listindex < NODELISTLENGTH)
             {
                 startnode = rt_cg_DataGet[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+                if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode;}	/* open it */
             }
         } // if(mode == 1)
 #endif

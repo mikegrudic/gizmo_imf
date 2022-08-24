@@ -36,7 +36,7 @@ void set_turb_ampl(void);
 void add_turb_accel(void);
 void log_turb_temp(void);
 
-void mpi_report_comittable_memory(long long BaseMem);
+double mpi_report_comittable_memory(long long BaseMem, int verbose);
 long long report_comittable_memory(long long *MemTotal,
                                    long long *Committed_AS,
                                    long long *SwapTotal,
@@ -140,8 +140,16 @@ static inline double ForceSoftening_KernelRadius(int p)
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
+#if defined(GALSF_MERGER_STARCLUSTER_PARTICLES) && !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
+    if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass/(2.*MinMassForParticleMerger) , 0.33)));}
+#endif
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
+#if defined(GALSF_MERGER_STARCLUSTER_PARTICLES)
+    if(((P[p].Type == 1)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
+    if(((P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(10.*All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
+#else
     if(((P[p].Type == 1) || (P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
+#endif
 #endif
     return All.ForceSoftening[P[p].Type];
 }
@@ -220,6 +228,7 @@ int MPI_Sizelimited_Sendrecv(void *sendbuf0, size_t sendcount, MPI_Datatype send
 int mpi_calculate_offsets(int *send_count, int *send_offset, int *recv_count, int *recv_offset, int send_identical);
 void sort_based_on_field(void *data, int field_offset, int n_items, int item_size, void **data2ptr);
 void mpi_distribute_items_to_tasks(void *data, int task_offset, int *n_items, int *max_n, int item_size);
+int getNodeCount(void);
 
 void parallel_sort_special_P_GrNr_ID(void);
 void calculate_power_spectra(int num, long long *ntot_type_all);

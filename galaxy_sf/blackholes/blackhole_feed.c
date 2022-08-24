@@ -229,8 +229,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         
 #if defined(BH_EXCISION_NONGAS) /* for the excision of non-gas particles which are 'too close', we can follow a very simple procedure here */
                         if((P[j].Type > 0) && (P[j].Type < 5) && (SwallowID_j < local.ID)) // valid [non-gas, non-bh] particle not already marked to swallow
-                        {
-                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.707*vesc) && (r < (All.ForceSoftening[5]+All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
+                        { // ???
+                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.707*vesc) && (r < (SinkParticle_GravityKernelRadius+0.5*All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
                         }
 #endif
                         
@@ -306,7 +306,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 p=0; if(dm_toacc>0 && P[j].Mass>0 && r<1.0001*local.BH_dr_to_NearestGasNeighbor) {p=dm_toacc/P[j].Mass;}
 #endif
 #ifdef BH_EXCISION_GAS /* accrete gas elements which have gotten too close to the central BH purely on the basis of resolution criteria */
-                                if((P[j].Mass>0) && (r<(All.ForceSoftening[5])) && (vrel<vesc) && (P[j].Mass<0.01*local.Mass)) {p=2.;}
+                                if((P[j].Mass>0) && (r<SinkParticle_GravityKernelRadius) && (vrel<vesc) && (P[j].Mass<0.01*local.Mass)) {p=2.;}
 #endif
                                 w = get_random_number(P[j].ID);
                                 if(w < p)

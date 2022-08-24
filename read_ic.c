@@ -788,10 +788,10 @@ void read_file(char *fname, int readTask, int lastTask)
                " ..distributing this file to tasks %d-%d\n"
                "Type 0 (gas):   %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 1 (halo):  %8d  (tot=%6d%09d) masstab=%g\n"
-               "Type 2 (disk):  %8d  (tot=%6d%09d) masstab=%g\n"
-               "Type 3 (bulge): %8d  (tot=%6d%09d) masstab=%g\n"
+               "Type 2 (alt):   %8d  (tot=%6d%09d) masstab=%g\n"
+               "Type 3 (pic):   %8d  (tot=%6d%09d) masstab=%g\n"
                "Type 4 (stars): %8d  (tot=%6d%09d) masstab=%g\n"
-               "Type 5 (bndry): %8d  (tot=%6d%09d) masstab=%g\n\n", fname, ThisTask, n_in_file, readTask,
+               "Type 5 (sink):  %8d  (tot=%6d%09d) masstab=%g\n\n", fname, ThisTask, n_in_file, readTask,
                lastTask, header.npart[0], (int) (header.npartTotal[0] / 1000000000),
                (int) (header.npartTotal[0] % 1000000000), All.MassTable[0], header.npart[1],
                (int) (header.npartTotal[1] / 1000000000), (int) (header.npartTotal[1] % 1000000000),
