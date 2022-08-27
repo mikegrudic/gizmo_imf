@@ -229,8 +229,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                         
 #if defined(BH_EXCISION_NONGAS) /* for the excision of non-gas particles which are 'too close', we can follow a very simple procedure here */
                         if((P[j].Type > 0) && (P[j].Type < 5) && (SwallowID_j < local.ID)) // valid [non-gas, non-bh] particle not already marked to swallow
-                        { // ???
-                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.707*vesc) && (r < (SinkParticle_GravityKernelRadius+0.5*All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
+                        {
+                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.7*vesc) && (r < DMIN(SinkParticle_GravityKernelRadius,All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
                         }
 #endif
                         

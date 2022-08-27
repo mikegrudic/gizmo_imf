@@ -81,7 +81,7 @@ void blackhole_accretion(void)
 double bh_vesc(int j, double mass, double r_code, double bh_softening)
 {
     double cs_to_add = 10. / UNIT_VEL_IN_KMS; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for -some- galaxy applications */
-#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
+#if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) || defined(BH_EXCISION_NONGAS)
     cs_to_add = 0;
 #endif
     double m_eff = mass + P[j].Mass; // acount for 2-body mass
@@ -89,7 +89,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
     if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
     double hinv = 1./SinkParticle_GravityKernelRadius, fac=2.*All.G*m_eff/All.cf_atime;
-#if defined(BH_REPOSITION_ON_POTMIN)
+#if defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_EXCISION_NONGAS)
     return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
 #endif
     return sqrt(fac*fabs(kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1)) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
