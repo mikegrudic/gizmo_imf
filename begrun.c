@@ -2276,7 +2276,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("CosmicRay_Subgrid_Kappa_0",tag[i])==0) {*((double *)addr[i])=120; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Kappa_0); continue;}
                 if(strcmp("CosmicRay_Subgrid_Vstream_0",tag[i])==0) {*((double *)addr[i])=20; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Vstream_0); continue;}
 #endif
-#if (CRFLUID_DIFFUSION_MODEL == 0)
+#if defined(CRFLUID_DIFFUSION_MODEL) && (CRFLUID_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
