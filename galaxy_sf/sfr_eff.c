@@ -501,6 +501,9 @@ void star_formation_parent_routine(void)
 #ifdef BH_ALPHADISK_ACCRETION
                         P[i].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
 #endif
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+                        P[i].BH_AccretionDeficit = 0;
+#endif
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
                         double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
                         double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation

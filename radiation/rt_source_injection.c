@@ -321,8 +321,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
             if(listindex < NODELISTLENGTH)
             {
                 startnode = DATAGET_NAME[target].NodeList[listindex];
-                if(startnode >= 0)
-                    startnode = Nodes[startnode].u.d.nextnode;	/* open it */
+                if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode;}	/* open it */
             }
         } // if(mode == 1)
 #endif

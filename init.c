@@ -6,6 +6,7 @@
 
 #include "allvars.h"
 #include "proto.h"
+#include "kernel.h"
 
 
 /*! \file init.c
@@ -182,6 +183,9 @@ void init(void)
         P[i].tidal_tensorps[0][0]=P[i].tidal_tensorps[0][1]=P[i].tidal_tensorps[0][2]=0;
         P[i].tidal_tensorps[1][0]=P[i].tidal_tensorps[1][1]=P[i].tidal_tensorps[1][2]=0;
         P[i].tidal_tensorps[2][0]=P[i].tidal_tensorps[2][1]=P[i].tidal_tensorps[2][2]=0;
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+        P[i].tidal_tensor_mag_prev = 0;
+#endif
 #ifdef PMGRID
         P[i].tidal_tensorpsPM[0][0]=P[i].tidal_tensorpsPM[0][1]=P[i].tidal_tensorpsPM[0][2]=0;
         P[i].tidal_tensorpsPM[1][0]=P[i].tidal_tensorpsPM[1][1]=P[i].tidal_tensorpsPM[1][2]=0;
@@ -483,7 +487,7 @@ void init(void)
                 BPP(i).BH_Dust_Mass = 0;
 #endif
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-                BPP(i).SinkRadius = All.SofteningTable[P[i].Type];
+                BPP(i).SinkRadius = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * SinkParticle_GravityKernelRadius;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
                 BPP(i).BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
@@ -498,9 +502,12 @@ void init(void)
 #endif
             }
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-	    P[i].dt_since_last_gas_search = 0;
-	    P[i].do_gas_search_this_timestep = 1;
+            P[i].dt_since_last_gas_search = 0;
+            P[i].do_gas_search_this_timestep = 1;
 #endif 
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+            if(RestartFlag != 1) {BPP(i).BH_AccretionDeficit = 0;}
+#endif
         }
 #endif
     }
@@ -546,7 +553,7 @@ void init(void)
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
         PPPZ[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {PPP[i].AGS_Hsml = PPP[i].Hsml;} else {PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type];}
+        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {PPP[i].AGS_Hsml = PPP[i].Hsml;} else {PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type];}
 #endif
 #endif
 
@@ -1138,11 +1145,17 @@ void setup_smoothinglengths(void)
 #if NUMDIMS == 1
                     PPP[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
-                    double soft = All.SofteningTable[P[i].Type];
 #ifndef SELFGRAVITY_OFF
+                    double soft = All.ForceSoftening[P[i].Type];
                     if(soft != 0) {if((PPP[i].Hsml>100.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = soft;}}
 #else
-                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].Hsml = soft;}
+                    if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {
+#if (defined(BOX_PERIODIC) || defined(BOX_SHEARING) || defined(BOX_DEFINED_SPECIAL_XYZ_BOUNDARY_CONDITIONS_ARE_ACTIVE) || defined(BOX_LONG_X) || defined(BOX_LONG_Y) || defined(BOX_LONG_Z))
+                        PPP[i].Hsml = 0.05 * All.BoxSize;
+#else
+                        PPP[i].Hsml = 1;
+#endif
+                    }
 #endif
 #endif // INPUT_READ_HSML
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
@@ -1151,7 +1164,7 @@ void setup_smoothinglengths(void)
     if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {PPP[i].Hsml *= pow(All.OmegaMatter/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
 
 #ifdef BLACK_HOLES
-    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.SofteningTable[P[i].Type];}}}
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {PPP[i].Hsml = All.ForceSoftening[P[i].Type];}}}
 #endif
 
 #ifdef GRAIN_FLUID
@@ -1208,7 +1221,7 @@ void ags_setup_smoothinglengths(void)
                         no = p;
                     }
                     PPP[i].AGS_Hsml = 2. * pow(1.0/NORM_COEFF * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
-                    double soft = All.SofteningTable[P[i].Type];
+                    double soft = All.ForceSoftening[P[i].Type];
                     if(soft != 0)
                     {
                         if((PPP[i].AGS_Hsml>1e6*soft)||(PPP[i].AGS_Hsml<=1e-3*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {PPP[i].AGS_Hsml = 1.e2*soft;} /* random guess to get things started here, thats all */
@@ -1217,7 +1230,7 @@ void ags_setup_smoothinglengths(void)
                     PPP[i].AGS_Hsml = PPP[i].Hsml;
                 }
             } else {
-                PPP[i].AGS_Hsml = All.SofteningTable[P[i].Type]; /* not AGS-active, use fixed softening */
+                PPP[i].AGS_Hsml = All.ForceSoftening[P[i].Type]; /* not AGS-active, use fixed softening */
             }
         }
     }
@@ -1248,7 +1261,7 @@ void disp_setup_smoothinglengths(void)
                     no = p;
                 }
                 SphP[i].HsmlDM = pow(1.0/NORM_COEFF * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
-                double soft = All.SofteningTable[P[i].Type];
+                double soft = All.ForceSoftening[P[i].Type];
                 if(soft != 0) {if((SphP[i].HsmlDM >1000.*soft)||(PPP[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {SphP[i].HsmlDM = soft;}}
             }
         }

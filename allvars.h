@@ -260,6 +260,9 @@
 #define TURB_DIFF_METALS                    /*! explicit sub-grid diffusivity for metals/passive scalars */
 #define TURB_DIFF_METALS_LOWORDER           /*! memory-saving custom mod */
 #define STOP_WHEN_BELOW_MINTIMESTEP         /*! this is general good practice */
+#if !defined(MULTIPLEDOMAINS)
+#define MULTIPLEDOMAINS 32                  /*! slightly closer to our usual default, but users should feel free to adjust */
+#endif
 
 #define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
 #if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
@@ -310,6 +313,16 @@
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
+#if defined(FIRE_BHS)
+#define BH_EXCISION_NONGAS
+#define BH_EXCISION_GAS
+#define BH_DYNFRICTION_FROMTREE
+#endif
+#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
+#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
+#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+#define TIDAL_TIMESTEP_CRITERION
+#endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
@@ -324,6 +337,9 @@
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
+#if (FIRE_CRS == -2)
+#define COSMIC_RAY_SUBGRID_LEBRON   /*! this simply uses the sub-grid model */
+#else /* use 'explicit' CR integration in one of the code formulations */
 #define COSMIC_RAY_FLUID /*! top-level flag */
 #if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS >= 3) /* enable multi-spectrum CRs if this set and FIRE version high enough */
 #if (FIRE_CRS >= 2)
@@ -355,6 +371,7 @@
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
 #endif
+#endif
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
@@ -362,6 +379,9 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
+#if defined(GALSF_SFR_IMF_SAMPLING) && !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE)
+#define BH_DYNFRICTION_FROMTREE     /* use this module as a default in sufficiently high-resolution simulations*/
+#endif
 #if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #endif
@@ -740,6 +760,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#ifdef RT_USE_TREECOL_FOR_NH
+#if !defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
+#define GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
+#endif
+#endif
+
 #ifdef ADAPTIVE_TREEFORCE_UPDATE // instead of going into the tree every timestep, only update gravity with a frequency set by this fraction of dynamical timescale (default for gas only)
 #ifndef TIDAL_TIMESTEP_CRITERION 
 #define TIDAL_TIMESTEP_CRITERION // need this to estimate the dynamical time
@@ -924,7 +950,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if defined(BH_SWALLOWGAS)
 #define BH_FOLLOW_ACCRETED_COM
 #define BH_FOLLOW_ACCRETED_MOMENTUM
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVCAPTURE_NONGAS)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_GAS)
 #define BH_FOLLOW_ACCRETED_ANGMOM 0 // follow accreted AM just from explicit 'swallow' operations
 #else
 #define BH_FOLLOW_ACCRETED_ANGMOM 1 // follow accreted AM from 'swallowed' BH particles, and from continuous/smooth properties [mdot] of kernel gas near BH
@@ -1266,8 +1292,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 
 #define  NODELISTLENGTH      8
 
-
-#define EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-4) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
+#define  EPSILON_FOR_TREERND_SUBNODE_SPLITTING (1.0e-4) /* define some number << 1; particles with less than this separation will trigger randomized sub-node splitting in the tree.
                                                             we set it to a global value here so that other sub-routines will know not to force particle separations below this */
 
 #ifdef GALSF_SFR_IMF_VARIATION
@@ -1462,10 +1487,6 @@ typedef unsigned long long peanokey;
 #define FOF_SECONDARY_LINK_TYPES 0
 #endif
 
-
-#ifndef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
-#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (All.MaxHsml)
-#endif
 
 
 /* some flags for the field "flag_ic_info" in the file header */
@@ -1858,7 +1879,7 @@ extern double TimeBin_BH_Medd[TIMEBINS];
 #if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
 #define BH_CALC_LOCAL_ANGLEWEIGHTS
 #endif
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION)
+#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION) || defined(BH_EXCISION_NONGAS)
 #define BH_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
 #else
 #define BH_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and black holes) around a primary BH particle */
@@ -2243,24 +2264,14 @@ extern struct global_data_all_processes
   /* adjusts accuracy of time-integration */
   double ErrTolIntAccuracy;	/*!< accuracy tolerance parameter \f$ \eta \f$ for timestep criterion. The timesteps is \f$ \Delta t = \sqrt{\frac{2 \eta eps}{a}} \f$ */
   double MinSizeTimestep,	/*!< minimum allowed timestep. Normally, the simulation terminates if the timestep determined by the timestep criteria falls below this limit. */
-    MaxSizeTimestep;		/*!< maximum allowed timestep */
+         MaxSizeTimestep;		/*!< maximum allowed timestep */
   double MaxRMSDisplacementFac;	/*!< this determines a global timestep criterion for cosmological simulations in comoving coordinates.  To this end, the code computes the rms velocity
-				   of all particles, and limits the timestep such that the rms displacement is a fraction of the mean particle separation (determined from the
-				   particle mass and the cosmological parameters). This parameter specifies this fraction. */
+				   of all particles, and limits the timestep such that the rms displacement is a fraction of the mean particle separation (determined from the particle mass and the cosmological parameters). This parameter specifies this fraction. */
   int MaxMemSize;
   double CourantFac;		/*!< Courant factor */
 
   /* frequency of tree reconstruction/domain decomposition */
   double TreeDomainUpdateFrequency;	/*!< controls frequency of domain decompositions  */
-#ifdef TURB_DRIVING
-    double TurbInjectedEnergy;
-    double TurbDissipatedEnergy;
-#if defined(TURB_DRIVING_SPECTRUMGRID)
-    double TimeBetTurbSpectrum;
-    double TimeNextTurbSpectrum;
-    int FileNumberTurbSpectrum;
-#endif
-#endif
 
   /* gravitational and hydrodynamical softening lengths (given in terms of an `equivalent' Plummer softening length)
    * five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars */
@@ -2282,8 +2293,7 @@ extern struct global_data_all_processes
     SofteningStarsMaxPhys,	/*!< for type 4 */
     SofteningBndryMaxPhys;	/*!< for type 5 */
 
-  double SofteningTable[6];	/*!< current (comoving) gravitational softening lengths for each particle type */
-  double ForceSoftening[6];	/*!< the same, but multiplied by a factor 2.8 - at that scale the force is Newtonian */
+  double ForceSoftening[6];	/*!< current (comoving) gravitational softening lengths for each particle type -- multiplied by a factor 1/KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER to define the maximum kernel extent - at that scale the force is Newtonian */
 
   /*! If particle masses are all equal for one type, the corresponding entry in MassTable is set to this value, * allowing the size of the snapshot files to be reduced */
   double MassTable[6];
@@ -2302,6 +2312,16 @@ extern struct global_data_all_processes
     char OutputListFlag[MAXLEN_OUTPUTLIST];
     int OutputListLength;		/*!< number of times stored in table of desired output times */
 
+#ifdef TURB_DRIVING
+    double TurbInjectedEnergy;
+    double TurbDissipatedEnergy;
+#if defined(TURB_DRIVING_SPECTRUMGRID)
+    double TimeBetTurbSpectrum;
+    double TimeNextTurbSpectrum;
+    int FileNumberTurbSpectrum;
+#endif
+#endif
+    
 #ifdef RADTRANSFER
     integertime Radiation_Ti_begstep;
     integertime Radiation_Ti_endstep;
@@ -2635,7 +2655,7 @@ All;
  */
 extern ALIGN(32) struct particle_data
 {
-    short int Type;                 /*!< flags particle type.  0=gas, 1=halo, 2=disk, 3=bulge, 4=stars, 5=bndry */
+    short int Type;                 /*!< flags particle type.  0=gas, 1=halo/high-res dm, 2=alt dm/disk/collisionless, 3=pic/dust/bulge/alt dm, 4=new stars, 5=sink */
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
@@ -2676,9 +2696,12 @@ extern ALIGN(32) struct particle_data
     MyFloat PM_Potential;
 #endif
 #endif
-#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0))
+#if defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(TIDAL_TIMESTEP_CRITERION) || defined(GDE_DISTORTIONTENSOR) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(OUTPUT_TIDAL_TENSOR) || (defined(SINGLE_STAR_TIMESTEPPING) && (SINGLE_STAR_TIMESTEPPING > 0)) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    double tidal_tensor_mag_prev;                /*!< saved frobenius norm of the tidal tensor, from the previous timestep >*/
+#endif
 #ifdef PMGRID
     double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
 #endif
@@ -2823,6 +2846,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
+#endif
+#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
+    MyFloat BH_AccretionDeficit; /* difference between continuously-accreted and discretely-accreted masses, needs to be evolved to ensure exact conservation with some modules */
 #endif
 #ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
     int LowestBHTimeBin;
@@ -3855,7 +3881,7 @@ extern ALIGN(32) struct NODE
 
   double GravCost;
   integertime Ti_current;
-#ifdef RT_USE_TREECOL_FOR_NH
+#if defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
   MyFloat gasmass;
 #endif
 #ifdef BH_DYNFRICTION_FROMTREE
@@ -3904,8 +3930,7 @@ extern ALIGN(32) struct NODE
 #endif
 }
  *Nodes_base,			/*!< points to the actual memory allocated for the nodes */
- *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart]
-				   gives the first allocated node */
+ *Nodes;			/*!< this is a pointer used to access the nodes which is shifted such that Nodes[All.MaxPart] gives the first allocated node */
 
 
 extern struct extNODE

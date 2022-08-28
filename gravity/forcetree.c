@@ -468,7 +468,7 @@ void force_update_node_recursive(int no, int sib, int father)
 
         last = no;
 
-#ifdef RT_USE_TREECOL_FOR_NH
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
         MyFloat gasmass = 0;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -547,7 +547,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         vs[0] += (Nodes[p].u.d.mass * Extnodes[p].vs[0]);
                         vs[1] += (Nodes[p].u.d.mass * Extnodes[p].vs[1]);
                         vs[2] += (Nodes[p].u.d.mass * Extnodes[p].vs[2]);
-#ifdef RT_USE_TREECOL_FOR_NH
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                         gasmass += Nodes[p].gasmass;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -633,9 +633,9 @@ void force_update_node_recursive(int no, int sib, int father)
                     vs[0] += (pa->Mass * pa->Vel[0]);
                     vs[1] += (pa->Mass * pa->Vel[1]);
                     vs[2] += (pa->Mass * pa->Vel[2]);
-#ifdef RT_USE_TREECOL_FOR_NH
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                     if(pa->Type == 0) gasmass += pa->Mass;
-#ifdef BH_ALPHADISK_ACCRETION
+#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
                     if(pa->Type == 5) gasmass += BPP(p).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
@@ -725,7 +725,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                     if(pa->Type == 0)
                     {
-                        double htmp = DMIN(ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT, PPP[p].Hsml);
+                        double htmp = DMIN(All.MaxHsml, PPP[p].Hsml);
                         if(htmp > hmax) {hmax = htmp;}
                         divVel = P[p].Particle_DivVel;
                         if(divVel > divVmax) {divVmax = divVel;}
@@ -820,7 +820,7 @@ void force_update_node_recursive(int no, int sib, int father)
         Nodes[no].u.d.s[1] = s[1];
         Nodes[no].u.d.s[2] = s[2];
         Nodes[no].GravCost = 0;
-#ifdef RT_USE_TREECOL_FOR_NH
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
         Nodes[no].gasmass = gasmass;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1578,7 +1578,7 @@ void force_add_star_to_tree(int igas, int istar)
     Nextnode[istar] = no; // order correctly
     Father[istar] = Father[igas]; // set parent node to be the same
     // update parent node properties [maximum softening, speed] for opening criteria
-    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT));
+    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].Hsml, All.MaxHsml));
     double vmax = Extnodes[Father[igas]].vmax;
     int k; for(k=0; k<3; k++) {if(fabs(P[istar].Vel[k]) > vmax) {vmax = fabs(P[istar].Vel[k]);}}
     Extnodes[Father[igas]].vmax = vmax;
@@ -1610,10 +1610,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
     double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_inv, h3_inv, xtmp; xtmp=0; soft=0;
 #ifdef RT_USE_TREECOL_FOR_NH
-    double gasmass, angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
+    double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 #endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double dvx, dvy, dvz;
+#endif
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
+    double gasmass;
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double jerk[3] = {0,0,0};
@@ -1645,7 +1648,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     long bunchSize = All.BunchSize;
     int maxNodes = MaxNodes;
     integertime ti_Current = All.Ti_Current;
-    double errTol2 = All.ErrTolTheta * All.ErrTolTheta;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     int i1, i2; double fac2_tidal, fac_tidal; MyDouble tidal_tensorps[3][3];
 #endif
@@ -1886,9 +1888,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
                 mass = P[no].Mass;
-#ifdef RT_USE_TREECOL_FOR_NH
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                 if(P[no].Type == 0) gasmass = P[no].Mass;
-#ifdef BH_ALPHADISK_ACCRETION
+#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
                 if(P[no].Type == 5) gasmass = BPP(no).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
@@ -2083,7 +2085,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 
                 mass = nop->u.d.mass;
-#ifdef RT_USE_TREECOL_FOR_NH
+                if(mass <= 0) /* nothing in the node */
+                {
+                    no = nop->u.d.sibling;
+                    continue;
+                }
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                 gasmass = nop->gasmass;
 #endif
                 if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
@@ -2225,9 +2232,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
 
-                if(errTol2)	/* check Barnes-Hut opening criterion */
+                if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
-                    if(nop->len * nop->len > r2 * errTol2)
+                    if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
                     {
                         /* open cell */
                         no = nop->u.d.nextnode;
@@ -2530,7 +2537,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 
 #if defined(BH_DYNFRICTION_FROMTREE)
-                if(ptype==5)
+                if( (ptype==5) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
                 {
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
                     if(dv2 > 0)
@@ -2540,7 +2547,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
-                            double m_j=mass; /* single particle */ if(no >= maxPart) {m_j=mass/(nop->N_part);} /* estimate mean mass of the particles in the node */
+                            double m_j=mass; /* single particle */ if(no >= maxPart + maxNodes) {m_j=mass/(nop->N_part);} /* estimate mean mass of the particles in the node */
                             if(bh_mass > m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
                         }
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
@@ -2620,7 +2627,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             tree_mass += mass;
 #endif
 #ifdef RT_USE_TREECOL_FOR_NH
-            if(gasmass>0){
+            if(gasmass>0)
+            {
                 int bin; // Here we do a simple six-bin angular binning scheme
                 if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){if (dx > 0) {bin = 0;} else {bin=1;}
                 } else if (fabs(dy)>fabs(dz)){if (dy > 0) {bin = 2;} else {bin=3;}
@@ -2789,8 +2797,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         P[target].GravAccel[1] = acc_y;
         P[target].GravAccel[2] = acc_z;
 #ifdef RT_USE_TREECOL_FOR_NH
-        int k;
-        for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) P[target].ColumnDensityBins[k] = treecol_angular_bins[k];
+        int k; for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) P[target].ColumnDensityBins[k] = treecol_angular_bins[k];
 #endif
 #ifdef COUNT_MASS_IN_GRAVTREE
         P[target].TreeMass = tree_mass;
@@ -3099,8 +3106,8 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
             GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
 
             if(no < All.MaxPart)
-                no = Nextnode[no];
-            else			/* we have an  internal node. Need to check opening criterion */
+                {no = Nextnode[no];}
+            else			/* we have an internal node. Need to check opening criterion */
             {
                 openflag = 0;
                 r2 = dx * dx + dy * dy + dz * dz;
@@ -3142,10 +3149,8 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     /* now we check if we can avoid opening the cell */
 
                     u = nop->center[0] - pos_x;
-                    if(u > boxhalf)
-                        u -= boxsize;
-                    if(u < -boxhalf)
-                        u += boxsize;
+                    if(u > boxhalf) {u -= boxsize;}
+                    if(u < -boxhalf) {u += boxsize;}
                     if(fabs(u) > 0.5 * (boxsize - nop->len))
                     {
                         no = nop->u.d.nextnode;
@@ -3153,10 +3158,8 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     }
 
                     u = nop->center[1] - pos_y;
-                    if(u > boxhalf)
-                        u -= boxsize;
-                    if(u < -boxhalf)
-                        u += boxsize;
+                    if(u > boxhalf) {u -= boxsize;}
+                    if(u < -boxhalf) {u += boxsize;}
                     if(fabs(u) > 0.5 * (boxsize - nop->len))
                     {
                         no = nop->u.d.nextnode;
@@ -3164,19 +3167,15 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     }
 
                     u = nop->center[2] - pos_z;
-                    if(u > boxhalf)
-                        u -= boxsize;
-                    if(u < -boxhalf)
-                        u += boxsize;
+                    if(u > boxhalf) {u -= boxsize;}
+                    if(u < -boxhalf) {u += boxsize;}
                     if(fabs(u) > 0.5 * (boxsize - nop->len))
                     {
                         no = nop->u.d.nextnode;
                         continue;
                     }
 
-                    /* if the cell is too large, we need to refine
-                     * it further
-                     */
+                    /* if the cell is too large, we need to refine it further */
                     if(nop->len > 0.20 * boxsize)
                     {
                         /* cell is too large */
@@ -3196,35 +3195,32 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 signx = +1;
             }
             else
-                signx = -1;
+                {signx = -1;}
             if(dy < 0)
             {
                 dy = -dy;
                 signy = +1;
             }
             else
-                signy = -1;
+                {signy = -1;}
             if(dz < 0)
             {
                 dz = -dz;
                 signz = +1;
             }
             else
-                signz = -1;
+                {signz = -1;}
             u = dx * fac_intp;
             i = (int) u;
-            if(i >= EN)
-                i = EN - 1;
+            if(i >= EN) {i = EN - 1;}
             u -= i;
             v = dy * fac_intp;
             j = (int) v;
-            if(j >= EN)
-                j = EN - 1;
+            if(j >= EN) {j = EN - 1;}
             v -= j;
             w = dz * fac_intp;
             k = (int) w;
-            if(k >= EN)
-                k = EN - 1;
+            if(k >= EN) {k = EN - 1;}
             w -= k;
             /* compute factors for trilinear interpolation */
             f1 = (1 - u) * (1 - v) * (1 - w);
@@ -3245,18 +3241,14 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
             acc_y +=
             FLT(mass * signy *
                 (fcorry[i][j][k] * f1 + fcorry[i][j][k + 1] * f2 +
-                 fcorry[i][j + 1][k] * f3 + fcorry[i][j + 1][k + 1] * f4 + fcorry[i +
-                                                                                  1]
-                 [j][k] * f5 + fcorry[i + 1][j][k + 1] * f6 + fcorry[i + 1][j +
-                                                                            1][k] *
+                 fcorry[i][j + 1][k] * f3 + fcorry[i][j + 1][k + 1] * f4 + fcorry[i + 1]
+                 [j][k] * f5 + fcorry[i + 1][j][k + 1] * f6 + fcorry[i + 1][j + 1][k] *
                  f7 + fcorry[i + 1][j + 1][k + 1] * f8));
             acc_z +=
             FLT(mass * signz *
                 (fcorrz[i][j][k] * f1 + fcorrz[i][j][k + 1] * f2 +
-                 fcorrz[i][j + 1][k] * f3 + fcorrz[i][j + 1][k + 1] * f4 + fcorrz[i +
-                                                                                  1]
-                 [j][k] * f5 + fcorrz[i + 1][j][k + 1] * f6 + fcorrz[i + 1][j +
-                                                                            1][k] *
+                 fcorrz[i][j + 1][k] * f3 + fcorrz[i][j + 1][k + 1] * f4 + fcorrz[i + 1]
+                 [j][k] * f5 + fcorrz[i + 1][j][k + 1] * f6 + fcorrz[i + 1][j + 1][k] *
                  f7 + fcorrz[i + 1][j + 1][k + 1] * f8));
             cost++;
         }
@@ -3267,8 +3259,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
             if(listindex < NODELISTLENGTH)
             {
                 no = GravDataGet[target].NodeList[listindex];
-                if(no >= 0)
-                    no = Nodes[no].u.d.nextnode;	/* open it */
+                if(no >= 0) {no = Nodes[no].u.d.nextnode;}	/* open it */
             }
         }
     }
@@ -3779,7 +3770,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
 
             r = sqrt(r2);
             if(r >= h)
-                pot += FLT(-mass / r);
+                {pot += FLT(-mass / r);}
             else
             {
                 u = r * h_inv;

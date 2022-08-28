@@ -344,6 +344,13 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #endif
 
+
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    double tidal_mag = 0.; {int k; for(k=0; k<3; k++) {tidal_mag += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
+    P[p].tidal_tensor_mag_prev = sqrt(tidal_mag); // save it
+#endif
+
+
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
     double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k] * All.cf_a3inv * All.cf_a3inv;}} // this is diagonalized already in the gravity loop
     dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
