@@ -313,7 +313,6 @@
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
-#if defined(FIRE_TEST_OPTIMIZERS)
 #if defined(FIRE_BHS)
 #define BH_EXCISION_NONGAS
 #define BH_EXCISION_GAS
@@ -323,7 +322,6 @@
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
 #define TIDAL_TIMESTEP_CRITERION
-#endif
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -339,6 +337,9 @@
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
+#if (FIRE_CRS == -2)
+#define COSMIC_RAY_SUBGRID_LEBRON   /*! this simply uses the sub-grid model */
+#else /* use 'explicit' CR integration in one of the code formulations */
 #define COSMIC_RAY_FLUID /*! top-level flag */
 #if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS >= 3) /* enable multi-spectrum CRs if this set and FIRE version high enough */
 #if (FIRE_CRS >= 2)
@@ -368,6 +369,7 @@
 #endif
 #if !defined(CRFLUID_SET_ET_MODEL)
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
+#endif
 #endif
 #endif
 #endif // FIRE_CRS

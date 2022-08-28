@@ -2143,7 +2143,7 @@ void read_parameter_file(char *fname)
             {
                 if(strcmp("ComovingIntegrationOn",tag[i])==0) {*((int *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume this is a NON-cosmological (static-spacetime) simulation (=%d) \n",tag[i],alternate_tag[i],All.ComovingIntegrationOn); continue;}
                 if(strcmp("OutputListOn",tag[i])==0) {*((int *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume the snapshots will be output at user-specified intervals rather than adopting a list from a given file (=%d) \n",tag[i],alternate_tag[i],All.OutputListOn); continue;}
-                if(strcmp("BufferSize",tag[i])==0) {*((double *)addr[i])=50; printf("Tag %s (%s) not set in parameter file: defaulting to 50MB MPI Buffer allocation (adjust if needed for your machine) (=%g) \n",tag[i],alternate_tag[i],All.BufferSize); continue;}
+                if(strcmp("BufferSize",tag[i])==0) {*((double *)addr[i])=100; printf("Tag %s (%s) not set in parameter file: defaulting to 100MB MPI Buffer allocation (adjust if needed for your machine) (=%g) \n",tag[i],alternate_tag[i],All.BufferSize); continue;}
             }
         }
         /* ok now safe to do a loop that has statements (e.g. if's) which can depend on some of the variables above */
@@ -2266,7 +2266,16 @@ void read_parameter_file(char *fname)
                 if(strcmp("PhotonMomentum_fUV",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fUV); continue;}
                 if(strcmp("PhotonMomentum_fOPT",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to use the explicitly-resolved absorption (=%g) \n",tag[i],alternate_tag[i],All.PhotonMomentum_fOPT); continue;}
 #endif
-#if defined(FIRE_CRS) 
+#if defined(FIRE_MHD)
+                if(strcmp("BiniX",tag[i])==0) {*((double *)addr[i])=1.e-10; printf("Tag %s (%s) not set in parameter file: defaulting =%g (assuming units of Gauss), typical for cosmological FIRE simulations starting around z=100 \n",tag[i],alternate_tag[i],All.BiniX); continue;}
+                if(strcmp("BiniY",tag[i])==0) {*((double *)addr[i])=1.e-10; printf("Tag %s (%s) not set in parameter file: defaulting =%g (assuming units of Gauss), typical for cosmological FIRE simulations starting around z=100 \n",tag[i],alternate_tag[i],All.BiniY); continue;}
+                if(strcmp("BiniZ",tag[i])==0) {*((double *)addr[i])=1.e-10; printf("Tag %s (%s) not set in parameter file: defaulting =%g (assuming units of Gauss), typical for cosmological FIRE simulations starting around z=100 \n",tag[i],alternate_tag[i],All.BiniZ); continue;}
+#endif
+#if defined(FIRE_CRS)
+#if defined(COSMIC_RAY_SUBGRID_LEBRON)
+                if(strcmp("CosmicRay_Subgrid_Kappa_0",tag[i])==0) {*((double *)addr[i])=120; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Kappa_0); continue;}
+                if(strcmp("CosmicRay_Subgrid_Vstream_0",tag[i])==0) {*((double *)addr[i])=20; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Vstream_0); continue;}
+#endif
 #if (CRFLUID_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif

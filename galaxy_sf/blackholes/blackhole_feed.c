@@ -230,7 +230,8 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if defined(BH_EXCISION_NONGAS) /* for the excision of non-gas particles which are 'too close', we can follow a very simple procedure here */
                         if((P[j].Type > 0) && (P[j].Type < 5) && (SwallowID_j < local.ID)) // valid [non-gas, non-bh] particle not already marked to swallow
                         {
-                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.7*vesc) && (r < DMIN(SinkParticle_GravityKernelRadius,All.ForceSoftening[P[j].Type]))) {SwallowID_j = local.ID;} // generous criterion on velocity and distance
+                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.7*vesc) && (r < DMIN(SinkParticle_GravityKernelRadius,All.ForceSoftening[P[j].Type]))) { // generous criterion on velocity and distance
+                                if(P[j].Type != 4) {SwallowID_j = local.ID;} else {if(evaluate_stellar_age_Gyr(P[j].StellarAge)>0.05) {SwallowID_j = local.ID;}}} // avoid very young stars, so feedback isn't perturbed too strongly
                         }
 #endif
                         
