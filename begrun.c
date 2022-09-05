@@ -1394,10 +1394,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
 #ifdef GDE_DISTORTIONTENSOR
-      strcpy(tag[nt], "TidalCorrection");
-      addr[nt] = &All.TidalCorrection;
-      id[nt++] = REAL;
-
       strcpy(tag[nt], "DM_velocity_dispersion");
       addr[nt] = &All.DM_velocity_dispersion;
       id[nt++] = REAL;

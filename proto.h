@@ -144,10 +144,9 @@ static inline double ForceSoftening_KernelRadius(int p)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass/(2.*MinMassForParticleMerger) , 0.33)));}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
-#if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS) /* need to define 'active types' somehow ??? */
-    if((P[p].Type>0 && P[p].Type<5) && (All.Time > All.TimeBegin)) {return DMIN(1.e10*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
-#endif
-#if defined(GALSF_MERGER_STARCLUSTER_PARTICLES)
+#if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS) /* define 'active types' */
+    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (P[p].tidal_tensor_mag_prev>0 && All.Time>All.TimeBegin)) {return DMIN(1.e5*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , 1.732 * pow( (All.DesNumNgb * All.G * P[p].Mass / P[p].tidal_tensor_mag_prev) , 1./3. )));} else {return 100.*All.ForceSoftening[P[p].Type];}
+#elif defined(GALSF_MERGER_STARCLUSTER_PARTICLES)
     if(((P[p].Type == 1)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
     if(((P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(10.*All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
 #else

@@ -321,7 +321,6 @@
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-#define TIDAL_TIMESTEP_CRITERION
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -1492,6 +1491,13 @@ typedef unsigned long long peanokey;
 #endif
 
 
+#if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
+#if !defined(TIDAL_TIMESTEP_CRITERION)
+#define TIDAL_TIMESTEP_CRITERION
+#endif
+#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#endif
+
 
 /* some flags for the field "flag_ic_info" in the file header */
 #define FLAG_ZELDOVICH_ICS     1
@@ -2394,7 +2400,6 @@ extern struct global_data_all_processes
 #ifdef GDE_DISTORTIONTENSOR
   /* present day velocity dispersion of DM particle in cm/s (e.g. Neutralino = 0.03 cm/s) */
   double DM_velocity_dispersion;
-  double TidalCorrection;
 #ifdef GDE_LEAN
   double GDEInitStreamDensity;
 #endif

@@ -506,30 +506,16 @@ void gravity_tree(void)
 #endif
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* final operations to compute the diagonalized tidal tensor and related quantities */
-#if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
-        double tt[9]; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] = P[i].tidal_tensorps[j][k];}}
 #ifdef PMGRID
-        for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] += P[i].tidal_tensorpsPM[j][k];}}
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps[j][k] += P[i].tidal_tensorpsPM[j][k];}} /* add the long-range (pm-grid) contribution */
 #endif
-        gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
-        gsl_vector *eval = gsl_vector_alloc (3);
-        gsl_eigen_symm_workspace * w = gsl_eigen_symm_alloc (3);
-        gsl_eigen_symm(&m.matrix, eval,  w);
-        for(k=0; k<3; k++) P[i].tidal_tensorps[k][k] = gsl_vector_get(eval,k); // set diagonal elements to eigenvalues
-        P[i].tidal_tensorps[0][1] = P[i].tidal_tensorps[1][0] = P[i].tidal_tensorps[1][2] = P[i].tidal_tensorps[2][1] = P[i].tidal_tensorps[0][2] = P[i].tidal_tensorps[2][0] = 0; //zero out off-diagonal elements
-        gsl_eigen_symm_free(w); gsl_vector_free(eval);
+#if !defined(GDE_DISTORTIONTENSOR) /* for GDE implementation, want to exclude particle self-tide contribution */
+        double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
+        for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
 #endif
-#ifdef GDE_DISTORTIONTENSOR /* for GDE implementation, want to include particle self-tide contribution -- for timestep or hill criteria, on the other hand, this is not necessary */
-        if(All.ComovingIntegrationOn) {P[i].tidal_tensorps[0][0] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[1][1] -= All.TidalCorrection/All.G; P[i].tidal_tensorps[2][2] -= All.TidalCorrection/All.G;} // subtract Hubble flow terms //
-        /* Diagonal terms of tidal tensor need correction, because tree is running over all particles -> also over target particle -> extra term -> correct it */
-        double soft_gde = ForceSoftening_KernelRadius(i), fac_gde = P[i].Mass / (soft_gde*soft_gde*soft_gde) * 10.666666666667;
-        P[i].tidal_tensorps[0][0] += fac_gde;
-        P[i].tidal_tensorps[1][1] += fac_gde;
-        P[i].tidal_tensorps[2][2] += fac_gde;
-#endif
-        for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} // units //
+        for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} /* give this the proper units */
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-        for(j=0;j<3;j++) {P[i].GravJerk[j] *= All.G;}
+        for(j=0;j<3;j++) {P[i].GravJerk[j] *= All.G;} /* units */
 #endif
 #endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */
 

@@ -349,10 +349,12 @@ integertime get_timestep(int p,		/*!< particle index */
     double tidal_mag = 0.; {int k; for(k=0; k<3; k++) {tidal_mag += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
     P[p].tidal_tensor_mag_prev = sqrt(tidal_mag); // save it
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
-    double tt2=0,tracett=0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt2+=P[i].tidal_tensorps[j][k]*P[i].tidal_tensorps[j][k]; if(k==j) {tracett+=P[i].tidal_tensorps[j][k];}}} // compute numbers needed below //
-    double H_eff = ForceSoftening_KernelRadius(i); /* get value to calculate H we need to use in the equations below */
-    P[i].tidal_zeta *= -H_eff/(2.*NUMDIMS*tt2 + 8.*M_PI*tracett*(All.G*P[i].Mass/pow(H_eff,NUMDIMS)));
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps_prevstep[j][k]=P[i].tidal_zeta*P[i].tidal_tensorps[j][k];}}} // save for next iteration in gravtree //
+    {
+        int j,k; double tt2=0,tracett=0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt2+=P[p].tidal_tensorps[j][k]*P[p].tidal_tensorps[j][k]; if(k==j) {tracett+=P[p].tidal_tensorps[j][k];}}} /* compute numbers needed below */
+        double H_eff = ForceSoftening_KernelRadius(p); /* get value to calculate H we need to use in the equations below */
+        P[p].tidal_zeta *= -All.G*H_eff/(2.*NUMDIMS*tt2 - 8.*M_PI*tracett*(All.G*P[p].Mass/pow(H_eff,NUMDIMS)));
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[p].tidal_tensorps_prevstep[j][k]=P[p].tidal_zeta*P[p].tidal_tensorps[j][k];}} /* save for next iteration in gravtree */
+    }
 #endif
 #endif
 

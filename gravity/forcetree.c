@@ -42,7 +42,9 @@ static int last;
 #if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
-
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
+#define FORCETREE_VARIABLE_SOFTENINGS /* general flag for any module which will use variable softenings and therefore need some of the options below */
+#endif
 #define ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING /* comment out to revert to behavior of taking 'greater' softening in pairwise kernel interactions with adaptive softenings enabled */
 
 /*! length of look-up table for short-range force kernel in TreePM algorithm */
@@ -925,19 +927,11 @@ void force_update_node_recursive(int no, int sib, int father)
         {
             if(last >= All.MaxPart)
             {
-                if(last >= All.MaxPart + MaxNodes)	/* a pseudo-particle */
-                    Nextnode[last - MaxNodes] = no;
-                else
-                    Nodes[last].u.d.nextnode = no;
-            }
-            else
-                Nextnode[last] = no;
+                if(last >= All.MaxPart + MaxNodes) {Nextnode[last - MaxNodes] = no;} else {Nodes[last].u.d.nextnode = no;}	/* a pseudo-particle */
+            } else {Nextnode[last] = no;}
         }
-
         last = no;
-
-        if(no < All.MaxPart)	/* only set it for single particles */
-            Father[no] = father;
+        if(no < All.MaxPart) {Father[no] = father;}	/* only set it for single particles */
     }
 }
 
@@ -963,7 +957,7 @@ void force_exchange_pseudodata(void)
 #ifdef BH_DYNFRICTION_FROMTREE
         long N_part;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
         MyFloat maxsoft;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -995,7 +989,7 @@ void force_exchange_pseudodata(void)
 #endif
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
-        tidal_tensorps_prevstep[3][3];
+        MyFloat tidal_tensorps_prevstep[3][3];
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
         MyFloat s_dm[3];
@@ -1039,7 +1033,7 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].vmax = Extnodes[no].vmax;
             DomainMoment[i].divVmax = Extnodes[no].divVmax;
             DomainMoment[i].bitflags = Nodes[no].u.d.bitflags;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
             DomainMoment[i].maxsoft = Nodes[no].maxsoft;
 #endif
 #ifdef BH_DYNFRICTION_FROMTREE
@@ -1145,7 +1139,7 @@ void force_exchange_pseudodata(void)
                     Extnodes[no].vmax = DomainMoment[i].vmax;
                     Extnodes[no].divVmax = DomainMoment[i].divVmax;
                     Nodes[no].u.d.bitflags = (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
                     Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #endif
 #ifdef BH_DYNFRICTION_FROMTREE
@@ -1652,7 +1646,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double jerk[3] = {0,0,0};
 #endif
     double pos_x, pos_y, pos_z, aold;
-
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double vel_x, vel_y, vel_z;
 #endif
@@ -1665,19 +1658,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif    
 #endif
 #ifdef PMGRID
-    int tabindex;
-    double eff_dist, rcut, asmth, asmthfac, rcut2, dist;
-    dist = 0;
+    int tabindex; double eff_dist, rcut, asmth, asmthfac, rcut2, dist; dist = 0;
 #endif
 #ifdef COUNT_MASS_IN_GRAVTREE
     MyFloat tree_mass = 0;
 #endif
     MyLongDouble acc_x, acc_y, acc_z;
     // cache some global vars in local vars to help compiler with alias analysis
-    int maxPart = All.MaxPart;
-    long bunchSize = All.BunchSize;
-    int maxNodes = MaxNodes;
-    integertime ti_Current = All.Ti_Current;
+    int maxPart = All.MaxPart; long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     int i1, i2; double fac2_tidal, fac_tidal; MyDouble tidal_tensorps[3][3];
 #endif
@@ -1721,14 +1709,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
 #ifdef BH_CALC_DISTANCES
-    double min_dist_to_bh2=1.e37;
-    double min_xyz_to_bh[3]={1.e37,1.e37,1.e37};
+    double min_dist_to_bh2=1.e37, min_xyz_to_bh[3]={1.e37,1.e37,1.e37};
 #ifdef SINGLE_STAR_FIND_BINARIES
     double min_bh_t_orbital=MAX_REAL_NUMBER, comp_dx[3], comp_dv[3], comp_Mass;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-    double min_bh_approach_time = MAX_REAL_NUMBER;
-    double min_bh_freefall_time = MAX_REAL_NUMBER;
+    double min_bh_approach_time = MAX_REAL_NUMBER, min_bh_freefall_time = MAX_REAL_NUMBER;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     double min_bh_fb_time = MAX_REAL_NUMBER;
 #endif
@@ -1742,17 +1728,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(BH_DYNFRICTION_FROMTREE)
     double bh_mass = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#if defined(FORCETREE_VARIABLE_SOFTENINGS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
     double pmass;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta, zeta_sec=0;
-    int ptype_sec=-1;
+#if defined(FORCETREE_VARIABLE_SOFTENINGS)
+    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta=0, zeta_sec=0; int ptype_sec=-1;
 #endif
 #endif
 #ifdef EVALPOTENTIAL
-    double facpot;
-    MyLongDouble pot;
-    pot = 0;
+    double facpot; MyLongDouble pot; pot = 0;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {tidal_tensorps[i1][i2] = 0.0;}}
@@ -1794,7 +1777,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_z = P[target].Vel[2];
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
-        if(ptype==5) {bh_mass = P[target].BH_Mass;}
+        if(ptype == 5) {bh_mass = P[target].BH_Mass;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(ptype == 0) {if(soft > All.ForceSoftening[P[target].Type]) {zeta = PPPZ[target].AGS_zeta;} else {soft=All.ForceSoftening[P[target].Type]; zeta=0;}}
@@ -1827,7 +1810,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         vel_z = GravDataGet[target].Vel[2];
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
-        if(ptype==5) {bh_mass = GravDataGet[target].BH_Mass;}
+        if(ptype == 5) {bh_mass = GravDataGet[target].BH_Mass;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
         zeta = GravDataGet[target].AGS_zeta;
@@ -1842,9 +1825,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
     /* quick check if particle has mass: if not, we won't deal with it */
-    if(pmass<=0) return 0;
+    if(pmass<=0) {return 0;}
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
-    int j0_sec_for_ags = -1;
+    int j0_sec_for_ags; j0_sec_for_ags = -1;
 #endif
 #ifdef PMGRID
     rcut2 = rcut * rcut;
@@ -2039,11 +2022,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
                     double h_p = ForceSoftening_KernelRadius(no);
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) /* set secondary softening and zeta term */
+#ifdef FORCETREE_VARIABLE_SOFTENINGS /* set secondary softening and zeta term */
                     ptype_sec = P[no].Type; j0_sec_for_ags = no; h_p_inv = 1./h_p; zeta_sec = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                     if(ptype_sec==0) {zeta_sec=PPPZ[no].AGS_zeta;}
-#else
+#elif defined(ADAPTIVE_GRAVSOFT_FORALL)
                     zeta_sec=PPPZ[no].AGS_zeta;
 #endif
 #else
@@ -2332,7 +2315,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     
                 }
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
                 /* set secondary softening and zeta term */
                 if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
                 zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1;
@@ -2412,7 +2395,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
             }
-	    	   
+            
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+            if(mass>0 && h>0) {u=sqrt(r2)/h; if(u<1) {tidal_zeta = mass * kernel_gravity(u, 1./h, 1./(h*h*h), 0);}} // simple sum to calculate this contribution, only from particles inside the kernel of the primary -- this is up here instead of below the if below because it needs to include the 'self' contribution here
+#endif
+
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
             r = sqrt(r2);
@@ -2443,12 +2430,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
                 fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
-                if(r<h) {tidal_zeta += mass * kernel_gravity(u, h_inv, h3_inv, 0);} // simple sum to calculate this contribution, only from particles inside the kernel of the primary
-#endif
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if FORCETREE_VARIABLE_SOFTENINGS
                 // first, appropriately symmetrize the forces between particles //
                 if((h_p_inv > 0) && (ptype_sec > -1))
                 {
@@ -2530,7 +2514,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     } // if(ptype==ptype_sec)
                     } // closes else{} block for when take the larger of two softenings or symmetrize by averaging
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
-#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
+#endif // #ifdef FORCETREE_VARIABLE_SOFTENINGS //
             } // closes r < h (else) clause
 
 
@@ -2600,17 +2584,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
                 
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS /* ??? pure experiments */
-                if( (ptype!=0) && (r>0) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS /* these are the 'correction' terms for variable smoothing lengths (analogous to the ags-zeta terms above). need to adjust for variable ptypes using these ??? */
+                if(((1 << ptype) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (r>0) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
                 {
-                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r/h_p, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
-                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline
+                    // ??? need to figure out for this if it's a case of 'how hb varies with ra' or vice-versa //
+                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
+                    if(no<maxPart) {u_j=r/ForceSoftening_KernelRadius(no);} else {u_j=MAX_REAL_NUMBER;}
+                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline -- ??? make function to enable other splines
                     if(u_j<0.5) {fa_j=96.*pow(u_j,6); fb_j=96.*pow(u_j,5)*(4.-5.*u_j);} else {if(u_j<1.) {fa_j=-1.+16.*pow(u_j,4)*(3.-2.*u_j*u_j); fb_j=-1.+16.*pow(u_j,4)*(15.-2.*u_j*(12.-5.*u_j));}} // this function is kernel-specific, here assuming cubic spline
                     int ki,kj,kk; double rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r; fb_i*=-1./5.; fb_j*=-1./5.; // generic overhead for calcs below
                     double i_zeta_tidal_tensorps_prevstep[3][3], j_zeta_tidal_tensorps_prevstep[3][3];
                     for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {
                         if(mode==0) {i_zeta_tidal_tensorps_prevstep[ki][kj]=P[target].tidal_tensorps_prevstep[ki][kj];} else {i_zeta_tidal_tensorps_prevstep[ki][kj]=GravDataGet[target].tidal_tensorps_prevstep[ki][kj];}
-                        if(no<maxPart) {j_zeta_tidal_tensorps_prevstep[ki][kj]=P[no].tidal_tensorps_prevstep[ki][kj];} else {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj]}
+                        if(no<maxPart) {j_zeta_tidal_tensorps_prevstep[ki][kj]=P[no].tidal_tensorps_prevstep[ki][kj];} else {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj];}
                     }}
                     for(kk=0;kk<3;kk++)
                     {
@@ -2625,13 +2611,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 if(ki==kj && ki==kk) {rh_add+=2.*rh[kk];}
                                 qi += fb_i*rh_add; qj += fb_j*rh_add;
                                 /* now double-dot this properly to get the sum we need - note only here need the combination of TT and zeta terms */
-                                acc[kk] += i_zeta_tidal_tensorps_prevstep[ki][kj] * qi;
-                                acc[kk] += j_zeta_tidal_tensorps_prevstep[ki][kj] * qj;
+                                acc_corr_zeta[kk] += i_zeta_tidal_tensorps_prevstep[ki][kj] * qi;
+                                acc_corr_zeta[kk] += j_zeta_tidal_tensorps_prevstep[ki][kj] * qj;
                             }
                         }
-                        acc[kk] *= tprefac; // final multiplication to get the right magnitude and units
+                        acc_corr_zeta[kk] *= tprefac; // final multiplication to get the right magnitude and units
                     }
-                    acc_x+=acc[0]; acc_y+=acc[1]; acc_z+=acc[2]; // final assignment
+                    acc_x+=acc_corr_zeta[0]; acc_y+=acc_corr_zeta[1]; acc_z+=acc_corr_zeta[2]; // final assignment
                 }
 #endif
                 
@@ -2680,11 +2666,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		if(ptype > 0)
 #endif                    
                 {
-		    double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;
-		    jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
-		    jerk[1] += dvy * fac - dv_dot_dx * fac2_tidal * dy;
-		    jerk[2] += dvz * fac - dv_dot_dx * fac2_tidal * dz;
-		}
+                    double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;
+                    jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
+                    jerk[1] += dvy * fac - dv_dot_dx * fac2_tidal * dy;
+                    jerk[2] += dvz * fac - dv_dot_dx * fac2_tidal * dz;
+                }
 #endif
             } // closes TABINDEX<NTAB
 
@@ -3514,7 +3500,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             if(no < All.MaxPart)
             {
                 h = soft; /* set softening */
-#if !(defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL))
+#ifndef FORCETREE_VARIABLE_SOFTENINGS
                 double h_p = ForceSoftening_KernelRadius(no);
                 if(h < h_p) {h = h_p;} /* set to larger value */
 #endif
@@ -3632,29 +3618,14 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 }
 
                 h = soft; // set h if not already set above
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                if(h < nop->maxsoft)
-                {
-                    if(r2 < nop->maxsoft * nop->maxsoft)
-                    {
-                        no = nop->u.d.nextnode;
-                        continue;
-                    }
-                }
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
+                if(h < nop->maxsoft) {if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;}}
 #else
-                if(h < nop->maxsoft)
-                {
-                    h = nop->maxsoft; // only applies if symmetrizing with MAX(h_i,h_j)
-                    if(r2 < nop->maxsoft * nop->maxsoft)
-                    {
-                        if(maskout_different_softening_flag(nop->u.d.bitflags)) /* bit-5 signals that there are particles of different softening in the node */
-                        {
-                            no = nop->u.d.nextnode;
-                            continue;
-                        }
-                    }
-                }
-#endif // #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) //
+                if(h < nop->maxsoft) {h = nop->maxsoft; // only applies if symmetrizing with MAX(h_i,h_j)
+                    if(r2 < nop->maxsoft * nop->maxsoft) {
+                        if(maskout_different_softening_flag(nop->u.d.bitflags)) { /* bit-5 signals that there are particles of different softening in the node */
+                            no = nop->u.d.nextnode; continue;}}}
+#endif
                 no = nop->u.d.sibling;	/* node can be used */
             }
 

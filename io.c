@@ -1173,22 +1173,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
         case IO_TIDALTENSORPS:   /* 3x3 configuration-space tidal tensor that is driving the GDE */
 #ifdef OUTPUT_TIDAL_TENSOR
             for(n = 0; n < pc; pindex++)
-
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++)
-                    {
-                        int l_tt_tmp;
-                        for(l_tt_tmp = 0; l_tt_tmp < 3; l_tt_tmp++)
-                        {
-                            fp[k * 3 + l_tt_tmp] = (MyOutputFloat) P[pindex].tidal_tensorps[k][l_tt_tmp];
-#if defined(PMGRID) && !defined(GDE_DISTORTIONTENSOR)
-                            fp[k * 3 + l_tt_tmp] += (MyOutputFloat) P[pindex].tidal_tensorpsPM[k][l_tt_tmp]; // in current code (without GDE_DISTORTIONTENSOR) this isn't necessary because of how the tidal tensor terms are added and diagonalized already in the gravtree operations
-#endif
-
-                        }
-                    }
-                    //fflush(stderr);
+                    for(k = 0; k < 3; k++) {int l_tt_tmp; for(l_tt_tmp = 0; l_tt_tmp < 3; l_tt_tmp++) {fp[k * 3 + l_tt_tmp] = (MyOutputFloat) P[pindex].tidal_tensorps[k][l_tt_tmp];}}
                     n++;
                     fp += 9;
                 }
