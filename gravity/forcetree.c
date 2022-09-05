@@ -39,7 +39,7 @@ static int last;
 
 /* some modules compute neighbor fluxes explicitly within the force-tree: in these cases, we need to
     take extra care about opening leaves to ensure possible neighbors are not missed, so defined a flag below for it */
-#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION))
+#if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
 
@@ -494,6 +494,9 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif        
 #endif
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        MyFloat tidal_tensorps_prevstep[3][3]; {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {tidal_tensorps_prevstep[k1][k2]=0;}}}
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
         mass_dm = 0;
         s_dm[0] = vs_dm[0] = 0;
@@ -592,6 +595,9 @@ void force_update_node_recursive(int no, int sib, int father)
                         if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(Nodes[p].MaxFeedbackVel, max_feedback_vel);}
 #endif                        
 #endif
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {tidal_tensorps_prevstep[k1][k2] += Nodes[p].u.d.mass * Nodes[p].tidal_tensorps_prevstep[k1][k2];}}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
                         mass_dm += (Nodes[p].mass_dm);
@@ -710,6 +716,9 @@ void force_update_node_recursive(int no, int sib, int father)
                     }
 #endif
 
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                    {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {tidal_tensorps_prevstep[k1][k2] += pa->Mass * pa->tidal_tensorps_prevstep[k1][k2];}}}
+#endif
 
 #ifdef DM_SCALARFIELD_SCREENING
                     if(pa->Type != 0)
@@ -873,6 +882,9 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
         }
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Nodes[no].tidal_tensorps_prevstep[k1][k2] = tidal_tensorps_prevstep[k1][k2] / (mass+MIN_REAL_NUMBER);}}}
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
         Nodes[no].s_dm[0] = s_dm[0];
         Nodes[no].s_dm[1] = s_dm[1];
@@ -982,6 +994,9 @@ void force_exchange_pseudodata(void)
 #endif        
 #endif
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        tidal_tensorps_prevstep[3][3];
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
         MyFloat s_dm[3];
         MyFloat vs_dm[3];
@@ -1071,6 +1086,9 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].MaxFeedbackVel = Nodes[no].MaxFeedbackVel;
 #endif            
 #endif
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+            {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {DomainMoment[i].tidal_tensorps_prevstep[k1][k2]=Nodes[no].tidal_tensorps_prevstep[k1][k2];}}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             DomainMoment[i].s_dm[0] = Nodes[no].s_dm[0];
@@ -1175,6 +1193,9 @@ void force_exchange_pseudodata(void)
 #endif                        
 #endif
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                    {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Nodes[no].tidal_tensorps_prevstep[k1][k2]=DomainMoment[i].tidal_tensorps_prevstep[k1][k2];}}}
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
                     Nodes[no].s_dm[0] = DomainMoment[i].s_dm[0];
                     Nodes[no].s_dm[1] = DomainMoment[i].s_dm[1];
@@ -1241,6 +1262,9 @@ void force_treeupdate_pseudos(int no)
     MyFloat max_feedback_vel=0;
 #endif    
 #endif
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+    MyFloat tidal_tensorps_prevstep[3][3]; {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {tidal_tensorps_prevstep[k1][k2]=0;}}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
     mass_dm = 0;
@@ -1315,6 +1339,9 @@ void force_treeupdate_pseudos(int no)
             if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(max_feedback_vel, Nodes[p].MaxFeedbackVel);}
 #endif
 #endif
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+            {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {tidal_tensorps_prevstep[k1][k2] += Nodes[p].u.d.mass * Nodes[p].tidal_tensorps_prevstep[k1][k2];}}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
             mass_dm += (Nodes[p].mass_dm);
@@ -1475,6 +1502,9 @@ void force_treeupdate_pseudos(int no)
 #endif            
 #endif
         }
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+    {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Nodes[no].tidal_tensorps_prevstep[k1][k2] = tidal_tensorps_prevstep[k1][k2] / (mass+MIN_REAL_NUMBER);}}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
     Nodes[no].s_dm[0] = s_dm[0];
@@ -1726,6 +1756,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {tidal_tensorps[i1][i2] = 0.0;}}
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+    double tidal_zeta = 0;
+#endif
 #endif
 
     acc_x = 0;
@@ -2410,6 +2443,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
                 fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                if(r<h) {tidal_zeta += mass * kernel_gravity(u, h_inv, h3_inv, 0);} // simple sum to calculate this contribution, only from particles inside the kernel of the primary
+#endif
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -2563,6 +2599,42 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
 #endif
 
+                
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS /* ??? pure experiments */
+                if( (ptype!=0) && (r>0) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
+                {
+                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r/h_p, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
+                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline
+                    if(u_j<0.5) {fa_j=96.*pow(u_j,6); fb_j=96.*pow(u_j,5)*(4.-5.*u_j);} else {if(u_j<1.) {fa_j=-1.+16.*pow(u_j,4)*(3.-2.*u_j*u_j); fb_j=-1.+16.*pow(u_j,4)*(15.-2.*u_j*(12.-5.*u_j));}} // this function is kernel-specific, here assuming cubic spline
+                    int ki,kj,kk; double rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r; fb_i*=-1./5.; fb_j*=-1./5.; // generic overhead for calcs below
+                    double i_zeta_tidal_tensorps_prevstep[3][3], j_zeta_tidal_tensorps_prevstep[3][3];
+                    for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {
+                        if(mode==0) {i_zeta_tidal_tensorps_prevstep[ki][kj]=P[target].tidal_tensorps_prevstep[ki][kj];} else {i_zeta_tidal_tensorps_prevstep[ki][kj]=GravDataGet[target].tidal_tensorps_prevstep[ki][kj];}
+                        if(no<maxPart) {j_zeta_tidal_tensorps_prevstep[ki][kj]=P[no].tidal_tensorps_prevstep[ki][kj];} else {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj]}
+                    }}
+                    for(kk=0;kk<3;kk++)
+                    {
+                        for(ki=0;ki<3;ki++)
+                        {
+                            for(kj=0;kj<3;kj++)
+                            {
+                                /* first compute di dj dk [phi_kernel] -- this is generic */
+                                double q0=rh[ki]*rh[kj]*rh[kk], qi=fa_i*q0, qj=fa_j*q0, rh_add=0;
+                                if(ki==kj || ki==kk || kj==kk) {
+                                    if(ki==kj) {rh_add=rh[kk];} else {if(ki==kk) {rh_add=rh[kj];} else {rh_add=rh[ki];}}}
+                                if(ki==kj && ki==kk) {rh_add+=2.*rh[kk];}
+                                qi += fb_i*rh_add; qj += fb_j*rh_add;
+                                /* now double-dot this properly to get the sum we need - note only here need the combination of TT and zeta terms */
+                                acc[kk] += i_zeta_tidal_tensorps_prevstep[ki][kj] * qi;
+                                acc[kk] += j_zeta_tidal_tensorps_prevstep[ki][kj] * qj;
+                            }
+                        }
+                        acc[kk] *= tprefac; // final multiplication to get the right magnitude and units
+                    }
+                    acc_x+=acc[0]; acc_y+=acc[1]; acc_z+=acc[2]; // final assignment
+                }
+#endif
+                
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 /*
@@ -2572,11 +2644,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                  |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
                  */
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-		if(r_source < r_target){
-		    fac2_tidal = 3 * mass / pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),5);
-		} else {
-   		    fac2_tidal = 0;
-		}
+                if(r_source < r_target) {
+                    fac2_tidal = 3 * mass / pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),5);
+                } else {
+                    fac2_tidal = 0;
+                }
 #endif
 #ifdef PMGRID
                 tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2_tidal) * shortrange_table[tabindex]) +
@@ -2836,6 +2908,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         {int i1,i2; for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {P[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}}
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        P[target].tidal_zeta = tidal_zeta;
+#endif
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         {int i1; for(i1 = 0; i1 < 3; i1++) {P[target].GravJerk[i1] = jerk[i1];}}
@@ -2903,6 +2978,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
         {int i1,i2; for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {GravDataResult[target].tidal_tensorps[i1][i2] = tidal_tensorps[i1][i2];}}}
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        GravDataResult[target].tidal_zeta = tidal_zeta;
+#endif
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         {int i1; for(i1 = 0; i1 < 3; i1++) {GravDataResult[target].GravJerk[i1] = jerk[i1];}}

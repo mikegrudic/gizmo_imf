@@ -1151,7 +1151,11 @@ void apply_pm_hires_region_clipping_selection(int i)
 #ifdef PM_HIRES_REGION_CLIPPING
     int clip_flag = 0; // flag for clipping
     if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
+#ifdef FIRE_BHS
+    if(All.ComovingIntegrationOn) {if(P[i].Type == 5) {if((PPP[i].Hsml >= 0.5*All.BlackHoleMaxAccretionRadius/All.cf_atime) && (PPP[i].NumNgb <= 0)) {clip_flag=1;}}} // still need to clip if way outside gas-sampled high-res region
+#else
     if(P[i].Type == 5) {return;} // no clips for sinks
+#endif
     if(P[i].Type == 0 && density_isactive(i)) {if((SphP[i].Density <= 0) || (PPP[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
     if(density_isactive(i)) {if(PPP[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE

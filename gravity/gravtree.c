@@ -247,6 +247,9 @@ void gravity_tree(void)
                 GravDataIn[j].Soft = PPP[place].AGS_Hsml;
                 GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                for(k=0;k<3;k++) {int k2; for(k2=0;k2<3;k2++) {GravDataIn[j].tidal_tensorps_prevstep[k][k2]=P[place].tidal_tensorps_prevstep[k][k2];}}
+#endif
                 memcpy(GravDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
             }
 
@@ -417,6 +420,9 @@ void gravity_tree(void)
 #ifdef COMPUTE_JERK_IN_GRAVTREE
                 {int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];}
 #endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                P[place].tidal_zeta += GravDataOut[j].tidal_zeta;
+#endif
 #endif
             }
             tend = my_second(); timetree1 += timediff(tstart, tend);
@@ -501,9 +507,9 @@ void gravity_tree(void)
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* final operations to compute the diagonalized tidal tensor and related quantities */
 #if (defined(TIDAL_TIMESTEP_CRITERION) || defined(GALSF_SFR_TIDAL_HILL_CRITERION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) // diagonalize the tidal tensor so we can use its invariants, which don't change with rotation
-        double tt[9]; for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] = P[i].tidal_tensorps[j][k];}
+        double tt[9]; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] = P[i].tidal_tensorps[j][k];}}
 #ifdef PMGRID
-        for(j=0; j<3; j++) {for (k=0; k<3; k++) tt[3*j+k] += P[i].tidal_tensorpsPM[j][k];}
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] += P[i].tidal_tensorpsPM[j][k];}}
 #endif
         gsl_matrix_view m = gsl_matrix_view_array (tt, 3, 3);
         gsl_vector *eval = gsl_vector_alloc (3);
@@ -523,7 +529,7 @@ void gravity_tree(void)
 #endif
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} // units //
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-        for(j=0;j<3;j++) P[i].GravJerk[j] *= All.G;
+        for(j=0;j<3;j++) {P[i].GravJerk[j] *= All.G;}
 #endif
 #endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */
 

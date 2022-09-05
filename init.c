@@ -185,6 +185,9 @@ void init(void)
         P[i].tidal_tensorps[2][0]=P[i].tidal_tensorps[2][1]=P[i].tidal_tensorps[2][2]=0;
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
         P[i].tidal_tensor_mag_prev = 0;
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+        P[i].tidal_zeta=0; for(j=0;j<3;j++) {int kt; for(kt=0;kt<3;kt++) {P[i].tidal_tensorps_prevstep[j][kt]=0;}}
+#endif
 #endif
 #ifdef PMGRID
         P[i].tidal_tensorpsPM[0][0]=P[i].tidal_tensorpsPM[0][1]=P[i].tidal_tensorpsPM[0][2]=0;
