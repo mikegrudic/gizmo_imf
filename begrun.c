@@ -195,10 +195,7 @@ void begrun(void)
   set_random_numbers();
 
 #ifdef PMGRID
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-  if(RestartFlag != 3 && RestartFlag != 4)
-#endif
-    long_range_init();
+  if(RestartFlag != 3 && RestartFlag != 4) {long_range_init();}
 #endif
 
 #ifdef SUBFIND
@@ -207,10 +204,7 @@ void begrun(void)
 
 #ifdef EOS_TABULATED
     int ierr = eos_init(All.EosTable);
-    if(ierr) {
-        printf("error initializing the eos");
-        endrun(1);
-    }
+    if(ierr) {printf("error initializing the eos"); endrun(1);}
 #endif
 
 #ifdef EOS_TILLOTSON
@@ -2199,7 +2193,7 @@ void read_parameter_file(char *fname)
 #endif
                 if(strcmp("InitGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume temperatures defined in ICs (=%g) \n",tag[i],alternate_tag[i],All.InitGasTemp); continue;}
                 if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume minimum matches the specified force softening (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
 #else
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}

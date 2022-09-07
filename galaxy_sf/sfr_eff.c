@@ -180,11 +180,8 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     /* now calculate probability of forming a BH seed particle */
     p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-    double Rcrit = PPP[i].Hsml;
+    double Rcrit = ForceSoftening_KernelRadius(i); /* search radius of interest (note for adaptive softenings this will self-consistently take the kernel search radius of interest) */
     Z_threshold_solar = 0.1; /* based on Linhao's paper, we need to allow formation at somewhat higher metallicity or we tail to get BHs in the central density concentrations when they form */
-#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
-    Rcrit = ForceSoftening_KernelRadius(i); /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
-#endif
     Rcrit = DMAX( Rcrit , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime)); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #ifdef BH_CALC_DISTANCES
     if(P[i].min_dist_to_bh < 10.*Rcrit) {return 0;} /* don't allow formation if there is already a sink nearby, akin to SF sink rules */

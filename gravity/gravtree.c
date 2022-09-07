@@ -221,7 +221,7 @@ void gravity_tree(void)
                 GravDataIn[j].Type = P[place].Type;
                 GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
                 GravDataIn[j].OldAcc = P[place].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)

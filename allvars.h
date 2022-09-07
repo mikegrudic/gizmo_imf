@@ -279,7 +279,7 @@
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 
-#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if !(defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL))
 #define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
@@ -1495,6 +1495,7 @@ typedef unsigned long long peanokey;
 #if !defined(TIDAL_TIMESTEP_CRITERION)
 #define TIDAL_TIMESTEP_CRITERION
 #endif
+#define OUTPUT_TIDAL_TENSOR
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
 #endif
 
@@ -3509,7 +3510,8 @@ extern struct gravdata_in
     int Type;
     MyFloat Pos[3];
     MyFloat Soft;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#define GRAVDATA_IN_INCLUDES_MASS_FIELD
     MyFloat Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)

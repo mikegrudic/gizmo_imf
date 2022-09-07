@@ -1631,8 +1631,10 @@ void force_add_star_to_tree(int igas, int istar)
 int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex)
 {
     struct NODE *nop = 0;
-    int no, nodesinlist, ptype, ninteractions, nexp, task, listindex = 0;
-    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_inv, h3_inv, xtmp; xtmp=0; soft=0;
+    int no, nodesinlist=0, ptype, ninteractions=0, nexp, task, listindex = 0, maxPart = All.MaxPart;
+    long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
+    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_inv, h3_inv, xtmp; xtmp=0; soft=0, pos_x, pos_y, pos_z, aold;
+    MyLongDouble acc_x=0, acc_y=0, acc_z=0; // cache some global vars in local vars to help compiler with alias analysis
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 #endif
@@ -1645,27 +1647,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double jerk[3] = {0,0,0};
 #endif
-    double pos_x, pos_y, pos_z, aold;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
     double vel_x, vel_y, vel_z;
 #endif
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
     double r_source, r_target, center[3]={0};
 #ifdef BOX_PERIODIC
-    center[0] = 0.5 * boxSize_X;
-    center[1] = 0.5 * boxSize_Y;
-    center[2] = 0.5 * boxSize_Z;
+    center[0] = 0.5 * boxSize_X; center[1] = 0.5 * boxSize_Y; center[2] = 0.5 * boxSize_Z;
 #endif    
 #endif
 #ifdef PMGRID
-    int tabindex; double eff_dist, rcut, asmth, asmthfac, rcut2, dist; dist = 0;
+    int tabindex; double eff_dist, rcut, asmth, asmthfac, rcut2, dist; dist = 0; rcut = All.Rcut[0]; asmth = All.Asmth[0];
+    if(mode != 0 && mode != 1) {printf("%d %d %d %d %d\n", target, mode, *exportflag, *exportnodecount, *exportindex); endrun(444);}
 #endif
 #ifdef COUNT_MASS_IN_GRAVTREE
     MyFloat tree_mass = 0;
 #endif
-    MyLongDouble acc_x, acc_y, acc_z;
-    // cache some global vars in local vars to help compiler with alias analysis
-    int maxPart = All.MaxPart; long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     int i1, i2; double fac2_tidal, fac_tidal; MyDouble tidal_tensorps[3][3];
 #endif
@@ -1676,19 +1673,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double cr_injection = 0;
 #endif
 #ifdef RT_USE_GRAVTREE
-    double mass_stellarlum[N_RT_FREQ_BINS];
-    int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
+    double mass_stellarlum[N_RT_FREQ_BINS]; int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) {mass_stellarlum[k_freq]=0;}
 #ifdef CHIMES_STELLAR_FLUXES
-    double chimes_mass_stellarlum_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_mass_stellarlum_ion[CHIMES_LOCAL_UV_NBINS]={0};
-    double chimes_flux_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_flux_ion[CHIMES_LOCAL_UV_NBINS]={0};
+    double chimes_mass_stellarlum_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_mass_stellarlum_ion[CHIMES_LOCAL_UV_NBINS]={0}, chimes_flux_G0[CHIMES_LOCAL_UV_NBINS]={0}, chimes_flux_ion[CHIMES_LOCAL_UV_NBINS]={0};
 #endif
-    double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0;
-    int valid_gas_particle_for_rt = 0;
+    double dx_stellarlum=0, dy_stellarlum=0, dz_stellarlum=0; int valid_gas_particle_for_rt = 0;
 #ifdef RT_OTVET
     double RT_ET[N_RT_FREQ_BINS][6]={{0}};
 #endif
 #endif
-
 #ifdef BH_PHOTONMOMENTUM
     double mass_bhlum=0; // convert bh luminosity to our tree units
 #endif
@@ -1707,32 +1700,29 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
     double Rad_Flux[N_RT_FREQ_BINS][3]; {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {Rad_Flux[kf][k2]=0;}}}
 #endif
-
 #ifdef BH_CALC_DISTANCES
     double min_dist_to_bh2=1.e37, min_xyz_to_bh[3]={1.e37,1.e37,1.e37};
+#endif
 #ifdef SINGLE_STAR_FIND_BINARIES
     double min_bh_t_orbital=MAX_REAL_NUMBER, comp_dx[3], comp_dv[3], comp_Mass;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
     double min_bh_approach_time = MAX_REAL_NUMBER, min_bh_freefall_time = MAX_REAL_NUMBER;
+#endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     double min_bh_fb_time = MAX_REAL_NUMBER;
 #endif
-#endif
-#endif
-
-
 #ifdef DM_SCALARFIELD_SCREENING
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
     double bh_mass = 0;
 #endif
-#if defined(FORCETREE_VARIABLE_SOFTENINGS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
     double pmass;
+#endif
 #if defined(FORCETREE_VARIABLE_SOFTENINGS)
     double h_p_inv=0, h_p3_inv=0, u_p=0, zeta=0, zeta_sec=0; int ptype_sec=-1;
-#endif
 #endif
 #ifdef EVALPOTENTIAL
     double facpot; MyLongDouble pot; pot = 0;
@@ -1744,22 +1734,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 
-    acc_x = 0;
-    acc_y = 0;
-    acc_z = 0;
-    ninteractions = 0;
-    nodesinlist = 0;
-
-#ifdef PMGRID
-    rcut = All.Rcut[0];
-    asmth = All.Asmth[0];
-    if(mode != 0 && mode != 1)
-    {
-        printf("%d %d %d %d %d\n", target, mode, *exportflag, *exportnodecount, *exportindex);
-        endrun(444);
-    }
-#endif
-
     if(mode == 0)
     {
         pos_x = P[target].Pos[0];
@@ -1768,7 +1742,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         ptype = P[target].Type;
         soft = ForceSoftening_KernelRadius(target);
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = P[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
@@ -1786,11 +1760,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         if(soft > All.ForceSoftening[P[target].Type]) {zeta = PPPZ[target].AGS_zeta;} else {soft=All.ForceSoftening[P[target].Type]; zeta=0;}
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
-        if(pmforce_is_particle_high_res(ptype, P[target].Pos))
-        {
-            rcut = All.Rcut[1];
-            asmth = All.Asmth[1];
-        }
+        if(pmforce_is_particle_high_res(ptype, P[target].Pos)) {rcut = All.Rcut[1]; asmth = All.Asmth[1];}
 #endif
     }
     else
@@ -1801,7 +1771,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         ptype = GravDataGet[target].Type;
         soft = GravDataGet[target].Soft;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = GravDataGet[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
@@ -1812,36 +1782,28 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(BH_DYNFRICTION_FROMTREE)
         if(ptype == 5) {bh_mass = GravDataGet[target].BH_Mass;}
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         zeta = GravDataGet[target].AGS_zeta;
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
-        if(pmforce_is_particle_high_res(ptype, GravDataGet[target].Pos))
-        {
-            rcut = All.Rcut[1];
-            asmth = All.Asmth[1];
-        }
+        if(pmforce_is_particle_high_res(ptype, GravDataGet[target].Pos)) {rcut = All.Rcut[1]; asmth = All.Asmth[1];}
 #endif
     }
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
-    /* quick check if particle has mass: if not, we won't deal with it */
-    if(pmass<=0) {return 0;}
-    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
-    int j0_sec_for_ags; j0_sec_for_ags = -1;
+    
+    
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
+    if(pmass<=0) {return 0;} /* quick check if particle has mass: if not, we won't deal with it */
+#endif
+    h = soft; h_inv = 1.0 / h; h3_inv = h_inv * h_inv * h_inv;
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
+    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); int j0_sec_for_ags; j0_sec_for_ags = -1; // determine allowed particle types for correction terms for adaptive gravitational softening terms
 #endif
 #ifdef PMGRID
-    rcut2 = rcut * rcut;
-    asmthfac = 0.5 / asmth * (NTAB / 3.0);
+    rcut2 = rcut * rcut; asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
-
 #ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
     double targeth_si = soft;
 #endif
-
-    h = soft;
-    h_inv = 1.0 / h;
-    h3_inv = h_inv * h_inv * h_inv;
-
 #ifdef RT_USE_GRAVTREE
     if(ptype==0) {if((soft>0)&&(pmass>0)) {valid_gas_particle_for_rt = 1;}}
 #if defined(RT_LEBRON) && !defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
@@ -1855,11 +1817,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
 #endif
 #endif
-
-
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-    double m_enc_in_rcrit = 0, r_for_total_menclosed = h;
-    r_for_total_menclosed = DMAX( r_for_total_menclosed , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime) ); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
+    double m_enc_in_rcrit = 0, r_for_total_menclosed = h; r_for_total_menclosed = DMAX( r_for_total_menclosed , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime) ); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #endif
 
 
@@ -2317,8 +2276,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
                 /* set secondary softening and zeta term */
-                if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
-                zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1;
+                // if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
+                h_p_inv = 0; zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1;
                 if(h < nop->maxsoft) // compare primary softening to node maximum
                 {
                     if(r2 < nop->maxsoft * nop->maxsoft) // inside node maxsoft, continue down tree
@@ -2341,7 +2300,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
                 }
 #endif
-
 
 
                 if(TakeLevel >= 0) {nop->GravCost += 1.0;}
@@ -2403,7 +2361,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
             {
             r = sqrt(r2);
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
             if((r >= h) && !((ptype_sec > -1) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
 #else
             if(r >= h)
@@ -2419,10 +2377,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
             else
             {
-#if !defined(ADAPTIVE_GRAVSOFT_FORALL) && !defined(ADAPTIVE_GRAVSOFT_FORGAS)
-                h_inv = 1.0 / h;
-                h3_inv = h_inv * h_inv * h_inv;
-#endif
                 u = r * h_inv;
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
@@ -2432,87 +2386,48 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
 #endif
 
-#if FORCETREE_VARIABLE_SOFTENINGS
-                // first, appropriately symmetrize the forces between particles //
-                if((h_p_inv > 0) && (ptype_sec > -1))
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
+                if((h_p_inv > 0) && (ptype_sec > -1)) // first, appropriately symmetrize the forces between particles. only do this is secondary is a particle, so has a type and softening! //
                 {
                     int symmetrize_by_averaging = 0;
 #ifdef ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
-                    //symmetrize_by_averaging = 1; // always symmetrize by averaging //
                     if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) {symmetrize_by_averaging=1;} // symmetrize by averaging only for particles which have a shared AGS structure since this is how our correction terms are derived //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                     if((ptype!=0) || (ptype_sec!=0)) {symmetrize_by_averaging=0;} // we don't want to do the symmetrization below for sink interactions because it can create very noisy interactions between tiny sink particles and diffuse gas. However we do want it for gas-gas interactions so we keep the below
 #endif
 #endif
-                    if(symmetrize_by_averaging==1)
-                    {
-                    h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
-                    fac = 0.5 * (fac + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
-#ifdef EVALPOTENTIAL
-                    facpot = 0.5 * (facpot + mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1)); // average with neighbor
-#endif
-#if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
-                    fac2_tidal = 0.5 * (fac2_tidal + mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well
-#endif
-                    // correction only applies to 'shared-kernel' particles: so this needs to check if
-                    // these are the same particles for which the 'shared' kernel lengths are computed
-                    if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
-                    {
-                        if((r>0) && (pmass>0)) // checks that these aren't the same particle or test particle
-                        {
-                            double dWdr, wp, fac_corr = 0;
-                            if((zeta != 0) && (u < 1)) // in kernel [zeta non-zero]
-                            {
-                                kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                fac_corr += -(zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                            }
-                            if((zeta_sec != 0) && (u_p < 1)) // in kernel [ zeta non-zero]
-                            {
-                                kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                fac_corr += -(zeta_sec/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                            }
-                            if(!isnan(fac_corr)) {fac += fac_corr;}
-                        }
-                    } // if(ptype==ptype_sec)
-                    } // closes block for symmetrizing forces by averaging //
-                    else
-                    { // open block to symmetrize instead with the old method of simply taking the larger of the pair //
-                    if(h_p_inv < h_inv) // if the softening of the particle whose force is being summed is greater than the target
+                    double prefac_corr_p=1., prefac_corr_orig=1.; // this will give a symmetrized pair by linear averaging
+                    if(symmetrize_by_averaging==0) {prefac_corr_p=2; prefac_corr_orig=0.;} // symmetrize instead with the old method of simply taking the larger of the pair. here only act if the softening of the particle whose force is being summed is greater than the target //
+
+                    if((symmetrize_by_averaging==1) || (h_p_inv<h_inv)) // condition to need to evaluate the alternate particle ('p' side)
                     {
                         h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
-                        fac = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1);
+                        fac = 0.5 * (prefac_corr_orig * fac + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
 #ifdef EVALPOTENTIAL
-                        facpot = mass * kernel_gravity(u, h_p_inv, h_p3_inv, -1);
+                        facpot = 0.5 * (prefac_corr_orig * facpot + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, -1)); // average with neighbor
 #endif
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                        fac2_tidal = mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2);
+#if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
+                        fac2_tidal = 0.5 * (prefac_corr_orig * fac2_tidal + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well
 #endif
                     }
-                    // correction only applies to 'shared-kernel' particles: so this needs to check if
-                    // these are the same particles for which the 'shared' kernel lengths are computed
-                    if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG))
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
+                    // correction only applies to 'shared-kernel' particles: so this needs to check if these are the same particles for which the 'shared' kernel lengths are computed
+                    if(((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) && (r>0) && (pmass>0)) // also check that these aren't the same particle or a test particle
                     {
-                        if((r>0) && (pmass>0)) // checks that these aren't the same particle or test particle
+                        double dWdr, wp, fac_corr=0;
+                        if(((symmetrize_by_averaging==1) || (h_p_inv>=h_inv)) && (zeta != 0) && (u < 1)) // in kernel [zeta non-zero], and either using symmetric or larger 'side'
                         {
-                            double dWdr, wp, fac_corr=0;
-                            if(h_p_inv >= h_inv)
-                            {
-                                if((zeta != 0) && (u < 1)) // in kernel [zeta non-zero]
-                                {
-                                    kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
-                                    fac_corr += -2. * (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
-                                }
-                            } else {
-                                if((zeta_sec != 0) && (u_p < 1)) // in kernel [ zeta non-zero]
-                                {
-                                    kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
-                                    fac_corr += -2. * (zeta_sec/pmass) * dWdr / r;
-                                }
-                            }
-                            if(!isnan(fac_corr)) {fac += fac_corr;}
+                            kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
+                            fac_corr += -prefac_corr_p * (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         }
+                        if(((symmetrize_by_averaging==1) || (h_p_inv<h_inv)) && (zeta_sec != 0) && (u_p < 1)) // in kernel [zeta non-zero]
+                        {
+                            kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
+                            fac_corr += -prefac_corr_p * (zeta_sec/pmass) * dWdr / r;
+                        }
+                        if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
-                    } // closes else{} block for when take the larger of two softenings or symmetrize by averaging
+#endif
                 } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
 #endif // #ifdef FORCETREE_VARIABLE_SOFTENINGS //
             } // closes r < h (else) clause
@@ -2803,13 +2718,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 GRAVITY_NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
                 r = sqrt(r2);
-                if(r >= h)
-                    fac = mass_dm / (r2 * r);
-                else
-                {
-                    h_inv = 1.0 / h;
-                    h3_inv = h_inv * h_inv * h_inv;
-                    u = r * h_inv;
+                if(r >= h) {fac = mass_dm / (r2 * r);} else {
+                    h_inv = 1.0 / h; h3_inv = h_inv * h_inv * h_inv; u = r * h_inv;
                     fac = mass_dm * kernel_gravity(u, h_inv, h3_inv, 1);
                 }
                 /* assemble force with strength, screening length, and target charge.  */
@@ -3640,12 +3550,8 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #else
                 fac = 1;
 #endif
-                if(r >= h)
-                {
-                    pot += FLT(-fac * mass / r);
-                } else {
-                    h_inv = 1.0 / h;
-                    u = r * h_inv;
+                if(r >= h) {pot += FLT(-fac * mass / r);} else {
+                    h_inv = 1.0 / h; u = r * h_inv;
                     pot += FLT( fac * mass * kernel_gravity(u, h_inv, 1, -1) );
                 }
             }
@@ -3705,8 +3611,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
         soft  = GravDataGet[target].Soft;
     }
 
-    h = soft;
-    h_inv = 1.0 / h;
+    h = soft; h_inv = 1.0 / h;
 
     if(mode == 0)
     {

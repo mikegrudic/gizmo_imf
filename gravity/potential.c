@@ -81,7 +81,7 @@ void compute_potential(void)
             GravDataIn[j].Type = P[place].Type;
             GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
             GravDataIn[j].OldAcc = P[place].OldAcc;
-#if defined(RT_USE_GRAVTREE) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
             GravDataIn[j].Mass = P[place].Mass;
 #endif
             for(k = 0; k < NODELISTLENGTH; k++) {GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];}
