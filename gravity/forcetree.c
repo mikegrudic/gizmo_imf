@@ -1541,8 +1541,7 @@ void force_flag_localnodes(void)
 
         while(no >= 0)
         {
-            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL))
-                break;
+            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_TOPLEVEL)) {break;}
 
             Nodes[no].u.d.bitflags |= (1 << BITFLAG_TOPLEVEL);
 
@@ -1556,8 +1555,7 @@ void force_flag_localnodes(void)
 
         while(no >= 0)
         {
-            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL))
-                break;
+            if(Nodes[no].u.d.bitflags & (1 << BITFLAG_INTERNAL_TOPLEVEL)) {break;}
 
             Nodes[no].u.d.bitflags |= (1 << BITFLAG_INTERNAL_TOPLEVEL);
 
@@ -1573,13 +1571,11 @@ void force_flag_localnodes(void)
         {
             no = DomainNodeIndex[i];
 
-            if(DomainTask[i] != ThisTask)
-                endrun(131231231);
+            if(DomainTask[i] != ThisTask) {endrun(131231231);}
 
             while(no >= 0)
             {
-                if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))
-                    break;
+                if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS)) {break;}
 
                 Nodes[no].u.d.bitflags |= (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS);
 
@@ -1633,7 +1629,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     struct NODE *nop = 0;
     int no, nodesinlist=0, ptype, ninteractions=0, nexp, task, listindex = 0, maxPart = All.MaxPart;
     long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
-    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_inv, h3_inv, xtmp; xtmp=0; soft=0, pos_x, pos_y, pos_z, aold;
+    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_p=0, h_inv, h3_inv, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
     MyLongDouble acc_x=0, acc_y=0, acc_z=0; // cache some global vars in local vars to help compiler with alias analysis
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
@@ -1716,7 +1712,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
-    double bh_mass = 0;
+    double bh_mass = 0, m_j_eff_for_df = 0;
 #endif
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
     double pmass;
@@ -1730,7 +1726,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {tidal_tensorps[i1][i2] = 0.0;}}
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
-    double tidal_zeta = 0;
+    double tidal_zeta=0, i_zeta_tidal_tensorps_prevstep[3][3], j_zeta_tidal_tensorps_prevstep[3][3];
+    {int ki, kj; for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {
+        if(mode==0) {i_zeta_tidal_tensorps_prevstep[ki][kj]=P[target].tidal_tensorps_prevstep[ki][kj];} else {i_zeta_tidal_tensorps_prevstep[ki][kj]=GravDataGet[target].tidal_tensorps_prevstep[ki][kj];}}}}
 #endif
 #endif
 
@@ -1746,9 +1744,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pmass = P[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
-        vel_x = P[target].Vel[0];
-        vel_y = P[target].Vel[1];
-        vel_z = P[target].Vel[2];
+        vel_x = P[target].Vel[0]; vel_y = P[target].Vel[1]; vel_z = P[target].Vel[2];
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
         if(ptype == 5) {bh_mass = P[target].BH_Mass;}
@@ -1775,9 +1771,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         pmass = GravDataGet[target].Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
-        vel_x = GravDataGet[target].Vel[0];
-        vel_y = GravDataGet[target].Vel[1];
-        vel_z = GravDataGet[target].Vel[2];
+        vel_x = GravDataGet[target].Vel[0]; vel_y = GravDataGet[target].Vel[1]; vel_z = GravDataGet[target].Vel[2];
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
         if(ptype == 5) {bh_mass = GravDataGet[target].BH_Mass;}
@@ -1794,7 +1788,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
     if(pmass<=0) {return 0;} /* quick check if particle has mass: if not, we won't deal with it */
 #endif
-    h = soft; h_inv = 1.0 / h; h3_inv = h_inv * h_inv * h_inv;
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); int j0_sec_for_ags; j0_sec_for_ags = -1; // determine allowed particle types for correction terms for adaptive gravitational softening terms
 #endif
@@ -1818,7 +1811,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-    double m_enc_in_rcrit = 0, r_for_total_menclosed = h; r_for_total_menclosed = DMAX( r_for_total_menclosed , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime) ); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
+    double m_enc_in_rcrit = 0, r_for_total_menclosed = soft; r_for_total_menclosed = DMAX( r_for_total_menclosed , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime) ); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #endif
 
 
@@ -1837,7 +1830,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     {
         while(no >= 0)
         {
-            if(no < maxPart)
+            h=soft; h_p=-1; /* initialize h and h_p, for use below: make sure to do so at the top of each iteration */
+
+            if(no < maxPart) /* this is a particle, we will use it */
             {
                 /* the index of the node is the index of the particle */
                 if(P[no].Ti_current != ti_Current)
@@ -1852,22 +1847,27 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;
-#ifdef GRAVITY_SPHERICAL_SYMMETRY
-		r_source = sqrt(pow(P[no].Pos[0] - center[0],2) + pow(P[no].Pos[1] - center[1],2) + pow(P[no].Pos[2] - center[2],2));
-#endif
-#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
-                dvx = P[no].Vel[0] - vel_x;
-                dvy = P[no].Vel[1] - vel_y;
-                dvz = P[no].Vel[2] - vel_z;
-#endif
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
                 mass = P[no].Mass;
-#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-                if(P[no].Type == 0) gasmass = P[no].Mass;
-#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                if(P[no].Type == 5) gasmass = BPP(no).BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
+
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+                r_source = sqrt(pow(P[no].Pos[0] - center[0],2) + pow(P[no].Pos[1] - center[1],2) + pow(P[no].Pos[2] - center[2],2));
 #endif
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+                dvx = P[no].Vel[0] - vel_x; dvy = P[no].Vel[1] - vel_y; dvz = P[no].Vel[2] - vel_z;
+#endif
+#if defined(BH_DYNFRICTION_FROMTREE)
+                m_j_eff_for_df = mass;
+#endif
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
+                if(P[no].Type == 0) {gasmass = P[no].Mass;}
+#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
+                if(P[no].Type == 5) {gasmass = BPP(no).BH_Mass_AlphaDisk;} // gas at the inner edge of a disk should not see a hole due to the sink
+#endif
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                {int ki,kj; for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {j_zeta_tidal_tensorps_prevstep[ki][kj]=P[no].tidal_tensorps_prevstep[ki][kj];}}}
 #endif
                 /* only proceed if the mass is positive and there is separation! */
                 if((r2 > 0) && (mass > 0))
@@ -1879,9 +1879,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(r2 < min_dist_to_bh2)    /* is this the closest BH part I've found yet? */
                     {
                         min_dist_to_bh2 = r2;   /* if yes: adjust min bh dist */
-                        min_xyz_to_bh[0] = dx;  /* remember, dx = x_BH - myx */
-                        min_xyz_to_bh[1] = dy;
-                        min_xyz_to_bh[2] = dz;
+                        min_xyz_to_bh[0] = dx; min_xyz_to_bh[1] = dy; min_xyz_to_bh[2] = dz; /* remember, dx = x_BH - myx */
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
                     double bh_dvx=P[no].Vel[0]-vel_x, bh_dvy=P[no].Vel[1]-vel_y, bh_dvz=P[no].Vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=P[no].Mass+pmass, r2soft=SinkParticle_GravityKernelRadius;
@@ -1921,7 +1919,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
-#endif
+#endif // BH_CALC_DISTANCES
 
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
                 cr_injection = cr_get_source_injection_rate(no);
@@ -1933,15 +1931,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     dx_stellarlum=dx; dy_stellarlum=dy; dz_stellarlum=dz;
                     double lum[N_RT_FREQ_BINS];
 #ifdef CHIMES_STELLAR_FLUXES
-                    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS];
-                    double chimes_lum_ion[CHIMES_LOCAL_UV_NBINS];
+                    double chimes_lum_G0[CHIMES_LOCAL_UV_NBINS], chimes_lum_ion[CHIMES_LOCAL_UV_NBINS];
                     int active_check = rt_get_source_luminosity_chimes(no,1,lum, chimes_lum_G0, chimes_lum_ion);
 #else
                     int active_check = rt_get_source_luminosity(no,1,lum);
 #endif
                     int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(active_check) {mass_stellarlum[kf]=lum[kf];} else {mass_stellarlum[kf]=0;}}
 #ifdef CHIMES_STELLAR_FLUXES
-                    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++)
+                    for(kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++)
                     {
                         if(active_check) {chimes_mass_stellarlum_G0[kf] = chimes_lum_G0[kf]; chimes_mass_stellarlum_ion[kf] = chimes_lum_ion[kf];} else {chimes_mass_stellarlum_G0[kf] = 0; chimes_mass_stellarlum_ion[kf] = 0;}
                     }
@@ -1959,46 +1956,27 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 		            }
 #endif
                 }
-#endif
-
+#endif // RT_USE_GRAVTREE
 
 #ifdef DM_SCALARFIELD_SCREENING
-                if(ptype != 0)	/* we have a dark matter particle as target */
-                {
-                    if(P[no].Type == 1)
-                    {
-                        dx_dm = dx;
-                        dy_dm = dy;
-                        dz_dm = dz;
-                        mass_dm = mass;
-                    }
-                    else
-                    {
-                        mass_dm = 0;
-                        dx_dm = dy_dm = dz_dm = 0;
-                    }
-                }
+                if(ptype != 0) {if(P[no].Type == 1) {dx_dm = dx; dy_dm = dy; dz_dm = dz; mass_dm = mass;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;}} /* we have a dark matter particle as target */
 #endif
 
-                    double h_p = ForceSoftening_KernelRadius(no);
+                h_p = ForceSoftening_KernelRadius(no);
 #ifdef FORCETREE_VARIABLE_SOFTENINGS /* set secondary softening and zeta term */
-                    ptype_sec = P[no].Type; j0_sec_for_ags = no; h_p_inv = 1./h_p; zeta_sec = 0;
+                ptype_sec=P[no].Type; j0_sec_for_ags=no; zeta_sec=0;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                    if(ptype_sec==0) {zeta_sec=PPPZ[no].AGS_zeta;}
+                if(ptype_sec==0) {zeta_sec=PPPZ[no].AGS_zeta;}
 #elif defined(ADAPTIVE_GRAVSOFT_FORALL)
-                    zeta_sec=PPPZ[no].AGS_zeta;
+                zeta_sec=PPPZ[no].AGS_zeta;
 #endif
-#else
-                    if(h < h_p) {h = h_p;}
 #endif
                 } // closes (if((r2 > 0) && (mass > 0))) check
 
-                if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;}
-                no = Nextnode[no];
             }
-            else			/* we have an  internal node */
+            else /* we have an  internal node */
             {
-                if(no >= maxPart + maxNodes)	/* pseudo particle */
+                if(no >= maxPart + maxNodes) /* pseudo particle -- this will not be used for calculations below, but needs to be parsed here */
                 {
                     if(mode == 0)
                     {
@@ -2007,7 +1985,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             exportflag[task] = target;
                             exportnodecount[task] = NODELISTLENGTH;
                         }
-
                         if(exportnodecount[task] == NODELISTLENGTH)
                         {
                             int exitFlag = 0;
@@ -2030,24 +2007,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             }
                             UNLOCK_NEXPORT;
                             if(exitFlag) {return -1;} /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
-
                             exportnodecount[task] = 0;
                             exportindex[task] = nexp;
                             DataIndexTable[nexp].Task = task;
                             DataIndexTable[nexp].Index = target;
                             DataIndexTable[nexp].IndexGet = nexp;
                         }
-
                         DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] =
                         DomainNodeIndex[no - (maxPart + maxNodes)];
-
-                        if(exportnodecount[task] < NODELISTLENGTH)
-                            DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
+                        if(exportnodecount[task] < NODELISTLENGTH) {DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;}
                     }
                     no = Nextnode[no - maxNodes];
                     continue;
                 }
-
+                /* ok we have an internal node on the local processor, need to decide if we open it and go further or keep it */
                 nop = &Nodes[no];
 
                 if(mode == 1)
@@ -2058,26 +2031,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         continue;
                     }
                 }
-
                 mass = nop->u.d.mass;
                 if(mass <= 0) /* nothing in the node */
                 {
                     no = nop->u.d.sibling;
                     continue;
                 }
-#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-                gasmass = nop->gasmass;
-#endif
                 if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
                 {
-                    /* open cell */
-                    if(mass)
+                    if(mass) /* open cell */
                     {
                         no = nop->u.d.nextnode;
                         continue;
                     }
                 }
-
                 if(nop->Ti_current != ti_Current)
                 {
                     LOCK_PARTNODEDRIFT;
@@ -2088,130 +2055,48 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     UNLOCK_PARTNODEDRIFT;
                 }
 
-                dx = nop->u.d.s[0] - pos_x;
-                dy = nop->u.d.s[1] - pos_y;
-                dz = nop->u.d.s[2] - pos_z;
-#ifdef GRAVITY_SPHERICAL_SYMMETRY
-                r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
-#endif
-#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
-                dvx = Extnodes[no].vs[0] - vel_x;
-                dvy = Extnodes[no].vs[1] - vel_y;
-                dvz = Extnodes[no].vs[2] - vel_z;
-#endif
+                dx = nop->u.d.s[0] - pos_x; dy = nop->u.d.s[1] - pos_y; dz = nop->u.d.s[2] - pos_z;
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
-
-#ifdef COSMIC_RAY_SUBGRID_LEBRON
-                cr_injection = nop->cr_injection;
-#endif
-                
-#ifdef RT_USE_GRAVTREE
-                if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
-                {
-                    int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
-#ifdef CHIMES_STELLAR_FLUXES
-                    for (kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++)
-                    {
-                        chimes_mass_stellarlum_G0[kf] = nop->chimes_stellar_lum_G0[kf];
-                        chimes_mass_stellarlum_ion[kf] = nop->chimes_stellar_lum_ion[kf];
-                    }
-#endif
-#ifdef RT_SEPARATELY_TRACK_LUMPOS
-                    dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
-                    GRAVITY_NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
-#else
-                    dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
-#endif
-#ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, dx_stellarlum,dy_stellarlum,dz_stellarlum);
-#endif
-                }
-#endif
-
-
-#ifdef DM_SCALARFIELD_SCREENING
-                if(ptype != 0)	/* we have a dark matter particle as target */
-                {
-                    dx_dm = nop->s_dm[0] - pos_x;
-                    dy_dm = nop->s_dm[1] - pos_y;
-                    dz_dm = nop->s_dm[2] - pos_z;
-                    mass_dm = nop->mass_dm;
-                }
-                else
-                {
-                    mass_dm = 0;
-                    dx_dm = dy_dm = dz_dm = 0;
-                }
-#endif
-
 #ifdef PMGRID
 #ifdef REDUCE_TREEWALK_BRANCHING
-                dxx = (nop->center[0] - pos_x);
-                dyy = (nop->center[1] - pos_y);
-                dzz = (nop->center[2] - pos_z);
+                dxx = (nop->center[0] - pos_x); dyy = (nop->center[1] - pos_y); dzz = (nop->center[2] - pos_z);
                 eff_dist = rcut + 0.5 * nop->len;
                 pdxx = GRAVITY_NGB_PERIODIC_BOX_LONG_X(dxx,dyy,dzz,-1);
                 pdyy = GRAVITY_NGB_PERIODIC_BOX_LONG_Y(dxx,dyy,dzz,-1);
                 pdzz = GRAVITY_NGB_PERIODIC_BOX_LONG_Z(dxx,dyy,dzz,-1);
-                /* check whether we can stop walking along this branch */
-                if((r2 > rcut2) & ((pdxx > eff_dist) | (pdyy > eff_dist) | (pdzz > eff_dist)))
+                if((r2 > rcut2) & ((pdxx > eff_dist) | (pdyy > eff_dist) | (pdzz > eff_dist))) /* check whether we can stop walking along this branch */
                 {
-                    no = nop->u.d.sibling;
-                    continue;
+                    no = nop->u.d.sibling; continue;
                 }
 #else
-                /* check whether we can stop walking along this branch */
-                if(r2 > rcut2)
+                if(r2 > rcut2) /* check whether we can stop walking along this branch */
                 {
                     eff_dist = rcut + 0.5 * nop->len;
                     dist = GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
-                    if(dist > eff_dist)
-                    {
-                        no = nop->u.d.sibling;
-                        continue;
-                    }
+                    if(dist > eff_dist) {no = nop->u.d.sibling; continue;}
                     dist = GRAVITY_NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
-                    if(dist > eff_dist)
-                    {
-                        no = nop->u.d.sibling;
-                        continue;
-                    }
+                    if(dist > eff_dist) {no = nop->u.d.sibling; continue;}
                     dist = GRAVITY_NGB_PERIODIC_BOX_LONG_Z(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1);
-                    if(dist > eff_dist)
-                    {
-                        no = nop->u.d.sibling;
-                        continue;
-                    }
+                    if(dist > eff_dist) {no = nop->u.d.sibling; continue;}
                 }
 #endif
 #endif // PMGRID //
-
-
 #ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
+                double dx_nc = nop->center[0] - pos_x, dy_nc = nop->center[1] - pos_y, dz_nc = nop->center[2] - pos_z;
+                GRAVITY_NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
+                double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
+                double dist_to_open = DMAX(targeth_si , nop->maxsoft) + nop->len*1.73205/2.0;
+                if(dist_to_center2  < dist_to_open*dist_to_open) /* check if any portion the cell lies within the interaction range, then open cell */
                 {
-                    double dx_nc = nop->center[0] - pos_x;
-                    double dy_nc = nop->center[1] - pos_y;
-                    double dz_nc = nop->center[2] - pos_z;
-                    GRAVITY_NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
-                    double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
-                    /* check if any portion the cell lies within the interaction range */
-		            double dist_to_open = 2.0*targeth_si + nop->len*1.73205/2.0;
-                    if(dist_to_center2  < dist_to_open*dist_to_open)
-                    {
-                        /* open cell */
-                        no = nop->u.d.nextnode;
-                        continue;
-                    }
+                    no = nop->u.d.nextnode;
+                    continue;
                 }
 #endif
-
-
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
-                    if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
+                    if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta) /* open cell */
                     {
-                        /* open cell */
                         no = nop->u.d.nextnode;
                         continue;
                     }
@@ -2228,24 +2113,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         no = nop->u.d.nextnode;
                         continue;
                     }
-
 #if defined(REDUCE_TREEWALK_BRANCHING) && defined(PMGRID)
-                    if((mass * nop->len * nop->len > r2 * r2 * aold) |
-                       ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len)))
+                    if((mass * nop->len * nop->len > r2 * r2 * aold) | ((pdxx < 0.60 * nop->len) & (pdyy < 0.60 * nop->len) & (pdzz < 0.60 * nop->len))) /* open cell */
                     {
-                        /* open cell */
                         no = nop->u.d.nextnode;
                         continue;
                     }
 #else
-                    if(mass * nop->len * nop->len > r2 * r2 * aold)
+                    if(mass * nop->len * nop->len > r2 * r2 * aold) /* open cell */
                     {
-                        /* open cell */
                         no = nop->u.d.nextnode;
                         continue;
                     }
                     /* check in addition whether we lie inside the cell */
-
                     if(GRAVITY_NGB_PERIODIC_BOX_LONG_X(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
                     {
                         if(GRAVITY_NGB_PERIODIC_BOX_LONG_Y(nop->center[0] - pos_x, nop->center[1] - pos_y, nop->center[2] - pos_z, -1) < 0.60 * nop->len)
@@ -2258,72 +2138,84 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         }
                     }
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)
-#ifdef SINGLE_STAR_DIRECT_GRAVITY_RADIUS
-                    if(nop->N_BH > 0)
-                    {
-                        if(r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)) // we have a star within the specified radius
-                        {
-                            /* open cell */
-                            no = nop->u.d.nextnode;
-                            continue;
-                        }
-                    }
-#endif
-#endif
-                    
-                }
-
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
-                /* set secondary softening and zeta term */
-                // if(nop->maxsoft > 0) {h_p_inv = 1.0 / nop->maxsoft;} else {h_p_inv = 0;}
-                h_p_inv = 0; zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1;
-                if(h < nop->maxsoft) // compare primary softening to node maximum
-                {
-                    if(r2 < nop->maxsoft * nop->maxsoft) // inside node maxsoft, continue down tree
+#if (defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)) && defined(SINGLE_STAR_DIRECT_GRAVITY_RADIUS)
+                    if((nop->N_BH > 0) && (r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len))) // we have a star within the specified radius, open cell
                     {
                         no = nop->u.d.nextnode;
                         continue;
                     }
-                }
-#else
-                if(h < nop->maxsoft)
-                {
-                    h = nop->maxsoft;
-                    if(r2 < nop->maxsoft * nop->maxsoft) // inside node maxsoft, continue down tree
-                    {
-                        if(maskout_different_softening_flag(nop->u.d.bitflags))	/* bit-5 signals that there are particles of different softening in the node */
-                        {
-                            no = nop->u.d.nextnode;
-                            continue;
-                        }
-                    }
-                }
 #endif
+                }
 
+                if(h < nop->maxsoft) // compare primary softening to node maximum // ??? - won't allow continued opening
+                {
+                    if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;} // inside node maxsoft, continue down tree
+                }
 
-                if(TakeLevel >= 0) {nop->GravCost += 1.0;}
-                no = nop->u.d.sibling;	/* ok, node can be used */
+                /* ok we will be using this node, can now set variables that depend on it */
+                h_p = nop->maxsoft;
+#ifdef FORCETREE_VARIABLE_SOFTENINGS
+                zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1; /* set secondary softening and zeta terms */
+#endif
+#ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
+                gasmass = nop->gasmass;
+#endif
+#ifdef GRAVITY_SPHERICAL_SYMMETRY
+                r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
+#endif
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+                dvx = Extnodes[no].vs[0] - vel_x; dvy = Extnodes[no].vs[1] - vel_y; dvz = Extnodes[no].vs[2] - vel_z;
+#endif
+#ifdef COSMIC_RAY_SUBGRID_LEBRON
+                cr_injection = nop->cr_injection;
+#endif
+                
+#ifdef RT_USE_GRAVTREE
+                if(valid_gas_particle_for_rt)    /* we have a (valid) gas particle as target */
+                {
+                    int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {mass_stellarlum[kf] = nop->stellar_lum[kf];}
+#ifdef CHIMES_STELLAR_FLUXES
+                    for(kf = 0; kf < CHIMES_LOCAL_UV_NBINS; kf++)
+                    {
+                        chimes_mass_stellarlum_G0[kf] = nop->chimes_stellar_lum_G0[kf];
+                        chimes_mass_stellarlum_ion[kf] = nop->chimes_stellar_lum_ion[kf];
+                    }
+#endif
+#ifdef RT_SEPARATELY_TRACK_LUMPOS
+                    dx_stellarlum = nop->rt_source_lum_s[0] - pos_x; dy_stellarlum = nop->rt_source_lum_s[1] - pos_y; dz_stellarlum = nop->rt_source_lum_s[2] - pos_z;
+                    GRAVITY_NEAREST_XYZ(dx_stellarlum,dy_stellarlum,dz_stellarlum,-1);
+#else
+                    dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
+#endif
+#ifdef BH_PHOTONMOMENTUM
+                    mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, dx_stellarlum,dy_stellarlum,dz_stellarlum);
+#endif
+                }
+#endif // RT_USE_GRAVTREE
+                
+#ifdef DM_SCALARFIELD_SCREENING
+                if(ptype != 0) {dx_dm = nop->s_dm[0] - pos_x; dy_dm = nop->s_dm[1] - pos_y; dz_dm = nop->s_dm[2] - pos_z; mass_dm = nop->mass_dm;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;} /* we have a dark matter particle as target */
+#endif
+#if defined(BH_DYNFRICTION_FROMTREE)
+                m_j_eff_for_df = (nop->mass) / (nop->N_part);
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+                {int ki,kj; for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj];}}}
+#endif
 
 #ifdef BH_CALC_DISTANCES // NOTE: moved this to AFTER the checks for node opening, because we only want to record BH positions from the nodes that actually get used for the force calculation - MYG
                 if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
                 {
-                    double bh_dx = nop->bh_pos[0] - pos_x;      /* SHEA:  now using bh_pos instead of center */
-                    double bh_dy = nop->bh_pos[1] - pos_y;
-                    double bh_dz = nop->bh_pos[2] - pos_z;
+                    double bh_dx = nop->bh_pos[0] - pos_x, bh_dy = nop->bh_pos[1] - pos_y, bh_dz = nop->bh_pos[2] - pos_z;  /* SHEA:  now using bh_pos instead of center */
                     GRAVITY_NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
                     double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
                     if(bh_r2 < min_dist_to_bh2)
                     {
-                        min_dist_to_bh2 = bh_r2;
-                        min_xyz_to_bh[0] = bh_dx;    /* remember, dx = x_BH - myx */
-                        min_xyz_to_bh[1] = bh_dy;
-                        min_xyz_to_bh[2] = bh_dz;
+                        min_dist_to_bh2 = bh_r2; min_xyz_to_bh[0] = bh_dx; min_xyz_to_bh[1] = bh_dy; min_xyz_to_bh[2] = bh_dz; /* remember, dx = x_BH - myx */
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
                     double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
-                    r2soft = DMAX(SinkParticle_GravityKernelRadius, soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
-                    r2soft = r2 + r2soft*r2soft;
+                    r2soft = DMAX(SinkParticle_GravityKernelRadius, soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER; r2soft = r2 + r2soft*r2soft;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                     if(ptype == 0) {
@@ -2351,33 +2243,34 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
-#endif
-            }
+#endif // BH_CALC_DISTANCES
+
+            } /* ok we've completed all the opening criteria -- we will keep this node or particle as-is */
+            
+            
             
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
             if(mass>0 && h>0) {u=sqrt(r2)/h; if(u<1) {tidal_zeta = mass * kernel_gravity(u, 1./h, 1./(h*h*h), 0);}} // simple sum to calculate this contribution, only from particles inside the kernel of the primary -- this is up here instead of below the if below because it needs to include the 'self' contribution here
 #endif
 
-            if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation
+            if((r2 > 0) && (mass > 0)) // only go forward if mass positive and there is separation -- this is check for the whole block below, which should no include 'self' terms
             {
             r = sqrt(r2);
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
-            if((r >= h) && !((ptype_sec > -1) && (r < 1/h_p_inv))) // can only do the Newtonian force if the field source is outside our own softening, and we are not within the softening of a field source particle
-#else
-            if(r >= h)
-#endif
+                
+            /* now we compute the actual pair-wise gravity terms */
+            if((r >= h) && (r >= h_p)) // can safely do a purely-Newtonian force (can be done by kernel-gravity as well, but no need to enter all the conditional statements below so just do it here for simplicity //
             {
                 fac = mass / (r2 * r);
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
-#endif
 #ifdef EVALPOTENTIAL
                 facpot = -mass / r;
+#endif
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+                fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
 #endif
             }
             else
             {
-                u = r * h_inv;
+                h_inv = 1./h; h3_inv=h_inv*h_inv*h_inv; u = r * h_inv; // set here to ensure this is using the correct values //
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
@@ -2385,11 +2278,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
                 fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
 #endif
-
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
-                if((h_p_inv > 0) && (ptype_sec > -1)) // first, appropriately symmetrize the forces between particles. only do this is secondary is a particle, so has a type and softening! //
+                //???
+                if(h_p > 0) // first, appropriately symmetrize the forces between particles. only do this is secondary is a particle, so has a type and softening! //
                 {
-                    int symmetrize_by_averaging = 0;
+                    int symmetrize_by_averaging = 0; // default here to symmetrize by taking the maximum, but this will vary below //
 #ifdef ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
                     if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) {symmetrize_by_averaging=1;} // symmetrize by averaging only for particles which have a shared AGS structure since this is how our correction terms are derived //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -2399,9 +2291,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double prefac_corr_p=1., prefac_corr_orig=1.; // this will give a symmetrized pair by linear averaging
                     if(symmetrize_by_averaging==0) {prefac_corr_p=2; prefac_corr_orig=0.;} // symmetrize instead with the old method of simply taking the larger of the pair. here only act if the softening of the particle whose force is being summed is greater than the target //
 
-                    if((symmetrize_by_averaging==1) || (h_p_inv<h_inv)) // condition to need to evaluate the alternate particle ('p' side)
+                    if((symmetrize_by_averaging==1) || (h_p>h)) // condition to need to evaluate the alternate particle ('p' side)
                     {
-                        h_p3_inv = h_p_inv * h_p_inv * h_p_inv; u_p = r * h_p_inv;
+                        h_p_inv=1./h_p; h_p3_inv=h_p_inv*h_p_inv*h_p_inv; u_p=r*h_p_inv;
                         fac = 0.5 * (prefac_corr_orig * fac + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
 #ifdef EVALPOTENTIAL
                         facpot = 0.5 * (prefac_corr_orig * facpot + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, -1)); // average with neighbor
@@ -2415,12 +2307,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) && (r>0) && (pmass>0)) // also check that these aren't the same particle or a test particle
                     {
                         double dWdr, wp, fac_corr=0;
-                        if(((symmetrize_by_averaging==1) || (h_p_inv>=h_inv)) && (zeta != 0) && (u < 1)) // in kernel [zeta non-zero], and either using symmetric or larger 'side'
+                        if(((symmetrize_by_averaging==1) || (h_p<=h)) && (zeta != 0) && (u < 1)) // in kernel [zeta non-zero], and either using symmetric or larger 'side'
                         {
                             kernel_main(u, h3_inv, h3_inv*h_inv, &wp, &dWdr, 1);
                             fac_corr += -prefac_corr_p * (zeta/pmass) * dWdr / r;   // 0.5 * zeta * omega * dWdr / r;
                         }
-                        if(((symmetrize_by_averaging==1) || (h_p_inv<h_inv)) && (zeta_sec != 0) && (u_p < 1)) // in kernel [zeta non-zero]
+                        if(((symmetrize_by_averaging==1) || (h_p>h)) && (zeta_sec != 0) && (u_p < 1)) // in kernel [zeta non-zero]
                         {
                             kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
                             fac_corr += -prefac_corr_p * (zeta_sec/pmass) * dWdr / r;
@@ -2428,8 +2320,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(!isnan(fac_corr)) {fac += fac_corr;}
                     } // if(ptype==ptype_sec)
 #endif
-                } // closes (if((h_p_inv > 0) && (ptype_sec > -1)))
-#endif // #ifdef FORCETREE_VARIABLE_SOFTENINGS //
+                } // closes if((h_p > 0)) clause
             } // closes r < h (else) clause
 
 
@@ -2441,11 +2332,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 fac_tidal = fac; /* save original fac without shortrange_table factor (needed for tidal field calculation) */
 #endif
-
 #ifdef PMGRID
                 fac *= shortrange_table[tabindex];
 #endif
-
 #ifdef EVALPOTENTIAL
 #ifdef PMGRID
                 facpot *= shortrange_table_potential[tabindex];
@@ -2458,13 +2347,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
                 r_target = sqrt(pow(pos_x - center[0],2) + pow(pos_y - center[1],2) + pow(pos_z - center[2],2)); // distance of target point from box center
                 if(r_source < r_target) {
-                    dx = center[0] - pos_x;
-                    dy = center[1] - pos_y;
-                    dz = center[2] - pos_z;
-                    fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);
-                } else {
-                    fac = 0;
-                }
+                    dx = center[0] - pos_x; dy = center[1] - pos_y; dz = center[2] - pos_z;
+                    fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);} else {fac = 0;}
 #endif
                 acc_x += FLT(dx * fac);
                 acc_y += FLT(dy * fac);
@@ -2472,7 +2356,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 
 #if defined(BH_DYNFRICTION_FROMTREE)
-                if( (ptype==5) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
+                if( (ptype==5) && (mass>0) )
                 {
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
                     if(dv2 > 0)
@@ -2482,37 +2366,27 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
-                            double m_j=mass; /* single particle */ if(no >= maxPart + maxNodes) {m_j=mass/(nop->N_part);} /* estimate mean mass of the particles in the node */
+                            double m_j=m_j_eff_for_df; /* estimate mean mass of the particles in the node */
                             if(bh_mass > m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
                         }
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
-                        acc_x += fac_df * dvx_h;
-                        acc_y += fac_df * dvy_h;
-                        acc_z += fac_df * dvz_h;
+                        acc_x += fac_df * dvx_h; acc_y += fac_df * dvy_h; acc_z += fac_df * dvz_h;
                         /* perpendicular deflection component bx_im = P[distant particle/node] - P[bh], so positive = accel -towards- P[ext], but this is the residual term (after subtracting the homogeneous term), which points in the opposite direction */
                         double fac_df_p = -fac_df / (b_impact * a_im + MIN_REAL_NUMBER);
-                        acc_x += fac_df_p * bx_im;
-                        acc_y += fac_df_p * by_im;
-                        acc_z += fac_df_p * bz_im;
+                        acc_x += fac_df_p * bx_im; acc_y += fac_df_p * by_im; acc_z += fac_df_p * bz_im;
                     }
                 }
 #endif
 
                 
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS /* these are the 'correction' terms for variable smoothing lengths (analogous to the ags-zeta terms above). need to adjust for variable ptypes using these ??? */
-                if(((1 << ptype) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (r>0) && (mass>0) && ((no<maxPart)||(no >= maxPart + maxNodes)) )
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS /* these are the 'correction' terms for variable smoothing lengths (analogous to the ags-zeta terms above). need to adjust for variable ptypes using these */
+                if(((1 << ptype) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (r>0) && (mass>0))
                 {
                     // ??? need to figure out for this if it's a case of 'how hb varies with ra' or vice-versa //
-                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
-                    if(no<maxPart) {u_j=r/ForceSoftening_KernelRadius(no);} else {u_j=MAX_REAL_NUMBER;}
-                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline -- ??? make function to enable other splines
+                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r/h_p, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
+                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline -- make function to enable other splines
                     if(u_j<0.5) {fa_j=96.*pow(u_j,6); fb_j=96.*pow(u_j,5)*(4.-5.*u_j);} else {if(u_j<1.) {fa_j=-1.+16.*pow(u_j,4)*(3.-2.*u_j*u_j); fb_j=-1.+16.*pow(u_j,4)*(15.-2.*u_j*(12.-5.*u_j));}} // this function is kernel-specific, here assuming cubic spline
                     int ki,kj,kk; double rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r; fb_i*=-1./5.; fb_j*=-1./5.; // generic overhead for calcs below
-                    double i_zeta_tidal_tensorps_prevstep[3][3], j_zeta_tidal_tensorps_prevstep[3][3];
-                    for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {
-                        if(mode==0) {i_zeta_tidal_tensorps_prevstep[ki][kj]=P[target].tidal_tensorps_prevstep[ki][kj];} else {i_zeta_tidal_tensorps_prevstep[ki][kj]=GravDataGet[target].tidal_tensorps_prevstep[ki][kj];}
-                        if(no<maxPart) {j_zeta_tidal_tensorps_prevstep[ki][kj]=P[no].tidal_tensorps_prevstep[ki][kj];} else {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj];}
-                    }}
                     for(kk=0;kk<3;kk++)
                     {
                         for(ki=0;ki<3;ki++)
@@ -2538,18 +2412,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                /*
-                 tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
+                /* tidal_tensorps[][] = Matrix of second derivatives of grav. potential, symmetric:
                  |Txx Txy Txz|   |tidal_tensorps[0][0] tidal_tensorps[0][1] tidal_tensorps[0][2]|
                  |Tyx Tyy Tyz| = |tidal_tensorps[1][0] tidal_tensorps[1][1] tidal_tensorps[1][2]|
-                 |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|
-                 */
+                 |Tzx Tzy Tzz|   |tidal_tensorps[2][0] tidal_tensorps[2][1] tidal_tensorps[2][2]|  */
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-                if(r_source < r_target) {
-                    fac2_tidal = 3 * mass / pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),5);
-                } else {
-                    fac2_tidal = 0;
-                }
+                if(r_source < r_target) {fac2_tidal = 3 * mass / pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),5);} else {fac2_tidal = 0;}
 #endif
 #ifdef PMGRID
                 tidal_tensorps[0][0] += ((-fac_tidal + dx * dx * fac2_tidal) * shortrange_table[tabindex]) +
@@ -2578,7 +2446,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // COMPUTE_TIDAL_TENSOR_IN_GRAVTREE //
 #ifdef COMPUTE_JERK_IN_GRAVTREE
 #ifndef ADAPTIVE_TREEFORCE_UPDATE // we want the jerk if we're doing lazy force updates
-		if(ptype > 0)
+                if(ptype > 0)
 #endif                    
                 {
                     double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;
@@ -2591,11 +2459,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
             ninteractions++;
 
-
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
             if(r < r_for_total_menclosed) {m_enc_in_rcrit += mass;}
 #endif
-
 #ifdef COUNT_MASS_IN_GRAVTREE
             tree_mass += mass;
 #endif
@@ -2603,7 +2469,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(gasmass>0)
             {
                 int bin; // Here we do a simple six-bin angular binning scheme
-                if ((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))){if (dx > 0) {bin = 0;} else {bin=1;}
+                if((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))) {if (dx > 0) {bin = 0;} else {bin=1;}
                 } else if (fabs(dy)>fabs(dz)){if (dy > 0) {bin = 2;} else {bin=3;}
                 } else {if (dz > 0) {bin = 4;} else {bin = 5;}}
                 treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass); // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
@@ -2625,16 +2491,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_GRAVTREE
             if(valid_gas_particle_for_rt)	/* we have a (valid) gas particle as target */
             {
-                r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum; r = sqrt(r2);
-                if(r >= soft) {fac=1./(r2*r);} else {h_inv=1./soft; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; fac=kernel_gravity(u,h_inv,h3_inv,1);}
-                if((soft>r)&&(soft>0)) fac *= (r2/(soft*soft)); // don't allow cross-section > r2
-                double fac_intensity; fac_intensity = fac * r * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^2), in -physical- units, since L is physical
+                r2 = dx_stellarlum*dx_stellarlum + dy_stellarlum*dy_stellarlum + dz_stellarlum*dz_stellarlum; r = sqrt(r2); double fac_rt;
+                if(r >= soft) {fac_rt=1./(r2*r);} else {double h_inv_rt=1./soft, h3_inv_rt=h_inv_rt*h_inv_rt*h_inv_rt, u_rt=r*h_inv_rt; fac_rt=kernel_gravity(u_rt,h_inv_rt,h3_inv_rt,1);}
+                if((soft>r)&&(soft>0)) fac_rt *= (r2/(soft*soft)); // don't allow cross-section > r2
+                double fac_intensity; fac_intensity = fac_rt * r * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^2), in -physical- units, since L is physical
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
                 {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {Rad_E_gamma[kf] += fac_intensity * mass_stellarlum[kf];}}
 #endif
 #ifdef CHIMES_STELLAR_FLUXES
-                int chimes_k;
-                double chimes_fac = fac_intensity / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);  // 1/(4 * pi * r^2), in cm^-2
+                int chimes_k; double chimes_fac = fac_intensity / (UNIT_LENGTH_IN_CGS*UNIT_LENGTH_IN_CGS);  // 1/(4 * pi * r^2), in cm^-2
                 for (chimes_k = 0; chimes_k < CHIMES_LOCAL_UV_NBINS; chimes_k++)
                 {
                     chimes_flux_G0[chimes_k] += chimes_fac * chimes_mass_stellarlum_G0[chimes_k];   // Habing flux units
@@ -2667,15 +2532,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 #ifdef RT_OTVET
                 /* use the information we have here from the gravity tree (optically thin incident fluxes) to estimate the Eddington tensor */
-                // for now, just one tensor; so we use the sum of luminosities to determine the weights in the Eddington tensor
                 if(r>0)
                 {
-                    double fac_sum=0;
-                    int kf_rt;
+                    double fac_sum=0; int kf_rt;
                     for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++)
                     {
                         fac_sum = mass_stellarlum[kf_rt];
-                        fac_sum *= fac / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
+                        fac_sum *= fac_rt / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
                         RT_ET[kf_rt][0] += dx_stellarlum * dx_stellarlum * fac_sum;
                         RT_ET[kf_rt][1] += dy_stellarlum * dy_stellarlum * fac_sum;
                         RT_ET[kf_rt][2] += dz_stellarlum * dz_stellarlum * fac_sum;
@@ -2689,11 +2552,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 #ifdef RT_LEBRON /* now we couple radiation pressure [single-scattering] terms within this module */
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE /* we only allow the momentum to couple over some distance to prevent bad approximations when the distance between points here is enormous */
-                if(r*UNIT_LENGTH_IN_KPC*All.cf_atime > 50.) {fac=0;}
+                if(r*UNIT_LENGTH_IN_KPC*All.cf_atime > 50.) {fac_rt=0;}
 #endif
                 int kf_rt; double lum_force_fac=0;
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) /* save the fluxes for use below, where we will calculate their RP normally */
-                double fac_flux = -fac * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^3), in -physical- units (except for last r, cancelled by dx_stellum), since L is physical
+                double fac_flux = -fac_rt * All.cf_a2inv / (4.*M_PI); // ~L/(4pi*r^3), in -physical- units (except for last r, cancelled by dx_stellum), since L is physical
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {Rad_Flux[kf_rt][0]+=mass_stellarlum[kf_rt]*fac_flux*dx_stellarlum; Rad_Flux[kf_rt][1]+=mass_stellarlum[kf_rt]*fac_flux*dy_stellarlum; Rad_Flux[kf_rt][2]+=mass_stellarlum[kf_rt]*fac_flux*dz_stellarlum;}
 #else /* simply apply an on-the-spot approximation and do the absorption and RP force now */
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];} // add directly to forces. appropriate normalization (and sign) in 'fac_stellum'
@@ -2705,7 +2568,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 lum_force_fac += (All.BH_Rad_MomentumFactor / (MIN_REAL_NUMBER + All.PhotonMomentum_Coupled_Fraction)) * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
 #endif
 #endif
-                if(lum_force_fac>0) {acc_x += FLT(dx_stellarlum * fac*lum_force_fac); acc_y += FLT(dy_stellarlum * fac*lum_force_fac); acc_z += FLT(dz_stellarlum * fac*lum_force_fac);}
+                if(lum_force_fac>0) {acc_x += FLT(dx_stellarlum * fac_rt*lum_force_fac); acc_y += FLT(dy_stellarlum * fac_rt*lum_force_fac); acc_z += FLT(dz_stellarlum * fac_rt*lum_force_fac);}
 #endif
             } // closes if(valid_gas_particle_for_rt)
 
@@ -2717,29 +2580,32 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             {
                 GRAVITY_NEAREST_XYZ(dx_dm,dy_dm,dz_dm,-1);
                 r2 = dx_dm * dx_dm + dy_dm * dy_dm + dz_dm * dz_dm;
-                r = sqrt(r2);
-                if(r >= h) {fac = mass_dm / (r2 * r);} else {
-                    h_inv = 1.0 / h; h3_inv = h_inv * h_inv * h_inv; u = r * h_inv;
-                    fac = mass_dm * kernel_gravity(u, h_inv, h3_inv, 1);
+                r = sqrt(r2); double fac_dmsf, h_inv_dmsf, h3inv_dmsf, u_dmsf;
+                if(r >= h) {fac_dmsf = mass_dm / (r2 * r);} else {
+                    h_inv_dmsf = 1.0 / h; h3inv_dmsf = h_inv_dmsf * h_inv_dmsf * h_inv_dmsf; u_dmsf = r * h_inv_dmsf;
+                    fac_dmsf = mass_dm * kernel_gravity(u_dmsf, h_inv_dmsf, h3inv_dmsf, 1);
                 }
                 /* assemble force with strength, screening length, and target charge.  */
-                fac *= All.ScalarBeta * (1 + r / All.ScalarScreeningLength) * exp(-r / All.ScalarScreeningLength);
+                fac_dmsf *= All.ScalarBeta * (1 + r / All.ScalarScreeningLength) * exp(-r / All.ScalarScreeningLength);
 #ifdef PMGRID
                 tabindex = (int) (asmthfac * r);
                 if(tabindex < NTAB && tabindex >= 0)
 #endif
                 {
 #ifdef PMGRID
-                    fac *= shortrange_table[tabindex];
+                    fac_dmsf *= shortrange_table[tabindex];
 #endif
-                    acc_x += FLT(dx_dm * fac);
-                    acc_y += FLT(dy_dm * fac);
-                    acc_z += FLT(dz_dm * fac);
+                    acc_x += FLT(dx_dm * fac_dmsf);
+                    acc_y += FLT(dy_dm * fac_dmsf);
+                    acc_z += FLT(dz_dm * fac_dmsf);
                 }
             } // closes if(ptype != 0)
 #endif // DM_SCALARFIELD_SCREENING //
 
         } // closes (if((r2 > 0) && (mass > 0))) check
+            
+        if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;} /* node was used */
+        if(no < maxPart) {no = Nextnode[no];} else {no = nop->u.d.sibling;} /* advance for used nodes: note this used to be above, now handled down here so we can use the 'nop' structure above */
 
         } // closes inner (while(no>=0)) check
         if(mode == 1)
@@ -2780,8 +2646,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef CHIMES_STELLAR_FLUXES
         if(valid_gas_particle_for_rt)
         {
-            int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {
-                SphP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; SphP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
+            int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {SphP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; SphP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
         }
 #endif
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
@@ -3532,9 +3397,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 if(h < nop->maxsoft) {if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;}}
 #else
                 if(h < nop->maxsoft) {h = nop->maxsoft; // only applies if symmetrizing with MAX(h_i,h_j)
-                    if(r2 < nop->maxsoft * nop->maxsoft) {
-                        if(maskout_different_softening_flag(nop->u.d.bitflags)) { /* bit-5 signals that there are particles of different softening in the node */
-                            no = nop->u.d.nextnode; continue;}}}
+                    if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;}}
 #endif
                 no = nop->u.d.sibling;	/* node can be used */
             }
@@ -3572,10 +3435,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 
     /* store result at the proper place */
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
-    if(mode == 0)
-        P[target].Potential = pot;
-    else
-        PotDataResult[target].Potential = pot;
+    if(mode == 0) {P[target].Potential = pot;} else {PotDataResult[target].Potential = pot;}
 #endif
     return 0;
 }
