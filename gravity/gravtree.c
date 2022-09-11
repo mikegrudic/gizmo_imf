@@ -511,7 +511,7 @@ void gravity_tree(void)
 #endif
 #if !defined(GDE_DISTORTIONTENSOR) /* for GDE implementation, want to exclude particle self-tide contribution */
         double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
-        for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
+        //??? for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
 #endif
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} /* give this the proper units */
 #ifdef COMPUTE_JERK_IN_GRAVTREE

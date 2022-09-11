@@ -1629,7 +1629,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     struct NODE *nop = 0;
     int no, nodesinlist=0, ptype, ninteractions=0, nexp, task, listindex = 0, maxPart = All.MaxPart;
     long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
-    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_p=0, h_inv, h3_inv, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
+    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_p=0, h_inv, h3_inv, h_p_inv, h_p3_inv, u_p, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
     MyLongDouble acc_x=0, acc_y=0, acc_z=0; // cache some global vars in local vars to help compiler with alias analysis
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
@@ -1718,7 +1718,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double pmass;
 #endif
 #if defined(FORCETREE_VARIABLE_SOFTENINGS)
-    double h_p_inv=0, h_p3_inv=0, u_p=0, zeta=0, zeta_sec=0; int ptype_sec=-1;
+    double zeta=0, zeta_sec=0; int ptype_sec=-1;
 #endif
 #ifdef EVALPOTENTIAL
     double facpot; MyLongDouble pot; pot = 0;
@@ -1789,7 +1789,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     if(pmass<=0) {return 0;} /* quick check if particle has mass: if not, we won't deal with it */
 #endif
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
-    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); int j0_sec_for_ags; j0_sec_for_ags = -1; // determine allowed particle types for correction terms for adaptive gravitational softening terms
+    int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
 #endif
 #ifdef PMGRID
     rcut2 = rcut * rcut; asmthfac = 0.5 / asmth * (NTAB / 3.0);
@@ -1964,7 +1964,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
                 h_p = ForceSoftening_KernelRadius(no);
 #ifdef FORCETREE_VARIABLE_SOFTENINGS /* set secondary softening and zeta term */
-                ptype_sec=P[no].Type; j0_sec_for_ags=no; zeta_sec=0;
+                ptype_sec=P[no].Type; zeta_sec=0;
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(ptype_sec==0) {zeta_sec=PPPZ[no].AGS_zeta;}
 #elif defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -2092,6 +2092,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     no = nop->u.d.nextnode;
                     continue;
                 }
+#else
+                if(h < nop->maxsoft) // compare primary softening to node maximum
+                {
+                    if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;} // inside node maxsoft, continue down tree
+                }
 #endif
                 if(All.ErrTolTheta)	/* check Barnes-Hut opening criterion */
                 {
@@ -2147,15 +2152,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                 }
 
-                if(h < nop->maxsoft) // compare primary softening to node maximum // ??? - won't allow continued opening
-                {
-                    if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;} // inside node maxsoft, continue down tree
-                }
-
                 /* ok we will be using this node, can now set variables that depend on it */
                 h_p = nop->maxsoft;
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
-                zeta_sec = 0; ptype_sec = -1; j0_sec_for_ags = -1; /* set secondary softening and zeta terms */
+                zeta_sec = 0; ptype_sec = -1; /* set secondary softening and zeta terms */
 #endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                 gasmass = nop->gasmass;
@@ -2270,7 +2270,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             }
             else
             {
-                h_inv = 1./h; h3_inv=h_inv*h_inv*h_inv; u = r * h_inv; // set here to ensure this is using the correct values //
+                h_inv=1./h; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; // set here to ensure this is using the correct values //
                 fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
                 facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
@@ -2282,8 +2282,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(h_p > 0) // first, appropriately symmetrize the forces between particles. only do this is secondary is a particle, so has a type and softening! //
                 {
                     int symmetrize_by_averaging = 0; // default here to symmetrize by taking the maximum, but this will vary below //
-#ifdef ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
-                    if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) {symmetrize_by_averaging=1;} // symmetrize by averaging only for particles which have a shared AGS structure since this is how our correction terms are derived //
+#if defined(FORCETREE_VARIABLE_SOFTENINGS) && defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING) // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
+                    if(ptype_sec>=0) {if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) {symmetrize_by_averaging=1;}} // symmetrize by averaging only for particles which have a shared AGS structure since this is how our correction terms are derived //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                     if((ptype!=0) || (ptype_sec!=0)) {symmetrize_by_averaging=0;} // we don't want to do the symmetrization below for sink interactions because it can create very noisy interactions between tiny sink particles and diffuse gas. However we do want it for gas-gas interactions so we keep the below
 #endif
@@ -2304,7 +2304,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                     // correction only applies to 'shared-kernel' particles: so this needs to check if these are the same particles for which the 'shared' kernel lengths are computed
-                    if(((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) && (r>0) && (pmass>0)) // also check that these aren't the same particle or a test particle
+                    if(((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) && (r>0) && (pmass>0) && (ptype_sec>=0)) // also check that these aren't the same particle or a test particle
                     {
                         double dWdr, wp, fac_corr=0;
                         if(((symmetrize_by_averaging==1) || (h_p<=h)) && (zeta != 0) && (u < 1)) // in kernel [zeta non-zero], and either using symmetric or larger 'side'
@@ -2406,7 +2406,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         }
                         acc_corr_zeta[kk] *= tprefac; // final multiplication to get the right magnitude and units
                     }
-                    acc_x+=acc_corr_zeta[0]; acc_y+=acc_corr_zeta[1]; acc_z+=acc_corr_zeta[2]; // final assignment
+                    //acc_x+=acc_corr_zeta[0]; acc_y+=acc_corr_zeta[1]; acc_z+=acc_corr_zeta[2]; // final assignment
                 }
 #endif
                 
@@ -2595,17 +2595,22 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef PMGRID
                     fac_dmsf *= shortrange_table[tabindex];
 #endif
-                    acc_x += FLT(dx_dm * fac_dmsf);
-                    acc_y += FLT(dy_dm * fac_dmsf);
-                    acc_z += FLT(dz_dm * fac_dmsf);
+                    acc_x += FLT(dx_dm * fac_dmsf); acc_y += FLT(dy_dm * fac_dmsf); acc_z += FLT(dz_dm * fac_dmsf);
                 }
             } // closes if(ptype != 0)
 #endif // DM_SCALARFIELD_SCREENING //
 
         } // closes (if((r2 > 0) && (mass > 0))) check
             
-        if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;} /* node was used */
-        if(no < maxPart) {no = Nextnode[no];} else {no = nop->u.d.sibling;} /* advance for used nodes: note this used to be above, now handled down here so we can use the 'nop' structure above */
+        
+        /* advance for used nodes: note this used to be above, now handled down here so we can use the 'no/nop' structures above */
+        if(no < maxPart) {
+            if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;} /* node was used */
+            no = Nextnode[no];
+        } else {
+            if(TakeLevel >= 0) {nop->GravCost += 1.0;}
+            no = nop->u.d.sibling;
+        }
 
         } // closes inner (while(no>=0)) check
         if(mode == 1)
