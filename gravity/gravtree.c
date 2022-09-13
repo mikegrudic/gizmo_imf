@@ -247,7 +247,7 @@ void gravity_tree(void)
                 GravDataIn[j].Soft = PPP[place].AGS_Hsml;
                 GravDataIn[j].AGS_zeta = PPPZ[place].AGS_zeta;
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
                 for(k=0;k<3;k++) {int k2; for(k2=0;k2<3;k2++) {GravDataIn[j].tidal_tensorps_prevstep[k][k2]=P[place].tidal_tensorps_prevstep[k][k2];}}
 #endif
                 memcpy(GravDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -420,7 +420,7 @@ void gravity_tree(void)
 #ifdef COMPUTE_JERK_IN_GRAVTREE
                 {int i1tt; for(i1tt=0; i1tt<3; i1tt++) P[place].GravJerk[i1tt] += GravDataOut[j].GravJerk[i1tt];}
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
                 P[place].tidal_zeta += GravDataOut[j].tidal_zeta;
 #endif
 #endif
@@ -509,9 +509,9 @@ void gravity_tree(void)
 #ifdef PMGRID
         for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps[j][k] += P[i].tidal_tensorpsPM[j][k];}} /* add the long-range (pm-grid) contribution */
 #endif
-#if !defined(GDE_DISTORTIONTENSOR) /* for GDE implementation, want to exclude particle self-tide contribution */
+#if 0 //!defined(GDE_DISTORTIONTENSOR) /* for GDE implementation, want to exclude particle self-tide contribution; also not needed for tidal softening or tidal timestep. keep, however, for completeness later */
         double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
-        //??? for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
+        for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
 #endif
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} /* give this the proper units */
 #ifdef COMPUTE_JERK_IN_GRAVTREE

@@ -346,7 +346,8 @@ double get_starformation_rate(int i, int mode)
     if(exceeds_force_softening_threshold==0 && rateOfSF>0) {
         if(P[i].tidal_tensorps[0][0]+P[i].tidal_tensorps[1][1]+P[i].tidal_tensorps[2][2] >= 0) {rateOfSF=0;} else { /* first check the trace: if this is positive, overall divergence, one eigenvalue must be positive, so don't need to check individual eigenvalues */
             /* ok, the trace is negative, and SFR non-zero so its possible this could get through, and gravity sufficiently reliable to check individual eigenvalues */
-            double tt[9]; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] = P[i].tidal_tensorps[j][k];}} /* copy the tidal tensor to a convenient vector */
+            double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
+            double tt[9]; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] = P[i].tidal_tensorps[j][k]; if(j==k) {tt[3*j+k] += fac_self;}}} /* copy the tidal tensor to a convenient vector, adding the self-contribution since that is -definitely- potentially important for this self-gravity criterion. note the self-contribution is strictly diagonal for a spherically-symmetric softening */
             gsl_matrix_view m = gsl_matrix_view_array(tt, 3, 3); gsl_vector *eval = gsl_vector_alloc(3); /* set up our workspace */
             gsl_eigen_symm_workspace *w = gsl_eigen_symm_alloc(3); gsl_eigen_symm(&m.matrix, eval,  w); /* allocate and solve for the eigenvalues */
             for(k=0; k<3; k++) {if(gsl_vector_get(eval,k) >= 0) {rateOfSF=0;}} /* this returns the three eigenvalues, check each of them, if any is >= 0, we set the SFR=0 */

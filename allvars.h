@@ -1496,7 +1496,6 @@ typedef unsigned long long peanokey;
 #define TIDAL_TIMESTEP_CRITERION
 #endif
 #define OUTPUT_TIDAL_TENSOR
-#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
 #endif
 
 
@@ -2711,10 +2710,8 @@ extern ALIGN(32) struct particle_data
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     double tidal_tensor_mag_prev;                       /*!< saved frobenius norm of the tidal tensor, from the previous timestep >*/
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
     double tidal_tensorps_prevstep[3][3];               /*!< save the entire tensor if this is active >*/
     double tidal_zeta;                                  /*!< also need to calculate an analog of the ags zeta variable here >*/
-#endif
 #endif
 #ifdef PMGRID
     double tidal_tensorpsPM[3][3];                      /*!< for TreePM simulations, long range tidal field */
@@ -3510,7 +3507,7 @@ extern struct gravdata_in
     int Type;
     MyFloat Pos[3];
     MyFloat Soft;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) || defined(COSMIC_RAY_SUBGRID_LEBRON)
 #define GRAVDATA_IN_INCLUDES_MASS_FIELD
     MyFloat Mass;
 #endif
@@ -3530,7 +3527,7 @@ extern struct gravdata_in
     MyDouble comp_Mass;         /*!< mass of binary companion */
     int is_in_a_binary;
 #endif
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     MyFloat tidal_tensorps_prevstep[3][3];
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
@@ -3583,7 +3580,7 @@ extern struct gravdata_out
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     MyLongDouble tidal_zeta;
 #endif
 #endif
@@ -3945,7 +3942,7 @@ extern ALIGN(32) struct NODE
 
   MyFloat maxsoft;		/*!< hold the maximum gravitational softening of particle in the node */
 
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION_WCORRECTIONS
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     MyFloat tidal_tensorps_prevstep[3][3];
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
