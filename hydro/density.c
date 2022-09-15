@@ -160,9 +160,6 @@ static struct OUTPUT_STRUCT_NAME
 #ifdef HYDRO_PRESSURE_SPH
     MyLongDouble EgyRho;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-    MyFloat AGS_zeta;
-#endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
     MyFloat NV_D[3][3];
     MyFloat NV_A[3][3];
@@ -207,19 +204,12 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #ifdef HYDRO_SPH
         ASSIGN_ADD(SphP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
 #endif
-
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-        ASSIGN_ADD(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
-#endif
-
 #ifdef HYDRO_PRESSURE_SPH
         ASSIGN_ADD(SphP[i].EgyWtDensity,   out->EgyRho,   mode);
 #endif
-
 #if defined(TURB_DRIVING)
         for(k = 0; k < 3; k++) {ASSIGN_ADD(SphP[i].SmoothedVel[k], out->GasVel[k], mode);}
 #endif
-
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
         for(k = 0; k < 3; k++)
             for(j = 0; j < 3; j++)
@@ -327,9 +317,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     out.EgyRho += kernel.wk * mass_eff;
 #endif
                     out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
-#endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-                    if(local.Type == 0) {out.AGS_zeta += mass_j * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0);}
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
                     if(kernel.r > 0)
@@ -1040,30 +1027,6 @@ void density(void)
             }
 #endif
 
-
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-            /* non-gas particles are handled separately, in the ags_hsml routine */
-            if(P[i].Type==0)
-            {
-                PPPZ[i].AGS_zeta = 0;
-                double zeta_0 = 0; // 2.0 * P[i].Mass*P[i].Mass * PPP[i].Hsml*PPP[i].Hsml; // self-value of zeta if no neighbors are found //
-                if((PPP[i].Hsml > 0)&&(PPP[i].NumNgb > 0))
-                {
-                    /* the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary
-                        particles, it can actually be worse. so we need to check whether we should use it or not */
-                    if((PPP[i].Hsml > 1.001*All.MinHsml) && (PPP[i].Hsml < 0.999*All.MaxHsml) &&
-                        (fabs(PPP[i].NumNgb-All.DesNumNgb)/All.DesNumNgb < 0.05))
-                    {
-                        double ndenNGB = PPP[i].NumNgb / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
-                        PPPZ[i].AGS_zeta *= 0.5 * P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
-                    } else {
-                        PPPZ[i].AGS_zeta = zeta_0;
-                    }
-                } else {
-                    PPPZ[i].AGS_zeta = zeta_0;
-                }
-            }
-#endif
             apply_pm_hires_region_clipping_selection(i);
 
          /* finally, convert NGB to the more useful format, NumNgb^(1/NDIMS),

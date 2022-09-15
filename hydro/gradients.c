@@ -181,6 +181,9 @@ struct GasGraddata_out
 #ifdef TURB_DIFF_DYNAMIC
     MyDouble Velocity_hat[3];
 #endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+    MyFloat AGS_zeta;
+#endif
 }
 *GasGradDataResult, *GasGradDataOut;
 
@@ -520,6 +523,11 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         	}
         }
 #endif
+        
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+        ASSIGN_ADD_PRESET(PPPZ[i].AGS_zeta, out->AGS_zeta,   mode);
+#endif
+
     } // gradient_iteration == 0
 }
 
@@ -614,6 +622,9 @@ void hydro_gradient_calc(void)
                 SphP[i].Velocity_bar[k] *= All.TurbDynamicDiffSmoothing;
                 SphP[i].Velocity_hat[k] = SphP[i].Velocity_bar[k] * smoothInv;
             }
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+            PPPZ[i].AGS_zeta = 0;
 #endif
 
             /* and zero out the gradients structure itself */
@@ -1084,6 +1095,17 @@ void hydro_gradient_calc(void)
             SphP[i].Balpha = DMAX(SphP[i].Balpha, 0.005);
 #endif
 
+            
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+            /* note non-gas particles are handled separately, in the ags_hsml routine. here the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary particles, it can actually be worse. so we need to check whether we should use it or not */
+            double ngb_eff = pow(PPP[i].NumNgb, NUMDIMS); // calculate the actual neighbor number, needed here
+            if((fabs(ngb_eff-All.DesNumNgb)/All.DesNumNgb < 0.05) && (PPP[i].Hsml > 1.001*All.MinHsml) && (PPP[i].Hsml < 0.999*All.MaxHsml))
+            {
+                double ndenNGB = ngb_eff / ( NORM_COEFF * pow(PPP[i].Hsml,NUMDIMS) );
+                PPPZ[i].AGS_zeta *= P[i].Mass * PPP[i].Hsml / (NUMDIMS * ndenNGB) * PPP[i].DhsmlNgbFactor;
+            } else {PPPZ[i].AGS_zeta=0;}
+#endif
+
 
 #ifdef HYDRO_SPH
 
@@ -1291,8 +1313,8 @@ void hydro_gradient_calc(void)
 #endif
 		        // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
-		double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
-		double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
+                double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
+                double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
                 // calculate ionization fraction in dense gas; use rate coefficients k to estimate grain charge
                 double k0 = 1.95e-4 * ag01*ag01 * sqrt(temperature); // prefactor for rate coefficient for electron-grain collisions
                 double ngr_ngas = (m_neutral/m_grain) * f_dustgas; // number of grains per neutral
@@ -1350,7 +1372,7 @@ void hydro_gradient_calc(void)
                 SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = eta_ad;      /*!< Hall effect coefficient [physical units of L^2/t] */
             }
 #ifdef COOLING
-	    else {SphP[i].Eta_MHD_OhmicResistivity_Coeff = SphP[i].Eta_MHD_HallEffect_Coeff = SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;} // =0 on the first timestep, since we don't know the ionization yet
+            else {SphP[i].Eta_MHD_OhmicResistivity_Coeff = SphP[i].Eta_MHD_HallEffect_Coeff = SphP[i].Eta_MHD_AmbiPolarDiffusion_Coeff = 0;} // =0 on the first timestep, since we don't know the ionization yet
 #endif	    
 #endif
 
@@ -2142,8 +2164,21 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 
                     /* ------------------------------------------------------------------------------------------------ */
-                    /*  Here we insert additional operations we want to fit into the gradients loop. at the moment, all of these are SPH-specific */
-#ifdef HYDRO_SPH
+                    /*  Here we insert additional operations we want to fit into the gradients loop. */
+                    
+##if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+                    if(kernel.r > 0 && local.Mass > 0 && P[j].Mass > 0 && h_a_inv > 0 && h_b_inv > 0) // exclude bad/deleted particles but also should not include the 'self' contribution here
+                    {
+                        double prefac_ags_a=0.5, prefac_ags_b=0.5, h_a_inv=hinv, h_b_inv=1./h_j, m_a=local.Mass, m_b=P[j].Mass; // this corresponds to symmetrizing by averaging potentials/forces
+#if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
+                        if(h_a_inv < h_b_inv) {prefac_ags_a=1; prefac_ags_b=0; h_b_inv=h_a_inv;} else {prefac_ags_a=0; prefac_ags_b=1; h_a_inv=h_b_inv;} // this corresponds to symmetrizing via the 'max' operation
+#endif
+                        if((kernel.r*h_a_inv < 1) && (prefac_ags_a > 0)) {out.AGS_zeta += prefac_ags_a * m_b * kernel_gravity(kernel.r*h_a_inv, h_a_inv, h_a_inv*h_a_inv*h_a_inv, 0);}
+                        if(swap_to_j) {if((kernel.r*h_b_inv < 1) && (prefac_ags_b > 0)) {PPPZ[j].AGS_zeta += prefac_ags_b * m_a * kernel_gravity(kernel.r*h_b_inv, h_b_inv, h_b_inv*h_b_inv*h_b_inv, 0);}}
+                    }
+#endif
+
+#ifdef HYDRO_SPH /*  following block of these are SPH-specific */
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
                     out.alpha_limiter += NV_MYSIGN(SphP[j].NV_DivVel) * P[j].Mass * kernel.wk_i;
                     if(swap_to_j) SphP[j].alpha_limiter += NV_MYSIGN(local.NV_DivVel) * local.Mass * kernel.wk_j;
