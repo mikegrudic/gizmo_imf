@@ -2166,7 +2166,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* ------------------------------------------------------------------------------------------------ */
                     /*  Here we insert additional operations we want to fit into the gradients loop. */
                     
-##if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
                     if(kernel.r > 0 && local.Mass > 0 && P[j].Mass > 0 && h_a_inv > 0 && h_b_inv > 0) // exclude bad/deleted particles but also should not include the 'self' contribution here
                     {
                         double prefac_ags_a=0.5, prefac_ags_b=0.5, h_a_inv=hinv, h_b_inv=1./h_j, m_a=local.Mass, m_b=P[j].Mass; // this corresponds to symmetrizing by averaging potentials/forces
