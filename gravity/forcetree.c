@@ -2402,7 +2402,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(primary_uses_tidal_criterion || secondary_uses_tidal_criterion) // primary or secondary has associated correction terms here
                 {
                     // this is correct, but need to carefully ensure correction terms are only applied in the correct 'direction' if we have a mixed-particle-type pair //
-                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h,u_j=r/h_p, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
+                    double h_touse=h, h_p_touse=h_p; // (symmetrize with average so be consistent here)
+#if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
+                    if(h_touse>h_p_touse) {h_p_touse=h_touse;} else {h_touse=h_p_touse;} // symmetrize with max (tidal tensor defined this way so be consistent here)
+#endif
+                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h_touse,u_j=r/h_p_touse, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
                     if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline -- make function to enable other splines
                     if(u_j<0.5) {fa_j=96.*pow(u_j,6); fb_j=96.*pow(u_j,5)*(4.-5.*u_j);} else {if(u_j<1.) {fa_j=-1.+16.*pow(u_j,4)*(3.-2.*u_j*u_j); fb_j=-1.+16.*pow(u_j,4)*(15.-2.*u_j*(12.-5.*u_j));}} // this function is kernel-specific, here assuming cubic spline
                     int ki,kj,kk; double rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r; fb_i*=-1./5.; fb_j*=-1./5.; // generic overhead for calcs below
