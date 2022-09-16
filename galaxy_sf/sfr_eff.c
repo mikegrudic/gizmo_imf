@@ -9,6 +9,7 @@
 #include <gsl/gsl_eigen.h>
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*!
  *  routines for star formation in cosmological/galaxy/single-star/black hole simulations
