@@ -813,7 +813,7 @@ void subtract_companion_gravity(int i)
     dr = sqrt(P[i].comp_dx[0]*P[i].comp_dx[0] + P[i].comp_dx[1]*P[i].comp_dx[1] + P[i].comp_dx[2]*P[i].comp_dx[2]);
     h = SinkParticle_GravityKernelRadius;  h_inv = 1.0 / h; h3_inv = h_inv*h_inv*h_inv; u = dr*h_inv; u2=u*u;
     fac = P[i].comp_Mass / (dr*dr*dr); fac2 = 3.0 * P[i].comp_Mass / (dr*dr*dr*dr*dr); /* no softening nonsense */
-    if(dr < h) /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+    if(dr < h) /* second derivatives needed -> calculate them from softened potential */
     {
 	    fac = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 1);
         fac2 = P[i].comp_Mass * kernel_gravity(u, h_inv, h3_inv, 2);

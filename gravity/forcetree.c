@@ -1628,7 +1628,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     struct NODE *nop = 0;
     int no, nodesinlist=0, ptype, ninteractions=0, nexp, task, listindex = 0, maxPart = All.MaxPart;
     long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
-    double soft, r2, dx, dy, dz, mass, r, fac, u, h=0, h_p=0, h_inv, h3_inv, h_p_inv, h_p3_inv, u_p, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
+    double soft, r2, dx, dy, dz, mass, r, fac_accel, u, h=0, h_p=0, h_inv, h3_inv, h_p_inv, h_p3_inv, u_p, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
     MyLongDouble acc_x=0, acc_y=0, acc_z=0; // cache some global vars in local vars to help compiler with alias analysis
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
@@ -1720,7 +1720,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double zeta=0, zeta_sec=0; int ptype_sec=-1;
 #endif
 #ifdef EVALPOTENTIAL
-    double facpot; MyLongDouble pot; pot = 0;
+    double fac_pot; MyLongDouble pot; pot = 0;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     for(i1 = 0; i1 < 3; i1++) {for(i2 = 0; i2 < 3; i2++) {tidal_tensorps[i1][i2] = 0.0;}}
@@ -2256,9 +2256,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             /* now we compute the actual pair-wise gravity terms */
             if((r >= h) && (r >= h_p)) // can safely do a purely-Newtonian force (can be done by kernel-gravity as well, but no need to enter all the conditional statements below so just do it here for simplicity //
             {
-                fac = mass / (r2 * r);
+                fac_accel = mass / (r2 * r);
 #ifdef EVALPOTENTIAL
-                facpot = -mass / r;
+                fac_pot = -mass / r;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
                 fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
@@ -2271,11 +2271,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(h_p > h_grav) {h_grav = h_p;} // in this case, symmetrize by taking the maximum here always
 #endif
                 h_inv=1./h_grav; h3_inv=h_inv*h_inv*h_inv; u=r*h_inv; // set here to ensure this is using the correct values //
-                fac = mass * kernel_gravity(u, h_inv, h3_inv, 1);
+                fac_accel = mass * kernel_gravity(u, h_inv, h3_inv, 1);
 #ifdef EVALPOTENTIAL
-                facpot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
+                fac_pot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential. NOTE this is here -assuming- a cubic spline, will be inconsistent for different kernels used! */
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential */
                 fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
 #endif
 
@@ -2294,9 +2294,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if((symmetrize_by_averaging==1) || (h_p>h)) // condition to need to evaluate the alternate particle ('p' side)
                     {
                         h_p_inv=1./h_p; h_p3_inv=h_p_inv*h_p_inv*h_p_inv; u_p=r*h_p_inv;
-                        fac = 0.5 * (prefac_corr_orig * fac + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
+                        fac_accel = 0.5 * (prefac_corr_orig * fac_accel + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 1)); // average with neighbor
 #ifdef EVALPOTENTIAL
-                        facpot = 0.5 * (prefac_corr_orig * facpot + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, -1)); // average with neighbor
+                        fac_pot = 0.5 * (prefac_corr_orig * fac_pot + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, -1)); // average with neighbor
 #endif
 #if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
                         fac2_tidal = 0.5 * (prefac_corr_orig * fac2_tidal + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well
@@ -2327,7 +2327,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     double dWdr, wp; h_p_inv=1./h_p; h_p3_inv=h_p_inv*h_p_inv*h_p_inv; kernel_main(u_p, h_p3_inv, h_p3_inv*h_p_inv, &wp, &dWdr, 1);
                     fac_corr += -(zeta_sec/pmass) * dWdr / r; // go ahead and add the term
                 }
-                if(!isnan(fac_corr)) {fac += fac_corr;}
+                if(!isnan(fac_corr)) {fac_accel += fac_corr;}
 #endif
             } // closes r < h (else) clause [where we need to deal with inside-the-softening factors]
 
@@ -2338,29 +2338,29 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // PMGRID //
             {
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                fac_tidal = fac; /* save original fac without shortrange_table factor (needed for tidal field calculation) */
+                fac_tidal = fac_accel; /* save original fac_accel without shortrange_table factor (needed for tidal field calculation) */
 #endif
 #ifdef PMGRID
-                fac *= shortrange_table[tabindex];
+                fac_accel *= shortrange_table[tabindex];
 #endif
 #ifdef EVALPOTENTIAL
 #ifdef PMGRID
-                facpot *= shortrange_table_potential[tabindex];
+                fac_pot *= shortrange_table_potential[tabindex];
 #endif
-                pot += FLT(facpot);
+                pot += FLT(fac_pot);
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
                 pot += FLT(mass * ewald_pot_corr(dx, dy, dz));
 #endif
 #endif
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
                 r_target = sqrt(pow(pos_x - center[0],2) + pow(pos_y - center[1],2) + pow(pos_z - center[2],2)); // distance of target point from box center
-                if(r_source < r_target) {dx = center[0] - pos_x; dy = center[1] - pos_y; dz = center[2] - pos_z; fac = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);} else {fac = 0;}
+                if(r_source < r_target) {dx = center[0] - pos_x; dy = center[1] - pos_y; dz = center[2] - pos_z; fac_accel = mass/pow(DMAX(GRAVITY_SPHERICAL_SYMMETRY,DMAX(r_target,h)),3);} else {fac_accel = 0;}
 #endif
                 
                 /* actually add the accelerations, now that we've corrected for the ewald and other terms */
-                acc_x += FLT(dx * fac);
-                acc_y += FLT(dy * fac);
-                acc_z += FLT(dz * fac);
+                acc_x += FLT(dx * fac_accel);
+                acc_y += FLT(dy * fac_accel);
+                acc_z += FLT(dz * fac_accel);
 
 
 #if defined(BH_DYNFRICTION_FROMTREE)
@@ -2371,7 +2371,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
-                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
+                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac_accel*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
                             double m_j=m_j_eff_for_df; /* estimate mean mass of the particles in the node */
@@ -2400,34 +2400,34 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     if(u_tt<1 && prefac_tt>0) {tidal_zeta = prefac_tt * mass * kernel_gravity(u_tt,1./h,1./(h*h*h),0);} // simple sum to calculate this contribution, only from particles inside the kernel of the primary -- this is up here instead of below the if below because it needs to include the 'self' contribution here
                 }
                 if(primary_uses_tidal_criterion || secondary_uses_tidal_criterion) // primary or secondary has associated correction terms here
-                {
-                    // this is correct, but need to carefully ensure correction terms are only applied in the correct 'direction' if we have a mixed-particle-type pair //
-                    double h_touse=h, h_p_touse=h_p; // (symmetrize with average so be consistent here)
-#if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
-                    if(h_touse>h_p_touse) {h_p_touse=h_touse;} else {h_touse=h_p_touse;} // symmetrize with max (tidal tensor defined this way so be consistent here)
+                { // now this is correct, but always need to carefully ensure correction terms are only applied in the correct 'direction' if we have a mixed-particle-type pair //
+                    double h_touse = DMAX(h, h_p), f_b = -r*fac2_tidal, f_a = (6./r)*fac_tidal; // these will give the correct factors for the correction terms below, automatically symmetrized appropriately based on the same symmetry rules we use to define the tidal tensor itself in the first place
+                    if(r < h_touse)
+                    {
+                        double dwk,wk,f_a_corr; u=r/h_touse; kernel_main(u,1.,1.,&wk,&dwk,0); // gather the remaining kernel terms (note these derivatives come from the laplacian and its derivative, so can be reconstructed from our usual wk and dwk terms //
+                        f_a_corr = 4.*M_PI*mass * (dwk - (2./u)*wk) / (h_touse*h_touse*h_touse*h_touse); // default to symmetrize by taking the maximum, here
+#if defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
+                        if(h<h_p) {h_touse=h;} else {h_touse=h_p;}
+                        f_a_corr = 0.5 * (f_a_corr + 4.*M_PI*mass * (dwk - (2./u)*wk) / pow(h_touse,4)); // symmetrize by averaging since thats what we did above
 #endif
-                    double acc_corr_zeta[3]={0},fa_i=15.,fa_j=15.,fb_i=15.,fb_j=15.,u_i=r/h_touse,u_j=r/h_p_touse, tprefac=mass/(r*r*r*r); // define defaults and keplerian values
-                    if(u_i<0.5) {fa_i=96.*pow(u_i,6); fb_i=96.*pow(u_i,5)*(4.-5.*u_i);} else {if(u_i<1.) {fa_i=-1.+16.*pow(u_i,4)*(3.-2.*u_i*u_i); fb_i=-1.+16.*pow(u_i,4)*(15.-2.*u_i*(12.-5.*u_i));}} // this function is kernel-specific, here assuming cubic spline -- make function to enable other splines
-                    if(u_j<0.5) {fa_j=96.*pow(u_j,6); fb_j=96.*pow(u_j,5)*(4.-5.*u_j);} else {if(u_j<1.) {fa_j=-1.+16.*pow(u_j,4)*(3.-2.*u_j*u_j); fb_j=-1.+16.*pow(u_j,4)*(15.-2.*u_j*(12.-5.*u_j));}} // this function is kernel-specific, here assuming cubic spline
-                    int ki,kj,kk; double rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r; fb_i*=-1./5.; fb_j*=-1./5.; // generic overhead for calcs below
+                        f_a += f_a_corr; // add this to the relevant function to use below
+                    }
+                    int ki,kj,kk; double acc_corr_zeta[3]={0}, rh[3]; rh[0]=dx/r; rh[1]=dy/r; rh[2]=dz/r;
                     for(kk=0;kk<3;kk++)
                     {
                         for(ki=0;ki<3;ki++)
                         {
                             for(kj=0;kj<3;kj++)
                             {
-                                /* first compute di dj dk [phi_kernel] -- this is generic */
-                                double q0=rh[ki]*rh[kj]*rh[kk], qi=fa_i*q0, qj=fa_j*q0, rh_add=0;
-                                if(ki==kj) {rh_add+=rh[kk];}
-                                if(ki==kk) {rh_add+=rh[kj];}
-                                if(kj==kk) {rh_add+=rh[ki];}
-                                qi += fb_i*rh_add; qj += fb_j*rh_add;
-                                /* now double-dot this properly to get the sum we need - note only here need the combination of TT and zeta terms */
-                                acc_corr_zeta[kk] += primary_uses_tidal_criterion * i_zeta_tidal_tensorps_prevstep[ki][kj] * qi; // only non-zero here if primary is a tidal-softening-active particle
-                                acc_corr_zeta[kk] += secondary_uses_tidal_criterion * j_zeta_tidal_tensorps_prevstep[ki][kj] * qj; // only non-zero here if secondary is a tidal-softening-active particle
+                                double q0=rh[ki]*rh[kj]*rh[kk], fb_rh_add=0; /* first compute di dj dk [phi_kernel] -- this is generic */
+                                if(ki==kj) {fb_rh_add+=rh[kk];} /* these are the delta_ij terms */
+                                if(ki==kk) {fb_rh_add+=rh[kj];}
+                                if(kj==kk) {fb_rh_add+=rh[ki];}
+                                double qfun = f_a * q0 + f_b * (-3.*q0 + fb_rh_add); /* now double-dot this properly to get the sum we need - note only here need the combination of TT and zeta terms */
+                                acc_corr_zeta[kk] += primary_uses_tidal_criterion * i_zeta_tidal_tensorps_prevstep[ki][kj] * qfun; // only non-zero here if primary is a tidal-softening-active particle
+                                acc_corr_zeta[kk] += secondary_uses_tidal_criterion * j_zeta_tidal_tensorps_prevstep[ki][kj] * qfun; // only non-zero here if secondary is a tidal-softening-active particle
                             }
                         }
-                        acc_corr_zeta[kk] *= tprefac; // final multiplication to get the right magnitude and units
                     }
                     acc_x+=acc_corr_zeta[0]; acc_y+=acc_corr_zeta[1]; acc_z+=acc_corr_zeta[2]; // final assignment
                 }
@@ -2473,9 +2473,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif                    
                 {
                     double dv_dot_dx = dx*dvx + dy*dvy + dz*dvz;
-                    jerk[0] += dvx * fac - dv_dot_dx * fac2_tidal * dx;
-                    jerk[1] += dvy * fac - dv_dot_dx * fac2_tidal * dy;
-                    jerk[2] += dvz * fac - dv_dot_dx * fac2_tidal * dz;
+                    jerk[0] += dvx * fac_accel - dv_dot_dx * fac2_tidal * dx;
+                    jerk[1] += dvy * fac_accel - dv_dot_dx * fac2_tidal * dy;
+                    jerk[2] += dvz * fac_accel - dv_dot_dx * fac2_tidal * dz;
                 }
 #endif
             } // closes TABINDEX<NTAB
@@ -2495,7 +2495,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if((fabs(dx) > fabs(dy)) && (fabs(dx)>fabs(dz))) {if (dx > 0) {bin = 0;} else {bin=1;}
                 } else if (fabs(dy)>fabs(dz)){if (dy > 0) {bin = 2;} else {bin=3;}
                 } else {if (dz > 0) {bin = 4;} else {bin = 5;}}
-                treecol_angular_bins[bin] += fac*gasmass*r / (angular_bin_size*mass); // in our binning scheme, we stretch the gas mass over a patch */ of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
+                treecol_angular_bins[bin] += fac_accel*gasmass*r / (angular_bin_size*mass); // in our binning scheme, we stretch the gas mass over a patch  of the sphere located at radius r subtending solid angle equal to the bin size - thus the area is r^2 * angular_bin_size, so sigma = m/(r^2 * angular bin size) = fac_accel/r / angular bin size. Factor of gasmass / mass corrects the gravitational mass to the gas mass
             }
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -2557,17 +2557,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 /* use the information we have here from the gravity tree (optically thin incident fluxes) to estimate the Eddington tensor */
                 if(r>0)
                 {
-                    double fac_sum=0; int kf_rt;
+                    double fac_otvet_sum=0; int kf_rt;
                     for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++)
                     {
-                        fac_sum = mass_stellarlum[kf_rt];
-                        fac_sum *= fac_rt / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
-                        RT_ET[kf_rt][0] += dx_stellarlum * dx_stellarlum * fac_sum;
-                        RT_ET[kf_rt][1] += dy_stellarlum * dy_stellarlum * fac_sum;
-                        RT_ET[kf_rt][2] += dz_stellarlum * dz_stellarlum * fac_sum;
-                        RT_ET[kf_rt][3] += dx_stellarlum * dy_stellarlum * fac_sum;
-                        RT_ET[kf_rt][4] += dy_stellarlum * dz_stellarlum * fac_sum;
-                        RT_ET[kf_rt][5] += dz_stellarlum * dx_stellarlum * fac_sum;
+                        fac_otvet_sum = mass_stellarlum[kf_rt];
+                        fac_otvet_sum *= fac_rt / (1.e-37 + r); // units are not important, since ET will be dimensionless, but final ET should scale as ~luminosity/r^2
+                        RT_ET[kf_rt][0] += dx_stellarlum * dx_stellarlum * fac_otvet_sum;
+                        RT_ET[kf_rt][1] += dy_stellarlum * dy_stellarlum * fac_otvet_sum;
+                        RT_ET[kf_rt][2] += dz_stellarlum * dz_stellarlum * fac_otvet_sum;
+                        RT_ET[kf_rt][3] += dx_stellarlum * dy_stellarlum * fac_otvet_sum;
+                        RT_ET[kf_rt][4] += dy_stellarlum * dz_stellarlum * fac_otvet_sum;
+                        RT_ET[kf_rt][5] += dz_stellarlum * dx_stellarlum * fac_otvet_sum;
                     }
                 }
 
@@ -3166,7 +3166,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
     struct NODE *nop = 0;
     MyLongDouble pot;
     int no, ptype, task, nexport_save, listindex = 0;
-    double r2, dx, dy, dz, mass, r, u, h, h_inv, pos_x, pos_y, pos_z, aold, fac, dxx, dyy, dzz, soft = 0;
+    double r2, dx, dy, dz, mass, r, u, h, h_inv, pos_x, pos_y, pos_z, aold, fac_pot, dxx, dyy, dzz, soft = 0;
 #ifdef PMGRID
     int tabindex;
     double eff_dist, rcut, asmth, asmthfac;
@@ -3437,13 +3437,13 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #endif
             {
 #ifdef PMGRID
-                fac = shortrange_table_potential[tabindex];
+                fac_pot = shortrange_table_potential[tabindex];
 #else
-                fac = 1;
+                fac_pot = 1;
 #endif
-                if(r >= h) {pot += FLT(-fac * mass / r);} else {
+                if(r >= h) {pot += FLT(-fac_pot * mass / r);} else {
                     h_inv = 1.0 / h; u = r * h_inv;
-                    pot += FLT( fac * mass * kernel_gravity(u, h_inv, 1, -1) );
+                    pot += FLT( fac_pot * mass * kernel_gravity(u, h_inv, 1, -1) );
                 }
             }
 #if defined(BOX_PERIODIC) && !defined(GRAVITY_NOT_PERIODIC) && !defined(PMGRID)
