@@ -2275,7 +2275,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
 #endif
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
-                if(strcmp("SfEffPerFreeFall",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to FIRE-default of unity (=%g) \n",tag[i],alternate_tag[i],All.MaxSfrTimescale); continue;}
+                if(strcmp("SfEffPerFreeFall",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to scaling-default of unity (=%g) \n",tag[i],alternate_tag[i],All.MaxSfrTimescale); continue;}
                 if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
                 if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to no Eddington-limit in accretion from disk to sink (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
                 if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to arbitrary small value which will be ignored later (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
