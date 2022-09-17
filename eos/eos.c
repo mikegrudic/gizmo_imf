@@ -327,6 +327,12 @@ double Get_Gas_Ionized_Fraction(int i)
 double return_dust_to_metals_ratio_vs_solar(int i)
 {
     if(i<0 || P[i].Type!=0) {return 1;}
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) /* note since the applications of this module really want a -surface area per unit mass- ratio to scale off of, we actually want to scale this by the geometric opacity, relative to what 'typical' solar conditions would give */
+    double kappa_interp_geo_cgs = SphP[i].InterpolatedGeometricDustCrossSection / UNIT_SURFDEN_IN_CGS; // this should be in cgs, in cm^2/g
+    double kappa_solar_geo_cgs = 3300.; // this is a rough estimate of what one would get as a 'reference' opacity if one assumed a maximum grain size of 0.1 micron, grain density of 2.25 g/cm^3, as in e.g. Weingartner & Draine 2001 (roughly what their models would give, for the size range we usually model, to compare)
+    double Z_scaled = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity of the particle in solar
+    return (kappa_interp_geo_cgs / kappa_solar_geo_cgs) / (Z_scaled); // will be multiplied by metallicity to convert later
+#endif
 #if defined(RT_INFRARED)
     return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
 #endif

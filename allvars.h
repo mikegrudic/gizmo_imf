@@ -1282,6 +1282,8 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
 
+
+
 #ifndef  MULTIPLEDOMAINS
 #define  MULTIPLEDOMAINS     8
 #endif
@@ -2495,6 +2497,12 @@ extern struct global_data_all_processes
     double CosmicRay_Subgrid_Kappa_0;
 #endif
 
+    
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+    double RHD_bins_nu_min_ev[N_RT_FREQ_BINS]; /* minimum frequency of the radiation 'bin' in eV */
+    double RHD_bins_nu_max_ev[N_RT_FREQ_BINS]; /* maximum frequency of the radiation 'bin' in eV */
+#endif
+    
 #ifdef METALS
     double SolarAbundances[NUM_METAL_SPECIES];
 #ifdef COOL_METAL_LINES_BY_SPECIES
@@ -3343,6 +3351,7 @@ extern struct gas_cell_data
 #endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
+    MyDouble InterpolatedGeometricDustCrossSection; /* geometric opacity (frequency independent) */
 #endif
 #ifdef RT_INFRARED
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */

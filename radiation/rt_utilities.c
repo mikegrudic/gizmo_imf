@@ -504,40 +504,107 @@ int rt_get_lum_band_agn(int i, int mode, double *lum)
 int rt_get_lum_band_singlestar(int i, int mode, double *lum)
 {
     if(P[i].Type < 4) {return 0;} // only go forward with star or sink-type particles
-    int active_check = 0; // default to inactive //
+    int active_check = 0, k; // default to inactive //
     
 #if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
-    SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_INFRARED] = stellar_lum_in_band(i, 0, 0.4133);
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_INFRARED; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
 #endif
 #if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
-    SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_OPTICAL_NIR] = stellar_lum_in_band(i, 0.4133, 3.444);
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_OPTICAL_NIR; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
 #endif
 #if defined(RT_NUV) /* Near-UV approximate spectra (UV/optical spectra, sub-photo-electric, but high-opacity) for stars as used in the FIRE (Hopkins et al.) models; from 3.4-8 eV */
-    SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_NUV] = stellar_lum_in_band(i, 3.444, 8.);
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_NUV; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
 #endif
 #ifdef RT_PHOTOELECTRIC /* photo-electric bands (8-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-    SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_PHOTOELECTRIC] = stellar_lum_in_band(i, 8, 13.6); // broad band here [note can 2x-count with LW because that is a sub-band, but include it b/c need to total for dust PE heating
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_PHOTOELECTRIC; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]); // broad band here [note can 2x-count with LW because that is a sub-band, but include it b/c need to total for dust PE heating
 #endif
 #ifdef RT_LYMAN_WERNER  /* lyman-werner bands (11.2-13.6 eV, specifically): below is from integrating the spectra from STARBURST99 with the Geneva40 solar-metallicity + lower tracks */
-    SET_ACTIVE_RT_CHECK(); lum[RT_FREQ_BIN_LYMAN_WERNER] = stellar_lum_in_band(i, 11.2, 13.6);
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_LYMAN_WERNER; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
+#endif
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE /* set of FIRE default bands, if used here for stars as well, though currently not cross-linked with some of the other physics */
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_FIRE_UV; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
+    k=RT_FREQ_BIN_FIRE_OPT; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
+    k=RT_FREQ_BIN_FIRE_IR; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]);
 #endif
 #if defined(RT_CHEM_PHOTOION)   /* Hydrogen and Helium ionizing bands */
     SET_ACTIVE_RT_CHECK();
 #if defined(RT_PHOTOION_MULTIFREQUENCY)
-    int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //    
-    int k; for(k=0;k<3;k++) {lum[i_vec[k]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[k]], rt_ion_nu_min[i_vec[k+1]]);} // integrate between band boundaries, defined in global 'nu' in eV
-    lum[i_vec[3]] = stellar_lum_in_band(i, rt_ion_nu_min[i_vec[3]], 500.); // integrate to end of spectrum for the last band
+    int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2}; // these will all be the same if not using multi-frequency module //
+    for(k=0;k<4;k++) {lum[i_vec[k]] = stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[i_vec[k]],All.RHD_bins_nu_max_ev[i_vec[k]]);} // integrate between band boundaries, defined in global 'nu' in eV
 #else
-    lum[RT_FREQ_BIN_H0] = stellar_lum_in_band(i, 13.6, 500.); // total ionizing flux
+    SET_ACTIVE_RT_CHECK(); k=RT_FREQ_BIN_H0; lum[k]=stellar_lum_in_band(i,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]); // total ionizing flux
 #ifdef RT_STARBENCH_TEST
     lum[RT_FREQ_BIN_H0] = 1e49 * (rt_nu_eff_eV[RT_FREQ_BIN_H0]*ELECTRONVOLT_IN_ERGS) / UNIT_LUM_IN_CGS;
-#endif    
 #endif
+#endif
+#endif
+
+#ifdef RT_SOFT_XRAY
+    /* currently assume zero here, need to add function here if desired from XRBs or coronal activity, b/c model assumes a thermal spectrum which will give null */
+#endif
+#ifdef RT_HARD_XRAY
+    /* currently assume zero here, need to add function here if desired from XRBs or coronal activity, b/c model assumes a thermal spectrum which will give null */
+#endif
+#ifdef RT_FREEFREE
+    /* negligible free-free emissivity from stars here */
+#endif
+#ifdef RT_GENERIC_USER_FREQ
+    /* code whatever is desired */
 #endif
 
     return active_check;
 }
 
+
+
+
+/* this initializes the list of the effective min and max frequencies associated with each waveband, to be used throughout the code */
+void rt_define_effective_frequencies_in_bands(void)
+{
+    /* initialize the table that contains the effective wavelengths of all the different bansd we are actually evolving */
+    int k; double rhd_bins_nu_min_ev[N_RT_FREQ_BINS], rhd_bins_nu_max_ev[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {rhd_bins_nu_min_ev[k]=0; rhd_bins_nu_max_ev[k]=MAX_REAL_NUMBER;}
+#ifdef RT_CHEM_PHOTOION
+#if defined(RT_PHOTOION_MULTIFREQUENCY)
+    int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2};
+    rhd_bins_nu_min_ev[i_vec[3]]=rt_ion_nu_min[i_vec[3]]; rhd_bins_nu_max_ev[i_vec[3]]=500; for(k=0;k<3;k++) {rhd_bins_nu_min_ev[i_vec[k]]=rt_ion_nu_min[i_vec[k]]; rhd_bins_nu_max_ev[i_vec[k]]=rt_ion_nu_min[i_vec[k+1]];}
+#else
+    k=RT_FREQ_BIN_H0; rhd_bins_nu_min_ev[k]=13.6; rhd_bins_nu_max_ev[k]=500;
+#endif
+#endif
+#ifdef RT_SOFT_XRAY
+    k=RT_FREQ_BIN_SOFT_XRAY; rhd_bins_nu_min_ev[k]=500; rhd_bins_nu_max_ev[k]=2000;
+#endif
+#ifdef RT_HARD_XRAY
+    k=RT_FREQ_BIN_HARD_XRAY; rhd_bins_nu_min_ev[k]=2000; rhd_bins_nu_max_ev[k]=10000;
+#endif
+#ifdef RT_PHOTOELECTRIC
+    k=RT_FREQ_BIN_PHOTOELECTRIC; rhd_bins_nu_min_ev[k]=8; rhd_bins_nu_max_ev[k]=13.6;
+#endif
+#ifdef RT_LYMAN_WERNER
+    k=RT_FREQ_BIN_LYMAN_WERNER; rhd_bins_nu_min_ev[k]=11.2; rhd_bins_nu_max_ev[k]=13.6;
+#endif
+#ifdef RT_NUV
+    k=RT_FREQ_BIN_NUV; rhd_bins_nu_min_ev[k]=3.444; rhd_bins_nu_max_ev[k]=8.;
+#endif
+#ifdef RT_OPTICAL_NIR
+    k=RT_FREQ_BIN_OPTICAL_NIR; rhd_bins_nu_min_ev[k]=0.4133; rhd_bins_nu_max_ev[k]=3.444;
+#endif
+#ifdef RT_GENERIC_USER_FREQ
+    k=RT_FREQ_BIN_GENERIC_USER_FREQ; rhd_bins_nu_min_ev[k]=0; rhd_bins_nu_max_ev[k]=MAX_REAL_NUMBER;
+#endif
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
+    k=RT_FREQ_BIN_FIRE_UV; rhd_bins_nu_min_ev[k]=3.444; rhd_bins_nu_max_ev[k]=13.6;
+    k=RT_FREQ_BIN_FIRE_OPT; rhd_bins_nu_min_ev[k]=0.365; rhd_bins_nu_max_ev[k]=3.444;
+    k=RT_FREQ_BIN_FIRE_IR; rhd_bins_nu_min_ev[k]=0.01; rhd_bins_nu_max_ev[k]=0.365;
+#endif
+#ifdef RT_INFRARED
+    k=RT_FREQ_BIN_INFRARED; rhd_bins_nu_min_ev[k]=0.001; rhd_bins_nu_max_ev[k]=0.4133;
+#endif
+#ifdef RT_FREEFREE
+    k=RT_FREQ_BIN_FREEFREE; rhd_bins_nu_min_ev[k]=0; rhd_bins_nu_max_ev[k]=MAX_REAL_NUMBER;
+#endif
+    for(k=0;k<N_RT_FREQ_BINS;k++) {All.RHD_bins_nu_min_ev[k]=rhd_bins_nu_min_ev[k]; All.RHD_bins_nu_max_ev[k]=rhd_bins_nu_max_ev[k];}
+}
 
 
 

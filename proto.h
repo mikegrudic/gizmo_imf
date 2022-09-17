@@ -870,6 +870,7 @@ int rt_get_donation_target_bin(int bin);
 int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum);
 int rt_get_lum_band_agn(int i, int mode, double *lum);
 int rt_get_lum_band_singlestar(int i, int mode, double *lum);
+void rt_define_effective_frequencies_in_bands(void);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);

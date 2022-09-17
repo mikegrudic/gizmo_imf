@@ -4689,56 +4689,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #endif
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
-    {
-        int k; double numin[N_RT_FREQ_BINS], numax[N_RT_FREQ_BINS]; for(k=0;k<N_RT_FREQ_BINS;k++) {numin[k]=-20; numax[k]=-20;}
-#ifdef RT_CHEM_PHOTOION
-#if defined(RT_PHOTOION_MULTIFREQUENCY)
-        int i_vec[4] = {RT_FREQ_BIN_H0, RT_FREQ_BIN_He0, RT_FREQ_BIN_He1, RT_FREQ_BIN_He2};
-        numin[i_vec[3]]=rt_ion_nu_min[i_vec[3]]; numax[i_vec[3]]=500; for(k=0;k<3;k++) {numin[i_vec[k]]=rt_ion_nu_min[i_vec[k]]; numax[i_vec[k]]=rt_ion_nu_min[i_vec[k+1]];}
-#else
-        k=RT_FREQ_BIN_H0; numin[k]=13.6; numax[k]=500;
-#endif
-#endif
-#ifdef RT_SOFT_XRAY
-        k=RT_FREQ_BIN_SOFT_XRAY; numin[k]=500; numax[k]=2000;
-#endif
-#ifdef RT_HARD_XRAY
-        k=RT_FREQ_BIN_HARD_XRAY; numin[k]=2000; numax[k]=10000;
-#endif
-#ifdef RT_PHOTOELECTRIC
-        k=RT_FREQ_BIN_PHOTOELECTRIC; numin[k]=8; numax[k]=13.6;
-#endif
-#ifdef RT_LYMAN_WERNER
-        k=RT_FREQ_BIN_LYMAN_WERNER; numin[k]=11.2; numax[k]=13.6;
-#endif
-#ifdef RT_NUV
-        k=RT_FREQ_BIN_NUV; numin[k]=3.444; numax[k]=8.;
-#endif
-#ifdef RT_OPTICAL_NIR
-        k=RT_FREQ_BIN_OPTICAL_NIR; numin[k]=0.4133; numax[k]=3.444;
-#endif
-#ifdef RT_GENERIC_USER_FREQ
-        k=RT_FREQ_BIN_GENERIC_USER_FREQ; numin[k]=-1; numax[k]=-1;
-#endif
-#ifdef GALSF_FB_FIRE_RT_LONGRANGE
-        k=RT_FREQ_BIN_FIRE_UV; numin[k]=3.444; numax[k]=13.6;
-        k=RT_FREQ_BIN_FIRE_OPT; numin[k]=0.365; numax[k]=3.444;
-        k=RT_FREQ_BIN_FIRE_IR; numin[k]=0.01; numax[k]=0.365;
-#endif
-#ifdef RT_INFRARED
-        k=RT_FREQ_BIN_INFRARED; numin[k]=0.001; numax[k]=0.4133;
-#endif
-#ifdef RT_FREEFREE
-        k=RT_FREQ_BIN_FREEFREE; numin[k]=-2; numax[k]=-2;
-#endif
-        
-        {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
-            hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Min_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-            H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, numin); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
-        {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
-            hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Max_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-            H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, numax); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
-    }
+    {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
+        hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Min_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RHD_bins_nu_min_ev); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+    {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
+        hdf5_attribute = H5Acreate(handle, "Radiation_RHD_Max_Bin_Freq_in_eV", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+        H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RHD_bins_nu_max_ev); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
     
