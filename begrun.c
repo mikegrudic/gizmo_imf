@@ -195,10 +195,7 @@ void begrun(void)
   set_random_numbers();
 
 #ifdef PMGRID
-#ifndef ADAPTIVE_GRAVSOFT_FORALL
-  if(RestartFlag != 3 && RestartFlag != 4)
-#endif
-    long_range_init();
+  if(RestartFlag != 3 && RestartFlag != 4) {long_range_init();}
 #endif
 
 #ifdef SUBFIND
@@ -207,10 +204,7 @@ void begrun(void)
 
 #ifdef EOS_TABULATED
     int ierr = eos_init(All.EosTable);
-    if(ierr) {
-        printf("error initializing the eos");
-        endrun(1);
-    }
+    if(ierr) {printf("error initializing the eos"); endrun(1);}
 #endif
 
 #ifdef EOS_TILLOTSON
@@ -1394,10 +1388,6 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
 #ifdef GDE_DISTORTIONTENSOR
-      strcpy(tag[nt], "TidalCorrection");
-      addr[nt] = &All.TidalCorrection;
-      id[nt++] = REAL;
-
       strcpy(tag[nt], "DM_velocity_dispersion");
       addr[nt] = &All.DM_velocity_dispersion;
       id[nt++] = REAL;
@@ -2156,8 +2146,11 @@ void read_parameter_file(char *fname)
                 if(strcmp("OutputListOn",tag[i])==0) {continue;}
                 if(strcmp("BufferSize",tag[i])==0) {continue;}
                 /* now move on to the flags we have not addressed already */
-                if(strcmp("MaxMemSize",tag[i])==0) {*((int *)addr[i])=(int)(0.99*safe_memorypertask); printf("Tag %s (%s) not set in parameter file: We will try to assign a memory-per-MPI task according to the number of MPI tasks in total and average number of tasks per node, and the minimum available memory per node. This gives %d MB per task. Depending on your configuration, and system memory overhead, you may need to increase or decrease this.\n",tag[i],alternate_tag[i],All.MaxMemSize); continue;}
-                if(strcmp("ICFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 ICs format (=%d) - change this if needed for your ICs (many codes generate ICs in the old GADGET unformatted binary format, code =1 here) \n",tag[i],alternate_tag[i],All.ICFormat); continue;}
+                //if(strcmp("MaxMemSize",tag[i])==0) {*((int *)addr[i])=(int)(0.99*safe_memorypertask); printf("Tag %s (%s) not set in parameter file: We will try to assign a memory-per-MPI task according to the number of MPI tasks in total and average number of tasks per node, and the minimum available memory per node. This gives %d MB per task. Depending on your configuration, and system memory overhead, you may need to increase or decrease this.\n",tag[i],alternate_tag[i],All.MaxMemSize); continue;}
+                /* below more like what is needed for safe runs on Frontera, notoriously picky about memory for the system */
+                //if(strcmp("MaxMemSize",tag[i])==0) {*((int *)addr[i])=(int)(0.93*safe_memorypertask-All.BufferSize); printf("Tag %s (%s) not set in parameter file: We will try to assign a memory-per-MPI task according to the number of MPI tasks in total and average number of tasks per node, and the minimum available memory per node. This gives %d MB per task. Depending on your configuration, and system memory overhead, you may need to increase or decrease this.\n",tag[i],alternate_tag[i],All.MaxMemSize); continue;}
+                if(strcmp("MaxMemSize",tag[i])==0) {*((int *)addr[i])=(int)(0.90*safe_memorypertask); printf("Tag %s (%s) not set in parameter file: We will try to assign a memory-per-MPI task according to the number of MPI tasks in total and average number of tasks per node, and the minimum available memory per node. This gives %d MB per task. Depending on your configuration, and system memory overhead, you may need to increase or decrease this.\n",tag[i],alternate_tag[i],All.MaxMemSize); continue;}
+                if(strcmp("ICFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 ICs format (=%d) - change this if needed for your ICs (many codes generate ICs in the old GADGET unformatted binary format, which requires value=1 here) \n",tag[i],alternate_tag[i],All.ICFormat); continue;}
                 if(strcmp("NumFilesWrittenInParallel",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to only main-task writes (=%d) \n",tag[i],alternate_tag[i],All.NumFilesWrittenInParallel); continue;}
                 if(strcmp("NumFilesPerSnapshot",tag[i])==0) {*((int *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to single-file snapshots (=%d) \n",tag[i],alternate_tag[i],All.NumFilesPerSnapshot); continue;}
                 if(strcmp("SnapFormat",tag[i])==0) {*((int *)addr[i])=3; printf("Tag %s (%s) not set in parameter file: defaulting to standard hdf5 snapshot format (=%d) \n",tag[i],alternate_tag[i],All.SnapFormat); continue;}
@@ -2165,7 +2158,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("SnapshotFileBase",tag[i])==0) {strcpy((char *)addr[i],"snapshot"); printf("Tag %s (%s) not set in parameter file: defaulting to value = 'snapshot' \n",tag[i],alternate_tag[i]); continue;}
                 if(All.ComovingIntegrationOn==0)
                 {
-                    if(strcmp("TimeBegin",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: since this is a non-cosmological simulation, defaulting to assume timestarts at t = %g \n",tag[i],alternate_tag[i],All.TimeBegin); continue;}
+                    if(strcmp("TimeBegin",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: since this is a non-cosmological simulation, defaulting to assume time starts at t = %g \n",tag[i],alternate_tag[i],All.TimeBegin); continue;}
                     if(strcmp("Omega0",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaMatter); continue;}
                     if(strcmp("OmegaLambda",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.OmegaLambda); continue;}
                     if(strcmp("HubbleParam",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to [non-cosmological] value (assuming integration in flat non-expanding space with physical units) = %g \n",tag[i],alternate_tag[i],All.HubbleParam); continue;}
@@ -2196,11 +2189,11 @@ void read_parameter_file(char *fname)
                 }
                 if(strcmp("DesNumNgb",tag[i])==0) {*((double *)addr[i])=(0.5*(KERNEL_NMIN+KERNEL_NMAX)); printf("Tag %s (%s) not set in parameter file: you did not set a target effective neighbor number for the interaction kernel. Trying to set a reasonable guess of =%g based on the kernel specified, but PLEASE CHECK that this is intended and experiment with different values or set your own for safety. \n",tag[i],alternate_tag[i],All.DesNumNgb); continue;}
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-                if(strcmp("AGS_DesNumNgb",tag[i])==0) {*((double *)addr[i])=(0.5*(KERNEL_NMIN+KERNEL_NMAX)); printf("Tag %s (%s) not set in parameter file: you did not set a target effective neighbor number for the adaptive-gravity (non-fluid) interaction kernel. Trying to set a reasonable guess of =$g based on the kernel specified, but PLEASE CHECK that this is intended and experiment with different values or set your own for safety. \n",tag[i],alternate_tag[i],All.AGS_DesNumNgb); continue;}
+                if(strcmp("AGS_DesNumNgb",tag[i])==0) {*((double *)addr[i])=(0.5*(KERNEL_NMIN+KERNEL_NMAX)); printf("Tag %s (%s) not set in parameter file: you did not set a target effective neighbor number for the adaptive-gravity (non-fluid) interaction kernel. Trying to set a reasonable guess (=%g) based on the kernel specified, but PLEASE CHECK that this is intended and experiment with different values or set your own for safety. \n",tag[i],alternate_tag[i],All.AGS_DesNumNgb); continue;}
 #endif
                 if(strcmp("InitGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume temperatures defined in ICs (=%g) \n",tag[i],alternate_tag[i],All.InitGasTemp); continue;}
                 if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume minimum matches the specified force softening (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
 #else
                 if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
@@ -2232,7 +2225,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_STARFORGE_DEFAULTS)
-                if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to %g \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
+                if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to =%g (this is the fraction of escape velocity outflows are launched with) \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER
                 if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
@@ -2276,12 +2269,13 @@ void read_parameter_file(char *fname)
                 if(strcmp("CosmicRay_Subgrid_Kappa_0",tag[i])==0) {*((double *)addr[i])=120; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Kappa_0); continue;}
                 if(strcmp("CosmicRay_Subgrid_Vstream_0",tag[i])==0) {*((double *)addr[i])=20; printf("Tag %s (%s) not set in parameter file: defaulting to calibrated value from FIRE simulations, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_Subgrid_Vstream_0); continue;}
 #endif
-#if (CRFLUID_DIFFUSION_MODEL == 0)
+#if defined(CRFLUID_DIFFUSION_MODEL) && (CRFLUID_DIFFUSION_MODEL == 0)
                 if(strcmp("CosmicRayDiffusionCoeff",tag[i])==0) {*((double *)addr[i])=690.; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored diffusivity ~3e29, assuming units kpc/h and km/s (=%g) \n",tag[i],alternate_tag[i],All.CosmicRayDiffusionCoeff); continue;}
 #endif
                 if(strcmp("CosmicRay_SNeFraction",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to observationally-favored ~10 percent conversion to CRs (=%g) \n",tag[i],alternate_tag[i],All.CosmicRay_SNeFraction); continue;}
 #endif
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
+                if(strcmp("SfEffPerFreeFall",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to scaling-default of unity (=%g) \n",tag[i],alternate_tag[i],All.MaxSfrTimescale); continue;}
                 if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
                 if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to no Eddington-limit in accretion from disk to sink (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
                 if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to arbitrary small value which will be ignored later (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}

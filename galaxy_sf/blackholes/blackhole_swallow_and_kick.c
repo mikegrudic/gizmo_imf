@@ -919,8 +919,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
 #endif
 #ifdef ADAPTIVE_TREEFORCE_UPDATE
-        P[j].tdyn_step_for_treeforce = 0;
-        P[j].time_since_last_treeforce = MAX_REAL_NUMBER; // make sure we get a new tree force right off the bat
+        P[j].tdyn_step_for_treeforce = 0; P[j].time_since_last_treeforce = MAX_REAL_NUMBER; // make sure we get a new tree force right off the bat
 #endif
 #ifdef CONDUCTION
         SphP[j].Kappa_Conduction = 0;

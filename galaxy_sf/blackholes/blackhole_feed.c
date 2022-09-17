@@ -36,7 +36,7 @@ struct INPUT_STRUCT_NAME
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     MyFloat SinkRadius;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(BH_EXCISION_GAS) || defined(BH_EXCISION_NONGAS)
     MyFloat AGS_Hsml;
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
@@ -57,8 +57,8 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     in->SinkRadius = PPP[i].SinkRadius;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
-    in->AGS_Hsml = PPP[i].AGS_Hsml;
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(BH_EXCISION_GAS) || defined(BH_EXCISION_NONGAS)
+    in->AGS_Hsml = ForceSoftening_KernelRadius(i);
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     in->BH_Mass_AlphaDisk = BPP(i).BH_Mass_AlphaDisk;
@@ -128,7 +128,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #ifdef BH_REPOSITION_ON_POTMIN
     out.BH_MinPot = BHPOTVALUEINIT;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(BH_EXCISION_GAS) || defined(BH_EXCISION_NONGAS)
     ags_h_i = local.AGS_Hsml;
 #endif
 #if defined(BH_CALC_LOCAL_ANGLEWEIGHTS)
@@ -307,7 +307,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 p=0; if(dm_toacc>0 && P[j].Mass>0 && r<1.0001*local.BH_dr_to_NearestGasNeighbor) {p=dm_toacc/P[j].Mass;}
 #endif
 #ifdef BH_EXCISION_GAS /* accrete gas elements which have gotten too close to the central BH purely on the basis of resolution criteria */
-                                if((P[j].Mass>0) && (r<SinkParticle_GravityKernelRadius) && (vrel<vesc) && (P[j].Mass<0.01*local.Mass)) {p=2.;}
+                                if((P[j].Mass>0) && (r<SinkParticle_GravityKernelRadius) && (vrel<0.7*vesc) && (P[j].Mass<0.01*local.Mass)) {p=2.;}
 #endif
                                 w = get_random_number(P[j].ID);
                                 if(w < p)

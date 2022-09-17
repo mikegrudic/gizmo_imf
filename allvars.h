@@ -243,6 +243,9 @@
 #define AGS_HSML_CALCULATION_IS_ACTIVE
 #endif
 
+#if defined(ADAPTIVE_GRAVSOFT_FORALL)
+#define ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING /* comment out to revert to behavior of taking 'greater' softening in pairwise kernel interactions with adaptive softenings enabled. really only needed currently for this particular AGS model given how it computes zeta terms (could be made optional with one more loop for those as well) */
+#endif
 
 
 #ifdef FIRE_PHYSICS_DEFAULTS
@@ -279,7 +282,7 @@
 //#define GALSF_SFR_IMF_VARIATION           /*! track [do not change] properties of gas from which stars form, for IMF models in post-processing */
 #define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 
-#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
+#if !(defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL))
 #define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
 #if !defined(OUTPUT_POSITIONS_IN_DOUBLE)
@@ -316,12 +319,11 @@
 #if defined(FIRE_BHS)
 #define BH_EXCISION_NONGAS
 #define BH_EXCISION_GAS
-#define BH_DYNFRICTION_FROMTREE
+//#define BH_DYNFRICTION_FROMTREE
 #endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-#define TIDAL_TIMESTEP_CRITERION
 #endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
@@ -407,10 +409,14 @@
 
 #if defined(PMGRID)
 #if !defined(PM_PLACEHIGHRESREGION)
+#if (FIRE_PHYSICS_DEFAULTS == 3)
+#define PM_PLACEHIGHRESREGION 2 /* 2 -- if we want to have potentially resolved hyper-velocity stars/bhs/cells, need to avoid them restructuring the PMGRID completely */
+#else
 #if defined(BLACK_HOLES)
 #define PM_PLACEHIGHRESREGION 51 /* 1+2+16+32 */
 #else
 #define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
+#endif
 #endif
 #endif
 #if !defined(PM_HIRES_REGION_CLIPPING)
@@ -1276,6 +1282,8 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif // #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
 
 
+
+
 #ifndef  MULTIPLEDOMAINS
 #define  MULTIPLEDOMAINS     8
 #endif
@@ -1487,6 +1495,13 @@ typedef unsigned long long peanokey;
 #define FOF_SECONDARY_LINK_TYPES 0
 #endif
 
+
+#if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
+#if !defined(TIDAL_TIMESTEP_CRITERION)
+#define TIDAL_TIMESTEP_CRITERION
+#endif
+#define OUTPUT_TIDAL_TENSOR
+#endif
 
 
 /* some flags for the field "flag_ic_info" in the file header */
@@ -2390,7 +2405,6 @@ extern struct global_data_all_processes
 #ifdef GDE_DISTORTIONTENSOR
   /* present day velocity dispersion of DM particle in cm/s (e.g. Neutralino = 0.03 cm/s) */
   double DM_velocity_dispersion;
-  double TidalCorrection;
 #ifdef GDE_LEAN
   double GDEInitStreamDensity;
 #endif
@@ -2483,6 +2497,12 @@ extern struct global_data_all_processes
     double CosmicRay_Subgrid_Kappa_0;
 #endif
 
+    
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+    double RHD_bins_nu_min_ev[N_RT_FREQ_BINS]; /* minimum frequency of the radiation 'bin' in eV */
+    double RHD_bins_nu_max_ev[N_RT_FREQ_BINS]; /* maximum frequency of the radiation 'bin' in eV */
+#endif
+    
 #ifdef METALS
     double SolarAbundances[NUM_METAL_SPECIES];
 #ifdef COOL_METAL_LINES_BY_SPECIES
@@ -2700,10 +2720,12 @@ extern ALIGN(32) struct particle_data
 #define COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double tidal_tensorps[3][3];                        /*!< tidal tensor (=second derivatives of grav. potential) */
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-    double tidal_tensor_mag_prev;                /*!< saved frobenius norm of the tidal tensor, from the previous timestep >*/
+    double tidal_tensor_mag_prev;                       /*!< saved frobenius norm of the tidal tensor, from the previous timestep >*/
+    double tidal_tensorps_prevstep[3][3];               /*!< save the entire tensor if this is active >*/
+    double tidal_zeta;                                  /*!< also need to calculate an analog of the ags zeta variable here >*/
 #endif
 #ifdef PMGRID
-    double tidal_tensorpsPM[3][3];                /*!< for TreePM simulations, long range tidal field */
+    double tidal_tensorpsPM[3][3];                      /*!< for TreePM simulations, long range tidal field */
 #endif
 #endif
     
@@ -3329,6 +3351,7 @@ extern struct gas_cell_data
 #endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
+    MyDouble InterpolatedGeometricDustCrossSection; /* geometric opacity (frequency independent) */
 #endif
 #ifdef RT_INFRARED
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
@@ -3496,7 +3519,8 @@ extern struct gravdata_in
     int Type;
     MyFloat Pos[3];
     MyFloat Soft;
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#define GRAVDATA_IN_INCLUDES_MASS_FIELD
     MyFloat Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
@@ -3514,6 +3538,9 @@ extern struct gravdata_in
     MyDouble comp_dv[3];        /*!< velocity of binary companion */
     MyDouble comp_Mass;         /*!< mass of binary companion */
     int is_in_a_binary;
+#endif
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    MyFloat tidal_tensorps_prevstep[3][3];
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     int SuperTimestepFlag;  /*!< 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise */
@@ -3565,6 +3592,9 @@ extern struct gravdata_out
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     MyLongDouble tidal_tensorps[3][3];
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    MyLongDouble tidal_zeta;
+#endif
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     MyLongDouble GravJerk[3];
@@ -3924,6 +3954,9 @@ extern ALIGN(32) struct NODE
 
   MyFloat maxsoft;		/*!< hold the maximum gravitational softening of particle in the node */
 
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+    MyFloat tidal_tensorps_prevstep[3][3];
+#endif
 #ifdef DM_SCALARFIELD_SCREENING
   MyFloat s_dm[3];
   MyFloat mass_dm;

@@ -9,6 +9,7 @@
 #include <gsl/gsl_eigen.h>
 #include "../allvars.h"
 #include "../proto.h"
+#include "../kernel.h"
 
 /*!
  *  routines for star formation in cosmological/galaxy/single-star/black hole simulations
@@ -180,11 +181,8 @@ double return_probability_of_this_forming_bh_from_seed_model(int i)
     /* now calculate probability of forming a BH seed particle */
     p = P[i].Mass / All.SeedBlackHolePerUnitMass; /* probability of forming a seed per unit mass [in code units] */
 #ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-    double Rcrit = PPP[i].Hsml;
+    double Rcrit = ForceSoftening_KernelRadius(i); /* search radius of interest (note for adaptive softenings this will self-consistently take the kernel search radius of interest) */
     Z_threshold_solar = 0.1; /* based on Linhao's paper, we need to allow formation at somewhat higher metallicity or we tail to get BHs in the central density concentrations when they form */
-#if !defined(ADAPTIVE_GRAVSOFT_FORGAS) && !defined(ADAPTIVE_GRAVSOFT_FORALL)
-    Rcrit = ForceSoftening_KernelRadius(i); /* search radius is not h, in this case, but the force softening, but this is really not the case we want to study */
-#endif
     Rcrit = DMAX( Rcrit , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime)); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #ifdef BH_CALC_DISTANCES
     if(P[i].min_dist_to_bh < 10.*Rcrit) {return 0;} /* don't allow formation if there is already a sink nearby, akin to SF sink rules */
@@ -346,7 +344,17 @@ double get_starformation_rate(int i, int mode)
 #endif
     
 #ifdef GALSF_SFR_TIDAL_HILL_CRITERION /* check that the tidal tensor is negative-definite, ie. converging along all principal axes, indicating that we're dominating our environment gravitationally and are living in our own Hill sphere */
-    if(exceeds_force_softening_threshold==0) {for(k=0;k<3;k++) {if(P[i].tidal_tensorps[k][k] >= 0) {rateOfSF=0;}}} /* we've already diagonized this in gravtree.c, so this is a straightforward check. again should only be applied where force calculation is fully-reliable */
+    if(exceeds_force_softening_threshold==0 && rateOfSF>0) {
+        if(P[i].tidal_tensorps[0][0]+P[i].tidal_tensorps[1][1]+P[i].tidal_tensorps[2][2] >= 0) {rateOfSF=0;} else { /* first check the trace: if this is positive, overall divergence, one eigenvalue must be positive, so don't need to check individual eigenvalues */
+            /* ok, the trace is negative, and SFR non-zero so its possible this could get through, and gravity sufficiently reliable to check individual eigenvalues */
+            double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
+            double tt[9]; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt[3*j+k] = P[i].tidal_tensorps[j][k]; if(j==k) {tt[3*j+k] += fac_self;}}} /* copy the tidal tensor to a convenient vector, adding the self-contribution since that is -definitely- potentially important for this self-gravity criterion. note the self-contribution is strictly diagonal for a spherically-symmetric softening */
+            gsl_matrix_view m = gsl_matrix_view_array(tt, 3, 3); gsl_vector *eval = gsl_vector_alloc(3); /* set up our workspace */
+            gsl_eigen_symm_workspace *w = gsl_eigen_symm_alloc(3); gsl_eigen_symm(&m.matrix, eval,  w); /* allocate and solve for the eigenvalues */
+            for(k=0; k<3; k++) {if(gsl_vector_get(eval,k) >= 0) {rateOfSF=0;}} /* this returns the three eigenvalues, check each of them, if any is >= 0, we set the SFR=0 */
+            gsl_eigen_symm_free(w); gsl_vector_free(eval); /* free the structures */
+        }
+    }
 #endif
 
 #if (SINGLE_STAR_SINK_FORMATION & 4) /* restrict to local density/potential maxima */

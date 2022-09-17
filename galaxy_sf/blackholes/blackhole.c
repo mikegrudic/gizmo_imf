@@ -88,7 +88,7 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
-    double hinv = 1./SinkParticle_GravityKernelRadius, fac=2.*All.G*m_eff/All.cf_atime;
+    double hinv = 1./bh_softening, fac=2.*All.G*m_eff/All.cf_atime;
 #if defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_EXCISION_NONGAS)
     return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
 #endif

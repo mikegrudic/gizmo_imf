@@ -454,7 +454,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_AGS_ZETA:
 #if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
-            for(n = 0; n < pc; n++) {PPPZ[offset + n].AGS_Zeta = *fp++;}
+            for(n = 0; n < pc; n++) {PPPZ[offset + n].AGS_zeta = *fp++;}
 #endif
             break;
 

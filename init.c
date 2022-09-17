@@ -180,16 +180,12 @@ void init(void)
         for(j = 0; j < 3; j++) {P[i].GravAccel[j] = 0;}
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* init tidal tensor for first output (not used for calculation) */
-        P[i].tidal_tensorps[0][0]=P[i].tidal_tensorps[0][1]=P[i].tidal_tensorps[0][2]=0;
-        P[i].tidal_tensorps[1][0]=P[i].tidal_tensorps[1][1]=P[i].tidal_tensorps[1][2]=0;
-        P[i].tidal_tensorps[2][0]=P[i].tidal_tensorps[2][1]=P[i].tidal_tensorps[2][2]=0;
+        for(j=0;j<3;j++) {int kt; for(kt=0;kt<3;kt++) {P[i].tidal_tensorps[j][kt]=0;}}
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-        P[i].tidal_tensor_mag_prev = 0;
+        P[i].tidal_tensor_mag_prev = 0; P[i].tidal_zeta=0; for(j=0;j<3;j++) {int kt; for(kt=0;kt<3;kt++) {P[i].tidal_tensorps_prevstep[j][kt]=0;}}
 #endif
 #ifdef PMGRID
-        P[i].tidal_tensorpsPM[0][0]=P[i].tidal_tensorpsPM[0][1]=P[i].tidal_tensorpsPM[0][2]=0;
-        P[i].tidal_tensorpsPM[1][0]=P[i].tidal_tensorpsPM[1][1]=P[i].tidal_tensorpsPM[1][2]=0;
-        P[i].tidal_tensorpsPM[2][0]=P[i].tidal_tensorpsPM[2][1]=P[i].tidal_tensorpsPM[2][2]=0;
+        for(j=0;j<3;j++) {int kt; for(kt=0;kt<3;kt++) {P[i].tidal_tensorpsPM[j][kt]=0;}}
 #endif
 #endif
 #ifdef GDE_DISTORTIONTENSOR
@@ -197,13 +193,8 @@ void init(void)
         P[i].last_determinant = 1.0;
 #ifdef OUTPUT_GDE_LASTCAUSTIC
         P[i].lc_Time = 0.0; /* all entries zero -> no caustic yet */
-        P[i].lc_Pos[0] = 0.0; P[i].lc_Pos[1] = 0.0; P[i].lc_Pos[2] = 0.0;
-        P[i].lc_Vel[0] = 0.0; P[i].lc_Vel[1] = 0.0; P[i].lc_Vel[2] = 0.0;
-        P[i].lc_rho_normed_cutoff = 0.0;
-        P[i].lc_Dir_x[0] = 0.0; P[i].lc_Dir_x[1] = 0.0; P[i].lc_Dir_x[2] = 0.0;
-        P[i].lc_Dir_y[0] = 0.0; P[i].lc_Dir_y[1] = 0.0; P[i].lc_Dir_y[2] = 0.0;
-        P[i].lc_Dir_z[0] = 0.0; P[i].lc_Dir_z[1] = 0.0; P[i].lc_Dir_z[2] = 0.0;
-        P[i].lc_smear_x = 0.0; P[i].lc_smear_y = 0.0; P[i].lc_smear_z = 0.0;
+        for(j=0;j<3;j++) {P[i].lc_Pos[j]=0; P[i].lc_Vel[j]=0; P[i].lc_Dir_x[j]=0; P[i].lc_Dir_y[j]=0; P[i].lc_Dir_z[j]=0;}
+        P[i].lc_rho_normed_cutoff = 0.0; P[i].lc_smear_x = 0.0; P[i].lc_smear_y = 0.0; P[i].lc_smear_z = 0.0;
 #endif
         for(i1 = 0; i1 < 6; i1++) {for(i2 = 0; i2 < 6; i2++) {if(i1 == i2) {P[i].distortion_tensorps[i1][i2] = 1.0;} else {P[i].distortion_tensorps[i1][i2] = 0.0;}}}
         if(All.ComovingIntegrationOn) /* for cosmological simulations we do init here, not read from ICs */

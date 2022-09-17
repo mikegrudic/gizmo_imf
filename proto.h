@@ -140,16 +140,8 @@ static inline double ForceSoftening_KernelRadius(int p)
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
-#if defined(GALSF_MERGER_STARCLUSTER_PARTICLES) && !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
-    if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass/(2.*MinMassForParticleMerger) , 0.33)));}
-#endif
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
-#if defined(GALSF_MERGER_STARCLUSTER_PARTICLES)
-    if(((P[p].Type == 1)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
-    if(((P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(10.*All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
-#else
-    if(((P[p].Type == 1) || (P[p].Type == 4)) && (All.Time > All.TimeBegin)) {return DMIN(All.ForceSoftening[P[p].Type] , DMAX(0.1*All.ForceSoftening[P[p].Type] , 4.3 * pow( P[p].tidal_tensor_mag_prev / (All.G * P[p].Mass) , -1./3. )));}
-#endif
+    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (P[p].tidal_tensor_mag_prev>0 && All.Time>All.TimeBegin)) {return DMIN(1.e6*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , All.ForceSoftening[P[p].Type] + 2.202 * pow( (All.DesNumNgb * All.G * P[p].Mass / P[p].tidal_tensor_mag_prev) , 1./3. )));} else {return 100.*All.ForceSoftening[P[p].Type];}
 #endif
     return All.ForceSoftening[P[p].Type];
 }
@@ -878,6 +870,7 @@ int rt_get_donation_target_bin(int bin);
 int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum);
 int rt_get_lum_band_agn(int i, int mode, double *lum);
 int rt_get_lum_band_singlestar(int i, int mode, double *lum);
+void rt_define_effective_frequencies_in_bands(void);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
