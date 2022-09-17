@@ -189,7 +189,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 /* now actually apply the photon coupling for each RHD bin */
                 for(k=0;k<N_RT_FREQ_BINS;k++) 
                 {
-                    double dE=0; dE = wk * local.Luminosity[k];
+                    double dE=0; dE = wk * local.Luminosity[k]; int kv; kv=0;
                     double dfluxes[3]; dfluxes[0]=dfluxes[1]=dfluxes[2]=0;
 
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
@@ -203,7 +203,6 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     double x_abs = 2. * SphP[j].Rad_Kappa[k] * (SphP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.Hsml, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
-                    int kv;
 #if !defined(RT_DISABLE_RAD_PRESSURE) && defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
                     double dv = -slabfac_x * dE / (C_LIGHT_CODE_REDUCED * P[j].Mass); // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
                     for(kv=0;kv<3;kv++) {
