@@ -2314,6 +2314,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
 #if defined(BH_WIND_SPAWN)
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
+                if(strcmp("BAL_wind_particle_mass",tag[i])==0) {*((double *)addr[i])=0.01; printf("Tag %s (%s) not set in parameter file: defaulting to assuming spawned cells from the sink have mass a fixed fraction (=%g) of the sink initial formation mass \n",tag[i],alternate_tag[i],All.BAL_wind_particle_mass); continue;}
+#endif
 #endif
 #if defined(COSMIC_RAY_FLUID)
                 if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
