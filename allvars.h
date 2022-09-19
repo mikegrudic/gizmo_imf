@@ -318,6 +318,7 @@
 #endif
 #if defined(FIRE_BHS)
 #define BH_EXCISION_NONGAS
+#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
 #define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
 #endif
@@ -2846,6 +2847,7 @@ extern ALIGN(32) struct particle_data
     int BH_CountProgs;
 #endif
     MyFloat BH_Mass;
+    MyFloat Sink_Formation_Mass; /* initial mass of sink (total particle) when it formed */
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
@@ -2858,7 +2860,6 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
-    MyFloat Sink_Formation_Mass; /* initial mass of sink when it formed */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */

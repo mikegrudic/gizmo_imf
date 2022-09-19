@@ -1160,7 +1160,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#ifdef BLACK_HOLES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2847,7 +2847,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#ifdef BLACK_HOLES
             return 1;
 #endif
             break;

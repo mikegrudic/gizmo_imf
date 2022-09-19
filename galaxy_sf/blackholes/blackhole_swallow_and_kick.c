@@ -1080,7 +1080,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 double target_mass_for_wind_spawning(int i)
 {
 #ifdef BH_WIND_SPAWN
-#ifdef SINGLE_STAR_AND_SSP_HYBRID_MODEL
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #endif
     return All.BAL_wind_particle_mass;

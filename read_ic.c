@@ -536,7 +536,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef SINGLE_STAR_SINK_DYNAMICS
+#ifdef BLACK_HOLES
             for(n = 0; n < pc; n++) {P[offset + n].Sink_Formation_Mass = *fp++;}
 #endif
             break;	    
@@ -876,7 +876,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINKRAD
 #endif
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(INPUT_READ_SINKPROPS)
+#if defined(BLACK_HOLES) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINK_FORM_MASS
 #endif		   
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)

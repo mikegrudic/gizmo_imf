@@ -498,7 +498,8 @@ void star_formation_parent_routine(void)
                             random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1); gsl_rng_set(random_generator_forbh, P[i].ID+17);
                             P[i].BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma) );
                         }
-                        
+                        P[i].Sink_Formation_Mass = P[i].Mass; // save the mass we had at the time of sink formation, because we will use this later to understand how the sink has grown
+
                         if(p>1) P[i].BH_Mass *= p; /* assume multiple seeds in particle merge */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                         P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
@@ -630,7 +631,7 @@ void star_formation_parent_routine(void)
 #endif
                             }
 #endif // SINGLE_STAR_SINK_DYNAMICS			   
-			    if(P[i].Type != 5) {P[i].Type = 4;} // if we didn't set to type 5 above, default to type 4
+                            if(P[i].Type != 5) {P[i].Type = 4;} // if we didn't set to type 5 above, default to type 4
                         } /* closes final generation from original gas particle */
                         else
                         {

@@ -127,6 +127,9 @@ static inline double sigmoid_sqrt(double x) {return 0.5*(1 + x/sqrt(1+x*x));} /*
 
 static inline double ForceSoftening_KernelRadius(int p)
 {
+#ifdef BH_EXCISION_NONGAS
+    if(P[p].Type==5) {if(P[p].Mass > P[p].BH_Mass+P[p].Sink_Formation_Mass) {return All.ForceSoftening[P[p].Type] * pow((P[p].Mass-P[p].BH_Mass)/P[p].Sink_Formation_Mass,1./3.);} else {return All.ForceSoftening[P[p].Type];}} // scale the force softening to the excess mass to avoid a runaway divergence in the galaxy center from artificially collapsing the potential to that of a point mass
+#endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
     if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return PPP[p].AGS_Hsml;}
 #endif
