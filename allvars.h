@@ -403,7 +403,7 @@
 #if !defined(BH_WIND_CONTINUOUS)
 #define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
 #endif
-#ifdef COSMIC_RAY_FLUID
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
 #define BH_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
 #endif // FIRE_BHS
