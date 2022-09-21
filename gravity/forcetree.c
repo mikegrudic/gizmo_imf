@@ -2276,7 +2276,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 fac_pot = mass * kernel_gravity(u, h_inv, h3_inv, -1);
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* second derivatives needed -> calculate them from softened potential */
-                fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);
+                fac_tidal = fac_accel; fac2_tidal = mass * kernel_gravity(u, h_inv, h3_inv, 2);  /* save original fac_accel without shortrange_table factor or zeta terms (needed for tidal field calculation) */
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
@@ -2299,7 +2299,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         fac_pot = 0.5 * (prefac_corr_orig * fac_pot + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, -1)); // average with neighbor
 #endif
 #if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
-                        fac2_tidal = 0.5 * (prefac_corr_orig * fac2_tidal + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well
+                        fac_tidal = fac_accel; fac2_tidal = 0.5 * (prefac_corr_orig * fac2_tidal + prefac_corr_p * mass * kernel_gravity(u_p, h_p_inv, h_p3_inv, 2)); // average forces -> average in tidal tensor as well. also save updated fac_tidal
 #endif
                     }
                 } // closes if((h_p > 0)) clause
@@ -2337,9 +2337,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(tabindex < NTAB && tabindex >= 0)
 #endif // PMGRID //
             {
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                fac_tidal = fac_accel; /* save original fac_accel without shortrange_table factor (needed for tidal field calculation) */
-#endif
 #ifdef PMGRID
                 fac_accel *= shortrange_table[tabindex];
 #endif

@@ -318,7 +318,7 @@
 #endif
 #if defined(FIRE_BHS)
 #define BH_EXCISION_NONGAS
-#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
+//#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
 #define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
 #endif
@@ -1498,9 +1498,6 @@ typedef unsigned long long peanokey;
 
 
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
-#if !defined(TIDAL_TIMESTEP_CRITERION)
-#define TIDAL_TIMESTEP_CRITERION
-#endif
 #define OUTPUT_TIDAL_TENSOR
 #endif
 
