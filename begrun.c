@@ -375,16 +375,12 @@ void begrun(void)
         All.SNe_Energy_Renormalization = all.SNe_Energy_Renormalization;
         All.StellarMassLoss_Rate_Renormalization = all.StellarMassLoss_Rate_Renormalization;
         All.StellarMassLoss_Energy_Renormalization = all.StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAY_FLUID
-        All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
-#endif
 #endif
 #ifdef COSMIC_RAY_FLUID
 #if (CRFLUID_DIFFUSION_MODEL == 0)
         All.CosmicRayDiffusionCoeff = all.CosmicRayDiffusionCoeff;
 #endif
 #endif
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
       All.AgeTracerRateNormalization = all.AgeTracerRateNormalization;
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
@@ -393,6 +389,9 @@ void begrun(void)
       All.AgeTracerBinStart = all.AgeTracerBinStart;
       All.AgeTracerBinEnd = all.AgeTracerBinEnd;
 #endif
+#endif
+#ifdef CR_DYNAMICAL_INJECTION_IN_SNE
+        All.CosmicRay_SNeFraction = all.CosmicRay_SNeFraction;
 #endif
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -1103,15 +1102,14 @@ void read_parameter_file(char *fname)
         strcpy(alternate_tag[nt], "StellarMassLoss_Energy_Renormalization");
         addr[nt] = &All.StellarMassLoss_Energy_Renormalization;
         id[nt++] = REAL;
+#endif
 
-#ifdef COSMIC_RAY_FLUID
+#ifdef CR_DYNAMICAL_INJECTION_IN_SNE
         strcpy(tag[nt], "CosmicRay_SNeFraction");
         strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
         addr[nt] = &All.CosmicRay_SNeFraction;
         id[nt++] = REAL;
 #endif
-#endif
-        
         
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
         strcpy(tag[nt], "CosmicRay_Subgrid_Kappa_0");
@@ -1122,15 +1120,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "CosmicRay_Subgrid_Vstream_0");
         strcpy(alternate_tag[nt], "CosmicRay_Subgrid_Vstream_0");
         addr[nt] = &All.CosmicRay_Subgrid_Vstream_0;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt], "CosmicRay_SNeFraction");
-        strcpy(alternate_tag[nt], "CosmicRay_SNeEnergyFraction");
-        addr[nt] = &All.CosmicRay_SNeFraction;
-        id[nt++] = REAL;
-
-        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
-        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
         id[nt++] = REAL;
 #endif
         
@@ -1153,7 +1142,6 @@ void read_parameter_file(char *fname)
         strcpy(alternate_tag[nt], "AgeTracerActiveTimestepFraction");
         addr[nt] = &All.AgeTracerRateNormalization;
         id[nt++] = REAL;
-
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
         strcpy(tag[nt], "AgeTracerListFilename");
         addr[nt] = &All.AgeTracerListFilename;
@@ -2318,7 +2306,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("BAL_wind_particle_mass",tag[i])==0) {*((double *)addr[i])=0.01; printf("Tag %s (%s) not set in parameter file: defaulting to assuming spawned cells from the sink have mass a fixed fraction (=%g) of the sink initial formation mass \n",tag[i],alternate_tag[i],All.BAL_wind_particle_mass); continue;}
 #endif
 #endif
-#if defined(COSMIC_RAY_FLUID)
+#if defined(BH_COSMIC_RAYS)
                 if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
 #endif
 #endif

@@ -4644,10 +4644,11 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.StellarMassLoss_Rate_Renormalization); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "StellarMassLoss_Energy_Normalization_FromSSP", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.StellarMassLoss_Energy_Renormalization); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-#ifdef COSMIC_RAY_FLUID
+#endif
+
+#if defined(CR_DYNAMICAL_INJECTION_IN_SNE)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "CosmicRay_SNeFraction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.CosmicRay_SNeFraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-#endif
 #endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING

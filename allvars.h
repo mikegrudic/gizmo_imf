@@ -2448,7 +2448,8 @@ extern struct global_data_all_processes
     double SNe_Energy_Renormalization;
     double StellarMassLoss_Rate_Renormalization;
     double StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAY_FLUID
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#define CR_DYNAMICAL_INJECTION_IN_SNE
     double CosmicRay_SNeFraction;
 #endif
 #endif
@@ -2489,8 +2490,6 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
-    double BH_CosmicRay_Injection_Efficiency;
-    double CosmicRay_SNeFraction;
     double CosmicRay_Subgrid_Vstream_0;
     double CosmicRay_Subgrid_Kappa_0;
 #endif
