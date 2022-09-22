@@ -1793,9 +1793,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef PMGRID
     rcut2 = rcut * rcut; asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
-#ifdef NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
-    double targeth_si = soft;
-#endif
 #ifdef RT_USE_GRAVTREE
     if(ptype==0) {if((soft>0)&&(pmass>0)) {valid_gas_particle_for_rt = 1;}}
 #if defined(RT_LEBRON) && !defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
@@ -2085,7 +2082,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 double dx_nc = nop->center[0] - pos_x, dy_nc = nop->center[1] - pos_y, dz_nc = nop->center[2] - pos_z;
                 GRAVITY_NEAREST_XYZ(dx_nc,dy_nc,dz_nc,-1); /* find the closest image in the given box size  */
                 double dist_to_center2 = dx_nc*dx_nc +  dy_nc*dy_nc + dz_nc*dz_nc;
-                double dist_to_open = DMAX(targeth_si , nop->maxsoft) + nop->len*1.73205/2.0;
+                double dist_to_open = DMAX(soft , nop->maxsoft) + nop->len*1.73205/2.0;
                 if(dist_to_center2  < dist_to_open*dist_to_open) /* check if any portion the cell lies within the interaction range, then open cell */
                 {
                     no = nop->u.d.nextnode;
@@ -2261,7 +2258,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 fac_pot = -mass / r;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-                fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
+                fac_tidal = fac_accel; fac2_tidal = 3.0 * mass / (r2 * r2 * r); /* second derivative of potential needs this factor */
 #endif
             }
             else
