@@ -2861,7 +2861,7 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
+    int BH_Ngb_Flag; /* whether or not the gas lives in a sink's hydro stencil */
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;
