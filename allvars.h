@@ -318,7 +318,7 @@
 #endif
 #if defined(FIRE_BHS)
 #define BH_EXCISION_NONGAS
-#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
+//#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
 #define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
 #endif
@@ -403,7 +403,7 @@
 #if !defined(BH_WIND_CONTINUOUS)
 #define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
 #endif
-#ifdef COSMIC_RAY_FLUID
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
 #define BH_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
 #endif // FIRE_BHS
@@ -1498,9 +1498,6 @@ typedef unsigned long long peanokey;
 
 
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
-#if !defined(TIDAL_TIMESTEP_CRITERION)
-#define TIDAL_TIMESTEP_CRITERION
-#endif
 #define OUTPUT_TIDAL_TENSOR
 #endif
 
@@ -2451,7 +2448,8 @@ extern struct global_data_all_processes
     double SNe_Energy_Renormalization;
     double StellarMassLoss_Rate_Renormalization;
     double StellarMassLoss_Energy_Renormalization;
-#ifdef COSMIC_RAY_FLUID
+#if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
+#define CR_DYNAMICAL_INJECTION_IN_SNE
     double CosmicRay_SNeFraction;
 #endif
 #endif
@@ -2492,8 +2490,6 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
-    double BH_CosmicRay_Injection_Efficiency;
-    double CosmicRay_SNeFraction;
     double CosmicRay_Subgrid_Vstream_0;
     double CosmicRay_Subgrid_Kappa_0;
 #endif
@@ -2865,7 +2861,7 @@ extern ALIGN(32) struct particle_data
     MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    int BH_Ngb_Flag; /* Whether or not the gas live's in a sink's hydro stencil */
+    int BH_Ngb_Flag; /* whether or not the gas lives in a sink's hydro stencil */
 #endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat BH_Mass_AlphaDisk;

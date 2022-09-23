@@ -201,7 +201,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     h2 = local.Hsml*local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS; // some units (just used below, but handy to define for clarity) //
 
-#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if defined(CR_DYNAMICAL_INJECTION_IN_SNE)
     double CR_energy_to_inject = 0; // account for energy going into CRs, so we don't 'double count' //
     if((local.SNe_v_ejecta > 1000./UNIT_VEL_IN_KMS))
     {
@@ -519,7 +519,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     }
     psi_egycon = DMIN(1 , psi_egycon); // this should be gauranteed by the above checks, but enforce it regardless
 
-#if defined(COSMIC_RAY_FLUID) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if defined(CR_DYNAMICAL_INJECTION_IN_SNE)
     // account for energy going into CRs, so we don't 'double count' //
     double CR_energy_to_inject = 0;
     if((v_ejecta_eff_init > 1000./UNIT_VEL_IN_KMS))

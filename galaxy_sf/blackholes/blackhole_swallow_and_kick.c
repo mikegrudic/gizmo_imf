@@ -391,7 +391,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         Mass_j *= (1-f_accreted);
 #ifdef BH_WIND_KICK     /* BAL kicking operations. NOTE: we have two separate BAL wind models, particle kicking and smooth wind model. This is where we do the particle kicking BAL model. This should also work when there is alpha-disk. */
                         double v_kick=All.BAL_v_outflow, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k];} // DAA: default direction is radially outwards
-#if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
+#if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
                         double dEcr = All.BH_CosmicRay_Injection_Efficiency * Mass_j * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
                         inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,dir);
 #endif
@@ -440,7 +440,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                         double v_kick = All.BH_Rad_MomentumFactor * mom_wt * mom / Mass_j;
                         for(k=0;k<3;k++) {Vel_j[k]+=v_kick*All.cf_atime*dir[k];}
 #endif
-#if defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
+#if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) && defined(BH_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
                         double dEcr = (evaluate_blackhole_cosmicray_efficiency(local.Mdot,local.BH_Mass,-1)) * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;
                         inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,dir);
 #endif
@@ -1062,7 +1062,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
         SphP[j].InternalEnergyPred = SphP[j].InternalEnergy;
 
-#if defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
+#if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
         inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,veldir);
 #endif

@@ -884,11 +884,16 @@ void blackhole_final_operations(void)
         TimeBin_BH_Mdot[bin] += BPP(n).BH_Mdot;
         if(BPP(n).BH_Mass > 0) {TimeBin_BH_Medd[bin] += BPP(n).BH_Mdot / BPP(n).BH_Mass;}
 
+/* check promotion and clipping flags */
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
         if((P[n].Type!=5) || (P[n].Mass==0)) {count_bhelim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
-
+#if defined(PM_HIRES_REGION_CLIPPING) && defined(FIRE_BHS)
+        if((All.ComovingIntegrationOn==1) && (All.Time>All.TimeBegin) && (P[n].Type==5) && (PPP[n].Hsml>=0.5*All.BlackHoleMaxAccretionRadius/All.cf_atime)
+           && (PPP[n].NumNgb<=0) && (BlackholeTempInfo[i].Mgas_in_Kernel + BlackholeTempInfo[i].Mstar_in_Kernel <= 0)) {P[n].Mass=0;} // clip BH - if near max radius and sees no gas -or- star particles, basically can't be in high-res region (or at least in a galaxy)
+#endif
+        
     } // for(i=0; i<N_active_loc_BHs; i++)
 
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
