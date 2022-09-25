@@ -505,10 +505,7 @@ void gravity_tree(void)
         if((P[i].Type == 5) && (P[i].is_in_a_binary == 1)) {subtract_companion_gravity(i);}
 #endif
 
-#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* final operations to compute the diagonalized tidal tensor and related quantities */
-#ifdef PMGRID
-        for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps[j][k] += P[i].tidal_tensorpsPM[j][k];}} /* add the long-range (pm-grid) contribution */
-#endif
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE /* final operations to compute the tidal tensor and related quantities */
 #if 0 //!defined(GDE_DISTORTIONTENSOR) /* for GDE implementation, want to exclude particle self-tide contribution; also not needed for tidal softening or tidal timestep. keep, however, for completeness later */
         double h_i=ForceSoftening_KernelRadius(i), fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); /* add the self-contribution (tree loop currently excludes the self-self force, since not needed normally for gravity */
         for(j=0;j<3;j++) {P[i].tidal_tensorps[j][j] += fac_self;} /* note the self-contribution is strictly diagonal for a spherically-symmetric softening */
@@ -516,6 +513,9 @@ void gravity_tree(void)
         for(j=0;j<3;j++) {int i2tt; for(i2tt=0;i2tt<3;i2tt++) {P[i].tidal_tensorps[j][i2tt] *= All.G;}} /* give this the proper units */
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         for(j=0;j<3;j++) {P[i].GravJerk[j] *= All.G;} /* units */
+#endif
+#ifdef PMGRID
+        for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps[j][k] += P[i].tidal_tensorpsPM[j][k];}} /* add the long-range (pm-grid) contribution; but make sure to do this after the unit multiplication by G above, since the PM term already has G built into it */
 #endif
 #endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */
 

@@ -346,10 +346,10 @@ integertime get_timestep(int p,		/*!< particle index */
 
 
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-    double tidal_mag = 0.; {int k; for(k=0; k<3; k++) {tidal_mag += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k];}} // this is diagonalized already in the gravity loop
+    double tidal_mag = 0.; {int k,j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {tidal_mag += P[p].tidal_tensorps[k][j]*P[p].tidal_tensorps[k][j];}}} // get the frobenius norm
     tidal_mag = sqrt(tidal_mag); // can estimate time derivative here, via: dt_ttmag = (tidal_mag-P[p].tidal_tensor_mag_prev) / GET_PARTICLE_TIMESTEP_IN_PHYSICAL(p); 
     double dt_tidalsoft = All.CourantFac * NUMDIMS * GET_PARTICLE_TIMESTEP_IN_PHYSICAL(p) * (tidal_mag+P[p].tidal_tensor_mag_prev) / (fabs(tidal_mag-P[p].tidal_tensor_mag_prev) + MIN_REAL_NUMBER);
-    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (P[p].tidal_tensor_mag_prev>0 && All.Time>All.TimeBegin)) {dt = DMIN(dt, dt_tidalsoft);} // use as a timestep criterion for tidal-ags-active particles
+    // ??? if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (P[p].tidal_tensor_mag_prev>0 && All.Time>All.TimeBegin)) {dt = DMIN(dt, dt_tidalsoft);} // use as a timestep criterion for tidal-ags-active particles
     P[p].tidal_tensor_mag_prev = tidal_mag; // save it (overwriting previous value)
     {
         int j,k; double tt2=0,tracett=0; for(j=0;j<3;j++) {for(k=0;k<3;k++) {tt2+=P[p].tidal_tensorps[j][k]*P[p].tidal_tensorps[j][k]; if(k==j) {tracett+=P[p].tidal_tensorps[j][k];}}} /* compute numbers needed below */
@@ -361,11 +361,9 @@ integertime get_timestep(int p,		/*!< particle index */
 
 
 #ifdef TIDAL_TIMESTEP_CRITERION // tidal criterion obtains the same energy error in an optimally-softened Plummer sphere over ~100 crossing times as the Power 2003 criterion
-    double dt_tidal = 0.; {int k; for(k=0; k<3; k++) {dt_tidal += P[p].tidal_tensorps[k][k]*P[p].tidal_tensorps[k][k] * All.cf_a3inv * All.cf_a3inv;}} // this is diagonalized already in the gravity loop
-    dt_tidal = sqrt(All.ErrTolIntAccuracy / sqrt(dt_tidal / 6)); // recovers sqrt(eta) * tdyn for a Keplerian potential
-    
+    double tidal_mag_dt = 0.; {int k,j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {tidal_mag_dt += P[p].tidal_tensorps[k][j]*P[p].tidal_tensorps[k][j];}}} // get the frobenius norm
+    double dt_tidal = sqrt(All.ErrTolIntAccuracy / (All.cf_a3inv * sqrt(tidal_mag_dt / 6))); // recovers sqrt(eta) * tdyn for a Keplerian potential
     if(P[p].Type == 0) {dt_tidal = DMIN(sqrt(All.ErrTolIntAccuracy/(All.G*SphP[p].Density*All.cf_a3inv)), dt_tidal);} // gas self-gravity timescale as a bare minimum
-    
     if(All.ComovingIntegrationOn){ // floor to the dynamical time of the universe
         double rho0 = (H0_CGS*H0_CGS*(3./(8.*M_PI*GRAVITY_G_CGS))*All.cf_a3inv / UNIT_DENSITY_IN_CGS);
         dt_tidal = DMIN(dt_tidal, sqrt(All.ErrTolIntAccuracy / (All.G * rho0)));

@@ -1170,7 +1170,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;	    
 
-        case IO_TIDALTENSORPS:   /* 3x3 configuration-space tidal tensor that is driving the GDE */
+        case IO_TIDALTENSORPS:   /* 3x3 configuration-space tidal tensor */
 #ifdef OUTPUT_TIDAL_TENSOR
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -2336,6 +2336,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_ZETA:
         case IO_BH_DIST:
         case IO_CBE_MOMENTS:
+        case IO_TIDALTENSORPS:
             return nall;
             break;
 
@@ -2487,7 +2488,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return header.npart[5];
             break;
 
-        case IO_TIDALTENSORPS:
         case IO_GDE_DISTORTIONTENSOR:
         case IO_CAUSTIC_COUNTER:
         case IO_FLOW_DETERMINANT:
