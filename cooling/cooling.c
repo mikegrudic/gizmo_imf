@@ -179,7 +179,7 @@ void do_the_cooling_for_particle(int i)
         double de_u = SphP[i].LambdaDust * ratefact * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation. positive lambda_dust means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
         if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
         double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
-        temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+        temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
         double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_u, temp_de0 = MIN_REAL_NUMBER + temp;
         SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
         SphP[i].Radiation_Temperature = DMIN( temp_e0 , temp_de0 ); // need to restrict going outside these bounds from numerical error
@@ -477,7 +477,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         //qfun_old = *mu_guess; // guess for mu
         prefac_fun_old = prefac_fun;
         err_old = err_new; // error from previous timestep
-        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess, Lambda_filler); // all the thermo variables for this T
+        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess, &Lambda_filler); // all the thermo variables for this T
         prefac_fun = (GAMMA(target)-1) * (*mu_guess); // new value of the dimensionless pre-factor we need to solve
         temp_old = temp; // guess for T we just used
         temp_new = prefac_fun * T_0; // updated temp using the new values from the iteration of find_abundances_and_rates above
