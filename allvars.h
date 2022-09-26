@@ -613,11 +613,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_ISRF_BACKGROUND 1
 #endif
 #endif
-#ifdef RT_INFRARED
-#define COOL_LOWTEMP_THIN_ONLY // Don't want to double-count trapping of radiation if we're doing it self-consistently
-#endif
 // Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
-#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY))
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED))
 #define RT_USE_TREECOL_FOR_NH 6 
 #endif
 #ifdef COOLING
@@ -1487,7 +1484,6 @@ typedef unsigned long long peanokey;
 #define CosmicRayFluid_RSOL_Corrfac(k) (1.0) // this is always unity, macro is trivial
 #endif
 
-
 #ifndef FOF_PRIMARY_LINK_TYPES
 #define FOF_PRIMARY_LINK_TYPES 2
 #endif
@@ -1496,9 +1492,12 @@ typedef unsigned long long peanokey;
 #define FOF_SECONDARY_LINK_TYPES 0
 #endif
 
-
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define OUTPUT_TIDAL_TENSOR
+#endif
+
+#ifdef RT_INFRARED
+#define COOL_LOWTEMP_THIN_ONLY // don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
 
 

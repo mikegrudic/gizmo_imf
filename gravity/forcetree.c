@@ -2402,6 +2402,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         f_a_corr = 4.*M_PI*mass * (dwk - (2./u)*wk) / (h_touse*h_touse*h_touse*h_touse); // default to symmetrize by taking the maximum, here
 #if defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
                         if(h<h_p) {h_touse=h;} else {h_touse=h_p;}
+                        u=r/h_touse; kernel_main(u,1.,1.,&wk,&dwk,0);
                         f_a_corr = 0.5 * (f_a_corr + 4.*M_PI*mass * (dwk - (2./u)*wk) / pow(h_touse,4)); // symmetrize by averaging since thats what we did above
 #endif
                         f_a += f_a_corr; // add this to the relevant function to use below
