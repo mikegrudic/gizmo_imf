@@ -1747,7 +1747,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
                      +8.6639632e-5*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV -2.5850097e-5*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV
                      +2.4555012e-6*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV -8.0683825e-8*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV));}
     if(T<=8000.) {k17=6.9e-9 * pow(T,-0.35);} else {k17=9.6e-7 * pow(T,-0.90);}
-    double x_Hminus = k1 * xH0 * x_e / ((k2+k16)*xH0 + (k5+k17)*x_p + k15*x_e + R51_n); // assuming equilibrium H-, using full set of terms from Glover & Jappsen 2007
+    double x_Hminus = k1 * xH0 * x_e / ((k2+k16)*xH0 + (k5+k17)*x_p + k15*x_e + R51_n); // assuming equilibrium H-, using full set of terms from Glover & Jappsen 2007 // use for H- opacity
     double a_GP = k2 * x_Hminus * nH0 * clumping_factor; // actual rate for 2-body gas-phase formation, given x_Hminus calculated above from local equilibrium
     
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * xH0 * clumping_factor_3; // 3-body collisional formation
