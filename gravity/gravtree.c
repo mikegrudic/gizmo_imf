@@ -514,7 +514,7 @@ void gravity_tree(void)
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         for(j=0;j<3;j++) {P[i].GravJerk[j] *= All.G;} /* units */
 #endif
-#ifdef PMGRID
+#if defined(PMGRID) && !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
         for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].tidal_tensorps[j][k] += P[i].tidal_tensorpsPM[j][k];}} /* add the long-range (pm-grid) contribution; but make sure to do this after the unit multiplication by G above, since the PM term already has G built into it */
 #endif
 #endif /* COMPUTE_TIDAL_TENSOR_IN_GRAVTREE */

@@ -32,7 +32,7 @@ void   TestCool(void);
 
 #ifndef CHIMES 
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
-                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess);
+                                 double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess, double *Lambda_HHe_unaccounted);
 double convert_u_to_temp(double u, double rho, int target, double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess);
 double CoolingRate(double logT, double rho, double nelec, int target);
 double CoolingRateFromU(double u, double rho, double ne_guess, int target);

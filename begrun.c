@@ -482,6 +482,12 @@ void begrun(void)
 #ifdef RT_CHEM_PHOTOION
     rt_get_sigma();
 #endif
+#endif
+    
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
+    rt_define_effective_frequencies_in_bands();
+#endif
+#ifdef RADTRANSFER
     rt_set_simple_inits(RestartFlag);
 #endif
 
