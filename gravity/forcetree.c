@@ -2387,9 +2387,9 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     if((1 << ptype) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) {primary_uses_tidal_criterion=1;} /* check if the primary particle uses the tidal softening */
                     if((1 << ptype_sec) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) {secondary_uses_tidal_criterion=1;} /* check if the secondary particle uses the tidal softening */
-                    double prefac_tt=0.5, u_tt=sqrt(r2)/h; // this corresponds to the result of symmetrizing by averaging
+                    double prefac_tt=0.5, h_touse=h, u_tt=sqrt(r2)/h_touse; // this corresponds to the result of symmetrizing by averaging
 #if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
-                    if(h > h_p) {prefac_tt=1;} else {prefac_tt=0;} // this corresponds to adopting the MAX criterion for the softening
+                    if(h >= h_p) {prefac_tt=1;} else {prefac_tt=1; h_touse=h_p; u_tt=sqrt(r2)/h_touse;} // this corresponds to adopting the MAX criterion for the softening
 #endif
                     if(u_tt<1 && prefac_tt>0) {tidal_zeta += prefac_tt * mass * kernel_gravity(u_tt,1./h,1./(h*h*h),0);} // simple sum to calculate this contribution, only from particles inside the kernel of the primary -- this is up here instead of below the if below because it needs to include the 'self' contribution here
                 }
