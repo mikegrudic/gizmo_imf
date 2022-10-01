@@ -3324,6 +3324,9 @@ extern struct gas_cell_data
     MyFloat Rad_Je[N_RT_FREQ_BINS];         /*!< emissivity (includes sources like stars, as well as gas): units=Rad_E_gamma/time  */
     MyFloat Rad_E_gamma[N_RT_FREQ_BINS];    /*!< photon energy (integral of dRad_E_gamma/dvol*dVol) associated with particle [for simple frequency bins, equivalent to photon number] */
     MyFloat Rad_Kappa[N_RT_FREQ_BINS];      /*!< opacity [physical units ~ length^2 / mass]  */
+#if defined(COOLING)
+    MyFloat Lambda_RadiativeCooling_toRHDBins[N_RT_FREQ_BINS]; /* cooling rate to the various RHD bins here which is not entirely accounted for elsewhere */
+#endif
 #ifdef RT_FLUXLIMITER
     MyFloat Rad_Flux_Limiter[N_RT_FREQ_BINS]; /*!< dimensionless flux-limiter (0<lambda<1) */
 #endif
@@ -3353,7 +3356,6 @@ extern struct gas_cell_data
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
     MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
-    MyFloat LambdaDust; /* Dust cooling rate */
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */
