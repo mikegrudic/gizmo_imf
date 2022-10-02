@@ -100,7 +100,7 @@ void do_the_cooling_for_particle(int i)
 
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
-        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy);
+        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); int k; k=0;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
@@ -110,7 +110,11 @@ void do_the_cooling_for_particle(int i)
             SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; SphP[i].Pressure = get_pressure(i);}
 #endif
 #endif
-
+        
+#if defined(RADTRANSFER)
+        for(k=0;k<N_RT_FREQ_BINS;k++) {SphP[i].Lambda_RadiativeCooling_toRHDBins[k]=0;} // zero these out before cooling subroutine
+#endif
+        
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
@@ -120,7 +124,7 @@ void do_the_cooling_for_particle(int i)
         /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
-        double grav_acc; int k;
+        double grav_acc;
         for(k = 0; k < 3; k++)
         {
             grav_acc = All.cf_a2inv * P[i].GravAccel[k];
@@ -171,32 +175,43 @@ void do_the_cooling_for_particle(int i)
 #if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_ALT_DISABLE_LOSSES)
         CR_cooling_and_losses(i, SphP[i].Ne, SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, dtime*UNIT_TIME_IN_CGS );
 #endif
-
         
-#ifdef RT_INFRARED /* assume (for now) that all radiated/absorbed energy comes from the IR bin [not really correct, this should just be the dust term plus some of the other non-extrinsic [non-UVB or other band] terms] */
-        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
-        double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS); /* need to account for RSOL factors in emission/absorption rates */
-        double de_u = SphP[i].LambdaDust * ratefact * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* energy gained by gas needs to be subtracted from radiation. positive lambda_dust means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-        if(de_u<=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]) {de_u=-0.99*SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
-        double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
-        temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-        double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_u, temp_de0 = MIN_REAL_NUMBER + temp;
-        SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
-        SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
-        SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] += de_u; /* energy gained by gas is lost here */
-        SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED]; /* updated drifted */
-#if defined(RT_EVOLVE_INTENSITIES)
-        int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[RT_FREQ_BIN_INFRARED][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
-#endif
-        int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux:
-#if defined(RT_EVOLVE_FLUX)
-        for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_u;
-            SphP[i].Rad_Flux[RT_FREQ_BIN_INFRARED][kv] += fluxfac; SphP[i].Rad_Flux_Pred[RT_FREQ_BIN_INFRARED][kv] += fluxfac;}
-#endif
-        double momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
-        for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
-#endif
 
+#if defined(RADTRANSFER) /* account for cooling radiation which should, according to our modules, come out in certain bands */
+        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
+        double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
+        for(k=0;k<N_RT_FREQ_BINS;k++)
+        {
+            if(fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER)
+            {
+                double de_u = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
+                if(de_u<=-0.99*SphP[i].Rad_E_gamma[k]) {de_u=-0.99*SphP[i].Rad_E_gamma[k]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
+#ifdef RT_INFRARED
+                if(k==RT_FREQ_BIN_INFRARED) // need to also update the IR band temperature measure
+                {
+                    double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
+                    temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+                    double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_u, temp_de0 = MIN_REAL_NUMBER + temp;
+                    SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
+                    SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
+                }
+#endif
+                SphP[i].Rad_E_gamma[k] += de_u; /* energy gained by gas is lost here */
+                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
+#if defined(RT_EVOLVE_INTENSITIES)
+                int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
+#endif
+                int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux:
+#if defined(RT_EVOLVE_FLUX)
+                for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_u;
+                    SphP[i].Rad_Flux[k][kv] += fluxfac; SphP[i].Rad_Flux_Pred[k][kv] += fluxfac;}
+#endif
+                double momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
+                for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
+            }
+        }
+#endif // done with RHD-cooling block update
+        
 
         /* InternalEnergy, InternalEnergyPred, Pressure, ne are now immediately updated; however, if COOLING_OPERATOR_SPLIT
          is set, then DtInternalEnergy carries information from the hydro loop which is only half-stepped here, so is -not- updated.
@@ -284,7 +299,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 
     int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0; double LambdaNet, ratefact, u_upper, u_lower;
 #ifdef RT_INFRARED
-    double LambdaDust;
+    double Lambda_IRBand;
 #endif    
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
@@ -320,7 +335,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     {
         u = 0.5 * (u_lower + u_upper);
 #ifdef RT_INFRARED
-        LambdaDust = SphP[target].LambdaDust;
+        Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
         LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);      
         if(u - u_old - ratefact * LambdaNet * dt > 0) {u_upper = u;} else {u_lower = u;}
@@ -329,13 +344,9 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-#if 0 //defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        iter_condition = ((fabs(du/u) > 3.0e-4) || ((fabs(du/u) > 3.0e-6) && (iter < 10)));
-        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 0.01*fabs(u-u_old)) && (iter < MAXITER-11));
-#endif
 #ifdef RT_INFRARED  // additional, stronger convergence criteria for problems where you have tightly coupled gas dust and radiation and want reasonably accurate conservation
         iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)) && (iter < MAXITER-11));
-        iter_condition = iter_condition || ((fabs(LambdaDust - SphP[target].LambdaDust) > 1e-4*fabs(LambdaDust)) && (iter < MAXITER-11)); 
+        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-4*fabs(Lambda_IRBand)) && (iter < MAXITER-11));
 #endif        
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
@@ -477,7 +488,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         //qfun_old = *mu_guess; // guess for mu
         prefac_fun_old = prefac_fun;
         err_old = err_new; // error from previous timestep
-        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess, &Lambda_filler); // all the thermo variables for this T
+        find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess, &Lambda_filler, &Lambda_filler, &Lambda_filler, &Lambda_filler); // all the thermo variables for this T
         prefac_fun = (GAMMA(target)-1) * (*mu_guess); // new value of the dimensionless pre-factor we need to solve
         temp_old = temp; // guess for T we just used
         temp_new = prefac_fun * T_0; // updated temp using the new values from the iteration of find_abundances_and_rates above
@@ -548,7 +559,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
 /* this function computes the actual ionization states, relative abundances, and returns the ionization/recombination rates if needed */
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess,
-                                 double *mu_guess, double *Lambda_HHe_unaccounted)
+                                 double *mu_guess, double *LambdaExc_return, double *LambdaIon_return, double *LambdaRec_return, double *LambdaFF_return)
 {
     int j, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
@@ -788,14 +799,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
         double LambdaFF = bff * (nHp + nHep + 4 * nHepp) * n_elec; /* free-free (Bremsstrahlung) */
 
-        *Lambda_HHe_unaccounted += LambdaExc; // could assign to UV/optical/NIR, but currently left unaccounted so wind up in the broader IR bin when used by default
-#if !defined(RT_CHEM_PHOTOION) // if this module is active, these photons are accounted for explicitly in the ionizing bands
-        *Lambda_HHe_unaccounted += LambdaIon;
-        *Lambda_HHe_unaccounted += LambdaRec;
-#endif
-#if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
-        *Lambda_HHe_unaccounted += LambdaFF;
-#endif
+        *LambdaExc_return = LambdaExc; *LambdaIon_return = LambdaIon; *LambdaRec_return = LambdaRec; *LambdaFF_return = LambdaFF; /* send data back if needed */
         double Lambda = LambdaExc + LambdaIon + LambdaRec + LambdaFF; /* sum all of the above */
         return Lambda; /* send it back */
     }
@@ -827,10 +831,10 @@ extern FILE *fd;
 double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
-    double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExcH0, LambdaExcHep, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, Lambda_HHe, Lambda_HHe_unaccounted, LambdaDust;
+    double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExc, LambdaExcH0, LambdaExcHep, LambdaIon, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
+    double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
-    LambdaMol=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; Lambda_HHe=0; Lambda_HHe_unaccounted=0; LambdaDust=0;
+    LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; /* make sure these are all initialized to zero */
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
@@ -868,8 +872,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(logT < Tmax)
     {
         /* get ionization states for H and He with associated ionization, collision, recombination, and free-free heating/cooling */
-        Lambda_HHe = find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu, &Lambda_HHe_unaccounted);
-        Lambda += Lambda_HHe; // add this to our running total for cooling //
+        Lambda += find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu, &LambdaExc, &LambdaIon, &LambdaRec, &LambdaFF); /* adds all of these to our running total for cooling */
         LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); /* note this can have either sign: heating or cooling */
         if(LambdaCompton > 0) {Lambda += LambdaCompton;}
         
@@ -1065,15 +1068,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
   else				/* here we're outside of tabulated rates, T>Tmax K */
     {
         /* at high T (fully ionized); only free-free and Compton cooling are present.  Assumes no heating. */
-        Heat = LambdaExcH0 = LambdaExcHep = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
+        Heat = LambdaExc = LambdaExcH0 = LambdaExcHep = LambdaIon = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRec = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
         nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
         
         LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
         LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); // Compton
-        Lambda_HHe = LambdaFF; // record for potential use below
-#if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
-        Lambda_HHe_unaccounted = LambdaFF;
-#endif
         Lambda = LambdaFF + DMAX(LambdaCompton,0);
     }
 
@@ -1082,15 +1081,29 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     if(target>=0) {SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
 
-    double Lambda_rad_unaccounted = Lambda_HHe_unaccounted + LambdaCompton + LambdaMetal + LambdaMol + LambdaDust;
+    
+#if defined(RT_NUV)
+    double Lambda_rad_NUV = LambdaMetal; // most of LambdaMetal coming out in the NUV, as we define it
+    Lambda_rad_NUV += LambdaExc + LambdaIon; // this represents gas kinetic energy lost to collisional ionization and excitation. but each is assumed to produce a recombination or cascade back to the ground state, which should re-emit. we're usually assuming case B recombination (UV emitted photons re-absorbed), so we'll assume a cascade for these into NUV/optical and other bands [otherwise should be added to photo-ionizing band]. still ignore LambdaRec, because otherwise this will double-count the UV background
 #if !defined(RT_PHOTOELECTRIC) // if this module is active, these photons are accounted for explicitly in the photoelectric bands
-    Lambda_rad_unaccounted += LambdaPElec;
+    Lambda_rad_NUV += LambdaPElec; // otherwise lump it in here as well since it overlaps this band (should deplete it appropriately)
 #endif
-#ifdef RT_INFRARED
-    //if(target>=0) {SphP[target].LambdaDust = LambdaDust;} // save this to be used later (include -only- the strictly dust term)
-    if(target>=0) {SphP[target].LambdaDust = Lambda_rad_unaccounted;} // ??? save this to be used later (include all misc terms that will appear in our IR radiation umbrella)
+#if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
+    if(logT >= 5.) {Lambda_rad_NUV += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
 #endif
-
+    if(target>=0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV] = Lambda_rad_NUV;} // save this to be used later (include all misc terms that will appear in our NUV radiation umbrella)
+#endif
+    
+#if defined(RT_INFRARED)
+    double Lambda_rad_IR = LambdaMol + LambdaDust; // include molecular line cooling, cold atomic cooling (in LambdaMol) and dust cooling here, since all coming out in the IR
+    // LambdaCompton not included below because its primarily cooling off the CMB, which we ignore, or heating off the explicit harder bands, which -is- accounted for in their opacities, effectively
+#if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
+    if(logT < 5.) {Lambda_rad_IR += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
+#endif
+    if(target>=0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = Lambda_rad_IR;} // save this to be used later (include all misc terms that will appear in our IR radiation umbrella)
+#endif
+    
+    
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
     /* if we are in the optically thick limit, we need to modify the cooling/heating rates according to the appropriate limits;
         this flag does so by using a simple approximation. we consider the element as if it were a slab, with a column density

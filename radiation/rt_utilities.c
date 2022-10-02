@@ -1333,7 +1333,7 @@ double get_min_allowed_dustIRrad_temperature(void)
     return MIN_REAL_NUMBER;
 }
 
-/* return LambdaDust, the dust cooling/heating rate (<0 is heating, >0 is cooling) */
+/* return Lambda_Dust, the dust cooling/heating rate (<0 is heating, >0 is cooling) */
 double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target, int update_Tdust)
 {
 #ifdef COOLING
@@ -1353,11 +1353,11 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
      else {double a0=pow(a,0.25); xf=(-704-1045*a0+128*a0*a0*a0*(39+32*a0*(4+7*a0+64*a0*a0*a0*(-1+8*a0*(-1+4*a0)))))/(8388608.*a*a*a0*a0);} // eqm solution (power series approx)
 
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); // timestep being taken [code units]
-    double LambdaDust_initial_guess, lambda_eff, L0_abs, Edot0, efinal_minus_einitial, t_cooling_eff, sign_term, tau, xfac, lambda_fac=1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); int iter=0;
-    do // LambdaDust implicitly depends nonlinearly on Tdust the way we have this set up here, so we do fixed-point iteration to convergence - typically only a few iters needed
+    double Lambda_Dust_initial_guess, lambda_eff, L0_abs, Edot0, efinal_minus_einitial, t_cooling_eff, sign_term, tau, xfac, lambda_fac=1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); int iter=0;
+    do // Lambda_Dust implicitly depends nonlinearly on Tdust the way we have this set up here, so we do fixed-point iteration to convergence - typically only a few iters needed
     {
-      LambdaDust_initial_guess = lambda_fac * (Tdust-T); // guess value based on the -current- values of T, Tdust //
-      L0_abs = fabs(LambdaDust_initial_guess); // absolute value of the initially-computed guess for the cooling/heating rate of the gas
+      Lambda_Dust_initial_guess = lambda_fac * (Tdust-T); // guess value based on the -current- values of T, Tdust //
+      L0_abs = fabs(Lambda_Dust_initial_guess); // absolute value of the initially-computed guess for the cooling/heating rate of the gas
       Edot0 = L0_abs * ratefact; // now this is an absolute Edot in code units, for the gas loss/gain from dust
       efinal_minus_einitial = egy_tot*xf - egy_therm; // change in gas thermal energy if we went all the way to equilibrium
       t_cooling_eff = fabs(efinal_minus_einitial) / Edot0; // effective cooling time at the initially-estimated rate here: we'll use this to stably interpolate
