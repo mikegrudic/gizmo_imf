@@ -3645,6 +3645,22 @@ extern struct info_block
 
 
 
+// this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
+extern struct addFB_evaluate_data_in_
+{
+    MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
+    MyFloat Hsml, V_i, SNe_v_ejecta;
+#ifdef GALSF_FB_MECHANICAL
+    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
+#endif
+#ifdef METALS
+    MyDouble yields[NUM_METAL_SPECIES];
+#endif
+    int NodeList[NODELISTLENGTH];
+}
+*addFB_evaluate_DataIn_, *addFB_evaluate_DataGet_;
+
+
 
 
 
