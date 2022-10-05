@@ -196,7 +196,7 @@ void do_the_cooling_for_particle(int i)
                     SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
                 }
 #endif
-                SphP[i].Rad_E_gamma[k] += de_u; /* energy gained by gas is lost here */
+                SphP[i].Rad_E_gamma[k] += de_u; /* energy gained by gas is lost here (or vice versa if dust is acting as a net coolant) */
                 SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
 #if defined(RT_EVOLVE_INTENSITIES)
                 int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
@@ -369,7 +369,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
     double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
     temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
 #endif
-    get_rt_ir_lambdadust_effective(temp, rho, &nHI, &ne_guess, target, 1);
+    get_rt_ir_lambdadust_effective(temp, rho, &nHI, &ne_guess, target, 0);
 #endif 
 
 
