@@ -837,9 +837,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 {
                     Dust_Temperature_4 = total_emission_rate * vol_inv_phys / (MIN_REAL_NUMBER + fabs(a0)); // physical energy density units, both emission and absorption rates reduced by one power of RSOL so cancel
                     Dust_Temperature_4 *= UNIT_PRESSURE_IN_CGS * a_rad_inverse; // convert to cgs; physical a_r here
-#if !defined(COOLING) // if cooling is active, don't reset this here, because it needs to include the gas coupling term which will be self-consistently calculated there
-                    SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4));
-#endif
+                    SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4)); // now we can self-consistently reset the dust temperature accounting for radiative equilibrium (note that exchange with the gas has been taken care of on the half-step, via calculating the energy loss/gain from the IR band from the dust-gas collisions: that energy is already appropriately corrected //
                     if(SphP[i].Dust_Temperature < T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
                 }
                 double Tdust_eff = DMAX(sqrt(sqrt(Dust_Temperature_4)) , SphP[i].Dust_Temperature);
@@ -1337,15 +1335,17 @@ double get_min_allowed_dustIRrad_temperature(void)
 double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target, int update_Tdust)
 {
 #ifdef COOLING
-    double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
-    double Tdust = Tdust_0;
-    double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-    double egy_rad = (C_LIGHT_CODE/C_LIGHT_CODE_REDUCED) * SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // effective radiation field energy (before this cooling loop), accounting for the effects of an RSOL on the difference between the gas and radiation field energy equations
-    double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS; // effective hydrogen number dens in cgs units (just for normalization convention)
     double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units
     double ratefact = (nHcgs*nHcgs) * volume / (UNIT_PRESSURE_IN_CGS / UNIT_TIME_IN_CGS); // conversion b/t Lambda and du used by code
     double Erad_to_T4_fac = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * (C_LIGHT_CGS/(4. * 5.67e-5)) * UNIT_PRESSURE_IN_CGS / volume; // conversion from absolute rad energy to T^4 units, used multiple places below, coefficient = cL_reduced/(4*sigma_B); note RSOL power above cancels here b/c of the cancellation in absorption+emission coefficients
+
+    double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
+    double Tdust = Tdust_0;
+    double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
+    double egy_rad = (C_LIGHT_CODE/C_LIGHT_CODE_REDUCED) * SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // effective radiation field energy (before this cooling loop), accounting for the effects of an RSOL on the difference between the gas and radiation field energy equations
+    egy_rad = DMAX(egy_rad , pow(Tdust_0,4) / Erad_to_T4_fac); // take the actual dust temp for this, which accounts for the absorption from other bands and difference in absorption efficiency -properly-, but floor it at the IR/dust-band radiation energy density
+    double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
     double Teff = Get_Gas_Mean_Molecular_Weight_mu(T, rho, nH0_guess, ne_guess, 0, target) * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * (egy_tot / P[target].Mass); // convert from internal energy to temperature units for factor below
 
     double xf, a = Teff*Teff*Teff*Teff / (Erad_to_T4_fac*egy_tot); // dimensionless factors needed to solve for the equilibrium Tdust-Tgas relation; this assumes total 'effective' energy between gas and radiation is conserved, and Td=Tgas, and solves for what the equilibrium temperature would be in terms of xf = Teqm / Teff
@@ -1370,7 +1370,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
       iter += 1;
     } while ((fabs(Tdust - Tdust_0) > 1e-14 * Tdust) && (iter<MAXITER));
 
-    if(update_Tdust) {SphP[target].Dust_Temperature = Tdust;} //DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature());} // update dust temperature guess //
+    if(update_Tdust) {SphP[target].Dust_Temperature = Tdust;} //DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature());} // update dust temperature guess  -- in new code, don't need to do this here, will be done in radiation update instead //
     return -lambda_eff; /* note sign convention defined above, so minus sign here makes this behave appropriately */
 #endif
     return 0;

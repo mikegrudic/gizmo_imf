@@ -144,7 +144,7 @@ static inline double ForceSoftening_KernelRadius(int p)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
-    if(((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) && (P[p].tidal_tensor_mag_prev>0 && All.Time>All.TimeBegin)) {return DMIN(1.e2*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , All.ForceSoftening[P[p].Type] + 2.202 * pow( (All.DesNumNgb * All.G * P[p].Mass / P[p].tidal_tensor_mag_prev) , 1./3. )));} else {return 100.*All.ForceSoftening[P[p].Type];}
+    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) {if((P[p].tidal_tensor_mag_prev>0) && (All.Time>All.TimeBegin)) {return DMIN(1.e2*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , All.ForceSoftening[P[p].Type] + 1.25 * pow( (All.DesNumNgb * All.G * P[p].Mass / P[p].tidal_tensor_mag_prev) , 1./3. )));} else {return 100.*All.ForceSoftening[P[p].Type];}}
 #endif
     return All.ForceSoftening[P[p].Type];
 }
@@ -574,21 +574,6 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i, int mode);
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
 double return_probability_of_this_forming_bh_from_seed_model(int i);
-
-// this structure needs to be defined here, because routines for feedback event rates, etc, are shared among files //
-struct addFB_evaluate_data_in_
-{
-    MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
-    MyFloat Hsml, V_i, SNe_v_ejecta;
-#ifdef GALSF_FB_MECHANICAL
-    MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
-#endif
-#ifdef METALS
-    MyDouble yields[NUM_METAL_SPECIES];
-#endif
-    int NodeList[NODELISTLENGTH];
-}
-*addFB_evaluate_DataIn_, *addFB_evaluate_DataGet_;
 
 void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
