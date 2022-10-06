@@ -46,7 +46,7 @@ int density_isactive(int n)
 #if defined(GALSF)
        if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
         {
-            double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+            double star_age = evaluate_stellar_age_Gyr(n);
             if((star_age < 0.1)&&(star_age > 0)&&(!isnan(star_age))) return 1;
         }
 #else
@@ -76,7 +76,7 @@ int density_isactive(int n)
         if(P[n].DensAroundStar<=0) return 1;
         if(All.ComovingIntegrationOn==0) // only do stellar age evaluation if we have to //
         {
-            double star_age = evaluate_stellar_age_Gyr(P[n].StellarAge);
+            double star_age = evaluate_stellar_age_Gyr(n);
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && defined(PM_HIRES_REGION_CLIPPING)
             if(star_age < 0.0035) return 1;
 #else

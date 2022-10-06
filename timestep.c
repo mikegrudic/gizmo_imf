@@ -897,7 +897,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || (defined(GALSF) && defined(RADTRANSFER))
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
     {
-        double star_age = evaluate_stellar_age_Gyr(P[p].StellarAge);
+        double star_age = evaluate_stellar_age_Gyr(p);
         double dt_stellar_evol;
         dt_stellar_evol = DMAX(2.0e-4, star_age/250.); // restrict to small steps for young stars //
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)

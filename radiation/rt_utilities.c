@@ -373,7 +373,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     if(!((P[i].Type == 4) || ((All.ComovingIntegrationOn==0)&&((P[i].Type==2)||(P[i].Type==3))))) {return 0;} // only star-type particles act in this subroutine //
     int active_check = 0; // default to inactive //
 #if defined(GALSF) /* basically none of these modules make sense without the GALSF module active */
-    double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge), m_sol = P[i].Mass * UNIT_MASS_IN_SOLAR;
+    double star_age = evaluate_stellar_age_Gyr(i), m_sol = P[i].Mass * UNIT_MASS_IN_SOLAR;
     if((star_age<=0) || isnan(star_age)) {return 0;} // calculate stellar age, will be used below, and catch for bad values
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     if(star_age > 0.1) {return 0;} // old optimization, not really needed with how we do this now //
@@ -1453,7 +1453,7 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
     value_to_return = rt_get_source_luminosity(i, mode, lum); // call routine as normal for all bands, before adding chimes-specific details
     if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (PPP[i].Hsml>0) )
     {
-        int age_bin, j; double age_Myr=1000.*evaluate_stellar_age_Gyr(P[i].StellarAge), log_age_Myr=log10(age_Myr), stellar_mass=P[i].Mass*UNIT_MASS_IN_SOLAR;
+        int age_bin, j; double age_Myr=1000.*evaluate_stellar_age_Gyr(i), log_age_Myr=log10(age_Myr), stellar_mass=P[i].Mass*UNIT_MASS_IN_SOLAR;
         if(log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) {age_bin = 0;} else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);} else {
             age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1);
             if (age_bin > CHIMES_LOCAL_UV_NBINS - 1) {age_bin = CHIMES_LOCAL_UV_NBINS - 1;}}

@@ -696,6 +696,13 @@ int merge_particles_ij(int i, int j)
         if(P[i].Type==4 && P[j].Type==4) // couple extra potentially-important fields to carry for star particles
         {
 #ifdef GALSF_SFR_IMF_SAMPLING
+#ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
+            P[j].TimeDistribOfStarFormation = wt_j*P[j].TimeDistribOfStarFormation + wt_i*P[i].TimeDistribOfStarFormation; // average formation time //
+            if(P[i].IMF_NumMassiveStars + P[j].IMF_NumMassiveStars > 0) {
+                P[j].IMF_WeightedMeanStellarAge = (P[j].IMF_NumMassiveStars*P[j].IMF_WeightedMeanStellarAge + P[i].IMF_NumMassiveStars*P[i].IMF_WeightedMeanStellarAge)/(P[j].IMF_NumMassiveStars + P[i].IMF_NumMassiveStars);}
+            else {
+                P[j].IMF_WeightedMeanStellarAge = wt_j*P[j].IMF_WeightedMeanStellarAge + wt_i*P[i].IMF_WeightedMeanStellarAge;} // weight by number of massive stars if we still have any since these are still active and needed for stellar evolution, otherwise weight by mass
+#endif
             P[j].IMF_NumMassiveStars += P[i].IMF_NumMassiveStars; // O-star number conserving //
 #endif
             P[j].StellarAge = wt_j*P[j].StellarAge + wt_i*P[i].StellarAge; // average formation time //
@@ -1217,7 +1224,7 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
 {
     if(All.Time <= All.TimeBegin) {return 0;} // don't allow on first timestep
     if(P[i].Type != 4) {return 0;} // only stars
-    if(evaluate_stellar_age_Gyr(P[i].StellarAge) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
+    if(evaluate_stellar_age_Gyr(i) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense 
     double r_NGB = 1.2 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
     if(r_NGB > 2.*All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)

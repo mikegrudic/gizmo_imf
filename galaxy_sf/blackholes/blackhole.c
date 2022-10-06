@@ -402,12 +402,9 @@ void set_blackhole_mdot(int i, int n, double dt)
         nsubgridvar=(long)P[n].ID + (long)(All.Time/((All.TimeMax-All.TimeBegin)/1000.));
         /* this line just allows 'resetting' the time constants every so often, while generally keeping them steady */
         double fac;
-        if(All.ComovingIntegrationOn)
-            fac=omega_ri * (evaluate_stellar_age_Gyr(0.001)/(UNIT_TIME_IN_GYR));
-        else
-            fac=omega_ri * All.Time; /* All.Time is physical time, this is good */
+        if(All.ComovingIntegrationOn) {fac=omega_ri * (evaluate_time_since_t_initial_in_Gyr(0.001)/(UNIT_TIME_IN_GYR));} else {fac=omega_ri * All.Time;} /* All.Time is physical time, this is good */
         random_generator_forbh=gsl_rng_alloc(gsl_rng_ranlxd1);
-        gsl_rng_set(random_generator_forbh,nsubgridvar);
+        gsl_rng_set(random_generator_forbh, nsubgridvar);
         if(n0_sgrid_elements >= 1) {
             for(jsub=1;jsub<=n0_sgrid_elements;jsub++) {
                 varsg1=gsl_rng_uniform(random_generator_forbh);

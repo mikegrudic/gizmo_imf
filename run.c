@@ -225,6 +225,9 @@ void set_non_standard_physics_for_current_time(void)
     if(All.ComovingIntegrationOn) {LoadMultiSpeciesTables();}
 #endif
 
+#if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
+    update_stellarnumber_and_timedistribofstarformation();
+#endif
 }
 
 
@@ -598,17 +601,14 @@ integertime find_next_outputtime(integertime ti_curr)
   if(ti_next == -1)
     {
       ti_next = 2 * TIMEBASE;	/* this will prevent any further output */
-
-      if(ThisTask == 0)
-	printf("\nThere is no valid time for a further snapshot file.\n");
+      if(ThisTask == 0) {printf("\nThere is no valid time for a further snapshot file.\n");}
     }
   else
     {
       if(All.ComovingIntegrationOn) {next = All.TimeBegin * exp(ti_next * All.Timebase_interval);}
       else {next = All.TimeBegin + ti_next * All.Timebase_interval;}
 
-      if(ThisTask == 0)
-	printf("\nSetting next time for snapshot file to Time_next= %.16g  (DumpFlag=%d)\n", next, DumpFlag);
+      if(ThisTask == 0) {printf("\nSetting next time for snapshot file to Time_next= %.16g  (DumpFlag=%d)\n", next, DumpFlag);}
 
     }
 

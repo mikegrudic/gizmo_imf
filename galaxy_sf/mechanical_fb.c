@@ -85,7 +85,7 @@ void determine_where_SNe_occur(void)
         if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
         if(dt<=0) {continue;} // no time, no events
-        star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+        star_age = evaluate_stellar_age_Gyr(i);
         if(star_age<=0) {continue;} // unphysical age, no events
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;

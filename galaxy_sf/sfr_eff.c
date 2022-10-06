@@ -111,10 +111,15 @@ void assign_imf_properties_from_starforming_gas(int i)
 #ifdef GALSF_SFR_IMF_SAMPLING
     gsl_rng *random_generator_for_massivestars;
     random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1);
-    gsl_rng_set(random_generator_for_massivestars, P[i].ID+121);
+    gsl_rng_set(random_generator_for_massivestars, P[i].ID + 121 + All.NumCurrentTiStep);
     double mu = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
     unsigned int kk = gsl_ran_poisson(random_generator_for_massivestars, mu);
     P[i].IMF_NumMassiveStars = (double)kk;
+#ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
+    P[i].IMF_NumMassiveStars = 0; // set to zero, these will increase with time now
+    P[i].IMF_WeightedMeanStellarAge = All.Time; // set to the code value the same as the normal StellarAge parameter at this time
+    P[i].TimeDistribOfStarFormation = (GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF) * 0.54 / sqrt(All.G * SphP[i].Density * All.cf_a3inv); // distribute over the specified number of free-fall times
+#endif
 #endif
 }
 #endif
@@ -122,34 +127,14 @@ void assign_imf_properties_from_starforming_gas(int i)
 
 
 /* return the stellar age in Gyr for a given labeled age, needed throughout for stellar feedback */
-double evaluate_stellar_age_Gyr(double stellar_tform)
+double evaluate_stellar_age_Gyr(long i)
 {
-    double age,a0,a1,a2,x0,x1,x2;
-    if(All.ComovingIntegrationOn)
-    {
-        a0 = stellar_tform;
-        a2 = All.Time;
-        if(fabs(1-(All.OmegaMatter+All.OmegaLambda))<=0.01)
-        {
-            /* use exact solution for flat universe, ignoring the radiation-dominated epoch [no stars forming then] */
-            x0 = (All.OmegaMatter/(1-All.OmegaMatter))/(a0*a0*a0);
-            x2 = (All.OmegaMatter/(1-All.OmegaMatter))/(a2*a2*a2);
-            age = (2./(3.*sqrt(1-All.OmegaMatter)))*log(sqrt(x0*x2)/((sqrt(1+x2)-1)*(sqrt(1+x0)+1)));
-            age *= 1./All.Hubble_H0_CodeUnits;
-        } else {
-            /* use simple trap rule integration */
-            a1 = 0.5*(a0+a2);
-            x0 = 1./(a0*hubble_function(a0));
-            x1 = 1./(a1*hubble_function(a1));
-            x2 = 1./(a2*hubble_function(a2));
-            age = (a2-a0)*(x0+4.*x1+x2)/6.;
-        }
-    } else {
-        /* time variable is simple time, when not in comoving coordinates */
-        age=All.Time-stellar_tform;
-    }
-    age *= UNIT_TIME_IN_GYR; // convert to absolute Gyr
-    if((age<=1.e-5)||(isnan(age))) {age=1.e-5;}
+    double tform_code = P[i].StellarAge; // formation time as tracked in-code
+#if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
+    if(P[i].Type==4) {tform_code = P[i].IMF_WeightedMeanStellarAge;} // use this 'effective' age for this module, to reflect the spread-out duration of SF
+#endif
+    double age = evaluate_time_since_t_initial_in_Gyr(tform_code);
+    age = DMAX(age, 1.e-5); // set a floor for some routines
     return age;
 }
 
@@ -495,7 +480,7 @@ void star_formation_parent_routine(void)
                         if(All.SeedBlackHoleMassSigma > 0)
                         {
                             gsl_rng *random_generator_forbh; /* generate gaussian random number for random BH seed mass */
-                            random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1); gsl_rng_set(random_generator_forbh, P[i].ID+17);
+                            random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1); gsl_rng_set(random_generator_forbh, P[i].ID + 17 + All.NumCurrentTiStep);
                             P[i].BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma) );
                         }
                         P[i].Sink_Formation_Mass = P[i].Mass; // save the mass we had at the time of sink formation, because we will use this later to understand how the sink has grown

@@ -513,6 +513,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                   }
 #endif
             break;
+            
+        case IO_DTOSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) P[pindex].TimeDistribOfStarFormation;
+                    n++;
+                }
+#endif
+            break;
 
         case IO_GRAINSIZE:		/* grain size */
 #ifdef GRAIN_FLUID
@@ -1842,6 +1853,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_SFR:
         case IO_AGE:
         case IO_OSTAR:
+        case IO_DTOSTAR:
         case IO_GRAINSIZE:
         case IO_DELAYTIME:
         case IO_HSMS:
@@ -2128,6 +2140,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_SFR:
         case IO_AGE:
         case IO_OSTAR:
+        case IO_DTOSTAR:
         case IO_GRAINSIZE:
         case IO_GRAINTYPE:
         case IO_DELAYTIME:
@@ -2432,6 +2445,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             break;
 
         case IO_OSTAR:
+        case IO_DTOSTAR:
         case IO_HSMS:
             for(i = 0; i < 6; i++) {if(i != 4) {typelist[i] = 0;}}
             return nstars;
@@ -2768,6 +2782,12 @@ int blockpresent(enum iofields blocknr)
 
         case IO_OSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING
+            return 1;
+#endif
+            break;
+
+        case IO_DTOSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
             return 1;
 #endif
             break;
@@ -3255,7 +3275,10 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             strncpy(label, "IMF ", 4);
             break;
         case IO_OSTAR:
-            strncpy(label, "IMF ", 4);
+            strncpy(label, "NOST", 4);
+            break;
+        case IO_DTOSTAR:
+            strncpy(label, "DTST", 4);
             break;
         case IO_COSMICRAY_ENERGY:
             strncpy(label, "CREG ", 4);
@@ -3660,6 +3683,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_OSTAR:
             strcpy(buf, "OStarNumber");
+            break;
+        case IO_DTOSTAR:
+            strcpy(buf, "TimeDistribOfStarFormation");
             break;
         case IO_COSMICRAY_ENERGY:
             strcpy(buf, "CosmicRayEnergy");

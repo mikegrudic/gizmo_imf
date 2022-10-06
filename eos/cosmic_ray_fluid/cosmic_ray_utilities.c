@@ -1794,7 +1794,7 @@ double cr_get_source_injection_rate(int i)
 #ifdef GALSF_FB_MECHANICAL
     if(P[i].Type == 4)
     {
-        double star_age=evaluate_stellar_age_Gyr(P[i].StellarAge), RSNe=0, agemin=0.003401, agebrk=0.01037, agemax=0.03753;
+        double star_age=evaluate_stellar_age_Gyr(i), RSNe=0, agemin=0.003401, agebrk=0.01037, agemax=0.03753;
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         agemin=0.0037; agebrk=0.7e-2; agemax=0.044; double f1=3.9e-4, f2=5.1e-4, f3=1.8e-4; // inputs for newer SNe rate (and newer Ia rate below)
         if(star_age<agemin) {RSNe=0;} else if(star_age<=agebrk) {RSNe=f1*pow(star_age/agemin,log(f2/f1)/log(agebrk/agemin));} else if(star_age<=agemax) {RSNe=f2*pow(star_age/agebrk,log(f3/f2)/log(agemax/agebrk));} else {RSNe=0;} // core-collapse; updated with same stellar evolution models for wind mass loss [see there for references]. simple 2-part power-law provides extremely-accurate fit. models predict a totally negligible metallicity-dependence.

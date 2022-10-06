@@ -504,7 +504,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
              for(n = 0; n < pc; n++) {P[offset + n].IMF_NumMassiveStars = *fp++;}
 #endif
             break;
-            
+
+        case IO_DTOSTAR:
+#ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
+            for(n = 0; n < pc; n++) {P[offset + n].TimeDistribOfStarFormation = *fp++;}
+#endif
+            break;
+
         case IO_UNSPMASS:
 #if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
              for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_mass = *fp++;}
@@ -945,6 +951,7 @@ void read_file(char *fname, int readTask, int lastTask)
             if(RestartFlag == 2 && blocknr == IO_RADGAMMA) {continue;}
             if(RestartFlag == 2 && blocknr == IO_EDDINGTON_TENSOR) {continue;}
             if(RestartFlag == 2 && blocknr == IO_OSTAR) {continue;}
+            if(RestartFlag == 2 && blocknr == IO_DTOSTAR) {continue;}
             if(RestartFlag == 2 && blocknr == IO_HII) {continue;}
             if(RestartFlag == 2 && blocknr == IO_HeI) {continue;}
             if(RestartFlag == 2 && blocknr == IO_HeII) {continue;}
