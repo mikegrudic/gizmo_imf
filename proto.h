@@ -565,7 +565,7 @@ void st_turbdrive_calc_phases(void);
 double st_return_driving_scale(void);
 #endif
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
-double evaluate_time_since_t_initial_in_Gyr(long i);
+double evaluate_time_since_t_initial_in_Gyr(double t_initial);
 
 #ifdef GALSF
 int is_particle_single_star_eligible(long i);

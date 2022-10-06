@@ -2193,7 +2193,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(ptype != 0) {dx_dm = nop->s_dm[0] - pos_x; dy_dm = nop->s_dm[1] - pos_y; dz_dm = nop->s_dm[2] - pos_z; mass_dm = nop->mass_dm;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;} /* we have a dark matter particle as target */
 #endif
 #if defined(BH_DYNFRICTION_FROMTREE)
-                m_j_eff_for_df = (nop->mass) / (nop->N_part);
+                m_j_eff_for_df = (nop->u.d.mass) / (nop->N_part);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
                 {int ki,kj; for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj];}}}
@@ -2496,7 +2496,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
             if(ptype==0 && r>0 && cr_injection>0 && All.Time>All.TimeBegin)
             {
-                double kappa_0 = All.CosmicRay_Subgrid_Kappa_0, vst_0 = All.CosmicRay_Subgrid_Vstream_0; // in code units 
+                double kappa_0 = All.CosmicRay_Subgrid_Kappa_0, vst_0 = All.CosmicRay_Subgrid_Vstream_0; // in code units
                 double r_phys = sqrt(r*r + soft*soft/4.) * All.cf_atime, t_max = DMIN(1., evaluate_time_since_t_initial_in_Gyr(All.TimeBegin))/UNIT_TIME_IN_GYR; // make sure we're working in physical code units, and assign max time to formation at begin time, and include very crude 'softening' term here to prevent divergennce as r->0: for our default parameters can't be too large here or we get unphysically large CR halos compared to reality, b/c of large effective streaming terms
                 double r_max = 0.5*t_max*vst_0 * (1. + sqrt(1. + 16.*kappa_0/(vst_0*vst_0*t_max))); // maximum stream distance
 #ifdef PMGRID

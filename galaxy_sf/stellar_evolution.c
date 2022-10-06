@@ -4,6 +4,9 @@
 #include <string.h>
 #include <math.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_eigen.h>
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
@@ -691,6 +694,7 @@ void update_stellarnumber_and_timedistribofstarformation(void)
                     P[i].IMF_NumMassiveStars += n_to_add; // add this to the number of massive stars that we are tracking explicitly
                 }
             }
+        }
     }
 }
 #endif
