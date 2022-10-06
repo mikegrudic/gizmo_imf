@@ -158,7 +158,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     BPP(i).BH_CountProgs += out->BH_CountProgs;
 #endif
 #ifdef GALSF
-    if(P[i].StellarAge > out->Accreted_Age) P[i].StellarAge = out->Accreted_Age;
+    if(P[i].StellarAge > out->Accreted_Age) {P[i].StellarAge = out->Accreted_Age;}
 #endif
 }
 

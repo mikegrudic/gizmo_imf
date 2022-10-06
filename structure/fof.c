@@ -1825,7 +1825,7 @@ void fof_make_black_holes(void)
         {
             /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
             random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
-            gsl_rng_set(random_generator_forbh,P[import_indices[n]].ID+17);
+            gsl_rng_set(random_generator_forbh, P[import_indices[n]].ID + 17 + All.NumCurrentTiStep);
             random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
             BPP(import_indices[n]).BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
             unitmass_in_msun = UNIT_MASS_IN_SOLAR;

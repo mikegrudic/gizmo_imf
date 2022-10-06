@@ -164,7 +164,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 if(r2>=h2) {continue;} // outside kernel //
 #endif
 #ifdef BH_WIND_SPAWN
-		if(P[j].StellarAge==All.Time) {continue;} // This is a wind cell that was just spawned, and is not yet part of the volume partition, so don't inject // 
+                if(P[j].StellarAge==All.Time) {continue;} // This is a wind cell that was just spawned, and is not yet part of the volume partition, so don't inject // 
 #endif
                 r = sqrt(r2); // useful variables for below
                 

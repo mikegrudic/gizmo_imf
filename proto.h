@@ -565,11 +565,11 @@ void st_turbdrive_calc_phases(void);
 double st_return_driving_scale(void);
 #endif
 double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
-
+double evaluate_time_since_t_initial_in_Gyr(long i);
 
 #ifdef GALSF
 int is_particle_single_star_eligible(long i);
-double evaluate_stellar_age_Gyr(double stellar_tform);
+double evaluate_stellar_age_Gyr(long i);
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i, int mode);
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
@@ -603,6 +603,12 @@ double get_age_tracer_bin_start_time(int k);
 #endif
 #endif
 #endif
+
+
+#if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
+void update_stellarnumber_and_timedistribofstarformation(void);
+#endif
+
 
 #ifdef SINGLE_STAR_FB_JETS
 double single_star_jet_velocity(int n);

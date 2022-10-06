@@ -30,7 +30,7 @@ void radiation_pressure_winds_consolidated(void)
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
-            double star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
+            double star_age = evaluate_stellar_age_Gyr(i);
             if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
             {
                 /* calculate some basic luminosity properties of the stars */
@@ -229,7 +229,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
             stellum = All.HIIRegion_fLum_Coupled * particle_ionizing_luminosity_in_cgs(i); // ionizing luminosity in cgs [will be appropriately weighted for assumed spectral shape]
 #ifdef CHIMES_HII_REGIONS
-            stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(P[i].StellarAge)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
+            stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(i)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
 #endif
             if(stellum <= 0) {continue;}
             pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = PPP[i].Hsml;
@@ -384,7 +384,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 int do_the_local_ionization(int target, double dt, int source)
 {
 #if defined(CHIMES_HII_REGIONS) // set a number of chimes-specific quantities here //
-    int k,age_bin=0; double stellar_age_myr=1000.*evaluate_stellar_age_Gyr(P[source].StellarAge), log_age_Myr=log10(stellar_age_myr); // determine stellar age bin
+    int k,age_bin=0; double stellar_age_myr=1000.*evaluate_stellar_age_Gyr(source), log_age_Myr=log10(stellar_age_myr); // determine stellar age bin
     if(log_age_Myr<CHIMES_LOCAL_UV_AGE_LOW) {age_bin=0;} else if(log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);}
     else {age_bin = (int) floor((((log_age_Myr - CHIMES_LOCAL_UV_AGE_MID) / CHIMES_LOCAL_UV_DELTA_AGE_HI) + ((CHIMES_LOCAL_UV_AGE_MID - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW)) + 1); if(age_bin > CHIMES_LOCAL_UV_NBINS - 1) {age_bin = CHIMES_LOCAL_UV_NBINS - 1;}}
     // reset all of the HII-region chimes quantities to null
