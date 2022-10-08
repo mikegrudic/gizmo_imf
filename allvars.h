@@ -2818,6 +2818,9 @@ extern ALIGN(32) struct particle_data
 #define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
+#ifdef GALSF_FB_FIRE_PROTOSTELLARJETS
+    MyFloat NewStar_Momentum_For_JetFeedback; /* amount of momentum to return from protostellar jet sub-grid model */
+#endif
 
 #if defined(GRAIN_FLUID)
     MyFloat Grain_Size;

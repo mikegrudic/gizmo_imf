@@ -62,6 +62,10 @@ void radiation_pressure_winds_consolidated(void)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
                 delta_v_imparted_rp = 2. * DMAX( v_grav_guess , v_wind_threshold ); // because of re-written layer below [where this is distributed to many cells], call this less often
                 prob = dv_imparted_perpart_guess / delta_v_imparted_rp; // chance of kick
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                double jet_momentum_tocouple = 0;
+                if((P[i].Type==4) && (P[i].NewStar_Momentum_For_JetFeedback>0)) {prob = 1; jet_momentum_tocouple = P[i].NewStar_Momentum_For_JetFeedback;} // require entering loop with desired momentum budget in addition to usual
+#endif
                 if(prob < 1 && prob > 0) {dE_over_c /= prob;} // if assigning low-probability, need to up-weight the kick to statistically couple the right momentum
 #endif
                 double p_random = get_random_number(P[i].ID+ThisTask+i+2); // random number for use below
@@ -120,6 +124,11 @@ void radiation_pressure_winds_consolidated(void)
                                 double tau_uv = rt_kappa(j,RT_FREQ_BIN_FIRE_UV) * sigma_cell_to_total, tau_op = rt_kappa(j,RT_FREQ_BIN_FIRE_OPT) * sigma_cell_to_total; // opacity in uv and optical bands
                                 double frac_abs = f_lum_ion + (1.-f_lum_ion) * (1. - 0.5*(exp(-tau_uv) + exp(-tau_op))); // absorbed fraction in the actual cell
                                 dv_imparted_singlescattering *= frac_abs; // reduce the single-scattering flux by the fraction of that flux actually absorbed
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                                if(jet_momentum_tocouple > 0) {
+                                    dv_imparted_singlescattering += wk * jet_momentum_tocouple / P[j].Mass; // add extra momentum per our setup
+                                    P[i].NewStar_Momentum_For_JetFeedback -= delta_v_fromjet * P[j].Mass;} // remove it from the budget
+#endif
 #endif
                                 /* velocity imparted by IR acceleration : = kappa*flux/c, flux scales as 1/r2 from source, kappa with metallicity */
                                 double kappa_ir_codeunits = rt_kappa(j,RT_FREQ_BIN_FIRE_IR); // opacity in code units

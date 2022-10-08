@@ -541,7 +541,10 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
-                            
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                            P[i].NewStar_Momentum_For_JetFeedback = P[i].Mass * 40./UNIT_VEL_IN_KMS;
+#endif
+
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                             if(is_particle_single_star_eligible(i))
                             {
@@ -652,6 +655,9 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             SphP[i].MassTrue -= P[NumPart + stars_spawned].Mass;
                             if(SphP[i].MassTrue<0) SphP[i].MassTrue=0;
+#endif
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                            P[NumPart + stars_spawned].NewStar_Momentum_For_JetFeedback = P[NumPart + stars_spawned].Mass * 40./UNIT_VEL_IN_KMS;
 #endif
                             sum_mass_stars += P[NumPart + stars_spawned].Mass;
                             P[NumPart + stars_spawned].StellarAge = All.Time;
