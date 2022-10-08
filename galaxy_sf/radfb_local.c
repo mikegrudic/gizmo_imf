@@ -127,7 +127,7 @@ void radiation_pressure_winds_consolidated(void)
 #if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
                                 if(jet_momentum_tocouple > 0) {
                                     dv_imparted_singlescattering += wk * jet_momentum_tocouple / P[j].Mass; // add extra momentum per our setup
-                                    P[i].NewStar_Momentum_For_JetFeedback -= delta_v_fromjet * P[j].Mass;} // remove it from the budget
+                                    P[i].NewStar_Momentum_For_JetFeedback -= wk * jet_momentum_tocouple;} // remove it from the budget
 #endif
 #endif
                                 /* velocity imparted by IR acceleration : = kappa*flux/c, flux scales as 1/r2 from source, kappa with metallicity */

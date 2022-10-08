@@ -676,7 +676,7 @@ void update_stellarnumber_and_timedistribofstarformation(void)
     {
         if(P[i].Type == 4)
         {
-            double dt_since_form_code = evaluate_stellar_age_Gyr(i) / UNIT_TIME_IN_GYR; // time since spawn in code [physical] units
+            double dt_since_form_code = evaluate_time_since_t_initial_in_Gyr(P[i].StellarAge) / UNIT_TIME_IN_GYR; // time since spawn in code [physical] units
             if((dt_since_form_code < P[i].TimeDistribOfStarFormation) && (P[i].TimeDistribOfStarFormation > 0)) // candidate for 'spawning'
             {
                 double dt_remaining = P[i].TimeDistribOfStarFormation - dt_since_form_code; // time remaining to spawn
@@ -690,7 +690,7 @@ void update_stellarnumber_and_timedistribofstarformation(void)
                 unsigned int n_to_add = gsl_ran_poisson(random_generator_for_massivestars, dn_expected_in_dt); // actually draw the number
                 if(n_to_add > 0) // hey, new stars!
                 {
-                    P[i].IMF_WeightedMeanStellarAge = (P[i].IMF_NumMassiveStars * P[i].StellarAge + n_to_add * All.Time) / (P[i].IMF_NumMassiveStars + n_to_add); // update the effective stellar age (so e.g. if we lose stars, this can keep updating)
+                    P[i].IMF_WeightedMeanStellarFormationTime = (P[i].IMF_NumMassiveStars * P[i].StellarAge + n_to_add * All.Time) / (P[i].IMF_NumMassiveStars + n_to_add); // update the effective stellar age (so e.g. if we lose stars, this can keep updating)
                     P[i].IMF_NumMassiveStars += n_to_add; // add this to the number of massive stars that we are tracking explicitly
                 }
             }

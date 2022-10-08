@@ -699,9 +699,9 @@ int merge_particles_ij(int i, int j)
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
             P[j].TimeDistribOfStarFormation = wt_j*P[j].TimeDistribOfStarFormation + wt_i*P[i].TimeDistribOfStarFormation; // average formation time //
             if(P[i].IMF_NumMassiveStars + P[j].IMF_NumMassiveStars > 0) {
-                P[j].IMF_WeightedMeanStellarAge = (P[j].IMF_NumMassiveStars*P[j].IMF_WeightedMeanStellarAge + P[i].IMF_NumMassiveStars*P[i].IMF_WeightedMeanStellarAge)/(P[j].IMF_NumMassiveStars + P[i].IMF_NumMassiveStars);}
+                P[j].IMF_WeightedMeanStellarFormationTime = (P[j].IMF_NumMassiveStars*P[j].IMF_WeightedMeanStellarFormationTime + P[i].IMF_NumMassiveStars*P[i].IMF_WeightedMeanStellarFormationTime)/(P[j].IMF_NumMassiveStars + P[i].IMF_NumMassiveStars);}
             else {
-                P[j].IMF_WeightedMeanStellarAge = wt_j*P[j].IMF_WeightedMeanStellarAge + wt_i*P[i].IMF_WeightedMeanStellarAge;} // weight by number of massive stars if we still have any since these are still active and needed for stellar evolution, otherwise weight by mass
+                P[j].IMF_WeightedMeanStellarFormationTime = wt_j*P[j].IMF_WeightedMeanStellarFormationTime + wt_i*P[i].IMF_WeightedMeanStellarFormationTime;} // weight by number of massive stars if we still have any since these are still active and needed for stellar evolution, otherwise weight by mass
 #endif
             P[j].IMF_NumMassiveStars += P[i].IMF_NumMassiveStars; // O-star number conserving //
 #endif

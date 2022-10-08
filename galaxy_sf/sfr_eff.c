@@ -117,7 +117,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     P[i].IMF_NumMassiveStars = (double)kk;
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
     P[i].IMF_NumMassiveStars = 0; // set to zero, these will increase with time now
-    P[i].IMF_WeightedMeanStellarAge = All.Time; // set to the code value the same as the normal StellarAge parameter at this time
+    P[i].IMF_WeightedMeanStellarFormationTime = All.Time; // set to the code value the same as the normal StellarAge parameter at this time
     P[i].TimeDistribOfStarFormation = (GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF) * 0.54 / sqrt(All.G * SphP[i].Density * All.cf_a3inv); // distribute over the specified number of free-fall times
 #endif
 #endif
@@ -131,7 +131,7 @@ double evaluate_stellar_age_Gyr(long i)
 {
     double tform_code = P[i].StellarAge; // formation time as tracked in-code
 #if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
-    if(P[i].Type==4) {tform_code = P[i].IMF_WeightedMeanStellarAge;} // use this 'effective' age for this module, to reflect the spread-out duration of SF
+    if(P[i].Type==4) {tform_code = P[i].IMF_WeightedMeanStellarFormationTime;} // use this 'effective' age for this module, to reflect the spread-out duration of SF
 #endif
     double age = evaluate_time_since_t_initial_in_Gyr(tform_code);
     age = DMAX(age, 1.e-5); // set a floor for some routines

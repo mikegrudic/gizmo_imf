@@ -2783,7 +2783,7 @@ extern ALIGN(32) struct particle_data
     MyFloat IMF_NumMassiveStars; /*!< number of massive stars to associate with this star particle (for feedback) */
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
     MyFloat TimeDistribOfStarFormation; /*!< free-fall time at the moment of star formation, which defines for this particle the delay distribution for forming the relevant O-stars */
-    MyFloat IMF_WeightedMeanStellarAge; /*!< weighted mean stellar formation time, to use instead of the normal stellarage parameter on-the-fly */
+    MyFloat IMF_WeightedMeanStellarFormationTime; /*!< weighted mean stellar formation time, to use instead of the normal stellarage parameter on-the-fly */
 #endif
 #endif
 
