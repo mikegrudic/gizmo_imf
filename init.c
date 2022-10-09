@@ -272,6 +272,9 @@ void init(void)
             double nx[3],ny[3],nz[3]; int kw; get_random_orthonormal_basis(P[i].ID,nx,ny,nz); for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];}
 #endif
 #endif
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+            P[i].NewStar_Momentum_For_JetFeedback = 0;
+#endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
             P[i].SNe_ThisTimeStep = 0;
 #endif
