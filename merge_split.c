@@ -116,6 +116,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
     {
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
         double dt_to_ramp_refinement = 0.00001;
+        dt_to_ramp_refinement = 1.e-6; // ??? testing [for specific time chosen, hard-coded but change as needed]
         double minimum_refinement_mass_in_solar = 0.005; // aims at 0.01 effective
         
         double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
@@ -133,6 +134,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
 
         double t_00 = All.TimeBegin;
+        t_00 = 0.1843705; // ??? testing [for specific time chosen, hard-coded but change as needed]
         double dtau = (All.Time - t_00) / dt_to_ramp_refinement, dtdelay=0.1, tfinal=1.;
         if(dtau < dtdelay) {slope=0;} else {slope=target_slope * (1. - exp(- ((dtau-dtdelay) / (tfinal - dtdelay)) ));} // alt model
 
