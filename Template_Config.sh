@@ -652,3 +652,30 @@
 #OUTPUT_GDE_DISTORTIONTENSOR    #- write phase-space distortion tensor to snapshot
 #OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
 ####################################################################################################-
+
+
+####################################################################################################-
+#-------------------------------- misc dev flags needing to be incorporated here (in testing)
+#GALSF_FB_FIRE_PROTOSTELLARJETS             #- simple model for prompt recycling of protostellar jet material based on scalings in Grudic et al., arXiv:2201.00882. developed by PFH
+#GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF=(2.0) #- star particle formation of O-stars is spread over this multiple of the free-fall time; requires GALSF_SFR_IMF_SAMPLING. developed by PFH
+#GALSF_MERGER_STARCLUSTER_PARTICLES         #- module which merges star particles together meeting certain core-collapse conditions, so they can be cosmologically evolved. developed by PFH
+#GALSF_FB_FIRE_AGE_TRACERS                  #- model for arbitrary tracers of different age-bins of stellar yields, which can be re-convolved in post-processing. developed by A. Emerick, paper in prep by A. Wetzel
+#BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS     #- rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
+#BH_EXCISION_NONGAS                         #- excise non-gas elements too close to a sink if they meet various criteria including being bound, sufficiently old (if stars), within and with maximum possible apocentric radii within the sink softening (which is rescaled appropriately). mass is added to the sink dynamical mass reservoir, not disk or sink itself. developed by PFH
+#BH_EXCISION_GAS                            #- excise gas elements too close to a sink with a similar criterion to BH_EXCISION_NONGAS.
+#BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA    #- 
+#BH_INTERACT_ON_GAS_TIMESTEP                #-
+#BH_GRAVCAPTURE_FIXEDSINKRADIUS             #-
+#SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #-
+#STARFORGE_FILAMENT_TURBINIT                #-
+#STARFORGE_GMC_TURBINIT                     #-
+#STARFORGE_GMC_ALPHA                        #-
+#STARFORGE_FEEDBACK_TRACERS                 #-
+#SINGLE_STAR_FB_TIMESTEPLIMIT               #-
+#ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION     #-
+#ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT      #-
+#ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING #-
+#CBE_INTEGRATOR_WITHGRADIENTS               #-
+#CRFLUID_DIFFUSION_CORRECTION_TERMS         #-
+#STARS_ONLY_SNAPSHOT_FREQUENCY              #-
+####################################################################################################-
