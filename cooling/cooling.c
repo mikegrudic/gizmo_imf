@@ -180,34 +180,46 @@ void do_the_cooling_for_particle(int i)
 #if defined(RADTRANSFER) /* account for cooling radiation which should, according to our modules, come out in certain bands */
         double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
         double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
+        double de_u = (unew - SphP[i].InternalEnergy) * P[i].Mass; /* change in the total internal energy of the gas cell [integrating over everything] */
+        double de_rad_tot_final = 0, de_rad_tot = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {de_rad_tot += SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact;} /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
+        if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
-            if(fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER)
+            if((fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
             {
-                double de_u = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-                if(de_u<=-0.99*SphP[i].Rad_E_gamma[k]) {de_u=-0.99*SphP[i].Rad_E_gamma[k]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
-#ifdef RT_INFRARED
-                if(k==RT_FREQ_BIN_INFRARED) // need to also update the IR band temperature measure
+                double de_rad = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
+                if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+                if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
-                    double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
-                    temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-                    double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_u, temp_de0 = MIN_REAL_NUMBER + temp;
-                    SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
-                    SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
-                }
+                    double de_rad_min = DMIN(DMAX( -0.99*SphP[i].Rad_E_gamma[k] , -de_u ), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
+                    double de_rad_max = DMAX(DMIN( 100.*unew*P[i].Mass, -de_u), 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
+                    de_rad = DMAX(DMIN(de_rad, de_rad_max), de_rad_min); // limit de_rad appropriately
+                    if(fabs(de_rad) > MIN_REAL_NUMBER)
+                    {
+                        de_rad_tot_final += de_rad; // add to our running total
+#ifdef RT_INFRARED
+                        if(k==RT_FREQ_BIN_INFRARED) // need to also update the IR band temperature measure
+                        {
+                            double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
+                            temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+                            double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp;
+                            SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
+                            SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
+                        }
 #endif
-                SphP[i].Rad_E_gamma[k] += de_u; /* energy gained by gas is lost here (or vice versa if dust is acting as a net coolant) */
-                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
+                        SphP[i].Rad_E_gamma[k] += de_rad; /* energy gained by gas is lost here (or vice versa if dust is acting as a net coolant) */
+                        SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
 #if defined(RT_EVOLVE_INTENSITIES)
-                int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
+                        int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_rad/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_rad/RT_INTENSITY_BINS_DOMEGA;}
 #endif
-                int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux:
+                        int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux
 #if defined(RT_EVOLVE_FLUX)
-                for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_u;
-                    SphP[i].Rad_Flux[k][kv] += fluxfac; SphP[i].Rad_Flux_Pred[k][kv] += fluxfac;}
+                        for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_rad; SphP[i].Rad_Flux[k][kv] += fluxfac; SphP[i].Rad_Flux_Pred[k][kv] += fluxfac;}
 #endif
-                double momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
-                for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
+                        double momfac = 1. - de_rad / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
+                        for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
+                    }
+                }
             }
         }
 #endif // done with RHD-cooling block update
