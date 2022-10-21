@@ -41,7 +41,7 @@ double CoolingRateFromU(double u, double rho, double ne_guess, double *ne_eval, 
 double DoCooling(double u_old, double rho, double dt, double ne_guess, double *ne_eval, int target);
 #ifndef CHIMES
 double GetCoolingTime(double u_old, double rho, double ne_guess, double *ne_eval, int target);
-double DoInstabilityCooling(double m_old, double u, double rho, double dt, double fac, double ne_guess, double *ne_eval int target);
+double DoInstabilityCooling(double m_old, double u, double rho, double dt, double fac, double ne_guess, double *ne_eval, int target);
 #endif
 
 #ifdef COOL_GRACKLE
