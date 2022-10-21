@@ -215,7 +215,8 @@ double get_starformation_rate(int i, int mode)
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
     double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP; /* evaporation factor */
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold; /* specific energy of hot [volume-filling] phase gas */
-    double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, SphP[i].Ne, i); /* cooling time of two-phase mix */
+    double ne_in = SphP[i].Ne, ne_out = ne_in; /* free electron fraction */
+    double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, ne_in, &ne_out, i); /* cooling time of two-phase mix */
     y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold); /* parameter */
     double cloudmass_fraction = (1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y))); /* quasi-equilibrium mass in cold phase */
     rateOfSF = (1 - All.FactorSN) * cloudmass_fraction * P[i].Mass / tsfr; /* SFR given by cold mass (less SNe-entrainment fraction) divided by tSFR */
@@ -374,8 +375,8 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
 {
     double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
     double x = cloudmass_fraction, factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
-    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
-    ne=1.0;
+    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne, ne_out;
+    ne=1.0; ne_out=ne;
 
 #if defined(BH_THERMALFEEDBACK)
     if((SphP[i].Injected_BH_Energy > 0) && (P[i].Mass>0))
@@ -383,7 +384,7 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
         egycurrent += SphP[i].Injected_BH_Energy / P[i].Mass;
         if(egycurrent > egyeff)
         {
-            tcool = GetCoolingTime(egycurrent, SphP[i].Density * All.cf_a3inv, ne, i);
+            tcool = GetCoolingTime(egycurrent, SphP[i].Density * All.cf_a3inv, ne, &ne_out, i);
             if(tcool < trelax && tcool > 0) trelax = tcool;
         }
         SphP[i].Injected_BH_Energy = 0;
@@ -847,7 +848,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 /* Routine to initialize quantities needed for the Spingel & Hernquist effective equation of state */
 void init_clouds(void)
 {
-  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
+  double A0, dens, tcool, ne, ne_out, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
   double tsfr, y, peff, fac, neff, egyeff, factorEVP, thresholdStarburst;
 #ifdef COOL_METAL_LINES_BY_SPECIES
   int k; double Z[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) Z[k]=0;
@@ -870,7 +871,7 @@ void init_clouds(void)
 
       ne = 1.0;
       SetZeroIonization();
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
       coolrate = egyhot / tcool / dens;
       x = (egyhot - u4) / (egyhot - All.EgySpecCold);
 
@@ -893,7 +894,7 @@ void init_clouds(void)
 	  egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
 
 	  ne = 0.5;
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
 
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
@@ -908,7 +909,7 @@ void init_clouds(void)
 	  egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
 
 	  ne = 0.5;
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
 
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
