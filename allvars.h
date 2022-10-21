@@ -3239,9 +3239,7 @@ extern struct gas_cell_data
     int CoolingIsOperatorSplitThisTimestep; /* flag to tell us if cooling is operator split or not on a given timestep */
 #endif
 #ifndef CHIMES
-    MyFloat Ne;  /*!< electron fraction, expressed as local electron number
-		    density normalized to the hydrogen number density. Gives
-		    indirectly ionization state and mean molecular weight. */
+    MyFloat Ne;  /*!< electron fraction, expressed as local electron number density normalized to the hydrogen number density. Gives indirectly ionization state and mean molecular weight. */
 #endif
 #endif
 #ifdef GALSF

@@ -1007,7 +1007,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    double ne = SphP[pindex].Ne; u = SphP[pindex].InternalEnergyPred; tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex); /* get cooling time */
+                    double ne = SphP[pindex].Ne, ne_out=ne; u = SphP[pindex].InternalEnergyPred; tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, &ne_out, pindex); /* get cooling time */
                     double coolrate_to_output = 0; if(tcool != 0) {coolrate_to_output = u / tcool;} /* convert cooling time with current thermal energy to du/dt */
                     *fp++ = (MyOutputFloat) coolrate_to_output;
                     n++;
