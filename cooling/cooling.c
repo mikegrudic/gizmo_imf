@@ -633,7 +633,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     if(shieldfac < 0) {shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);} // if < 0, that's a key to tell us this needs to be recalculated
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
-    double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
+    double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs, ne_lower=0, ne_upper=1.; /* more initialized quantities */
+    int bisection_mode=0; // 0 if doing the usual fixed-point iteration; 1 if switched to bisection method
     if(target >= 0) {dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target);} // dtime [code units]
     fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
 
@@ -766,21 +767,34 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
         if(!isfinite(n_elec)) {printf("target=%d niter=%d logT=%g n_elec/old=%g/%g nHp/nHep/nHepp=%g/%g/%g nHcgs=%g yHe=%g dt=%g shieldfac/local_gammamult=%g/%g aHp/aHep/aHepp=%g/%g/%g geH0/geHe0/geHep=%g/%g/%g gJH0ne/gJHe0ne/gJHepne=%g/%g/%g \n",target,niter,logT,n_elec,neold,nHp,nHep,nHepp,nHcgs,yhelium(target),dt,shieldfac,local_gammamultiplier,aHp,aHep,aHepp,geH0,geHe0,geHep,gJH0ne,gJHe0ne,gJHepne);}
 
+	double error_old = fabs(n_elec - neold); // save the old error to compare with the new one, so we can check if we're converging
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
 #ifdef COOL_LOW_TEMPERATURES
         n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho, n_elec);
 #endif
-        necgs = n_elec * nHcgs;
-
+	
         if(J_UV == 0) break;
+	
+	// keep track of these bounds in case we need to switch to bisection
+	if(n_elec > neold){ne_lower = DMAX(neold, ne_lower);}
+	if(n_elec < neold){ne_upper = DMIN(neold, ne_upper);}
 
-        nenew = 0.5 * (n_elec + neold);
+	if(bisection_mode){ // if fixed-point mode is not converging fast enough and we switched to bisection mode
+	    if(n_elec < neold) {nenew = 0.5*(ne_lower + neold); ne_upper=neold;} // go to left midpoint and update the upper bound
+	    else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
+	} else { // otherwise we do the usual fixed-point iteration
+	    nenew = 0.5 * (n_elec + neold);
+	    if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-12)) { // if we're converging slower than bisection, just switch to bisection
+		bisection_mode = 1;
+	    }
+	}
+
         n_elec = nenew;
         if(!isfinite(n_elec)) {n_elec=1;}
         necgs = n_elec * nHcgs;
 
-        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-4);
+        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-12); // desired absolute tolerance for n_elec
         if(fabs(n_elec - neold) < dneTHhold) break;
 
         if(niter > (MAXITER - 10)) {printf("n_elec= %g/%g/%g yh=%g nHcgs=%g niter=%d\n", n_elec,neold,nenew, yhelium(target), nHcgs, niter);}
