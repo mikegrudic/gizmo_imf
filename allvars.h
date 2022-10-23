@@ -1357,8 +1357,8 @@ typedef unsigned long long peanokey;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
-#define  MAX_REAL_NUMBER  1e37
-#define  MIN_REAL_NUMBER  1e-37
+#define  MAX_REAL_NUMBER  1e56
+#define  MIN_REAL_NUMBER  1e-56
 
 #if (defined(MAGNETIC) && !defined(COOLING)) || defined(EOS_ELASTIC)
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
