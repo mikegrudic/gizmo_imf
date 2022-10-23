@@ -728,13 +728,13 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef INPUT_IN_DOUBLEPRECISION
     if(header.flag_doubleprecision == 0)
     {
-        if(ThisTask == 0) {printf("\nProblem: Code compiled with INPUT_IN_DOUBLEPRECISION, but input files are in single precision!\n");}
+        if(ThisTask == 0) {printf("\nProblem: Code compiled with INPUT_IN_DOUBLEPRECISION, but input files are in single precision!\n"); fflush(stdout);}
         endrun(11);
     }
 #else
     if(header.flag_doubleprecision)
     {
-        if(ThisTask == 0) {printf("\nProblem: Code not compiled with INPUT_IN_DOUBLEPRECISION, but input files are in double precision!\n");}
+        if(ThisTask == 0) {printf("\nProblem: Code not compiled with INPUT_IN_DOUBLEPRECISION, but input files are in double precision!\n"); fflush(stdout);}
         endrun(10);
     }
 #endif
@@ -1140,16 +1140,11 @@ void read_file(char *fname, int readTask, int lastTask)
                         if(All.ICFormat == 1 || All.ICFormat == 2)
                         {
                             SKIP2;
-
                             if(blksize1 != blksize2)
                             {
                                 printf("incorrect block-sizes detected!\n");
                                 printf("Task=%d   blocknr=%d  blksize1=%d  blksize2=%d\n", ThisTask, bnr, blksize1, blksize2);
-                                if(blocknr == IO_ID)
-                                {
-                                    printf
-                                    ("Possible mismatch of 32bit and 64bit ID's in IC file and GIZMO compilation !\n");
-                                }
+                                if(blocknr == IO_ID) {printf("Possible mismatch of 32bit and 64bit ID's in IC file and GIZMO compilation !\n");}
                                 fflush(stdout);
                                 endrun(1889);
                             }

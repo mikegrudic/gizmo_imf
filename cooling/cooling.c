@@ -309,7 +309,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
 
 #else // CHIMES
 
-    int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0; double LambdaNet, ratefact, u_upper, u_lower;
+    int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0, maxiter_uplo=10*MAXITER; double LambdaNet, ratefact, u_upper, u_lower;
 #ifdef RT_INFRARED
     double Lambda_IRBand;
 #endif    
@@ -328,7 +328,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     {
         u_upper *= sqrt(1.1); u_lower /= sqrt(1.1);
         du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_upper<MAXITER)&&(du_net_upper < 0))
+        while((iter_upper<maxiter_uplo)&&(du_net_upper < 0))
         {
             u_upper *= 1.1; u_lower *= 1.1; iter_upper++;
             du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
@@ -340,7 +340,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     {
         u_lower /= sqrt(1.1); u_upper *= sqrt(1.1);
         du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_lower<MAXITER)&&(du_net_lower > 0))
+        while((iter_lower<maxiter_uplo)&&(du_net_lower > 0))
         {
             u_upper /= 1.1; u_lower /= 1.1; iter_lower++;
             du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
@@ -366,10 +366,12 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
+/* // testing removal of this condition -- no longer needed given our more careful checking of the energetic limits being used for the radiation transfer //
 #ifdef RT_INFRARED  // additional, stronger convergence criteria for problems where you have tightly coupled gas dust and radiation and want reasonably accurate conservation
         iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
         iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-4*fabs(Lambda_IRBand)));
-#endif        
+#endif
+*/
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
     }
