@@ -3689,6 +3689,7 @@ extern struct io_header
   int flag_metals;		    /*!< flags whether the file contains metallicity values for gas and star particles */
 
   unsigned int npartTotalHighWord[6];   /*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
+  int flag_entropy_instead_u; /*!< flag here strictly for historical compatibility with unformatted binary files from GADGET-3 era formats, which expect this flag to exist. this does nothing in gizmo */
   int flag_doubleprecision; /*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
@@ -3704,7 +3705,7 @@ extern struct io_header
                                  */
   float lpt_scalingfactor;      /*!< scaling factor for 2lpt initial conditions */
 
-  char fill[18];		/*!< fills to 256 Bytes */
+  char fill[18];		        /*!< fills to 256 Bytes */
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
