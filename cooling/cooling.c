@@ -315,6 +315,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
 #endif    
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
+    double u_min = All.MinEgySpec * UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho;
@@ -328,7 +329,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     {
         u_upper *= sqrt(1.1); u_lower /= sqrt(1.1);
         du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_upper<maxiter_uplo)&&(du_net_upper < 0))
+        while((iter_upper<maxiter_uplo)&&(u_upper>u_min)&&(du_net_upper < 0))
         {
             u_upper *= 1.1; u_lower *= 1.1; iter_upper++;
             du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
@@ -340,7 +341,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     {
         u_lower /= sqrt(1.1); u_upper *= sqrt(1.1);
         du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_lower<maxiter_uplo)&&(du_net_lower > 0))
+        while((iter_lower<maxiter_uplo)&&(u_lower>u_min)&&(du_net_lower > 0))
         {
             u_upper /= 1.1; u_lower /= 1.1; iter_lower++;
             du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
@@ -351,6 +352,13 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     /* check if our initial iteration already overshot */
     if(du_net_upper < 0 && du_net > 0) {u_upper = u;}
     if(du_net_lower > 0 && du_net < 0) {u_lower = u;}
+    if(u_upper < u_lower) {double u_temp = u_lower; u_lower = u_upper; u_upper = u_temp;} /* ensure ordering */
+    /* check against going below the minimum temperature limit */
+    if(u_upper < u_min) {u_upper=u_lower=u_min;} else {
+        if(u_lower < u_min) {u_lower=u_min;}
+        if(u_upper>u_min && u_lower <= u_min) {
+            du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
+            if(du_net_lower > 0) {u_upper=u_lower=u_min;}}}
 
     /* core iteration to convergence */
     do
