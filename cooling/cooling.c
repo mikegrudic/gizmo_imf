@@ -363,8 +363,8 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     /* core iteration to convergence */
     do
     {
-	if(u <= u_min){u = u_min; break;}
         u = 0.5 * (u_lower + u_upper);
+	if(u <= u_min){u = u_min; break;}
 #ifdef RT_INFRARED
         Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
@@ -377,7 +377,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
 #ifdef RT_INFRARED  
 // Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms and want good conservation
-	if(iter < MAXITER-1){ // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
+	if(iter < MAXITER-10){ // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
 	    iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
 	    iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
 	}
