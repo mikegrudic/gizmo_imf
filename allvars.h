@@ -2860,6 +2860,9 @@ extern ALIGN(32) struct particle_data
 #ifdef GRAIN_FLUID
     MyFloat BH_Dust_Mass;
 #endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyFloat BH_accreted_photon_energy;
+#endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
 #endif
