@@ -334,7 +334,9 @@ double return_dust_to_metals_ratio_vs_solar(int i)
     return (kappa_interp_geo_cgs / kappa_solar_geo_cgs) / (Z_scaled); // will be multiplied by metallicity to convert later
 #endif
 #if defined(RT_INFRARED)
-    return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
+    double T_evap = 2e3 * pow(SphP[i].Density * UNIT_DENSITY_IN_CGS, 0.0195); // from Kuiper 2010 eqs 21-22; sublimation temeprature from Isella & Natta 2005, fit to Pollack 1994
+    return sigmoid_sqrt(-0.02*(SphP[i].Dust_Temperature - T_evap));
+//    return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
 #endif
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = get_equilibrium_dust_temperature_estimate(i,0);
