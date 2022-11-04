@@ -31,6 +31,9 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
 #ifdef GRAIN_FLUID
     MyFloat accreted_dust_Mass;
 #endif    
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyFloat accreted_photon_energy;
+#endif
 #ifdef BH_ALPHADISK_ACCRETION
     MyFloat mdot_alphadisk;             /*!< gives mdot of mass going into alpha disk */
 #endif

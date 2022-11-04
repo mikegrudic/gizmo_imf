@@ -364,6 +364,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     do
     {
         u = 0.5 * (u_lower + u_upper);
+	if(u <= u_min){u = u_min; break;}
 #ifdef RT_INFRARED
         Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
@@ -374,18 +375,19 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-/* // testing removal of this condition -- no longer needed given our more careful checking of the energetic limits being used for the radiation transfer //
-#ifdef RT_INFRARED  // additional, stronger convergence criteria for problems where you have tightly coupled gas dust and radiation and want reasonably accurate conservation
-        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
-        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-4*fabs(Lambda_IRBand)));
+#ifdef RT_INFRARED  
+// Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms and want good conservation
+	if(iter < MAXITER-10){ // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
+	    iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
+	    iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
+	}
 #endif
-*/
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
     }
     while(iter_condition); /* iteration condition */
     /* crash condition */
-    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d \n",u_old,rho,dt,ne_guess,*ne_eval,target); endrun(10);}
+    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, P[target].ID); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
@@ -480,7 +482,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
         if(iter >= (MAXITER - 10)) {printf("->m= %g\n", m);}
     }
     while(fabs(dm / m) > 1.0e-6 && iter < MAXITER);
-    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d \n",m_old,u,rho,dt,fac,ne_guess,target); endrun(11);}
+    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d ID=%ld\n",m_old,u,rho,dt,fac,ne_guess,target,P[target].ID); endrun(11);}
     return m;
 }
 
@@ -543,7 +545,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         //max = DMAX(max , temp_new / (*mu_guess) * fabs(*mu_guess - qfun_old) / (fabs(temp_new - temp_old) + 1.e-4*(All.MinGasTemp+0.1))); // newer - more flexible mu, and dimensionless T dependence
         //temp = temp_old + (temp_new - temp_old) / (1 + max);
         
-        if(fabs(prefac_fun-prefac_fun_old) < 1.e-4 || fabs(temp_new-temp_old)/(temp_new+temp_old) < 1.e-4) {break;} // break pre-emptively if we'll trigger a nan below
+        if((fabs(prefac_fun-prefac_fun_old) < 1.e-4) && (fabs(temp_new-temp_old)/(temp_new+temp_old) < 1.e-4)) {break;} // break pre-emptively if we'll trigger a nan below
         fac = (prefac_fun-prefac_fun_old)*T_0 / (temp_old-temp_old_old); // numerical derivative factor: want to use this to limit for convergence
 
         if(fac > 1) {fac = 1;} // don't allow us to move in the opposite direction from the new evaluation (should 'guess' in the direction of T_new-T_old) -- this tells us Newton-Raphson/Secant-type method fails here, so we simply follow the iteration to t_new
@@ -579,7 +581,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
            ((fabs(temp - temp_old) > 0.01 * temp) && (temp > 200.) && (iter<100)) ||
            ((fabs(temp - temp_old) > 1.0e-3 * temp) && (temp > 200.) && (iter<10))) && iter < MAXITER);
 #endif
-    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d\n", u_input, rho_input, *ne_guess, target); endrun(12);}
+    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d ID=%ld\n", u_input, rho_input, *ne_guess, target, P[target].ID); endrun(12);}
 
     if(temp<=0) temp=pow(10.0,Tmin);
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
@@ -795,7 +797,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 	    else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
 	} else { // otherwise we do the usual fixed-point iteration
 	    nenew = 0.5 * (n_elec + neold);
-	    if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-12)) { // if we're converging slower than bisection, just switch to bisection
+	    if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-14)) { // if we're converging slower than bisection, just switch to bisection
 		bisection_mode = 1;
 	    }
 	}
@@ -804,14 +806,14 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         if(!isfinite(n_elec)) {n_elec=1;}
         necgs = n_elec * nHcgs;
 
-        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-12); // desired absolute tolerance for n_elec
+        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-14); // desired absolute tolerance for n_elec
         if(fabs(n_elec - neold) < dneTHhold) break;
 
         if(niter > (MAXITER - 10)) {printf("n_elec= %g/%g/%g yh=%g nHcgs=%g niter=%d\n", n_elec,neold,nenew, yhelium(target), nHcgs, niter);}
     }
     while(niter < MAXITER);
 
-    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, shieldfac, return_cooling_mode); endrun(13);}
+    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d ID=%ld shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, P[target].ID, shieldfac, return_cooling_mode); endrun(13);}
 
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];

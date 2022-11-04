@@ -734,6 +734,9 @@ void blackhole_final_operations(void)
 #ifdef GRAIN_FLUID
             BPP(n).BH_Dust_Mass += BlackholeTempInfo[i].accreted_dust_Mass;
 #endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+	    BPP(n).BH_accreted_photon_energy += BlackholeTempInfo[i].accreted_photon_energy;
+#endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 	    P[n].ZAMS_Mass = DMAX(P[n].ZAMS_Mass, P[n].BH_Mass); // keep a running maximum of the stellar mass as the ZAMS mass
 #endif

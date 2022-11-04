@@ -105,6 +105,9 @@ struct OUTPUT_STRUCT_NAME
 #ifdef GRAIN_FLUID
     MyDouble accreted_dust_Mass;
 #endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyDouble accreted_photon_energy;
+#endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyDouble accreted_momentum[3];
 #endif
@@ -140,6 +143,9 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #endif
 #ifdef GRAIN_FLUID
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_dust_Mass, out->accreted_dust_Mass, mode);
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_photon_energy, out->accreted_photon_energy, mode);
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_momentum[k], out->accreted_momentum[k], mode);}
@@ -284,6 +290,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef GRAIN_FLUID
                     if((1<<P[j].Type) & GRAIN_PTYPES) {out.accreted_dust_Mass += FLT(Mass_j);}
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS 
+		    if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
+			double photon_energy = 0;
+			for(int kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++){photon_energy += SphP[j].Rad_E_gamma[kfreq];}
+			out.accreted_photon_energy += photon_energy;
+		    }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
                     for(k=0;k<3;k++) {out.accreted_momentum[k] += FLT( mcount_for_conserve * dvel[k]);}
@@ -1081,6 +1094,9 @@ double target_mass_for_wind_spawning(int i)
 {
 #ifdef BH_WIND_SPAWN
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+    if(P[i].ProtoStellarStage == 5){ return 0.1*All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass; } //use lower mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
+#endif
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #endif
     return All.BAL_wind_particle_mass;

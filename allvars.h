@@ -621,7 +621,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
-#define EOS_SUBSTELLAR_ISM
 #if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_FB_RAD)
 #define RT_ISRF_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
@@ -2859,6 +2858,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef GRAIN_FLUID
     MyFloat BH_Dust_Mass;
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyFloat BH_accreted_photon_energy;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
