@@ -364,7 +364,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     do
     {
         u = 0.5 * (u_lower + u_upper);
-	if(u <= u_min){u = u_min; break;}
+	    if(u <= u_min) {u = u_min; break;}
 #ifdef RT_INFRARED
         Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
@@ -375,12 +375,12 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-#ifdef RT_INFRARED  
-// Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms and want good conservation
-	if(iter < MAXITER-10){ // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
-	    iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
-	    iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
-	}
+#if defined(RT_INFRARED) && defined(SINGLE_STAR_STARFORGE_DEFAULTS) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+        // Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms. these are useful when you have very specific conditions, namely when dust and gas temperatures are strongly coupled, dust is abundant (not sublimated or destroyed), the metallicities are relatively high, and you are in neutral gas. but in other situations may prevent convergence artificially.
+	    if(iter < MAXITER-10) { // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
+	        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
+	        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
+	     }
 #endif
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
@@ -788,19 +788,18 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 	
         if(J_UV == 0) break;
 	
-	// keep track of these bounds in case we need to switch to bisection
-	if(n_elec > neold){ne_lower = DMAX(neold, ne_lower);}
-	if(n_elec < neold){ne_upper = DMIN(neold, ne_upper);}
+	    // keep track of these bounds in case we need to switch to bisection
+	    if(n_elec > neold) {ne_lower = DMAX(neold, ne_lower);}
+	    if(n_elec < neold) {ne_upper = DMIN(neold, ne_upper);}
 
-	if(bisection_mode){ // if fixed-point mode is not converging fast enough and we switched to bisection mode
-	    if(n_elec < neold) {nenew = 0.5*(ne_lower + neold); ne_upper=neold;} // go to left midpoint and update the upper bound
-	    else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
-	} else { // otherwise we do the usual fixed-point iteration
-	    nenew = 0.5 * (n_elec + neold);
-	    if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-14)) { // if we're converging slower than bisection, just switch to bisection
-		bisection_mode = 1;
+	    if(bisection_mode) { // if fixed-point mode is not converging fast enough and we switched to bisection mode
+	        if(n_elec < neold) {nenew = 0.5*(ne_lower + neold); ne_upper=neold;} // go to left midpoint and update the upper bound
+	        else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
+	    } else { // otherwise we do the usual fixed-point iteration
+	        nenew = 0.5 * (n_elec + neold);
+	        if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-14)) { // if we're converging slower than bisection, just switch to bisection
+		        bisection_mode = 1;}
 	    }
-	}
 
         n_elec = nenew;
         if(!isfinite(n_elec)) {n_elec=1;}
