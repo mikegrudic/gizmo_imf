@@ -565,6 +565,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
+#ifndef SINGLE_STAR_DIRECT_GRAVITY_RADIUS 
+#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS 1000. // distance inside of which star-star gravitational interactions are calculated exactly
+#endif 
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
@@ -594,6 +597,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#define OUTPUT_RT_RAD_FLUX
 #ifndef RT_SOURCES
 #define RT_SOURCES 32
 #endif
@@ -613,6 +617,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_ISRF_BACKGROUND 1
 #endif
 #endif
+#if defined(RT_INFRARED)
+#define RT_REINJECT_ACCRETED_PHOTONS // need to reinject any photons that are removed from the simulation by the accretion algorithm; particularly important at small RSOL and high optical depths
+#endif
 // Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED))
 #define RT_USE_TREECOL_FOR_NH 6 
@@ -621,10 +628,17 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
+#ifdef MAGNETIC // if we have cooling and magnetic fields, enable conduction + viscosity
+#define CONDUCTION           /* enable conduction */
+#define CONDUCTION_SPITZER   /* compute proper coefficients and anisotropy for conduction */
+#define VISCOSITY            /* enable viscosity */
+#define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
+#define DIFFUSION_OPTIMIZERS
+#endif // MAGNETIC
 #if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_FB_RAD)
 #define RT_ISRF_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
-#endif
+#endif // COOLING
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) || defined(COOLING)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
 #endif

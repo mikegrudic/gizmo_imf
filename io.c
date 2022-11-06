@@ -1533,7 +1533,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1)) // Redundant to output the Eddington tensor if M1 closure is used because the 6 components can be reconstructed from the 3-component flux
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1971,7 +1971,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             if(mode)
                 bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
@@ -2232,7 +2232,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             values = (6*N_RT_FREQ_BINS);
 #endif
             break;
@@ -3042,7 +3042,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#if defined(RADTRANSFER)
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             return 1;
 #endif
             break;
