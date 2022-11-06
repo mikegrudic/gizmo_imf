@@ -613,9 +613,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_CHEM_PHOTOION 1
 #endif
 #define RT_INFRARED
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
-#define RT_ISRF_BACKGROUND 1
-#endif
+#define RT_ISRF_BACKGROUND
 #endif
 #if defined(RT_INFRARED)
 #define RT_REINJECT_ACCRETED_PHOTONS // need to reinject any photons that are removed from the simulation by the accretion algorithm; particularly important at small RSOL and high optical depths
@@ -635,17 +633,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define DIFFUSION_OPTIMIZERS
 #endif // MAGNETIC
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_FB_RAD)
-#define RT_ISRF_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
-#endif
+#define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif // COOLING
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) || defined(COOLING)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
-#endif
-#if defined(RT_ISRF_BACKGROUND)
-#if (RT_ISRF_BACKGROUND <= 0)
-#undef RT_ISRF_BACKGROUND /* use the negative or zero value above as a key to specifically -undefine- this variable, otherwise it will cause problems below by calling 0 to reset quantities it should not */
-#endif
 #endif
 #endif // SINGLE_STAR_STARFORGE_DEFAULTS
 
@@ -2362,6 +2353,10 @@ extern struct global_data_all_processes
 #if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF))
     double IonizingLuminosityPerSolarMass_cgs;
     double star_Teff;
+#endif
+
+#ifdef RT_ISRF_BACKGROUND
+    double InterstellarRadiationFieldStrength;
 #endif
 
 #ifdef RT_LEBRON

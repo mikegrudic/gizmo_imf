@@ -4724,6 +4724,10 @@ void write_header_attributes_in_hdf5(hid_t handle)
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RHD_bins_nu_max_ev); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
+#if defined(RT_ISRF_BACKGROUND)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "InterstellarRadiationFieldStrength", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.InterstellarRadiationFieldStrength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_accretion", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);

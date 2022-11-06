@@ -1802,6 +1802,13 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
+#ifdef RT_ISRF_BACKGROUND
+	strcpy(tag[nt], "InterstellarRadiationFieldStrength");
+	strcpy(alternate_tag[nt], "ISRF");
+        addr[nt] = &All.InterstellarRadiationFieldStrength;
+        id[nt++] = REAL;
+#endif
+
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
         strcpy(alternate_tag[nt], "AdaptGravSoft_Effective_NeighborNumber");
@@ -2279,10 +2286,13 @@ void read_parameter_file(char *fname)
                 if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
                 if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to a reference radiative efficiency, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
 #if defined(BH_WIND_SPAWN)
-                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume one third is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
+                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume 70 percent is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
                 if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
 #endif
+#endif
+#if defined(RT_ISRF_BACKGROUND)
+                if(strcmp("InterstellarRadiationFieldStrength",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to assuming Solar neighborhood (Draine) background radiation field (=%g) \n",tag[i],alternate_tag[i],All.InterstellarRadiationFieldStrength); continue;}
 #endif
 #if defined(FIRE_PHYSICS_DEFAULTS)
                 if(strcmp("SfEffPerFreeFall",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to FIRE-default of unity (=%g) \n",tag[i],alternate_tag[i],All.MaxSfrTimescale); continue;}

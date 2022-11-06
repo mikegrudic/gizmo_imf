@@ -1077,16 +1077,16 @@ void get_background_isrf_urad(int i, double *urad){
     {
         urad[k] = MIN_REAL_NUMBER;
 #ifdef RT_INFRARED
-        if(k==RT_FREQ_BIN_INFRARED){urad[k] = (RT_ISRF_BACKGROUND * 0.39 + 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
+        if(k==RT_FREQ_BIN_INFRARED){urad[k] = (All.InterstellarRadiationFieldStrength * 0.39 + 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
 #endif
 #ifdef RT_OPTICAL_NIR
-        if(k==RT_FREQ_BIN_OPTICAL_NIR){urad[k] = RT_ISRF_BACKGROUND * 0.54 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
+        if(k==RT_FREQ_BIN_OPTICAL_NIR){urad[k] = All.InterstellarRadiationFieldStrength * 0.54 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
 #endif
 #ifdef RT_NUV
-        if(k==RT_FREQ_BIN_NUV){urad[k] = RT_ISRF_BACKGROUND * 0.024 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
+        if(k==RT_FREQ_BIN_NUV){urad[k] = All.InterstellarRadiationFieldStrength * 0.024 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
 #endif
 #ifdef RT_PHOTOELECTRIC
-        if(k==RT_FREQ_BIN_PHOTOELECTRIC){urad[k] = RT_ISRF_BACKGROUND * 1.7 * 3.9e-14 / UNIT_PRESSURE_IN_CGS;} // Draine 1978 value = 1.7 Habing
+        if(k==RT_FREQ_BIN_PHOTOELECTRIC){urad[k] = All.InterstellarRadiationFieldStrength * 1.7 * 3.9e-14 / UNIT_PRESSURE_IN_CGS;} // Draine 1978 value = 1.7 Habing
 #endif
     }
 }
