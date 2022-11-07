@@ -1502,11 +1502,15 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "BAL_internal_temperature");
         addr[nt] = &All.BAL_internal_temperature;
         id[nt++] = REAL;
-
         strcpy(tag[nt], "BAL_wind_particle_mass");
         strcpy(alternate_tag[nt], "Cell_Spawn_Mass_ratio");
         addr[nt] = &All.BAL_wind_particle_mass;
         id[nt++] = REAL;
+#ifdef SINGLE_STAR_FB_WINDS
+        strcpy(tag[nt], "BAL_wind_particle_mass_MS");
+        addr[nt] = &All.BAL_wind_particle_mass_MS;
+        id[nt++] = REAL;
+#endif
 #endif
 
 #ifdef BH_PHOTONMOMENTUM
@@ -2289,6 +2293,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume 70 percent is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
                 if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+#ifdef SINGLE_STAR_FB_WINDS
+                if(strcmp("BAL_wind_particle_mass_MS",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file, BAL_wind_particle_mass will be used instead \n",tag[i],alternate_tag[i],All.BAL_wind_particle_mass_MS); continue;}
+#endif
 #endif
 #endif
 #if defined(RT_ISRF_BACKGROUND)
