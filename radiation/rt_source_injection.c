@@ -36,6 +36,7 @@ static struct INPUT_STRUCT_NAME
     int NodeList[NODELISTLENGTH];
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     MyDouble Dt;
+    MyDouble Density;
 #endif
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -67,6 +68,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
+    in->Density = P[i].DensAroundStar;
 #endif
 }
 
@@ -236,7 +238,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #endif			    
                             stellum *= 1. / (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) / local.Dt * UNIT_LUM_IN_CGS; // convert energy to luminosity in cgs
                         }
-                        double RHII = 4.01e-9*pow(stellum,0.333)*pow(SphP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
+                        double RHII = 4.01e-9*pow(stellum,0.333)*pow(local.Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667) / UNIT_LENGTH_IN_CGS;
                         if(DMAX(r, Get_Particle_Size(j))*All.cf_atime < RHII) {do_donation = 0;} // don't inject ionizing photons outside the Stromgren radius
                     }
 #endif
