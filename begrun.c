@@ -1807,8 +1807,8 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef RT_ISRF_BACKGROUND
-	strcpy(tag[nt], "InterstellarRadiationFieldStrength");
-	strcpy(alternate_tag[nt], "ISRF");
+	    strcpy(tag[nt], "InterstellarRadiationFieldStrength");
+	    strcpy(alternate_tag[nt], "ISRF");
         addr[nt] = &All.InterstellarRadiationFieldStrength;
         id[nt++] = REAL;
 #endif
