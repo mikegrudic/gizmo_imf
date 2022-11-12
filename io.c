@@ -1533,7 +1533,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1)) // Redundant to output the Eddington tensor if M1 closure is used because the 6 components can be reconstructed from the 3-component flux
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1971,7 +1971,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             if(mode)
                 bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
@@ -2232,7 +2232,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             values = (6*N_RT_FREQ_BINS);
 #endif
             break;
@@ -3042,7 +3042,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#if defined(RADTRANSFER)
+#if defined(RADTRANSFER) && !(defined(OUTPUT_RT_RAD_FLUX) && defined(RT_M1))
             return 1;
 #endif
             break;
@@ -4724,6 +4724,10 @@ void write_header_attributes_in_hdf5(hid_t handle)
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RHD_bins_nu_max_ev); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
+#if defined(RT_ISRF_BACKGROUND)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "InterstellarRadiationFieldStrength", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.InterstellarRadiationFieldStrength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_accretion", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
@@ -4841,6 +4845,10 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #ifdef BH_WIND_SPAWN
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_wind_particle_mass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_wind_particle_mass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#ifdef SINGLE_STAR_FB_WINDS
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_wind_particle_mass_MS", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_wind_particle_mass_MS); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_internal_temperature", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_internal_temperature); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     {unsigned long long holder = (unsigned long long) All.AGNWindID; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Spawned_Cell_ID", H5T_NATIVE_ULLONG, hdf5_dataspace, H5P_DEFAULT);

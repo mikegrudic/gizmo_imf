@@ -2140,11 +2140,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #endif
 #if (defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)) && defined(SINGLE_STAR_DIRECT_GRAVITY_RADIUS)
-                    if((nop->N_BH > 0) && (r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len))) // we have a star within the specified radius, open cell
-                    {
-                        no = nop->u.d.nextnode;
-                        continue;
-                    }
+		    if(ptype == 5){
+			if((nop->N_BH > 0) && (r2 < pow(SINGLE_STAR_DIRECT_GRAVITY_RADIUS/UNIT_LENGTH_IN_AU + 0.6*nop->len,2))) // we are a star looking at another star within the specified radius, open cell to get direct force summation
+			{
+			    no = nop->u.d.nextnode;
+			    continue;
+			}
+		    }
 #endif
                 }
 
