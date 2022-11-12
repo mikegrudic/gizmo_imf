@@ -566,8 +566,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
 #ifndef SINGLE_STAR_DIRECT_GRAVITY_RADIUS 
-#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS 1000. // distance inside of which star-star gravitational interactions are calculated exactly, in AU
-#endif 
+#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS (1000.) // distance inside of which star-star gravitational interactions are calculated exactly, in AU
+#endif
+#ifndef ADAPTIVE_TREEFORCE_UPDATE
+#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization 
+#endif
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
