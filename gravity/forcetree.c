@@ -2360,10 +2360,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 
 #if defined(BH_DYNFRICTION_FROMTREE)
-                if( (ptype==5) && (mass>0) )
+                if( (fac_accel>MIN_REAL_NUMBER) && (ptype==5) && (mass>MIN_REAL_NUMBER) )
                 {
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
-                    if(dv2 > 0)
+                    if((dv2 > MIN_REAL_NUMBER) && (bh_mass > MIN_REAL_NUMBER))
                     {
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
@@ -2371,13 +2371,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
                             double m_j=m_j_eff_for_df; /* estimate mean mass of the particles in the node */
-                            if(bh_mass > m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
+                            if(bh_mass > 14.251*m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
                         }
+                        if((m_j_eff_for_df <= MIN_REAL_NUMBER) || (b_impact <= MIN_REAL_NUMBER) || (dv2 <= MIN_REAL_NUMBER)) {fac_df = 0;}
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
                         acc_x += fac_df * dvx_h; acc_y += fac_df * dvy_h; acc_z += fac_df * dvz_h;
                         /* perpendicular deflection component bx_im = P[distant particle/node] - P[bh], so positive = accel -towards- P[ext], but this is the residual term (after subtracting the homogeneous term), which points in the opposite direction */
                         double fac_df_p = -fac_df / (b_impact * a_im + MIN_REAL_NUMBER);
-                        acc_x += fac_df_p * bx_im; acc_y += fac_df_p * by_im; acc_z += fac_df_p * bz_im;
+                        if(fabs(fac_df_p)<MAX_REAL_NUMBER && isfinite(fac_df_p)) {acc_x += fac_df_p * bx_im; acc_y += fac_df_p * by_im; acc_z += fac_df_p * bz_im;}
                     }
                 }
 #endif
