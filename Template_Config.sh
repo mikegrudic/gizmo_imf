@@ -246,7 +246,6 @@
 # ----- time integration, regularization, and explicit small-N-body dynamical treatments (for e.g. hard binaries, etc)
 ## ----------------------------------------------------------------------------------------------------
 #SINGLE_STAR_TIMESTEPPING=1     # use additional timestep criteria to ensure resolved binaries/multiples dont dissolve in close encounters. 0=most conservative. 1=super-timestep hard binaries by operator-splitting the binary orbit. 2=more aggressive super-timestep. cite Grudic et al., arXiv:2010.11254, for the methods here.
-#SINGLE_STAR_DIRECT_GRAVITY_RADIUS=1000. # enforce direct gravity summation for star-star gravity interactions *and* tree searches (e.g. for timestepping, binarity checks) within this radius *in AU*
 #HERMITE_INTEGRATION=32         # Instead of the usual 2nd order DKD Leapfrog timestep, do 4th order Hermite integration for particles matching the bitflag. Allows longer timesteps and higher accuracy collisional dynamics. cite Grudic et al., arXiv:2010.11254, for the methods here.
 ## ----------------------------------------------------------------------------------------------------
 # ----- sink creation and accretion/growth/merger modules
@@ -416,7 +415,6 @@
 #RT_INJECT_PHOTONS_DISCRETELY           # do photon injection in discrete packets, instead of sharing a continuous source function. works better with adaptive timestepping (default with GALSF)
 #RT_USE_GRAVTREE_SAVE_RAD_FLUX          # save radiative fluxes incident on each cell if using RHD methods that propagate fluxes through the gravity tree when these wouldn't be saved by default
 #RT_REPROCESS_INJECTED_PHOTONS          # re-process photon energy while doing the discrete injection operation conserving photon energy, put only the un-absorbed component of the current band into that band, putting the rest in its "donation" bin (ionizing->optical, all others->IR). This would happen anyway during the routine for resolved absorption, but this may more realistically handle situations where e.g. your dust destruction front is at totally unresolved scales and you don't want to spuriously ionize stuff on larger scales. Assume isotropic re-radiation, so inject only energy for the donated bin and not net flux/momentum. follows STARFORGE methods (Grudic+ arXiv:2010.11254) - cite this
-#RT_REINJECT_ACCRETED_PHOTONS           # when sink particles are used, photons lost when a gas cell is accreted are reinjected into the lowest-energy frequency bin on the following photon injection from that sink
 #RT_BH_ANGLEWEIGHT_PHOTON_INJECTION     # uses a solid-angle as opposed to simple kernel weight (requires extra passes) for depositing radiation from sinks/BHs when the direct deposition is used. also ensures the sink uses a 2-way search to ensure overlapping diffuse gas gets radiation. cite Grudic+ arXiv:2010.11254
 #RT_ISRF_BACKGROUND=1                   # include Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments); rescaled by a constant normalization given by this constant, if defined
 ####################################################################################################
@@ -547,6 +545,7 @@
 #MAINTAIN_TREE_IN_REARRANGE     # don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed. cite Grudic+ arXiv:2010.11254
 #RANDOMIZE_GRAVTREE             # move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another. cite Grudic+ arXiv:2010.11254
 #GRAVITY_SPHERICAL_SYMMETRY=0   # modifies the tree gravity solver to give the solution assuming spherical symmetry about the origin (if BOX_PERIODIC is not enabled) or the box center. Useful for IC generation and test problems. Numerical value specifies a minimum softening length. (cite Lane et al., arXiv:2110.14816)
+#SINGLE_STAR_DIRECT_GRAVITY_RADIUS=1000. # enforce direct gravity summation for star-star gravity interactions *and* tree searches (e.g. for timestepping, binarity checks) within this radius *in AU*
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -572,6 +571,7 @@
 #RT_TIMESTEP_LIMIT_RECOMBINATION        # limit timesteps to the explicit recombination time when transporting ionizing photons. note our chemistry solvers are all implicit and can handle larger timesteps, but no gaurantee of transport accuracy for much larger steps since opacities depend on ionization states.
 #RT_ENHANCED_NUMERICAL_DIFFUSION        # option which increases numerical diffusion, to get smoother solutions (akin to using HLL instead of HLLC+E fluxes), if desired; akin to slopelimiters~0 model
 #RT_COMPGRAD_EDDINGTON_TENSOR           # forces computation of eddington tensor even when not needed by the code
+#RT_REINJECT_ACCRETED_PHOTONS           # when sink particles are used, photons lost when a gas cell is accreted are reinjected into the lowest-energy frequency bin on the following photon injection from that sink
 # --------------------
 # ----- Black hole/sink particle special options
 #BH_WIND_SPAWN_SET_BFIELD_POLTOR  # set poloridal and toroidal magnetic field for spawn particles (should work for all particle spawning). Cite Su et al., arXiv:2102.02206, for methods.

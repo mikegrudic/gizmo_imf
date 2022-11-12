@@ -68,7 +68,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
-    in->Density = P[i].DensAroundStar;
+    if(P[i].Type>0) {in->Density = P[i].DensAroundStar;} else {in->Density = SphP[i].Density;}
 #endif
 }
 

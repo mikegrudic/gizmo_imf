@@ -566,8 +566,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
 #ifndef SINGLE_STAR_DIRECT_GRAVITY_RADIUS 
-#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS 1000. // distance inside of which star-star gravitational interactions are calculated exactly, in AU
-#endif 
+#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS (1000.) // distance inside of which star-star gravitational interactions are calculated exactly, in AU
+#endif
+#ifndef ADAPTIVE_TREEFORCE_UPDATE
+#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization 
+#endif
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
@@ -597,7 +600,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#ifndef OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_FLUX
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#define IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR
+#endif
+#endif
 #ifndef RT_SOURCES
 #define RT_SOURCES 32
 #endif
@@ -613,10 +621,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_CHEM_PHOTOION 1
 #endif
 #define RT_INFRARED
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND
 #endif
 #if defined(RT_INFRARED)
 #define RT_REINJECT_ACCRETED_PHOTONS // need to reinject any photons that are removed from the simulation by the accretion algorithm; particularly important at small RSOL and high optical depths
+#endif
 #endif
 // Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED))
@@ -626,17 +636,26 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
-#ifdef MAGNETIC // if we have cooling and magnetic fields, enable conduction + viscosity
+#if defined(MAGNETIC) && !defined(CONDUCTION) && !defined(VISCOSITY) // if we have cooling and magnetic fields, enable conduction + viscosity
 #define CONDUCTION           /* enable conduction */
 #define CONDUCTION_SPITZER   /* compute proper coefficients and anisotropy for conduction */
 #define VISCOSITY            /* enable viscosity */
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define DIFFUSION_OPTIMIZERS
 #endif // MAGNETIC
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
+#endif
 #endif // COOLING
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) || defined(COOLING)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
+#endif
+#if defined(RT_ISRF_BACKGROUND)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(RT_ISRF_BACKGROUND)
+#if (RT_ISRF_BACKGROUND <= 0)
+#undef RT_ISRF_BACKGROUND /* use the negative or zero value above as a key to specifically -undefine- this variable, otherwise it will cause problems below by calling 0 to reset quantities it should not */
+#endif
+#endif
 #endif
 #endif // SINGLE_STAR_STARFORGE_DEFAULTS
 
@@ -936,10 +955,17 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SELFGRAVITY_OFF // safely define SELFGRAVITY_OFF in this case, otherwise we act like there is gravity except in the final setting of accelerations
 #endif
 
+/* turn on outputs appropriately */
+#ifdef RADTRANSFER
+#if !defined(OUTPUT_EDDINGTON_TENSOR) && !defined(IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR)
+#define OUTPUT_EDDINGTON_TENSOR
+#endif
+#endif
+
 /* ----- end block of options for RHD modules ------ */
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES) || defined(RT_REPROCESS_INJECTED_PHOTONS)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -2595,11 +2621,11 @@ extern struct global_data_all_processes
 #endif
 #ifdef BH_WIND_SPAWN
   double BAL_wind_particle_mass;        /*!< target mass for feedback particles to be spawned */
-#ifdef SINGLE_STAR_FB_WINDS
-  double BAL_wind_particle_mass_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
-#endif
   double BAL_internal_temperature;
   MyIDType AGNWindID;
+#ifdef SINGLE_STAR_FB_WINDS
+  double Cell_Spawn_Mass_ratio_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
+#endif
 #endif
 #ifdef BH_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
