@@ -2621,7 +2621,7 @@ extern struct global_data_all_processes
   double BAL_internal_temperature;
   MyIDType AGNWindID;
 #ifdef SINGLE_STAR_FB_WINDS
-  double BAL_wind_particle_mass_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
+  double Cell_Spawn_Mass_ratio_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
 #endif
 #endif
 #ifdef BH_SEED_FROM_FOF
