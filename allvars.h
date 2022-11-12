@@ -569,7 +569,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_DIRECT_GRAVITY_RADIUS (1000.) // distance inside of which star-star gravitational interactions are calculated exactly, in AU
 #endif
 #ifndef ADAPTIVE_TREEFORCE_UPDATE
-#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization 
+#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization
 #endif
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
