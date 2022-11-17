@@ -597,6 +597,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#define RT_COMOVING
 #define OUTPUT_RT_RAD_FLUX
 #ifndef RT_SOURCES
 #define RT_SOURCES 32
