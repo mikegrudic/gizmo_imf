@@ -1095,7 +1095,7 @@ double target_mass_for_wind_spawning(int i)
 #ifdef BH_WIND_SPAWN
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if((All.BAL_wind_particle_mass_MS>0.0)&&(P[i].ProtoStellarStage == 5)) {return BAL_wind_particle_mass_MS * P[i].Sink_Formation_Mass;} //use different (probably lower) mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
+    if((All.Cell_Spawn_Mass_ratio_MS>0.0)&&(P[i].ProtoStellarStage == 5)) {return All.Cell_Spawn_Mass_ratio_MS * P[i].Sink_Formation_Mass;} //use different (probably lower) mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
 #endif
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #endif

@@ -1500,6 +1500,7 @@ void read_parameter_file(char *fname)
 
 #ifdef BH_WIND_SPAWN
         strcpy(tag[nt], "BAL_internal_temperature");
+        strcpy(alternate_tag[nt], "Cell_Spawn_Temperature");
         addr[nt] = &All.BAL_internal_temperature;
         id[nt++] = REAL;
         strcpy(tag[nt], "BAL_wind_particle_mass");
@@ -1507,8 +1508,9 @@ void read_parameter_file(char *fname)
         addr[nt] = &All.BAL_wind_particle_mass;
         id[nt++] = REAL;
 #ifdef SINGLE_STAR_FB_WINDS
-        strcpy(tag[nt], "BAL_wind_particle_mass_MS");
-        addr[nt] = &All.BAL_wind_particle_mass_MS;
+        strcpy(tag[nt], "Cell_Spawn_Mass_ratio_MS");
+        strcpy(alternate_tag[nt], "BAL_wind_particle_mass_MS");
+        addr[nt] = &All.Cell_Spawn_Mass_ratio_MS;
         id[nt++] = REAL;
 #endif
 #endif
@@ -1807,8 +1809,8 @@ void read_parameter_file(char *fname)
 #endif
 
 #ifdef RT_ISRF_BACKGROUND
-	strcpy(tag[nt], "InterstellarRadiationFieldStrength");
-	strcpy(alternate_tag[nt], "ISRF");
+	    strcpy(tag[nt], "InterstellarRadiationFieldStrength");
+	    strcpy(alternate_tag[nt], "ISRF");
         addr[nt] = &All.InterstellarRadiationFieldStrength;
         id[nt++] = REAL;
 #endif
@@ -2294,7 +2296,7 @@ void read_parameter_file(char *fname)
                 if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
                 if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
 #ifdef SINGLE_STAR_FB_WINDS
-                if(strcmp("BAL_wind_particle_mass_MS",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file, BAL_wind_particle_mass will be used instead \n",tag[i],alternate_tag[i]); continue;}
+                if(strcmp("Cell_Spawn_Mass_ratio_MS",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file, BAL_wind_particle_mass will be used instead \n",tag[i],alternate_tag[i]); continue;}
 #endif
 #endif
 #endif
