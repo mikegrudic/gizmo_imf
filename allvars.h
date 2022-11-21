@@ -448,6 +448,9 @@
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
+#if !defined(CRFLUID_DIFFUSION_CORRECTION_TERMS) && !defined(CRFLUID_BINCENTERED_TRANSPORT)
+#define CRFLUID_DIFFUSION_CORRECTION_TERMS
+#endif
 #if (CRFLUID_EVOLVE_SPECTRUM == 2)
 #define N_CR_PARTICLE_BINS 70       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
@@ -555,8 +558,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
-#ifndef STARS_ONLY_SNAPSHOT_FREQUENCY
-#define STARS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
+#ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
+#define IO_SINKS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
 #endif
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
@@ -1049,9 +1052,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(COOL_MOLECFRAC)
 #if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
-#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 5) && !defined(COOL_MOLECFRAC_LOCALEQM)
-#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 4) && !defined(COOL_MOLECFRAC_KMT)
 #define COOL_MOLECFRAC_KMT  // estimate f_H2 from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K). use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field
 #elif (COOL_MOLECFRAC == 3) && !defined(COOL_MOLECFRAC_GD)
@@ -1336,16 +1339,14 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 
-typedef unsigned long long peanokey;
 
-
-#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer ! */
+#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer, 21 for 64-bit integer, 42 for 128-bit integer */
 #define  PEANOCELLS (((peanokey)1)<<(3*BITS_PER_DIMENSION))
-
-#define  BITS_PER_DIMENSION_SAVE_KEYS 10
-#define  PEANOCELLS_SAVE_KEYS (((peanokey)1)<<(3*BITS_PER_DIMENSION_SAVE_KEYS))
-
-
+#if(BITS_PER_DIMENSION <= 21)
+typedef unsigned long long peanokey;
+#else
+typedef __int128 peanokey;
+#endif
 
 
 #ifndef DISABLE_MEMORY_MANAGER

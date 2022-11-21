@@ -50,9 +50,8 @@ void add_analytic_gravitational_forces()
     GravAccel_GMCTurbInit();              // uniform sphere harmonic potential + r^-3 halo outside to confine stirred turbulent gas
 #endif
 #ifdef STARFORGE_FILAMENT_TURBINIT
-    GravAccel_FilamentTurbInit();              // potential of an finitite cylinder with a Plummer density profile, truncated at the ends of the cylinder
+    GravAccel_FilamentTurbInit();         // potential of an finitite cylinder with a Plummer density profile, truncated at the ends of the cylinder
 #endif
-
 #ifdef BOX_SHEARING
     GravAccel_ShearingSheet();            // adds coriolis and centrifugal terms for shearing-sheet approximation
 #endif

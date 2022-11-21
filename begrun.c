@@ -1477,22 +1477,26 @@ void read_parameter_file(char *fname)
 
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
         strcpy(tag[nt],"BAL_f_accretion");
+        strcpy(alternate_tag[nt], "Sink_f_accretion");
         addr[nt] = &All.BAL_f_accretion;
         id[nt++] = REAL;
 
         strcpy(tag[nt],"BAL_v_outflow");
+        strcpy(alternate_tag[nt], "Sink_v_outflow");
         addr[nt] = &All.BAL_v_outflow;
         id[nt++] = REAL;
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
         strcpy(tag[nt],"BAL_f_launch_v");
+        strcpy(alternate_tag[nt], "Sink_f_launch_v");
         addr[nt] = &All.BAL_f_launch_v;
         id[nt++] = REAL;
 #endif
 
 #if defined(BH_COSMIC_RAYS)
         strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+        strcpy(alternate_tag[nt], "Sink_CosmicRay_Injection_Efficiency");
         addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
         id[nt++] = REAL;
 #endif

@@ -139,6 +139,7 @@
 #ADAPTIVE_GRAVSOFT_FORGAS       # allows variable softening length for gas particles (scaled with local inter-element separation), so gravity traces same density field seen by hydro
 #ADAPTIVE_GRAVSOFT_FORALL=1+2   # enable adaptive gravitational softening lengths for designated particle types (ADAPTIVE_GRAVSOFT_FORGAS should be disabled). the softening is set to the distance
                                 # enclosing a neighbor number set in the parameter file. flag value = bitflag like PM_PLACEHIGHRESREGION, which determines which particle types are adaptive (others use fixed softening). cite Hopkins et al., arXiv:1702.06148
+#ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION=1 # enable adaptive gravitational softening lengths for designated particle types (value = bitflag like ADAPTIVE_GRAVSOFT_FORALL), but setting the softening to the tidal-tensor based value instead of nearest-neighbor values, following Hopkins et al. (arXiv:???). this is cross-compatible with ADAPTIVE_GRAVSOFT_FORGAS, or even ADAPTIVE_GRAVSOFT_FORALL so long as the same particle type does not appear in both.
 ## -----------------------------------------------------------------------------------------------------
 #SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
@@ -290,9 +291,9 @@
 # ----- dynamics (when BH mass is not >> other particle masses, it will artificially get kicked and not sink via dynamical friction; these 're-anchor' the BH for low-res sims)
 ## ----------------------------------------------------------------------------------------------------
 #BH_DYNFRICTION=0               # apply explicit dynamical friction force to the BHs when m_bh not >> other particle mass: 0=[DM+stars+gas]; 1=[DM+stars]; =2[stars]; >2 simply multiplies the DF force by this number (cite Tremmel, Governato, Volonteri, & Quinn,2015, MNRAS, 451, 1868)
-#BH_DYNFRICTION_FROMTREE        # compute dynamical friction forces on BH following the discrete DF estimator in Linhao Ma et al., arXiv:2101.02727. This is a more flexible, general, and less noisy and more accurate version of the traditional Chandrasekhar dynamical friction formula. Cite L Ma et al. 2021 and 2022 if used, and contact author L. Ma for applications as testing is still ongoing.
+#BH_DYNFRICTION_FROMTREE        # compute dynamical friction forces on BH following the discrete DF estimator in Linhao Ma et al., arXiv:2101.02727 and arXiv:2208.12275. This is a more flexible, general, and less noisy and more accurate version of the traditional Chandrasekhar dynamical friction formula. Cite L Ma et al. 2021 and 2022 if used, and contact author L. Ma for applications as testing is still ongoing.
 #BH_DRAG=1                      # drag force on BH due to accretion; =1 uses actual mdot, =2 boost as if BH is accreting at eddington. cite Springel, Di Matteo, and Hernquist, 2005, MNRAS, 361, 776
-#BH_REPOSITION_ON_POTMIN=2      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [-1=disabled, =0 'jumps', =1 to "jump" onto STARS only, =2 moves smoothly with damped velocity to most-bound particle]
+#BH_REPOSITION_ON_POTMIN=2      # reposition black hole on potential minimum (requires EVALPOTENTIAL). [-1=disabled, =0 'jumps', =1 to "jump" onto STARS only, =2 moves smoothly with damped velocity to most-bound particle]. Cite Wellons et al. arXiv:2203.06201 for use of novel sub-modules here (e.g. values >0)
 ## ----------------------------------------------------------------------------------------------------
 # ----- accretion models (modules for gas or other particle accretion)
 ## ----------------------------------------------------------------------------------------------------
@@ -348,7 +349,7 @@
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz, or the Bitbucket site); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities [requires METALS]. attempts to interpolate between optically-thin and optically-thick cooling limits even if explicit rad-hydro not enabled. Cite Hopkins et al. arXiv:1702.06148
 #COOL_MOLECFRAC=4               # track molecular H2 fractions for use in COOL_LOW_TEMPERATURES and thermochemistry using different estimators: (1) simplest, fit to density+temperature from Glover+Clark 2012; (2) Krumholz+Gnedin 2010 fit vs. column+metallicity; (3) Gnedin+Draine 2014 fit vs column+metallicity+MW radiation field; (4) Krumholz, McKee, & Tumlinson 2009 local equilibrium cloud model vs column, metallicity, incident FUV; (5) explicit local equilibrium H2 fraction explicitly tracking rates, metals, clumping, shielding, UV [cite Hopkins et al. 2021]; (6) explicit non-equilibrium integration of rates in level 5 [cite Hopkins et al. 2021]
-#COOL_UVB_SELFSHIELD_RAHMATI    # use an updated (Hopkins et al. 2021, in prep) version [fixes problematic behavior at densities >> 100 cm^-3] version of the Rahmati et al. 2013MNRAS.431.2261R UV background self-shielding, as compared to the older Hopkins et al. 2018MNRAS.480..800H treatment of self-shielding from the UVB
+#COOL_UVB_SELFSHIELD_RAHMATI    # use an updated (Hopkins et al. arXiv:2203.00040) version [fixes problematic behavior at densities >> 100 cm^-3] version of the Rahmati et al. 2013MNRAS.431.2261R UV background self-shielding, as compared to the older Hopkins et al. 2018MNRAS.480..800H treatment of self-shielding from the UVB
 ## ----------------------------------------------------------------------------------------------------
 # ---- GRACKLE: alternative chemical network using external libraries for solving thermochemistry+cooling. These treat molecular hydrogen, in particular, in more detail than our default networks, and are more accurate for 'primordial' (e.g. 1st-star) gas. But they have less-accurate treatment of
 # ----            effects such as dust-gas coupling and radiative feedback (Compton and photo-electric and local ionization heating) and high-optical-depth effects, so are usually less accurate for low-redshift, metal-rich star formation or planet formation simulations.
@@ -429,16 +430,16 @@
 ## --------------------------------------------------------------------------------------------------
 #PIC_MHD                          #  hybrid MHD-PIC simulations for relativistic particles / cosmic rays (particle type=3). need to set 'subtype'. cite Ji, Squire, & Hopkins, arXiv:2112.00752
 #PIC_SPEEDOFLIGHT_REDUCTION=1     #  factor to reduce the speed-of-light for mhd-pic simulations (relative to true value of c). requires PIC_MHD. cite Ji & Hopkins, arXiv:2111.14704
-#GRAIN_FLUID_AND_PIC_BOTH_DEFINED #- this tells the code that both GRAIN_FLUID (dust) and MHD_PIC (for e.g. cosmic rays or other applications) are simultaneously active. cite Ji, Squire, & Hopkins, arXiv:2112.00752
+#GRAIN_FLUID_AND_PIC_BOTH_DEFINED #  this tells the code that both GRAIN_FLUID (dust) and MHD_PIC (for e.g. cosmic rays or other applications) are simultaneously active. cite Ji, Squire, & Hopkins, arXiv:2112.00752
 ## -----
 #COSMIC_RAY_FLUID                 #  top-level switch to evolve the distribution function (continuum limit) of a population of CRs. includes losses/gains, coupling to gas, streaming, diffusion. if nothing else is set, this will adopt a single-bin and 0th-moment (diffusion) approximation. diffusion will be anisotropic as it should unless MHD is turned off. cite Chan et al. 2019MNRAS.488.3716C, Hopkins et al. 2019MNRAS.tmp.2993H and arXiv:2002.06211.
 #CRFLUID_M1=(10000.)              #  solve the CR transport in the two moment (M1-like) limit [second-order expansion of the collisionless boltzmann eqn] as in Hopkins et al. arXiv:2002.06211 (cite that paper for newest version, but also Chan et al. 2019MNRAS.488.3716C); value here is the reduced speed of light (maximum free-streaming speed) in code units. requires MAGNETIC for proper behavior for fully-anisotropic equations.
 #CRFLUID_DIFFUSION_MODEL=0        #  determine how coefficients for CR transport scale. 0=spatial/temporal constant diffusivity (power law in rigidity), -1=no diffusion (but stream at vAlfven), values >=1 correspond to different literature scalings for the coefficients (see user guide). cite Hopkins et al. arXiv:2002.06211 for all derivations, models here (and see refs therein for sources for some of the models re-derived and implemented here)
 #CRFLUID_ION_ALFVEN_SPEED         #  assume the relevant Alfven speed governing CR transport is not the ideal-MHD Alfven speed, but the Alfven speed for -just- the ions (applicable in the weak-coupling limit for the resonant Alfven waves at CR gyro-resonance). See discussion in and cite Hopkins et al. arXiv:2002.06211
-#CRFLUID_EVOLVE_SPECTRUM=2        #- follow a spectrally-resolved CR population of (=1:e-/p, =2:e-,e+,p,anti-p,B,C/N/O,stable (7-9)Be, unstable 10Be) from ~MeV-TeV (and other species if extended network is enabled), including injection and adiabatic+hadronic/catastrophic/pionic/fragmentation+inverse compton+ionization+coulomb+bremstrahhlung+gyroresonant/streaming+synchrotron+annihilation+radioactive losses and (optionally) re-acceleration. cite Hopkins et al. 2021 (in prep, methods in testing until published) for implementation+electrons+loss/gain terms and Girichidis+ 2020MNRAS.491..993G for the fundamental spectral bin-to-bin method
+#CRFLUID_EVOLVE_SPECTRUM=2        #- follow a spectrally-resolved CR population of (=1:e-/p, =2:e-,e+,p,anti-p,B,C/N/O,stable (7-9)Be, unstable 10Be) from ~MeV-TeV (and other species if extended network is enabled), including injection and adiabatic+hadronic/catastrophic/pionic/fragmentation+inverse compton+ionization+coulomb+bremstrahhlung+gyroresonant/streaming+synchrotron+annihilation+radioactive losses and (optionally) re-acceleration. cite Hopkins et al. 2022MNRAS.516.3470H and arXiv:2202.05283 for implementation+electrons+loss/gain terms and Girichidis+ 2020MNRAS.491..993G for the fundamental spectral bin-to-bin method
 #CRFLUID_EVOLVE_SCATTERINGWAVES   #  follows Zweibel+13,17 and Thomas+Pfrommer 18 to explicitly evolve gyro-resonant wave packets which define the (gyro-averaged) CR scattering rates; requires MAGNETIC and COOLING for detailed MHD and ionization+thermal states. cite Hopkins et al. arXiv:2002.06211 for numerical implementation into various solvers here
 ## -----
-#COSMIC_RAY_SUBGRID_LEBRON        #-  uses a simplified sub-grid LEBRON-type model for CR transport for cheap approximation in galaxy simulations
+#COSMIC_RAY_SUBGRID_LEBRON        #  uses a simplified sub-grid LEBRON-type model for CR transport for cheap approximation in galaxy simulations. Cite Hopkins et al. arXiv:2211.05811 for any use (see there for methods details)
 ## -----
 #CRFLUID_ALT_RSOL_FORM            #  enable the alternative reduced-speed-of-light formulation where 1/reduced_c appears in front of all D/Dt terms, as opposed to only in the flux equation. converges more slowly but accurately. will get made default, we think, once de-bugged
 ####################################################################################################
@@ -496,10 +497,11 @@
 #IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
 #IO_SUBFIND_READFOF_FROMIC      # try read already existing FOF files associated with a run instead of recomputing them: not de-bugged
-#OUTPUT_TURB_DIFF_DYNAMIC_ERROR     # save error terms from localized dynamic Smagorinsky model to snapshots
+#OUTPUT_TURB_DIFF_DYNAMIC_ERROR # save error terms from localized dynamic Smagorinsky model to snapshots
 #IO_MOLECFRAC_NOT_IN_ICFILE     # special flag needed if using certain molecular modules with restart flag=2 where molecular data was not in that snapshot, to tell code not to read it
 #IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY=3  # keep an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
-#IO_GRADUAL_SNAPSHOT_RESTART       # when restarting from a snapshot (flag=2) start every element on the shortest possible timestep - can reduce certain transient behaviors from the restart procedure
+#IO_GRADUAL_SNAPSHOT_RESTART    # when restarting from a snapshot (flag=2) start every element on the shortest possible timestep - can reduce certain transient behaviors from the restart procedure
+#IO_SINKS_ONLY_SNAPSHOT_FREQUENCY # determines the number of snapshots with reduced data (sinks only) per full snapshots (gas+sinks+other), e.g., setting this to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting this to 0 disables it. developed by DG.
 ####################################################################################################
 
 
@@ -546,6 +548,8 @@
 #RANDOMIZE_GRAVTREE             # move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another. cite Grudic+ arXiv:2010.11254
 #GRAVITY_SPHERICAL_SYMMETRY=0   # modifies the tree gravity solver to give the solution assuming spherical symmetry about the origin (if BOX_PERIODIC is not enabled) or the box center. Useful for IC generation and test problems. Numerical value specifies a minimum softening length. (cite Lane et al., arXiv:2110.14816)
 #SINGLE_STAR_DIRECT_GRAVITY_RADIUS=1000. # enforce direct gravity summation for star-star gravity interactions *and* tree searches (e.g. for timestepping, binarity checks) within this radius *in AU*
+#ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT=(1) # impose a hard upper limit (arbitrarily) to the softening kernel size for adaptive gravitational softening for gas cells
+#ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING # use the 'average the forces' implementation of force symmtrization in the gravity solver, instead of the default 'calculate forces for the larger softening', when two particles or cells with different force softening values interact inside each others kernels
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -581,6 +585,13 @@
 #BH_WAKEUP_GAS                    # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
 #BH_RIAF_SUBEDDINGTON_MODEL       # enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties
 #BH_CR_SUBEDDINGTON_MODEL         # enable an arbitrary modular variation in the CR acceleration efficiency from BHs as a function of mass, eddington ratio, spin, or other particle properties
+#BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS # rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
+#BH_EXCISION_NONGAS               # excise non-gas elements too close to a sink if they meet various criteria including being bound, sufficiently old (if stars), within and with maximum possible apocentric radii within the sink softening (which is rescaled appropriately). mass is added to the sink dynamical mass reservoir, not disk or sink itself. developed by PFH; cite arXiv:2203.00040
+#BH_EXCISION_GAS                  # excise gas elements too close to a sink with a similar criterion to BH_EXCISION_NONGAS (same references and details apply)
+#BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA # modifies BH_SEED_FROM_LOCALGAS to require that the local acceleration scale (including all mass/gravity sources) exceeds the critical value defined in arXiv:2103.10444. cite that paper for implementation
+#BH_INTERACT_ON_GAS_TIMESTEP      # force sink particles to be active in the timestep hierarchy on a timestep no larger than the minimum timestep of any gas cell inside the sink particle interaction/accretion/neighbor kernel
+#BH_GRAVCAPTURE_FIXEDSINKRADIUS   # uses a fixed sink radius for gravitational capture/accretion onto sink particles, taken to be the force softening kernel radius of the sink particle
+#SINGLE_STAR_FB_TIMESTEPLIMIT     # limit the timesteps in gas cells potentially interacting with sink particles in the SINGLE_STAR modules, so that they cannot take timesteps large compared to quantities like the time for jets/winds to cross from the sink to the gas cell
 # --------------------
 # ----- Cosmic ray special options
 #CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART=1  # allows restart from a snapshot (flag=2) where single-bin CR model was used, for runs with CR spectra: the spectra are populated with the energy of the single-bin snapshot and fixed initial spectral shapes/ratios
@@ -590,10 +601,14 @@
 #CRFLUID_ALT_FLUX_FORM_JOCH         # replace the form of the two-moment CR equations derived directly from the focused CR transport equation (per Hopkins et al. 2021), with the older formulation of the two-moment equations derived ad-hoc (missing some important terms) from Jiang+Oh & Chan+Hopkins 2018. If this is used, cite Chan et al. 2019 2019MNRAS.488.3716C for the numerical methods
 #CRFLUID_ALT_REACCEL_ONLY_DIFFUSIVE # replaces the correct form of the re-acceleration terms calculated from the focused CR transport equation with the more ad-hoc diffusive re-acceleration assumption that CR scattering/diffusion is dominated by an undamped, perfectly-symmetric, isotropic extrinsic turbulent cascade (not likely valid below ~TeV), following e.g. Drury+Strong 2017A&A...597A.117D; requires CRFLUID_EVOLVE_SPECTRUM.
 #CRFLUID_ALT_VARIABLE_RSOL          # allows a variable (CR energy-dependent) reduced speed of light to be used for CRs, which is set in the function return_CRbin_M1speed defined by the user. cite Hopkins et al. 2021, arXiv:2103.10443
+#CRFLUID_BINCENTERED_TRANSPORT      # use the older 'bin-centered' cosmic ray transport scheme for spectrally-resolved cosmic rays, instead of the more accurate scheme which prevents bin-to-bin artifacts as developed in Hopkins arXiv:2202.05283
 # --------------------
-# ----- FIRE sub-module special options
+# ----- FIRE and STARFORGE sub-module special options
 #FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT # experiment with modified supernova energies as a function of metallicity - freely modify this module as desired. used for numerical experiments only.
-#SINGLE_STAR_AND_SSP_HYBRID_MODEL=1          # cells with mass less than this (in solar) are treated with the single-stellar evolution models, larger mass with ssp models. needs user to specify a refinement criterion, and a criterion for when one module or another will be used. still in testing.
+#SINGLE_STAR_AND_SSP_HYBRID_MODEL=1 # cells with mass less than this (in solar) are treated with the single-stellar evolution models, larger mass with ssp models. needs user to specify a refinement criterion, and a criterion for when one module or another will be used. still in testing.
+#STARFORGE_GMC_TURBINIT             # special flag for custom ICs behavior in star formation simulations for turbulent clouds. adds an analytic uniform sphere harmonic potential + r^-3 halo outside to confine stirred turbulent gas, during the 'stirring' phase. cite Lane et al., 2022MNRAS.510.4767L
+#STARFORGE_FILAMENT_TURBINIT        # special flag for custom ICs behavior in star formation simulations for turbulent clouds. adds an analytic potential of an finitite cylinder with a Plummer density profile, truncated at the ends of the cylinder, to confine stirred turbulent gas, during the 'stirring' phase. cite Lane et al., 2022MNRAS.510.4767L
+#STARFORGE_FEEDBACK_TRACERS         # adds tracer fields to recycled gas in the SINGLE_STAR modules to explicitly track gas coming from jets versus main-sequence winds versus supernovae. tracer fields added to metal fields
 # --------------------
 # ----- Dust grain/particulate/aerosol module special options
 #GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE    # Make the idealized external grain acceleration grain size-dependent; equivalent to assuming an absorption efficiency Q=1. Cite GRAIN_RDI_TESTPROBLEM papers.
@@ -627,7 +642,6 @@
 ####################################################################################################-
 ####################################################################################################-
 
-
 ####################################################################################################-
 #--------------------------------------- nuclear network
 #-------------------------------- (these are currently non-functional and should not be used. users who wish to update them to make them functional are welcome)
@@ -638,15 +652,10 @@
 #NUCLEARNET_OUTPUT_TIMEEVOLUTION #- additional outputs
 ####################################################################################################-
 
-
 ####################################################################################################-
-##----------------------------------------------------------------------------------------------------
-#--------------------------------------- on the fly analysis of phase structure and potentials in DM simulations
-#---------------------------------------  (this code works, but requires additional modules not part of GIZMO but from GADGET-3,
-#---------------------------------------   where they were developed. users who wish to incorporate a new version/fix this are welcome)
-##----------------------------------------------------------------------------------------------------
-#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
-#-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
+#------------------------------- on the fly analysis of phase structure and potentials in DM simulations
+#--------------------------------- (this code works, but requires additional modules not part of GIZMO but from GADGET-3, where they were developed. users who wish to incorporate a new version/fix this are welcome)
+#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger): use of these routines requires explicit pre-approval by developer M. Vogelsberger
 #GDE_DISTORTIONTENSOR           #- main switch: integrate phase-space distortion tensor
 #GDE_TYPES=2+4+8+16+32          #- track GDE for these types
 #GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
@@ -655,29 +664,12 @@
 #OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
 ####################################################################################################-
 
-
 ####################################################################################################-
 #-------------------------------- misc dev flags needing to be incorporated here (in testing)
 #GALSF_FB_FIRE_PROTOSTELLARJETS             #- simple model for prompt recycling of protostellar jet material based on scalings in Grudic et al., arXiv:2201.00882. developed by PFH
 #GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF=(2.0) #- star particle formation of O-stars is spread over this multiple of the free-fall time; requires GALSF_SFR_IMF_SAMPLING. developed by PFH
 #GALSF_MERGER_STARCLUSTER_PARTICLES         #- module which merges star particles together meeting certain core-collapse conditions, so they can be cosmologically evolved. developed by PFH
-#GALSF_FB_FIRE_AGE_TRACERS                  #- model for arbitrary tracers of different age-bins of stellar yields, which can be re-convolved in post-processing. developed by A. Emerick, paper in prep by A. Wetzel
-#BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS     #- rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
-#BH_EXCISION_NONGAS                         #- excise non-gas elements too close to a sink if they meet various criteria including being bound, sufficiently old (if stars), within and with maximum possible apocentric radii within the sink softening (which is rescaled appropriately). mass is added to the sink dynamical mass reservoir, not disk or sink itself. developed by PFH
-#BH_EXCISION_GAS                            #- excise gas elements too close to a sink with a similar criterion to BH_EXCISION_NONGAS.
-#BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA    #- 
-#BH_INTERACT_ON_GAS_TIMESTEP                #-
-#BH_GRAVCAPTURE_FIXEDSINKRADIUS             #-
-#SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #-
-#STARFORGE_FILAMENT_TURBINIT                #-
-#STARFORGE_GMC_TURBINIT                     #-
-#STARFORGE_GMC_ALPHA                        #-
-#STARFORGE_FEEDBACK_TRACERS                 #-
-#SINGLE_STAR_FB_TIMESTEPLIMIT               #-
-#ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION     #-
-#ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT      #-
-#ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING #-
-#CBE_INTEGRATOR_WITHGRADIENTS               #-
-#CRFLUID_DIFFUSION_CORRECTION_TERMS         #-
-#STARS_ONLY_SNAPSHOT_FREQUENCY              #-
+#GALSF_FB_FIRE_AGE_TRACERS                  #- model for arbitrary tracers of different age-bins of stellar yields, which can be re-convolved in post-processing. developed by A. Emerick, paper in prep by A. Wetzel, meantime cite arXiv:2203.00040
+#SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #- module for special nuclear zoom-in simulations. currently entirely custom behavior, not designed for wide use.
+#CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
 ####################################################################################################-

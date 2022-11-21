@@ -493,7 +493,7 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
 
                     if(local.Type==0) /* sitting on a -gas- element, want to interpolate opacity to it */
                     {
-                        wt = P[j].Mass * (wk_i / P[j].Gas_Density); /* dimensionless weight of this gas element as 'seen' by the grain: = (grain_part_mass/gas_part_mass) * (gas_part_mass * Wk / gas_density [=sum gas_part_mass * Wk]) */
+                        wt = P[j].Mass * (wk_i / P[j].Gas_Density); /* dimensionless weight of this grain element as 'seen' by the gas: = (grain_part_mass/gas_part_mass) * (gas_part_mass * Wk / gas_density [=sum gas_part_mass * Wk]) - using sum as seen by grain and H for grain ensures grain can't be 'double counted' -- sum over all gas elements gives correct total mass of dust distributed over the entire system, as desired */
                         double R_grain_code=P[j].Grain_Size/UNIT_LENGTH_IN_CGS, rho_grain_code=All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS; /* internal grain density in code units */
                         double geometric_dustcrosssection_factor = wt * 3. / (4. * rho_grain_code * R_grain_code); // interpolated opacity contribution in the absence of any absorption efficiency parameter
                         out.InterpolatedGeometricDustCrossSection += geometric_dustcrosssection_factor; // add this alone here

@@ -821,7 +821,6 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
     {
-        //SphP[target].Ne = n_elec; // ???
 #if defined(OUTPUT_MOLECULAR_FRACTION)
         SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));
 #endif
