@@ -468,6 +468,7 @@ void init(void)
                 BPP(i).BH_Mass = All.SeedBlackHoleMass;
                 BPP(i).Sink_Formation_Mass = P[i].Mass;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
+                BPP(i).Sink_Formation_Mass = All.MeanGasParticleMass;
                 BPP(i).BH_Mass = P[i].Mass;
 #endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
