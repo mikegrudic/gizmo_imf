@@ -9,6 +9,7 @@
 SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Bridges2"
+#SYSTYPE="TSCC"
 #SYSTYPE="Anvil"
 #SYSTYPE="Wheeler"
 #SYSTYPE="CaltechHPC"

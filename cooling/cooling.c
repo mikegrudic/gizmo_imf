@@ -223,6 +223,13 @@ void do_the_cooling_for_particle(int i)
         if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here
 #endif
 
+#if defined(METALS) && defined(DUST)
+#ifdef GALSF_USE_SNE_ONELOOP_SCHEME
+        update_stellar_dust_feedback(i);
+#endif
+        update_dust_acc_and_sput(i, dtime*UNIT_TIME_IN_MYR*0.001);
+#endif
+
 #ifdef COOL_MOLECFRAC_NONEQM
         update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
@@ -243,6 +250,548 @@ void do_the_cooling_for_particle(int i)
 }
 
 
+#if defined(METALS) && defined(DUST)
+#ifdef GALSF_USE_SNE_ONELOOP_SCHEME
+/* Subroutine to update dust masses from stellar feedback injection and destruction calculated in mechanical feedback routine 
+ * Similar to what is done for turbulent dust diffusion routine.
+*/
+void update_stellar_dust_feedback(int i)
+{
+    if (SphP[i].Mass_Cleared <= 0 && SphP[i].Dstellar_dust[0] <= 0) {return;} // if no SNe destruct or stellar dust injection no reason to continue
+    
+    int k;
+    double protected_frac, old_mass, frac_cleared;
+    old_mass = P[i].Mass-SphP[i].Dmass_added;
+    frac_cleared = SphP[i].Mass_Cleared / old_mass;
+    // If SNe events happened need to first destroy the appropriate amount of dust if there is any dust
+    if (frac_cleared > 0 && SphP[i].Dust_Metal[0] > 0)
+    {
+        if (frac_cleared >= 1.) // destroy all dust
+        {
+            for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[k]=0.;}
+            for(k=0;k<NUM_DUST_SOURCES;k++)  {SphP[i].Dust_Source[k]=0.;}
+#ifdef SPECIES
+            for(k=0;k<NUM_DUST_SPECIES;k++)  {SphP[i].Dust_Species[k]=0.;}
+#endif
+        }
+        else
+        {
+            protected_frac = 0.; // Fraction of dust protected from destruction (only iron inclusions are currently considered)
+#ifdef SPECIES
+#ifdef IRON_NANOPARTICLES
+            // Take out the iron inclusions protected in silicate dust and then add it back in later
+            protected_frac = SphP[i].Dust_Species[NUM_DUST_SPECIES-1]/SphP[i].Dust_Metal[0];
+            SphP[i].Dust_Metal[10] -= SphP[i].Dust_Species[NUM_DUST_SPECIES-1];
+            // Assume all dust species are destroyed evenly
+            for(k=0;k<NUM_DUST_SPECIES-1;k++) {SphP[i].Dust_Species[k] *= 1.-frac_cleared;}
+#else
+            // Assume all dust species are destroyed evenly
+            for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[i].Dust_Species[k] *= 1.-frac_cleared;}
+#endif 
+#endif
+            // Assume all dust sources are destroyed evenly and take into account protected dust
+            for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] *= (1.-(1.-protected_frac)*frac_cleared);}
+            SphP[i].Dust_Metal[0] = 0.0;
+            for(k=1;k<NUM_DUST_ELEMENTS;k++)
+            {
+                SphP[i].Dust_Metal[k] *= 1.-frac_cleared;
+                SphP[i].Dust_Metal[0] += SphP[i].Dust_Metal[k];
+            }
+#if defined(SPECIES) && defined(IRON_NANOPARTICLES)
+            // Add the protected iron dust back in
+            SphP[i].Dust_Metal[10] += SphP[i].Dust_Species[NUM_DUST_SPECIES-1];
+            SphP[i].Dust_Metal[0] += SphP[i].Dust_Species[NUM_DUST_SPECIES-1];
+            // Update amount of free-flying iron and iron inclusions since some of the inclusions are released from silicate
+            // Assume this leads to constant fraction of iron inclusions which scales with local amount of silicate dust
+            int key_elem = 0;
+            double key_mass, key_num_atoms, frac_of_max_sil, incl_frac;
+            double sil_elem_abunds[ELEM_IN_SILICATES];
+            for(k=0;k<ELEM_IN_SILICATES;k++)
+            {
+                int index = All.SilElemsIndex[k];
+                sil_elem_abunds[k] = P[i].Metallicity[index] / (All.AtomicMass[index] * PROTONMASS_CGS);
+                if (sil_elem_abunds[key_elem] / All.SilNumAtoms[key_elem] > sil_elem_abunds[k] / All.SilNumAtoms[k]) key_elem = k;
+            }
+            key_mass = All.AtomicMass[All.SilElemsIndex[key_elem]];
+            key_num_atoms = All.SilNumAtoms[key_elem];
+            key_elem = All.SilElemsIndex[key_elem];
+            frac_of_max_sil = SphP[i].Dust_Species[0] / (P[i].Metallicity[key_elem] * All.SilFormulaMass/(key_num_atoms * key_mass));
+
+            incl_frac = DMAX(DMIN(IRON_INCL_FRAC*frac_of_max_sil,IRON_INCL_FRAC),0.);
+            SphP[i].Dust_Species[3] = (1.-incl_frac) * SphP[i].Dust_Metal[10];
+            SphP[i].Dust_Species[NUM_DUST_SPECIES-1] = incl_frac * SphP[i].Dust_Metal[10]; 
+#endif                        
+        }        
+    }
+    SphP[i].Mass_Cleared=0.; SphP[i].Dmass_added=0.;
+
+    // Inject stellar dust mass and update dust mass fractions  
+    for(k=0;k<NUM_DUST_ELEMENTS;k++) {
+        SphP[i].Dust_Metal[k] += SphP[i].Dstellar_dust[k]/P[i].Mass;
+        SphP[i].Dstellar_dust[k] = 0.;
+    }
+    for(k=0;k<NUM_DUST_SOURCES;k++) {
+        SphP[i].Dust_Source[k] += SphP[i].Dstellar_source[k]/P[i].Mass;
+        SphP[i].Dstellar_source[k] = 0.;
+    } 
+#ifdef SPECIES
+    for(k=0;k<NUM_DUST_SPECIES;k++) {
+        SphP[i].Dust_Species[k] += SphP[i].Dstellar_species[k]/P[i].Mass;
+        SphP[i].Dstellar_species[k] = 0.;
+    }
+#endif
+}
+#endif // GALSF_USE_SNE_ONELOOP_SCHEME
+
+
+/* subroutine to update dust masses from growth via gas-dust accretion and destruction via thermal sputtering */
+void update_dust_acc_and_sput(int i, double dtime_gyr)
+{
+    int k;
+    double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temp, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+    temp = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+    rho*=UNIT_DENSITY_IN_CGS;
+
+    /* Need to calculate H2 fraction to determine whether gas is either in the CNM/diffuse MC or dense MC phase since
+     * gas-dust accretion has Coloumb enhancing in CNM/diffuse MC due to dust grain charge and ionized metal species.
+     * Also used to determine when C is locked up in CO which need to be taken into account since CO rapidly forms
+     * once the gas is sufficently molecular.
+     */
+    double fH2=0., new_fDense=0.; // mass fraction of gas that is H2 and gas in dense MC phase 
+    double NH2 = 1.5E21; // cm^-2 Column density of H2 needed to be in dense MC phase
+    double l_depth, x_dens; // depth into cloud to reach NH2 and radial fraction of cloud in dense MC phase
+    double surface_density = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // converts to cgs
+    // shielding length giving effective radius of gas particle
+    double l_shield = surface_density / rho; 
+#if !defined(OUTPUT_MOLECULAR_FRACTION) && !defined(COOL_MOLECFRAC_NONEQM)
+    fH2 = Get_Gas_Molecular_Mass_Fraction(i, temp, nh0, ne, 0.);
+#else
+    fH2 = SphP[i].MolecularMassFraction;
+#endif
+    if (fH2 > 0)
+    {
+        double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;
+        l_depth = 2.*NH2 / (fH2*nHcgs); 
+        x_dens = (l_shield-l_depth)/l_shield;
+        x_dens = DMIN(1,DMAX(0,x_dens));
+        new_fDense = pow(x_dens,3);
+        new_fDense = DMIN(new_fDense,fH2); // Maximum dense molecular fraction set by total molecular fraction
+    }
+    // Only need to update CO if there is C present
+    if (P[i].Metallicity[2]>0)
+    {
+        // If dense MC has shrunk, reduce the C in CO by the fraction it has shrunk
+        if (new_fDense < SphP[i].fDense) {SphP[i].C_in_CO *= new_fDense/SphP[i].fDense;}
+        // If dense MC has grown, increase the C in CO by the newly add volume of remaining gas-phase C if any is left
+        else
+        {
+            if (P[i].Metallicity[2]-SphP[i].Dust_Metal[2]-SphP[i].C_in_CO > 0.)
+            {
+                SphP[i].C_in_CO += (new_fDense-SphP[i].fDense) * ((P[i].Metallicity[2]-SphP[i].Dust_Metal[2])-SphP[i].C_in_CO) / (1.-SphP[i].fDense);
+            }
+        }
+    }
+    else
+    {
+        SphP[i].C_in_CO = 0.;
+    }
+    SphP[i].fDense = new_fDense;
+
+    if (SphP[i].Dust_Metal[0] <= 0) {return;} // No dust so nothing more to do
+
+    double dF; // change in fraction of element condensed into dust
+    double growth_timescale, sputter_timescale, t_ref, T_ref, avg_grain_radius;
+    double dust_yields[NUM_DUST_ELEMENTS] = {0.0};
+    int source = 0;
+
+    ///// NOW ACCRETE AND SPUTTER DUST /////
+#ifdef ELEMENTAL
+    // First renorm dust due to building numerical error that can arise from stellar feedback
+    SphP[i].Dust_Metal[0] = 0.;
+    for (k=2;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[0] += SphP[i].Dust_Metal[k];}
+    double total = SphP[i].Dust_Source[0]+SphP[i].Dust_Source[1]+SphP[i].Dust_Source[2]+SphP[i].Dust_Source[3];
+    for (k=0;k<NUM_DUST_SOURCES;k++) SphP[i].Dust_Source[k] = DMAX(0,SphP[i].Dust_Metal[0]/total*SphP[i].Dust_Source[k]);
+
+
+    /* First the newly created dust mass due to accretion is added with the creation source updated, then the dust destroyed
+       due to thermal sputtering is subtracted from the overall dust mass with the creation source being unchanged since we 
+       assume the dust is destroyed evenly regardless of creation source */
+    double rho_ref = PROTONMASS_CGS; // 1 H atom cm^-3
+    T_ref = 20.; avg_grain_radius = 0.032; /* um */ t_ref = 0.2; /* Gyr */
+    growth_timescale = t_ref * (rho_ref / rho) * pow((T_ref / temp), .5);
+    // Calculate the fraction of mass of a certain element to be added to dust due to accretion
+    for (k=2;k<NUM_DUST_ELEMENTS;k++) 
+    {
+        double in_mol_frac; // fraction of element in molecular form and unable to accrete onto dust (CO is the only molecule considered)
+        if (k==2) {in_mol_frac = SphP[i].C_in_CO;}
+        else if (k==4) {in_mol_frac = SphP[i].C_in_CO * All.AtomicMass[4] / All.AtomicMass[2];}
+        else {in_mol_frac = 0.;}
+        // If no dust, metals, or all metals in dust then no accretion
+        if (P[i].Metallicity[k] == 0. || SphP[i].Dust_Metal[k] == 0. || (P[i].Metallicity[k] - SphP[i].Dust_Metal[k]) <= 0) {dF = 0.;}
+        else 
+        {
+            dF = dtime_gyr * (1. - SphP[i].Dust_Metal[k] / (P[i].Metallicity[k] - in_mol_frac)) * (SphP[i].Dust_Metal[k] / growth_timescale);
+            // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
+            dF = DMIN(P[i].Metallicity[k] - SphP[i].Dust_Metal[k] - in_mol_frac,DMAX(0.,dF));
+            dust_yields[k] = dF;
+            dust_yields[0] += dust_yields[k];
+        }
+    }
+    // Update dust yields and creation source
+    if (dust_yields[0] != 0.) 
+    {
+        SphP[i].Dust_Source[source] += dust_yields[0];
+        for (k=0;k< NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[k] += dust_yields[k];}
+    } 
+    
+    // Check if sputtering is delayed due to recent SNe
+    if(SphP[i].DelayTimeSNeSput > 0) {SphP[i].DelayTimeSNeSput = DMAX(0,SphP[i].DelayTimeSNeSput-dtime_gyr);} // count off clock since last SNe
+    else // Now determine amount of dust destroyed by thermal sputtering
+    { 
+        T_ref = 2E6; avg_grain_radius = 0.032; /* um */ t_ref = 0.17; /* Gyr */
+        sputter_timescale = t_ref * (avg_grain_radius / 0.1) / (rho*1E27) * (pow((T_ref/ temp), 2.5) + 1.);
+        for (k=0;k<NUM_DUST_ELEMENTS;k++) {dust_yields[k] = 0.;}
+        // Calculate the fraction of mass of a certain element to be destroyed due to thermal sputtering
+        for (k=2;k<NUM_DUST_ELEMENTS;k++) 
+        {
+            if (SphP[i].Dust_Metal[k] <= 0.) {dF = 0.;}
+            else {dF = - dtime_gyr * (SphP[i].Dust_Metal[k] / (sputter_timescale / 3.));}
+            // can't destroy more dust then there is available and deal with unphysical values
+            dF = DMAX(-SphP[i].Dust_Metal[k],DMIN(0,dF));
+            dust_yields[k] = dF;
+            dust_yields[0] += dF;
+        }
+
+        // Update dust yields and sources
+        if (dust_yields[0] != 0.)
+        {
+            // Assume all dust sources are destroyed evenly
+            for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] *= (1.+dust_yields[0]/SphP[i].Dust_Metal[0]);}
+            for (k=0;k<NUM_DUST_ELEMENTS;k++)
+            {
+                SphP[i].Dust_Metal[k] += dust_yields[k]; 
+            }
+            // Deal with rounding error causing total dust to not equal zero
+            int no_dust = 1;
+            for (k=2; k<NUM_DUST_ELEMENTS;k++) {if (SphP[i].Dust_Metal[k] > 0.) {no_dust = 0; break;}}
+            if (no_dust)
+            {
+                SphP[i].Dust_Metal[0] = 0.;
+                // if all dust is destroyed need to zero creation sources
+                for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] = 0.;}
+            }
+        }
+    }
+#endif // ELEMENTAL
+#ifdef SPECIES
+    // This may no longer be necessary.
+    // First renorm dust due to building numerical error that can arise from stellar feedback
+    for (k=0;k<NUM_DUST_ELEMENTS;k++) SphP[i].Dust_Metal[k]=0.;
+    // silicate
+    for (k=0;k<ELEM_IN_SILICATES;k++) 
+    {
+        SphP[i].Dust_Metal[All.SilElemsIndex[k]] += SphP[i].Dust_Species[0] * All.SilNumAtoms[k] * All.AtomicMass[All.SilElemsIndex[k]] / All.SilFormulaMass;
+    }
+    // carbonaceous
+    SphP[i].Dust_Metal[2] += SphP[i].Dust_Species[1];
+    // SiC
+    SphP[i].Dust_Metal[2] += SphP[i].Dust_Species[2] * All.AtomicMass[2] / (All.AtomicMass[2] + All.AtomicMass[7]);
+    SphP[i].Dust_Metal[7] += SphP[i].Dust_Species[2] * All.AtomicMass[7] / (All.AtomicMass[2] + All.AtomicMass[7]);
+    // metallic iron
+#ifdef IRON_NANOPARTICLES
+#ifdef O_RESERVOIR
+    SphP[i].Dust_Metal[10] += SphP[i].Dust_Species[3]+SphP[i].Dust_Species[5];
+#else
+    SphP[i].Dust_Metal[10] += SphP[i].Dust_Species[3]+SphP[i].Dust_Species[4];
+#endif
+#else
+    SphP[i].Dust_Metal[10] += SphP[i].Dust_Species[3];
+#endif
+#ifdef O_RESERVOIR
+    // oxygen reservoir
+    SphP[i].Dust_Metal[4] += SphP[i].Dust_Species[4];
+#endif
+    for (k=2;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[0] += SphP[i].Dust_Metal[k];}
+    double total = SphP[i].Dust_Source[0]+SphP[i].Dust_Source[1]+SphP[i].Dust_Source[2]+SphP[i].Dust_Source[3];
+    if (total<=0.) {for (k=0;k<NUM_DUST_SOURCES;k++) SphP[i].Dust_Source[k] = 0.;}
+    else {for (k=0;k<NUM_DUST_SOURCES;k++) SphP[i].Dust_Source[k] = DMAX(0,SphP[i].Dust_Metal[0]/total*SphP[i].Dust_Source[k]);}
+
+    /* Restrict accretion only to MC environments by assuming sticking efficiency of 1 for 
+     * T <= 300K and 0 otherwise. Check the three main dust species that can form through 
+     * accretion in the ISM silicates, carbon, and metallic iron. 
+     */
+    double bulk_dens; //  mass density of the dust condensed phase (g cm^-3)
+    double dust_formula_mass; // atomic weight of one formula unit of dust species
+    double max_num_dens; // max number density of key element assuming all of element is in gas phase
+    double species_yields[NUM_DUST_SPECIES] = {0.0};
+    int key_elem;  // index of least abundant element needed to create the dust species under consideration
+    double key_mass, key_num_atoms; // atomic mass of key element number of atoms in dust species
+    double num_dens[NUM_DUST_ELEMENTS]; // number density of all elements in gas only 
+    int missing_element; // check if any elements are missing from the gas phase
+    // reference accretion timescales for ionized (with Coulomb enhancment) and neutral (no enhancement) gas-phase metals
+    double t_ref_CNM, t_ref_MC; 
+    // Assuming sticking efficiency of zero for T > 300 K
+    if (temp <= 300)
+    {
+        // Determine number density of each element in the gas phase, use this to determine the key element for each dust species
+        num_dens[0] = rho * (1. - P[i].Metallicity[0] - P[i].Metallicity[1]) / (All.AtomicMass[0] * PROTONMASS_CGS);
+        for (k=1;k<NUM_DUST_ELEMENTS;k++) num_dens[k] = rho * (P[i].Metallicity[k] - SphP[i].Dust_Metal[k])/ (All.AtomicMass[k] * PROTONMASS_CGS);
+        
+        /******** SILICATE ********/
+        t_ref_CNM = 0.252E-3;   // Gyr
+        t_ref_MC = 1.38E-3;     // Gyr
+        // Calculate effective timescale assuming produced dust is redistributed throughout the gas
+        t_ref = (t_ref_CNM * t_ref_MC) / (SphP[i].fDense * t_ref_CNM + (1.-SphP[i].fDense) * t_ref_MC);
+        // check that all the elements required to make silicates are available
+        missing_element = 0;
+        for(k=0;k<ELEM_IN_SILICATES;k++) {if(num_dens[All.SilElemsIndex[k]] <= 0.) {missing_element = 1;}}
+        if(!missing_element)
+        {
+            bulk_dens = 3.13; dust_formula_mass = All.SilFormulaMass; key_elem = 0;
+            // determine key element which sets the accretion rate
+            for (k=1;k<ELEM_IN_SILICATES;k++)
+            {
+                if (num_dens[All.SilElemsIndex[key_elem]]/All.SilNumAtoms[key_elem] > num_dens[All.SilElemsIndex[k]]/All.SilNumAtoms[k]) {key_elem = k;}
+            }
+            key_mass = All.AtomicMass[All.SilElemsIndex[key_elem]];
+            key_num_atoms = All.SilNumAtoms[key_elem];
+            key_elem = All.SilElemsIndex[key_elem];
+            max_num_dens = rho * P[i].Metallicity[key_elem] / (key_mass * PROTONMASS_CGS);
+
+            growth_timescale = t_ref * (key_num_atoms * sqrt(key_mass) / dust_formula_mass) * bulk_dens / max_num_dens / sqrt(temp);
+            // change in dust condensation for key element
+            dF = dtime_gyr * (1. - SphP[i].Dust_Metal[key_elem] / P[i].Metallicity[key_elem]) * SphP[i].Dust_Metal[key_elem] / growth_timescale;
+            // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
+            dF = DMAX(0.,DMIN(P[i].Metallicity[key_elem]-SphP[i].Dust_Metal[key_elem],dF));
+
+            // change in dust condensation for all elements in silicates
+            for (k=0;k<ELEM_IN_SILICATES;k++)
+            {
+                dust_yields[All.SilElemsIndex[k]] += dF * ((All.SilNumAtoms[k] * All.AtomicMass[All.SilElemsIndex[k]])/ (key_num_atoms * key_mass));
+            }
+            species_yields[0] = dF * (dust_formula_mass / (key_num_atoms * key_mass));
+        }
+
+        /******** CARBONACEOUS ********/
+        // Since the transition between C+ -> C -> CO is quick, assume C+ -> CO so carbon dust only grows in CNM environments
+        // Also need to take into account C in CO reduces the maximum amount of carbon dust which can be formed
+        if (SphP[i].fDense < 1.)
+        {
+            t_ref_CNM = 1.54E-3; // Gyr
+            t_ref = t_ref_CNM / (1.-SphP[i].fDense);
+            key_elem = 2; key_mass = All.AtomicMass[key_elem]; key_num_atoms = 1.; bulk_dens = 2.25; dust_formula_mass = key_mass;
+            if (num_dens[key_elem] > 0)
+            {
+                max_num_dens = rho * P[i].Metallicity[key_elem]/ (key_mass * PROTONMASS_CGS);
+                growth_timescale = t_ref * sqrt(key_mass) / dust_formula_mass * bulk_dens / max_num_dens / sqrt(temp);
+                dF = dtime_gyr * (1. - SphP[i].Dust_Metal[key_elem] / (P[i].Metallicity[key_elem] - SphP[i].C_in_CO)) * SphP[i].Dust_Metal[key_elem] / growth_timescale;
+                // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
+                dF = DMAX(0,DMIN(P[i].Metallicity[key_elem]-SphP[i].C_in_CO-SphP[i].Dust_Metal[key_elem],dF));
+                dust_yields[key_elem] += dF;
+                species_yields[1] = dF;
+            }
+        }
+
+        /******** METALLIC IRON ********/
+#ifdef IRON_NANOPARTICLES
+        t_ref_CNM = 1.66E-6;    // Gyr
+        t_ref_MC = 0.139E-3;    // Gyr
+#else
+        t_ref_CNM = 0.252E-3;   // Gyr
+        t_ref_MC = 1.38E-3;     // Gyr
+#endif
+        // Calculate effective timescale assuming produced dust is redistributed throughout the gas
+        t_ref = (t_ref_CNM * t_ref_MC) / (SphP[i].fDense * t_ref_CNM + (1.-SphP[i].fDense) * t_ref_MC);
+        key_elem = 10; key_mass = All.AtomicMass[key_elem]; key_num_atoms = 1.; bulk_dens = 7.86; dust_formula_mass = All.AtomicMass[key_elem];
+        if (num_dens[key_elem] > 0)
+        {
+            max_num_dens = rho * P[i].Metallicity[key_elem]/(key_mass * PROTONMASS_CGS);
+            growth_timescale = t_ref * sqrt(key_mass) / dust_formula_mass * bulk_dens / max_num_dens / sqrt(temp);
+            dF = dtime_gyr * (1. - SphP[i].Dust_Metal[key_elem] / P[i].Metallicity[key_elem]) * SphP[i].Dust_Species[3] / growth_timescale;
+            // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
+            dF = DMAX(0.,DMIN(P[i].Metallicity[key_elem]-SphP[i].Dust_Metal[key_elem],dF));
+            dust_yields[key_elem] += dF;
+            species_yields[3] = dF;
+        }
+    
+        // Add up all the dust elements
+        for (k=2;k<NUM_DUST_ELEMENTS;k++) dust_yields[0] += dust_yields[k];
+
+        // Update dust yields and creation source
+        if (dust_yields[0] != 0.) 
+        {
+            // update dust source
+            SphP[i].Dust_Source[source] += dust_yields[0];
+            for (k=0;k<NUM_DUST_SPECIES;k++) SphP[i].Dust_Species[k] += species_yields[k];
+            // update new dust mass
+            for (k = 0; k < NUM_DUST_ELEMENTS; k++) {SphP[i].Dust_Metal[k] += dust_yields[k];}
+#ifdef IRON_NANOPARTICLES
+            // Update amount of free-flying iron and iron inclusions since some of the free-flying particles become inclusions in silicates
+            // Scales with local amount of silicates
+            int key_elem = 0;
+            double key_mass, key_num_atoms, frac_of_max_sil, incl_frac;
+            double sil_elem_abunds[ELEM_IN_SILICATES];
+            for(k=0;k<ELEM_IN_SILICATES;k++)
+            {
+                int index = All.SilElemsIndex[k];
+                sil_elem_abunds[k] = P[i].Metallicity[index] / (All.AtomicMass[index] * PROTONMASS_CGS);
+                if (sil_elem_abunds[key_elem] / All.SilNumAtoms[key_elem] > sil_elem_abunds[k] / All.SilNumAtoms[k]) key_elem = k;
+            }
+            key_mass = All.AtomicMass[All.SilElemsIndex[key_elem]];
+            key_num_atoms = All.SilNumAtoms[key_elem];
+            key_elem = All.SilElemsIndex[key_elem];
+            frac_of_max_sil = SphP[i].Dust_Species[0] / (P[i].Metallicity[key_elem] * All.SilFormulaMass/(key_num_atoms * key_mass));
+
+            incl_frac = DMAX(DMIN(IRON_INCL_FRAC*frac_of_max_sil,IRON_INCL_FRAC),0.);
+            SphP[i].Dust_Species[3] = (1.-incl_frac) * SphP[i].Dust_Metal[10];
+            SphP[i].Dust_Species[NUM_DUST_SPECIES-1] = incl_frac * SphP[i].Dust_Metal[10]; 
+#endif                        
+        }
+    } // if (temp <= 300)
+
+#ifdef O_RESERVOIR
+    /* Observed O depletions (Jenkins 2009) cannot be explained by silicate dust alone. So 
+     * throw extra oxygen into a reservoir to better match observations given O depletions vs
+     * number density from Whittet (2010). We assume that this reservoir only holds as much O 
+     * as would be needed to match this trend scaled with the amount of silicate dust vs
+     * the maximum allowable amount of silicate dust in the gas. So if the maximum amount
+     * of silicate dust has formed than the O depletions should exactly match with 
+     * observations. This scaling allows for some variability in bursty environments.
+    */
+    // We only add to the O reservoir when in an environment where dust can grow
+    if (temp <= 300)
+    {
+        double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
+        double D_O = 1. - 0.65441 / pow(nHcgs,0.103725);        /* expected fractional O depletion (upper limit) */
+        double max_O_in_sil;                                    /* max O depletion due to silicates */
+        double extra_O;                                         /* extra O that needs to be depleted to match observations */
+        double frac_of_sil;                                     /* fraction of maximum amount of silicate present in gas */
+        double O_in_CO;                                         /* mass fraction of O in CO, sets max for D_O */
+        O_in_CO = SphP[i].C_in_CO * All.AtomicMass[4] / All.AtomicMass[2] / P[i].Metallicity[4];
+        D_O = DMAX(0.,DMIN(D_O, 1.-O_in_CO)); // set depletion upper limit to O in CO
+
+        // Now determine maximum possible silicate dust based on the least abundant element
+        // This roughly scales with the fraction of the key element (usually Si) depleted into dust
+        key_elem = 0;
+        for(k=0;k<ELEM_IN_SILICATES;k++)
+        {
+            int index = All.SilElemsIndex[k];
+            num_dens[index] = rho * P[i].Metallicity[index] / (All.AtomicMass[index] * PROTONMASS_CGS);
+            if (num_dens[All.SilElemsIndex[key_elem]] / All.SilNumAtoms[key_elem] > num_dens[index] / All.SilNumAtoms[k]) key_elem = k;
+        }
+        key_mass = All.AtomicMass[All.SilElemsIndex[key_elem]];
+        key_num_atoms = All.SilNumAtoms[key_elem];
+        key_elem = All.SilElemsIndex[key_elem];
+        frac_of_sil = SphP[i].Dust_Species[0] / (P[i].Metallicity[key_elem] * All.SilFormulaMass/(key_num_atoms * key_mass));
+        max_O_in_sil = P[i].Metallicity[key_elem] * ((All.SilNumAtoms[0] * All.AtomicMass[4])/(key_num_atoms * key_mass));
+        extra_O = frac_of_sil * D_O * P[i].Metallicity[4] - max_O_in_sil - SphP[i].Dust_Species[4];
+        // If needed O depletion can't be attributed to silicate dust and what's already in the oxygen reservoir throw more oxygen into the reservoir
+        if (extra_O > 0)
+        {
+            // Update creation source
+            SphP[i].Dust_Source[source] += extra_O;
+            // Now add the dust
+            SphP[i].Dust_Metal[0] += extra_O;
+            SphP[i].Dust_Metal[4] += extra_O; 
+            SphP[i].Dust_Species[4] += extra_O;           
+        }
+    } // if (temp <= 300)
+#endif // O_RESERVOIR   
+
+    // Check if sputtering is delayed due to recent SNe
+    if(SphP[i].DelayTimeSNeSput > 0) {SphP[i].DelayTimeSNeSput = DMAX(0,SphP[i].DelayTimeSNeSput-dtime_gyr);} // count off clock since last SNe
+    else // Now determine amount of dust destroyed by thermal sputtering
+    { 
+        T_ref = 2E6; avg_grain_radius = 0.032; /* um */ t_ref = 0.17; /* Gyr */
+        sputter_timescale = t_ref * (avg_grain_radius / 0.1) / (rho*1E27) * (pow((T_ref/ temp), 2.5) + 1.);
+
+        for (k=0;k<NUM_DUST_SPECIES;k++) species_yields[k] = 0.;
+        for (k=0;k<NUM_DUST_ELEMENTS;k++) dust_yields[k] = 0.;
+
+        /******** SILICATE ********/
+        dust_formula_mass = All.SilFormulaMass;
+        dF = - dtime_gyr * (SphP[i].Dust_Species[0] / (sputter_timescale / 3.));
+        dF = DMAX(-SphP[i].Dust_Species[0],DMIN(0,dF)); // can't destroy more dust then there is available
+        species_yields[0] += dF;
+        for (k=0;k<ELEM_IN_SILICATES;k++)
+        {
+            dust_yields[All.SilElemsIndex[k]] += dF * (All.SilNumAtoms[k] * All.AtomicMass[All.SilElemsIndex[k]]) / dust_formula_mass;
+        }
+        /******** CARBONACEOUS ********/
+        dF = - dtime_gyr * (SphP[i].Dust_Species[1] / (sputter_timescale / 3.));
+        dF = DMAX(-SphP[i].Dust_Species[1],DMIN(0,dF)); // can't destroy more dust then there is available
+        species_yields[1] += dF;
+        dust_yields[2] += dF;
+        /******** SILICONE CARBIDE ********/
+        dust_formula_mass = All.AtomicMass[2] + All.AtomicMass[7];
+        dF = - dtime_gyr * (SphP[i].Dust_Species[2] / (sputter_timescale / 3.));
+        dF = DMAX(-SphP[i].Dust_Species[2],DMIN(0,dF)); // can't destroy more dust then there is available
+        species_yields[2] += dF;
+        dust_yields[2] += dF * All.AtomicMass[2] / dust_formula_mass;
+        dust_yields[7] += dF * All.AtomicMass[7] / dust_formula_mass;
+#ifdef O_RESERVOIR
+        /******** O RESERVOIR ********/
+        dF = - dtime_gyr * (SphP[i].Dust_Species[4] / (sputter_timescale / 3.));
+        dF = DMAX(-SphP[i].Dust_Species[4],DMIN(0,dF)); // can't destroy more dust then there is available
+        species_yields[4] += dF;
+        dust_yields[4] += dF;
+#endif
+        /******** METALLIC IRON ********/
+#ifdef IRON_NANOPARTICLES
+        avg_grain_radius = 0.0032; /* um */
+        sputter_timescale = t_ref * (avg_grain_radius / 0.1) / (rho*1E27) * (pow((T_ref/ temp), 2.5) + 1.);        
+#endif
+        dF = - dtime_gyr * (SphP[i].Dust_Species[3] / (sputter_timescale / 3.));
+        dF = DMAX(-SphP[i].Dust_Species[3],DMIN(0,dF)); // can't destroy more dust then there is available
+        species_yields[3] += dF;
+        dust_yields[10] += dF;
+
+        for(k=1;k<NUM_DUST_ELEMENTS;k++) dust_yields[0] += dust_yields[k];
+
+        // Update dust yields and creation source and deal with rounding errors when all dust is destroyed
+        if (dust_yields[0] != 0.) 
+        {
+            // Assume all dust sources are destroyed evenly
+            for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] *= (1.+dust_yields[0]/SphP[i].Dust_Metal[0]);}
+            // Update new dust mass
+            for (k=0;k<NUM_DUST_SPECIES;k++) SphP[i].Dust_Species[k] += species_yields[k];
+            // If all dust (silicates, carbonaceous, SiC, and free-flying iron) is destroyed zero everything to avoid rounding error
+            int all_dest = 1;
+            for (k=0;k<4;k++) {if(SphP[i].Dust_Species[k]>0) {all_dest = 0; break;}}
+            if (all_dest)
+            {
+                for(k=0;k<NUM_DUST_ELEMENTS;k++) dust_yields[k] = -SphP[i].Dust_Metal[k];
+                for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] = 0.;}
+                for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[i].Dust_Species[k] = 0.;}
+            }
+            for (k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[k] = DMAX(0,SphP[i].Dust_Metal[k]+dust_yields[k]);}
+#ifdef IRON_NANOPARTICLES
+            // Update amount of free-flying iron and iron inclusions since some of the inclusions are released as silicates are sputtered
+            // Scales with local amount of silicates
+            // Note if all free-flying dust is destroyed then we assume all iron inclusions are also destroyed
+            int key_elem = 0;
+            double key_mass, key_num_atoms, frac_of_max_sil, incl_frac;
+            double sil_elem_abunds[ELEM_IN_SILICATES];
+            for(k=0;k<ELEM_IN_SILICATES;k++)
+            {
+                int index = All.SilElemsIndex[k];
+                sil_elem_abunds[k] = P[i].Metallicity[index] / (All.AtomicMass[index] * PROTONMASS_CGS);
+                if (sil_elem_abunds[key_elem] / All.SilNumAtoms[key_elem] > sil_elem_abunds[k] / All.SilNumAtoms[k]) key_elem = k;
+            }
+            key_mass = All.AtomicMass[All.SilElemsIndex[key_elem]];
+            key_num_atoms = All.SilNumAtoms[key_elem];
+            key_elem = All.SilElemsIndex[key_elem];
+            frac_of_max_sil = SphP[i].Dust_Species[0] / (P[i].Metallicity[key_elem] * All.SilFormulaMass/(key_num_atoms * key_mass));
+
+            incl_frac = DMAX(DMIN(IRON_INCL_FRAC*frac_of_max_sil,IRON_INCL_FRAC),0.);
+            SphP[i].Dust_Species[3] = (1.-incl_frac) * SphP[i].Dust_Metal[10];
+            SphP[i].Dust_Species[NUM_DUST_SPECIES-1] = incl_frac * SphP[i].Dust_Metal[10];                                            
+#endif
+        }
+    }
+#endif // SPECIES 
+}
+#endif // METALS && DUST
 
 
 /* returns new internal energy per unit mass.
@@ -844,12 +1393,24 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
 #ifdef COOL_METAL_LINES_BY_SPECIES
     double *Z;
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+    /* Need to account for depletion of metals into dust when also tracking live dust evolution */
+    double Z_gas[NUM_METAL_SPECIES]={0.}; // only gas-phase Z accounting for Z locked in dust, use this for any heating or cooling that involves metals
+#endif
     if(target>=0)
     {
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+        int k;
+        for(k=0;k<NUM_DUST_ELEMENTS;k++) {Z_gas[k] = DMAX(0.,P[target].Metallicity[k]-SphP[target].Dust_Metal[k]);}
+        for(k=NUM_DUST_ELEMENTS;k<NUM_METAL_SPECIES;k++) {Z_gas[k] = P[target].Metallicity[k];}
+#endif
         Z = P[target].Metallicity;
     } else { /* initialize dummy values here so the function doesn't crash, if called when there isn't a target particle */
         int k; double Zsol[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) {Zsol[k]=All.SolarAbundances[k];}
         Z = Zsol;
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+        for(k=0;k<NUM_METAL_SPECIES;k++) {Z_gas[k]=Zsol[k];}
+#endif
     }
 #endif
     double local_gammamultiplier = return_local_gammamultiplier(target);
@@ -885,7 +1446,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         {
             /* cooling rates tabulated for each species from Wiersma, Schaye, & Smith tables (2008) */
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+            LambdaMetal = GetCoolingRateWSpecies(nHcgs, logT, Z_gas); //* nHcgs*nHcgs;
+#else
             LambdaMetal = GetCoolingRateWSpecies(nHcgs, logT, Z); //* nHcgs*nHcgs;
+#endif
             /* tables normalized so ne*ni/(nH*nH) included already, so just multiply by nH^2 */
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
@@ -901,7 +1466,25 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
         }
 #endif
-
+#if defined(DUST) && defined(COOL_HIGH_TEMP_DUST)
+        // Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981)
+        // Should surpass metal-line cooling for >10^6 K, but this will also overpredicts dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering 
+        if (SphP[target].Dust_Metal[0] > 0 && logT >= 5.)
+        {
+                double rho_c, a3, DG, Havg;
+                a3 = 2.21E-18; // cm^3 average grain volume for MRN grain size distribution
+                rho_c = 3.; // gm cm^-3 grain solid density (intermediate between silicate and carbonaceous)
+                if      (T>=7.17E7){Havg=1.43E-11;}
+                else if (T>=2.4E7) {Havg=-2.07E-12+1.23E-16*pow(T,0.745)+2.10E-17*pow(T,0.75)-1.07E-17*pow(T,0.88);}
+                else if (T>=4.55E6){Havg=-2.07E-12+1.70E-17*pow(T,0.745)+3.96E-17*pow(T,0.75)-5.44E-23*pow(T,1.5);}
+                else if (T>=1.52E6){Havg=-1.06E-16*pow(T,0.745)+1.86E-17*pow(T,0.75)+1.56E-17*pow(T,0.88)-5.44E-23*pow(T,1.5);}
+                else               {Havg=3.76E-22*pow(T,1.5);}
+                DG = SphP[target].Dust_Metal[0];
+                LambdaDust = 3./(4.*M_PI)*PROTONMASS_CGS/HYDROGEN_MASSFRAC*DG/rho_c*n_elec*(Havg/a3);
+                if(!isfinite(LambdaDust)) {LambdaDust=0;}
+                Lambda += LambdaDust;
+        }
+#endif
 #ifdef COOL_LOW_TEMPERATURES
         if(logT <= 5.3)
         {
@@ -917,7 +1500,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
-            double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar), critical density and column
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+            double Z_C = DMAX(1.e-6, Z_gas[2]/(0.5*All.SolarAbundances[2])), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // gas-phase carbon abundance (relative to solar), critical density and column
+#else          
+            double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar and 1/2 factor for original assumed 0.5 depletion), critical density and column
+#endif  
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3), photoelec=0; // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
             photoelec = SphP[target].Rad_Flux_UV; if(gJH0>0 && shieldfac>0) {photoelec+=sqrt(shieldfac) * (gJH0/2.29e-10);} // uvb contribution //
@@ -967,8 +1554,10 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
+#ifndef INTEGRATE_DUST_IN_FIRE
             if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction (in some modules we solve for this explicitly - in that case can protect this more explicitly, but here, we will make a simple approximation, otherwise we run into problems. note this is not sublimation generally, but sputtering, that causes the destruction */
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
+#endif
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(LambdaDust>0) {Lambda += LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
         }
@@ -1057,7 +1646,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 
             if(photoelec > 0)
             {
-                LambdaPElec = -1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]); // negative sign for lambda b/c heating
+                LambdaPElec = -1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); // negative sign for lambda b/c heating
                 double x_photoelec = photoelec * sqrt(T) / (0.5 * (1.0e-12+n_elec) * nHcgs);
                 LambdaPElec *= 0.049/(1+pow(x_photoelec/1925.,0.73)) + 0.037*pow(T/1.0e4,0.7)/(1+x_photoelec/5000.);
                 Heat -= LambdaPElec;
@@ -1133,7 +1722,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
 	
-	if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
+	    if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
         kappa_eff *= (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); // cutoff in dust opacity is now built into return_dust_to_metals_ratio_vs_solar
         if(kappa_eff < 0.1) {kappa_eff=0.1;}
 	

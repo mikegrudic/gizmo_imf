@@ -883,6 +883,13 @@ int merge_particles_ij(int i, int j)
 #endif // CHIMES
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
+#ifdef DUST
+    for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[j].Dust_Metal[k] = wt_j*SphP[j].Dust_Metal[k] + wt_i*SphP[i].Dust_Metal[k];} /* dust-mass conserving */
+    for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[j].Dust_Source[k] = wt_j*SphP[j].Dust_Source[k] + wt_i*SphP[i].Dust_Source[k];} /* dust source-mass conserving */
+#ifdef SPECIES
+    for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[j].Dust_Species[k] = wt_j*SphP[j].Dust_Species[k] + wt_i*SphP[i].Dust_Species[k];} /* dust species-mass conserving */
+#endif
+#endif
 #endif
 #ifdef COSMIC_RAY_FLUID
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)

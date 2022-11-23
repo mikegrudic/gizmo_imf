@@ -74,7 +74,102 @@
                 if(j_is_active_for_fluxes) {SphP[j].Dyield[k_species] -= cmag;}
             }
         }
-    }
-    
+        
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER) // turbulent diffusion of dust as well (passive scalar mixing)
+        // First dust by element
+        for(k_species=0;k_species<NUM_DUST_ELEMENTS;k_species++)
+        {
+            cmag = 0.0;
+            double grad_dot_x_ij = 0.0;
+            d_scalar = local.Dust_Metal[k_species]-SphP[j].Dust_Metal[k_species]; // physical
+            for(k=0;k<3;k++)
+            {
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
+                // NOTE: For DUST, we ONLY do this with the LOWORDER method 
+                double grad_ij = grad_direct;
+                grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
+                grad_ij = MINMOD(grad_ij , grad_direct);
+                cmag += Face_Area_Vec[k] * grad_ij; // 1/code length
+            }
+            cmag /= All.cf_atime; // cmag has units of 1/r -- convert to physical
+
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // physical
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt) / (-diffusion_wt); // physical
+            double cmag_corr = cmag + hll_corr;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            double f_direct = Face_Area_Norm*d_scalar*rinv/All.cf_atime; // physical
+            if((f_direct*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
+            
+            cmag *= -diffusion_wt * dt_hydrostep; // physical
+            if(fabs(cmag) > 0)
+            {
+                double zlim = 0.25 * DMIN( DMIN(local.Mass,P[j].Mass)*fabs(d_scalar) , DMAX(local.Mass*local.Dust_Metal[k_species] , P[j].Mass*SphP[j].Dust_Metal[k_species]) );
+                if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
+#ifndef HYDRO_SPH
+                double dmet = (SphP[j].Dust_Metal[k_species]-local.Dust_Metal[k_species]) * fabs(mdot_estimated) * dt_hydrostep;
+                cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
+#endif
+                out.Dyield_dust[k_species] += cmag;
+                if(j_is_active_for_fluxes) {SphP[j].Dyield_dust[k_species] -= cmag;}
+
+                // Need to also diffuse dust source scalar but this just depends on the total dust diffused
+                // and not on the relative source scalars between two particles
+                if (k_species==0 && cmag!=0)
+                {
+                    double source_cmag;
+                    for(k=0;k<NUM_DUST_SOURCES;k++)
+                    {
+                        // Be careful to multiply by dust source fraction first to not run into underflow issues for small numbers
+                        if (cmag>0) {source_cmag = SphP[j].Dust_Source[k]/SphP[j].Dust_Metal[0] * cmag;}
+                        else {source_cmag = local.Dust_Source[k]/local.Dust_Metal[0] * cmag;}
+                        out.Dyield_source[k] += source_cmag;
+                        if(j_is_active_for_fluxes) {SphP[j].Dyield_source[k] -= source_cmag;}
+                    }
+                }
+            }
+        }
+
+#ifdef SPECIES 
+        // need to diffuse dust species as well for Species dust routine
+        for(k_species=0;k_species<NUM_DUST_SPECIES;k_species++)
+        {
+            cmag = 0.0;
+            double grad_dot_x_ij = 0.0;
+            d_scalar = local.Dust_Species[k_species]-SphP[j].Dust_Species[k_species]; // physical
+            for(k=0;k<3;k++)
+            {
+                double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
+                double grad_ij = grad_direct;
+                grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
+                grad_ij = MINMOD(grad_ij , grad_direct);
+                cmag += Face_Area_Vec[k] * grad_ij; // 1/code length
+            }
+            cmag /= All.cf_atime; // cmag has units of 1/r -- convert to physical
+
+            double d_scalar_tmp = d_scalar - grad_dot_x_ij; // physical
+            double d_scalar_hll = MINMOD(d_scalar , d_scalar_tmp);
+            double hll_corr = rho_ij * HLL_correction(d_scalar_hll, 0, rho_ij, diffusion_wt) / (-diffusion_wt); // physical
+            double cmag_corr = cmag + hll_corr;
+            cmag = MINMOD(1.5*cmag, cmag_corr);
+            double f_direct = Face_Area_Norm*d_scalar*rinv/All.cf_atime; // physical
+            if((f_direct*cmag < 0) && (fabs(f_direct) > HLL_DIFFUSION_OVERSHOOT_FACTOR*fabs(cmag))) {cmag = 0;}
+            
+            cmag *= -diffusion_wt * dt_hydrostep; // physical
+            if(fabs(cmag) > 0)
+            {
+                double zlim = 0.25 * DMIN( DMIN(local.Mass,P[j].Mass)*fabs(d_scalar) , DMAX(local.Mass*local.Dust_Species[k_species] , P[j].Mass*SphP[j].Dust_Species[k_species]) );
+                if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
+#ifndef HYDRO_SPH
+                double dmet = (SphP[j].Dust_Species[k_species]-local.Dust_Species[k_species]) * fabs(mdot_estimated) * dt_hydrostep;
+                cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
+#endif
+                out.Dyield_species[k_species] += cmag;
+                if(j_is_active_for_fluxes) {SphP[j].Dyield_species[k_species] -= cmag;}
+            }
+        }
+#endif // SPECIES
+#endif // DUST && TURB_DIFF_METALS_LOWORDER
+    } 
 #endif
 }

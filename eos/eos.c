@@ -333,6 +333,10 @@ double return_dust_to_metals_ratio_vs_solar(int i)
     double Z_scaled = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity of the particle in solar
     return (kappa_interp_geo_cgs / kappa_solar_geo_cgs) / (Z_scaled); // will be multiplied by metallicity to convert later
 #endif
+#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
+    if (P[i].Metallicity[0]>0) {return (SphP[i].Dust_Metal[0]/P[i].Metallicity[0])/0.5;} // use total amount of dust from 'live' dust evolution models
+    else {return 0;}
+#endif
 #if defined(RT_INFRARED)
     return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
 #endif

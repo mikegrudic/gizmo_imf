@@ -593,7 +593,22 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i);
 #ifdef METALS
 void get_wind_yields(double *yields, int i);
 void get_SNe_yields(double *yields,int i,double t_gyr,int SNeIaFlag, double *Msne);
+#ifdef DUST
+#ifdef GALSF_USE_SNE_ONELOOP_SCHEME
+void update_stellar_dust_feedback(int i);
 #endif
+void update_dust_acc_and_sput(int i, double dtime_gyr);
+#ifdef ELEMENTAL
+void get_SNe_dust(double *yields, double *dust_yields);
+void get_wind_dust(double *yields, double *dust_yields, int i);
+#elif defined(SPECIES)
+void get_SNe_dust(double *yields, double *dust_yields, double *species_yields, double t_gyr);
+void get_wind_dust(double *yields, double *dust_yields, double *species_yields, int i);
+double specific_Z_AGB_dust(int dust_type, double star_age, int z_bound);
+double cumulative_AGB_dust_returns(int dust_type, double star_age, double z);
+#endif
+#endif // DUST
+#endif // METALS
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
 #ifdef GALSF_FB_FIRE_AGE_TRACERS_CUSTOM
 int read_agetracerlist(char *fname);
