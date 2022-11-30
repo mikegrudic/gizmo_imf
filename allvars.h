@@ -44,7 +44,6 @@
 #define WALLCLOCK               /* track timing of different routines */
 #define MYSORT                  /* use our custom sort (as opposed to C default, which is compiler-dependent) */
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
-#define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 #ifndef OUTPUT_ADDITIONAL_RUNINFO
 #define IO_REDUCED_MODE
 #endif
@@ -109,6 +108,7 @@
 #define MAINTAIN_TREE_IN_REARRANGE
 #endif
 
+#define REDUC_FAC      0.98 /* used to pad memory in domain decomposition structures, should be slightly less than unity */
 
 #ifdef PMGRID
 #define PM_ENLARGEREGION 1.1    /* enlarges PMGRID region as the simulation evolves */
@@ -448,6 +448,9 @@
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
+#if !defined(CRFLUID_DIFFUSION_CORRECTION_TERMS) && !defined(CRFLUID_BINCENTERED_TRANSPORT)
+#define CRFLUID_DIFFUSION_CORRECTION_TERMS
+#endif
 #if (CRFLUID_EVOLVE_SPECTRUM == 2)
 #define N_CR_PARTICLE_BINS 70       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
@@ -536,7 +539,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
 #define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
-#define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
+#define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION
@@ -555,8 +558,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
-#ifndef STARS_ONLY_SNAPSHOT_FREQUENCY
-#define STARS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
+#ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
+#define IO_SINKS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
 #endif
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
@@ -1050,9 +1053,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(COOL_MOLECFRAC)
 #if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
-#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 5) && !defined(COOL_MOLECFRAC_LOCALEQM)
-#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 4) && !defined(COOL_MOLECFRAC_KMT)
 #define COOL_MOLECFRAC_KMT  // estimate f_H2 from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K). use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field
 #elif (COOL_MOLECFRAC == 3) && !defined(COOL_MOLECFRAC_GD)
@@ -1191,7 +1194,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef LONG_INTEGER_TIME
 typedef  long long integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_LONG_LONG;
-#define  TIMEBINS        39
+#define  TIMEBINS        60
 #else
 typedef  int integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
@@ -1318,11 +1321,15 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 #ifndef  TOPNODEFACTOR
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define  TOPNODEFACTOR       8.0
+#else
 #define  TOPNODEFACTOR       4.0
+#endif
 #endif
 
 #ifndef  GRAVCOSTLEVELS
-#define  GRAVCOSTLEVELS      6
+#define  GRAVCOSTLEVELS      20
 #endif
 
 #define  NUMBER_OF_MEASUREMENTS_TO_RECORD  6  /* this is the number of past executions of a timebin that the reported average CPU-times average over */
@@ -1337,16 +1344,16 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 
-typedef unsigned long long peanokey;
 
-
-#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer ! */
+#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer, 21 for 64-bit integer, 42 for 128-bit integer */
 #define  PEANOCELLS (((peanokey)1)<<(3*BITS_PER_DIMENSION))
-
-#define  BITS_PER_DIMENSION_SAVE_KEYS 10
-#define  PEANOCELLS_SAVE_KEYS (((peanokey)1)<<(3*BITS_PER_DIMENSION_SAVE_KEYS))
-
-
+#if(BITS_PER_DIMENSION <= 21)
+typedef unsigned long long peanokey;
+typedef unsigned int peano1D;
+#else
+typedef __int128 peanokey;
+typedef unsigned long long peano1D;
+#endif
 
 
 #ifndef DISABLE_MEMORY_MANAGER
@@ -1388,8 +1395,8 @@ typedef unsigned long long peanokey;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
-#define  MAX_REAL_NUMBER  1e37
-#define  MIN_REAL_NUMBER  1e-37
+#define  MAX_REAL_NUMBER  1e56
+#define  MIN_REAL_NUMBER  1e-56
 
 #if (defined(MAGNETIC) && !defined(COOLING)) || defined(EOS_ELASTIC)
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */

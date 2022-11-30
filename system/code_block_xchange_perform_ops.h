@@ -29,7 +29,7 @@ be copy-pasted and can be generically optimized in a single place */
                 if(ProcessedFlag[NextParticle] != 1) {break;}
                 ProcessedFlag[NextParticle] = 2; NextParticle = NextActiveParticle[NextParticle];
             }
-            if(NextParticle == save_NextParticle)
+            if(NextParticle == save_NextParticle) // this is still sometimes being triggered with OPENMP, but not without, when it shouldn't. some OPENMP error still needs to be debugged???
             {
                 PRINT_WARNING("NextParticle == save_NextParticle condition (the buffer appears too small to hold a single particle): NextParticle=%d save_NextParticle=%d last_nextparticle=%d ProcessedFlag[NextParticle]=%d NextActiveParticle[NextParticle]=%d NumPart=%d N_gas=%d NTaskTimesNumPart=%llu maxThreads=%d All.BunchSize=%ld All.BufferSize=%llu Nexport=%ld ndone=%d ndone_flag=%d NTask=%d",NextParticle,save_NextParticle,last_nextparticle,ProcessedFlag[NextParticle],NextActiveParticle[NextParticle],NumPart,N_gas,(unsigned long long)NTaskTimesNumPart,maxThreads,All.BunchSize,(unsigned long long)All.BufferSize,Nexport,ndone,ndone_flag,NTask);
                 if(NextParticle >= 0) {PRINT_WARNING("This is a live particle: NextParticle=%d ID=%llu Mass=%g Type=%d",NextParticle,(unsigned long long)P[NextParticle].ID,P[NextParticle].Mass,P[NextParticle].Type);}
