@@ -603,6 +603,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#define RT_COMOVING
 #ifndef OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_FLUX
 #if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
