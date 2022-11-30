@@ -1043,8 +1043,8 @@ void rearrange_particle_sequence(void)
         do_loop_check = 1;
     }
 #endif
-    if(NumPart <= N_gas) {do_loop_check=0};
-    if(N_gas <= 0) {do_loop_check=0};
+    if(NumPart <= N_gas) {do_loop_check=0;}
+    if(N_gas <= 0) {do_loop_check=0;}
 
     /* if more gas than stars, need to be sure the block ordering is correct (gas first, then stars) */
     if(do_loop_check)

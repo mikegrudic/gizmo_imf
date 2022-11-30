@@ -1397,7 +1397,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
             domainAssign[n].normalized_load += domainAssign[n].load_activestars / (tot_loadactivestars + 1.0e-30);
 #endif
         } else {
-            domainAssign[n].normalized_load = domainAssign[n].load / (tot_load + 1.0e-30)
+            domainAssign[n].normalized_load = domainAssign[n].load / (tot_load + 1.0e-30);
         }
     }
 
