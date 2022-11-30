@@ -138,6 +138,9 @@ void init(void)
 
     All.TotNumOfForces = 0;
     All.TopNodeAllocFactor = 0.008; /* this will start from a low value and be iteratively increased until it is well-behaved */
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+    All.TopNodeAllocFactor = 0.1; /* for optimization on startup this needs to be increased for these extreme dynamic range runs */
+#endif
     All.TreeAllocFactor = 0.45; /* this will also iteratively increase to fit the particle distribution */
     /* To construct the BH-tree for N particles, somewhat less than N
      internal tree-nodes are necessary for ‘normal’ particle distributions.

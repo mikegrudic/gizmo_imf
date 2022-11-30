@@ -117,7 +117,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
         double dt_to_ramp_refinement = 0.00001;
         dt_to_ramp_refinement = 1.e-6; // testing [for specific time chosen, hard-coded but change as needed]
-        double minimum_refinement_mass_in_solar = 0.005; // aims at 0.01 effective
+        double minimum_refinement_mass_in_solar = 0.003; // aims at 0.01 effective
         
         double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
         if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);}
@@ -177,7 +177,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 #endif
         double M_target = DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR; // enforce minimum refinement to 7000 Msun, and convert to code units, compare to 0.001xJeans mass, which is designed to target desired levels
         double normal_median_mass = All.MaxMassForParticleSplit / 3.; // code median mass from ICs
-        ref_factor = DMAX(1.e-4, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
+        ref_factor = DMAX(1.e-30, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
         return ref_factor; // return it
     }
 #endif
@@ -363,8 +363,8 @@ void merge_and_split_particles(void)
         }
     }
 
-    // actual merge-splitting loop loop
-    // No tree-walk is allowed below here
+    // actual merge-splitting loop loop. No tree-walk is allowed below here
+    int failed_splits = 0; /* record failed splits to output warning message */
     for (i = 0; i < NumPart; i++) {
 #ifdef PM_HIRES_REGION_CLIPDM
         if (Ptmp[i].flag == -1) { // clipping
@@ -378,9 +378,10 @@ void merge_and_split_particles(void)
         }
         if (Ptmp[i].flag == 2) {
             int did_split = split_particle_i(i, n_particles_split, Ptmp[i].target_index);
-            if(did_split == 1) {n_particles_split++; if(P[i].Type==0) {n_particles_gas_split++;}}
+            if(did_split == 1) {n_particles_split++; if(P[i].Type==0) {n_particles_gas_split++;}} else {failed_splits++;}
         }
     }
+    if(failed_splits) {printf ("On Task=%d with NumPart=%d we tried and failed to split %d elements, after running out of space (REDUC_FAC*All.MaxPart=%d, REDUC_FAC*All.MaxPartGas=%d ).\n We did split %d total (%d gas) elements. Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, failed_splits, (int)(REDUC_FAC*All.MaxPart), (int)(REDUC_FAC*All.MaxPartGas), n_particles_split, n_particles_gas_split); fflush(stdout);}
 
 #ifdef BOX_PERIODIC
     /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
@@ -418,9 +419,9 @@ void merge_and_split_particles(void)
 int split_particle_i(int i, int n_particles_split, int i_nearest)
 {
     double mass_of_new_particle;
-    if( ((P[i].Type==0) && (NumPart + n_particles_split >= All.MaxPartGas)) || ((P[i].Type!=0) && (NumPart + n_particles_split >= All.MaxPart)) )
+    if( ((P[i].Type==0) && (NumPart + n_particles_split + 1 >= (int)(REDUC_FAC*All.MaxPartGas))) || (NumPart + n_particles_split + 1 >= (int)(REDUC_FAC*All.MaxPart)) )
     {
-        printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart); fflush(stdout);
+        //printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart); fflush(stdout);
         return 0;
         endrun(8888);
     }
@@ -1042,8 +1043,8 @@ void rearrange_particle_sequence(void)
         do_loop_check = 1;
     }
 #endif
-    if(NumPart <= N_gas) do_loop_check=0;
-    if(N_gas <= 0) do_loop_check=0;
+    if(NumPart <= N_gas) {do_loop_check=0};
+    if(N_gas <= 0) {do_loop_check=0};
 
     /* if more gas than stars, need to be sure the block ordering is correct (gas first, then stars) */
     if(do_loop_check)
@@ -1246,7 +1247,9 @@ int check_if_sufficient_mergesplit_time_has_passed(int i)
     double dtime_code = All.Time - P[i].Time_Of_Last_MergeSplit; // time [in code units] since last merge/split
     double dt_incodescale = (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * All.cf_hubble_a) * All.cf_atime; // timestep converted appropriately to code units [physical if non-comoving, else scale factor]
     if(dtime_code < N_timesteps_fac*dt_incodescale) {return 0;} // not enough time passed, prohibit
-    if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-8) {return 0;}} // also enforce an absolute time limit
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-8) {return 0;}} // also enforce an absolute time limit (don't use for nuclear zooms since absolute timesteps can become arbitrarily short
+#endif
     return 1; // otherwise, if no check so far to reject, allow this merge/split
 }
 #endif

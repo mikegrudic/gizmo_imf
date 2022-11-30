@@ -118,7 +118,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
             force_treefree();
             if(ThisTask == 0) {printf("Increasing TreeAllocFactor=%g", All.TreeAllocFactor);}
             All.TreeAllocFactor *= 1.15;
-            if(ThisTask == 0) {printf("new value=%g\n", All.TreeAllocFactor);}
+            if(ThisTask == 0) {printf(" new value=%g\n", All.TreeAllocFactor);}
             force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
         }
     }
@@ -180,10 +180,17 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
     {
         if(mp) {i = mp[k].index;} else {i = k;}
         rep = 0;
+        /* new code */
+        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        key = peano_and_morton_key(xb, yb, zb, BITS_PER_DIMENSION, &morton);
+        /* old code
         key = peano_and_morton_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
                                    (int) ((P[i].Pos[1] - DomainCorner[1]) * DomainFac),
                                    (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac), BITS_PER_DIMENSION,
                                    &morton);
+        */
         morton_list[i] = morton;
         shift = 3 * (BITS_PER_DIMENSION - 1);
         no = 0;

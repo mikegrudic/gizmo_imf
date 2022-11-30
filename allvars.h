@@ -44,7 +44,6 @@
 #define WALLCLOCK               /* track timing of different routines */
 #define MYSORT                  /* use our custom sort (as opposed to C default, which is compiler-dependent) */
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
-#define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 #ifndef OUTPUT_ADDITIONAL_RUNINFO
 #define IO_REDUCED_MODE
 #endif
@@ -109,6 +108,7 @@
 #define MAINTAIN_TREE_IN_REARRANGE
 #endif
 
+#define REDUC_FAC      0.98 /* used to pad memory in domain decomposition structures, should be slightly less than unity */
 
 #ifdef PMGRID
 #define PM_ENLARGEREGION 1.1    /* enlarges PMGRID region as the simulation evolves */
@@ -539,7 +539,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
 #define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
-#define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
+#define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION
@@ -1193,7 +1193,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef LONG_INTEGER_TIME
 typedef  long long integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_LONG_LONG;
-#define  TIMEBINS        39
+#define  TIMEBINS        60
 #else
 typedef  int integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
@@ -1320,11 +1320,15 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 #ifndef  TOPNODEFACTOR
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define  TOPNODEFACTOR       8.0
+#else
 #define  TOPNODEFACTOR       4.0
+#endif
 #endif
 
 #ifndef  GRAVCOSTLEVELS
-#define  GRAVCOSTLEVELS      6
+#define  GRAVCOSTLEVELS      20
 #endif
 
 #define  NUMBER_OF_MEASUREMENTS_TO_RECORD  6  /* this is the number of past executions of a timebin that the reported average CPU-times average over */
@@ -1344,8 +1348,10 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define  PEANOCELLS (((peanokey)1)<<(3*BITS_PER_DIMENSION))
 #if(BITS_PER_DIMENSION <= 21)
 typedef unsigned long long peanokey;
+typedef unsigned int peano1D;
 #else
 typedef __int128 peanokey;
+typedef unsigned long long peano1D;
 #endif
 
 
@@ -1388,8 +1394,8 @@ typedef __int128 peanokey;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
-#define  MAX_REAL_NUMBER  1e37
-#define  MIN_REAL_NUMBER  1e-37
+#define  MAX_REAL_NUMBER  1e56
+#define  MIN_REAL_NUMBER  1e-56
 
 #if (defined(MAGNETIC) && !defined(COOLING)) || defined(EOS_ELASTIC)
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
