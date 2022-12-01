@@ -228,13 +228,14 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
     NTaskTimesNumPart = maxThreads * NumPart;
     Ngblist = (int *) mymalloc("Ngblist", NTaskTimesNumPart * sizeof(int));
     size_t MyBufferSize = All.BufferSize;
-    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    All.BunchSize = (long) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                                              sizeof(struct rt_cg_data_in) + sizeof(struct rt_cg_data_out) + sizemax(sizeof(struct rt_cg_data_in),sizeof(struct rt_cg_data_out))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
     NextParticle = FirstActiveParticle;	/* begin with this index */
     memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
+    BufferCollisionFlag = 0; /* set to zero before operations begin */
     do
     {
         BufferFullFlag = 0;
@@ -294,7 +295,10 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
                 NextParticle = NextActiveParticle[NextParticle];
             }
 #ifdef _OPENMP
-            if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;}
+            if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;} /* reset the neighbor list properly for the next group since we can get 'jumps' with openmp active */
+            if(processed_particles == 0 && NextParticle == save_NextParticle && NextParticle > -1) {
+                BufferCollisionFlag++; if(collision_problem < 2) {continue;}} /* we overflowed without processing a single particle, but this could be because of a collision, try once with the serialized approach, but if it fails then, we're truly stuck */
+            else if(processed_particles && BufferCollisionFlag) {BufferCollisionFlag = 0;} /* we had a problem in a previous iteration but things worked, reset to normal operations */
 #endif
             if(processed_particles <= 0 && NextParticle == save_NextParticle)
             {

@@ -19,6 +19,9 @@ exportnodecount = Exportnodecount + thread_id * NTask;
 exportindex = Exportindex + thread_id * NTask;
 /* Note: exportflag is local to each thread */
 for(j = 0; j < NTask; j++) {exportflag[j] = -1;}
+#ifdef _OPENMP
+if(BufferCollisionFlag && thread_id) {return NULL;} /* force to serial for this subloop if threads simultaneously cross the Nexport bunchsize threshold */
+#endif
 /* now begin the actual loop */
 while(1)
 {

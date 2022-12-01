@@ -82,7 +82,7 @@ void gravity_tree(void)
     /* allocate buffers to arrange communication */
     PRINT_STATUS(" ..Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
     size_t MyBufferSize = All.BufferSize;
-    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    All.BunchSize = (long) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                              sizeof(struct gravdata_in) + sizeof(struct gravdata_out) +
                                              sizemax(sizeof(struct gravdata_in),sizeof(struct gravdata_out))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
@@ -139,6 +139,7 @@ void gravity_tree(void)
     {
         NextParticle = FirstActiveParticle;	/* begin with this index */
         memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
+        BufferCollisionFlag = 0; /* set to zero before operations begin */
         do /* primary point-element loop */
         {
             iter++;
@@ -194,7 +195,10 @@ void gravity_tree(void)
                     NextParticle = NextActiveParticle[NextParticle];
                 }
 #ifdef _OPENMP
-                if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;}
+                if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;} /* reset the neighbor list properly for the next group since we can get 'jumps' with openmp active */
+                if(processed_particles == 0 && NextParticle == save_NextParticle && NextParticle > -1) {
+                    BufferCollisionFlag++; if(collision_problem < 2) {continue;}} /* we overflowed without processing a single particle, but this could be because of a collision, try once with the serialized approach, but if it fails then, we're truly stuck */
+                else if(processed_particles && BufferCollisionFlag) {BufferCollisionFlag = 0;} /* we had a problem in a previous iteration but things worked, reset to normal operations */
 #endif
                 if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(114408);} /* in this case, the buffer is too small to process even a single particle */
 
@@ -653,7 +657,9 @@ void *gravity_primary_loop(void *p)
     int i, j, ret, thread_id = *(int *) p, *exportflag, *exportnodecount, *exportindex;
     exportflag = Exportflag + thread_id * NTask; exportnodecount = Exportnodecount + thread_id * NTask; exportindex = Exportindex + thread_id * NTask;
     for(j = 0; j < NTask; j++) {exportflag[j] = -1;} /* Note: exportflag is local to each thread */
-
+#ifdef _OPENMP
+    if(BufferCollisionFlag && thread_id) {return NULL;} /* force to serial for this subloop if threads simultaneously cross the Nexport bunchsize threshold */
+#endif
     while(1)
     {
         int exitFlag = 0;

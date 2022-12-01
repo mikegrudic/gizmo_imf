@@ -3950,6 +3950,7 @@ enum siofields
  */
 
 extern long Nexport, Nimport;
+extern int BufferCollisionFlag;
 extern int BufferFullFlag;
 extern int NextParticle;
 extern int NextJ;
