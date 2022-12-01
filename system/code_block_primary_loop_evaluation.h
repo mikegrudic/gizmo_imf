@@ -25,7 +25,7 @@ while(1)
     int exitFlag = 0;
     LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistprimblox_)
 #endif
     {
         if(BufferFullFlag != 0 || NextParticle < 0)

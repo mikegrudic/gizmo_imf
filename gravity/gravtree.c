@@ -659,7 +659,7 @@ void *gravity_primary_loop(void *p)
         int exitFlag = 0;
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistgravprim_)
 #endif
         {
         if(BufferFullFlag != 0 || NextParticle < 0) {exitFlag=1;}
@@ -702,7 +702,7 @@ void *gravity_secondary_loop(void *p)
     {
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistgravsec_)
 #endif
         {
             j = NextJ;

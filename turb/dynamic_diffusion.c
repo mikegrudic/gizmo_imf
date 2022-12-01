@@ -967,7 +967,7 @@ void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration) {
         int exitFlag = 0;
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nexportdd_)
 #endif
         {
             if (BufferFullFlag != 0 || NextParticle < 0) {
@@ -1003,7 +1003,7 @@ void *DynamicDiff_evaluate_secondary(void *p, int dynamic_iteration) {
     while (1) {
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistdd_)
 #endif
         {
             j = NextJ;

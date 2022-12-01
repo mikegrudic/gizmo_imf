@@ -1842,7 +1842,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_particledriftforce_)
 #endif
                     drift_particle(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -1993,7 +1993,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             int exitFlag = 0;
                             LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nexportforce_)
 #endif
                             {
                                 if(Nexport >= bunchSize)
@@ -2052,7 +2052,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_nodedriftforce_)
 #endif
                     force_drift_node(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -2881,7 +2881,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_particledriftewald_)
 #endif
                     drift_particle(no, All.Ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -2909,7 +2909,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                             int exitFlag = 0;
                             LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nexportewald_)
 #endif
                             {
                                 if(Nexport >= All.BunchSize)
@@ -2964,7 +2964,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_nodedriftewald_)
 #endif
                     force_drift_node(no, All.Ti_Current);
                     UNLOCK_PARTNODEDRIFT;
