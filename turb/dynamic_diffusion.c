@@ -319,8 +319,8 @@ void dynamic_diff_calc(void) {
                 NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
-#ifndef _OPENMP
                     if(NextParticle == last_nextparticle) {break;}
+#ifndef _OPENMP
                     if(ProcessedFlag[NextParticle] != 1) {break;}
 #else
                     if(ProcessedFlag[NextParticle] == 1)
