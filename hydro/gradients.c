@@ -733,7 +733,7 @@ void hydro_gradient_calc(void)
 #ifdef _OPENMP
                 if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;} /* reset the neighbor list properly for the next group since we can get 'jumps' with openmp active */
                 if(processed_particles == 0 && NextParticle == save_NextParticle && NextParticle > -1) {
-                    BufferCollisionFlag++; if(collision_problem < 2) {continue;}} /* we overflowed without processing a single particle, but this could be because of a collision, try once with the serialized approach, but if it fails then, we're truly stuck */
+                    BufferCollisionFlag++; if(BufferCollisionFlag < 2) {continue;}} /* we overflowed without processing a single particle, but this could be because of a collision, try once with the serialized approach, but if it fails then, we're truly stuck */
                 else if(processed_particles && BufferCollisionFlag) {BufferCollisionFlag = 0;} /* we had a problem in a previous iteration but things worked, reset to normal operations */
 #endif
                 if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(113308);} /* in this case, the buffer is too small to process even a single particle */
