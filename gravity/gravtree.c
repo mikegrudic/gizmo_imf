@@ -138,6 +138,7 @@ void gravity_tree(void)
     for(Ewald_iter = 0; Ewald_iter <= ewald_max; Ewald_iter++)
     {
         NextParticle = FirstActiveParticle;	/* begin with this index */
+        memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
         do /* primary point-element loop */
         {
             iter++;
@@ -173,14 +174,24 @@ void gravity_tree(void)
 
             if(BufferFullFlag) /* we've filled the buffer or reached the end of the list, prepare for communications */
             {
-                int last_nextparticle = NextParticle; NextParticle = save_NextParticle;
+                int last_nextparticle = NextParticle;
+                int processed_particles = 0;
+                NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
+#ifndef _OPENMP
                     if(NextParticle == last_nextparticle) {break;}
                     if(ProcessedFlag[NextParticle] != 1) {break;}
-                    ProcessedFlag[NextParticle] = 2; NextParticle = NextActiveParticle[NextParticle];
+#else
+                    if(ProcessedFlag[NextParticle] == 1)
+#endif
+                    {
+                        processed_particles++;
+                        ProcessedFlag[NextParticle] = 2;
+                    }
+                    NextParticle = NextActiveParticle[NextParticle];
                 }
-                if(NextParticle == save_NextParticle) {endrun(114408);} /* in this case, the buffer is too small to process even a single particle */
+                if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(114408);} /* in this case, the buffer is too small to process even a single particle */
 
                 int new_export = 0; /* actually calculate exports [so we can tell other tasks] */
                 for(j = 0, k = 0; j < Nexport; j++)
@@ -647,10 +658,11 @@ void *gravity_primary_loop(void *p)
 #endif
         {
         if(BufferFullFlag != 0 || NextParticle < 0) {exitFlag=1;}
-            else {i=NextParticle; ProcessedFlag[i]=0; NextParticle=NextActiveParticle[NextParticle];}
+            else {i=NextParticle; NextParticle=NextActiveParticle[NextParticle];}
         }
         UNLOCK_NEXPORT;
         if(exitFlag) {break;}
+        if(ProcessedFlag[i]) {continue;}
 
 #ifdef HERMITE_INTEGRATION /* if we are in the Hermite extra loops and a particle is not flagged for this, simply mark it done and move on */
         if(HermiteOnlyFlag && !eligible_for_hermite(i)) {ProcessedFlag[i]=1; continue;}

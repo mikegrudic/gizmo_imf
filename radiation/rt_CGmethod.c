@@ -234,6 +234,7 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
     NextParticle = FirstActiveParticle;	/* begin with this index */
+    memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
     do
     {
         BufferFullFlag = 0;
@@ -274,18 +275,25 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
         if(BufferFullFlag)
         {
             int last_nextparticle = NextParticle;
-            NextParticle = save_NextParticle;
+            int processed_particles = 0;
+            NextParticle = save_NextParticle; /* figure out where we are */
             while(NextParticle >= 0)
             {
-                if(NextParticle == last_nextparticle) break;
-                if(ProcessedFlag[NextParticle] != 1) break;
-                ProcessedFlag[NextParticle] = 2;
+#ifndef _OPENMP
+                if(NextParticle == last_nextparticle) {break;}
+                if(ProcessedFlag[NextParticle] != 1) {break;}
+#else
+                if(ProcessedFlag[NextParticle] == 1)
+#endif
+                {
+                    processed_particles++;
+                    ProcessedFlag[NextParticle] = 2;
+                }
                 NextParticle = NextActiveParticle[NextParticle];
             }
-            if(NextParticle == save_NextParticle)
+            if(processed_particles <= 0 && NextParticle == save_NextParticle)
             {
-                /* in this case, the buffer is too small to process even a single particle */
-                endrun(116609);
+                endrun(116609); /* in this case, the buffer is too small to process even a single particle */
             }
             int new_export = 0;
             for(j = 0, k = 0; j < Nexport; j++)

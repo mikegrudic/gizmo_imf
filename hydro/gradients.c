@@ -681,6 +681,7 @@ void hydro_gradient_calc(void)
 
         // now we actually begin the main gradient loop //
         NextParticle = FirstActiveParticle;	/* begin with this index */
+        memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
         do
         {
             BufferFullFlag = 0; Nexport = 0; save_NextParticle = NextParticle; tstart = my_second();
@@ -709,14 +710,24 @@ void hydro_gradient_calc(void)
 
             if(BufferFullFlag) /* we've filled the buffer or reached the end of the list, prepare for communications */
             {
-                int last_nextparticle = NextParticle; NextParticle = save_NextParticle; /* figure out where we are */
+                int last_nextparticle = NextParticle;
+                int processed_particles = 0;
+                NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
+#ifndef _OPENMP
                     if(NextParticle == last_nextparticle) {break;}
                     if(ProcessedFlag[NextParticle] != 1) {break;}
-                    ProcessedFlag[NextParticle] = 2; NextParticle = NextActiveParticle[NextParticle];
+#else
+                    if(ProcessedFlag[NextParticle] == 1)
+#endif
+                    {
+                        processed_particles++;
+                        ProcessedFlag[NextParticle] = 2;
+                    }
+                    NextParticle = NextActiveParticle[NextParticle];
                 }
-                if(NextParticle == save_NextParticle) {endrun(113308);} /* in this case, the buffer is too small to process even a single particle */
+                if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(113308);} /* in this case, the buffer is too small to process even a single particle */
 
                 int new_export = 0; /* actually calculate exports [so we can tell other tasks] */
                 for(j = 0, k = 0; j < Nexport; j++)

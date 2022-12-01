@@ -35,12 +35,12 @@ while(1)
         else
         {
             i = NextParticle;
-            ProcessedFlag[i] = 0;
             NextParticle = NextActiveParticle[NextParticle];
         }
     }
     UNLOCK_NEXPORT;
     if(exitFlag) {break;}
+    if(ProcessedFlag[i]) {continue;}
     CONDITION_FOR_EVALUATION
     {
         if(EVALUATION_CALL < 0) {break;} // export buffer has filled up //

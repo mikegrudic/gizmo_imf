@@ -262,6 +262,7 @@ void dynamic_diff_calc(void) {
         NextParticle = FirstActiveParticle;	/* begin with this index */
         PRINT_STATUS(" ..first loop over active particles (iter = %d)", dynamic_iteration);
 
+        memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
         do {    
             BufferFullFlag = 0;
             Nexport = 0;
@@ -312,19 +313,25 @@ void dynamic_diff_calc(void) {
             timecomp1 += timediff(tstart, tend);
             
             if (BufferFullFlag) {
+
                 int last_nextparticle = NextParticle;
-                
-                NextParticle = save_NextParticle;
-                
-                while (NextParticle >= 0) {
-                    if (NextParticle == last_nextparticle) break;
-                    if (ProcessedFlag[NextParticle] != 1) break;
-                    
-                    ProcessedFlag[NextParticle] = 2;
+                int processed_particles = 0;
+                NextParticle = save_NextParticle; /* figure out where we are */
+                while(NextParticle >= 0)
+                {
+#ifndef _OPENMP
+                    if(NextParticle == last_nextparticle) {break;}
+                    if(ProcessedFlag[NextParticle] != 1) {break;}
+#else
+                    if(ProcessedFlag[NextParticle] == 1)
+#endif
+                    {
+                        processed_particles++;
+                        ProcessedFlag[NextParticle] = 2;
+                    }
                     NextParticle = NextActiveParticle[NextParticle];
                 }
-                
-                if (NextParticle == save_NextParticle) {
+                if(processed_particles <= 0 && NextParticle == save_NextParticle) {
                     /* in this case, the buffer is too small to process even a single particle */
                     endrun(113308);
                 }
@@ -963,16 +970,16 @@ void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration) {
             }
             else {
                 i = NextParticle;
-                ProcessedFlag[i] = 0;
                 NextParticle = NextActiveParticle[NextParticle];
             }
         }
 
         UNLOCK_NEXPORT;
-        if (exitFlag) break;
-        
-        if (P[i].Type == 0) {
-	    if (DynamicDiff_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist, dynamic_iteration) < 0) break;		/* export buffer has filled up */
+        if(exitFlag) break;
+        if(ProcessedFlag[i]) {continue;}
+
+        if(P[i].Type == 0) {
+	    if(DynamicDiff_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist, dynamic_iteration) < 0) break;		/* export buffer has filled up */
         }
 
         ProcessedFlag[i] = 1; /* particle successfully finished */
