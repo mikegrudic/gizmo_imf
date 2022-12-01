@@ -712,6 +712,7 @@ void hydro_gradient_calc(void)
             {
                 int last_nextparticle = NextParticle;
                 int processed_particles = 0;
+                int first_unprocessedparticle = -1;
                 NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
@@ -719,6 +720,7 @@ void hydro_gradient_calc(void)
 #ifndef _OPENMP
                     if(ProcessedFlag[NextParticle] != 1) {break;}
 #else
+                    if(ProcessedFlag[NextParticle] == 0 && first_unprocessedparticle < 0) {first_unprocessedparticle = NextParticle;}
                     if(ProcessedFlag[NextParticle] == 1)
 #endif
                     {
@@ -727,6 +729,9 @@ void hydro_gradient_calc(void)
                     }
                     NextParticle = NextActiveParticle[NextParticle];
                 }
+#ifdef _OPENMP
+                if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;}
+#endif
                 if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(113308);} /* in this case, the buffer is too small to process even a single particle */
 
                 int new_export = 0; /* actually calculate exports [so we can tell other tasks] */
