@@ -82,7 +82,7 @@ void gravity_tree(void)
     /* allocate buffers to arrange communication */
     PRINT_STATUS(" ..Begin tree force. (presently allocated=%g MB)", AllocatedBytes / (1024.0 * 1024.0));
     size_t MyBufferSize = All.BufferSize;
-    All.BunchSize = (int) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
+    All.BunchSize = (long) ((MyBufferSize * 1024 * 1024) / (sizeof(struct data_index) + sizeof(struct data_nodelist) +
                                              sizeof(struct gravdata_in) + sizeof(struct gravdata_out) +
                                              sizemax(sizeof(struct gravdata_in),sizeof(struct gravdata_out))));
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
@@ -138,6 +138,8 @@ void gravity_tree(void)
     for(Ewald_iter = 0; Ewald_iter <= ewald_max; Ewald_iter++)
     {
         NextParticle = FirstActiveParticle;	/* begin with this index */
+        memset(ProcessedFlag, 0, All.MaxPart * sizeof(unsigned char));
+        BufferCollisionFlag = 0; /* set to zero before operations begin */
         do /* primary point-element loop */
         {
             iter++;
@@ -173,14 +175,32 @@ void gravity_tree(void)
 
             if(BufferFullFlag) /* we've filled the buffer or reached the end of the list, prepare for communications */
             {
-                int last_nextparticle = NextParticle; NextParticle = save_NextParticle;
+                int last_nextparticle = NextParticle;
+                int processed_particles = 0;
+                int first_unprocessedparticle = -1;
+                NextParticle = save_NextParticle; /* figure out where we are */
                 while(NextParticle >= 0)
                 {
                     if(NextParticle == last_nextparticle) {break;}
+#ifndef _OPENMP
                     if(ProcessedFlag[NextParticle] != 1) {break;}
-                    ProcessedFlag[NextParticle] = 2; NextParticle = NextActiveParticle[NextParticle];
+#else
+                    if(ProcessedFlag[NextParticle] == 0 && first_unprocessedparticle < 0) {first_unprocessedparticle = NextParticle;}
+                    if(ProcessedFlag[NextParticle] == 1)
+#endif
+                    {
+                        processed_particles++;
+                        ProcessedFlag[NextParticle] = 2;
+                    }
+                    NextParticle = NextActiveParticle[NextParticle];
                 }
-                if(NextParticle == save_NextParticle) {endrun(114408);} /* in this case, the buffer is too small to process even a single particle */
+#ifdef _OPENMP
+                if(first_unprocessedparticle > 0) {NextParticle = first_unprocessedparticle;} /* reset the neighbor list properly for the next group since we can get 'jumps' with openmp active */
+                if(processed_particles == 0 && NextParticle == save_NextParticle && NextParticle > -1) {
+                    BufferCollisionFlag++; if(BufferCollisionFlag < 2) {continue;}} /* we overflowed without processing a single particle, but this could be because of a collision, try once with the serialized approach, but if it fails then, we're truly stuck */
+                else if(processed_particles && BufferCollisionFlag) {BufferCollisionFlag = 0;} /* we had a problem in a previous iteration but things worked, reset to normal operations */
+#endif
+                if(processed_particles <= 0 && NextParticle == save_NextParticle) {endrun(114408);} /* in this case, the buffer is too small to process even a single particle */
 
                 int new_export = 0; /* actually calculate exports [so we can tell other tasks] */
                 for(j = 0, k = 0; j < Nexport; j++)
@@ -637,20 +657,23 @@ void *gravity_primary_loop(void *p)
     int i, j, ret, thread_id = *(int *) p, *exportflag, *exportnodecount, *exportindex;
     exportflag = Exportflag + thread_id * NTask; exportnodecount = Exportnodecount + thread_id * NTask; exportindex = Exportindex + thread_id * NTask;
     for(j = 0; j < NTask; j++) {exportflag[j] = -1;} /* Note: exportflag is local to each thread */
-
+#ifdef _OPENMP
+    if(BufferCollisionFlag && thread_id) {return NULL;} /* force to serial for this subloop if threads simultaneously cross the Nexport bunchsize threshold */
+#endif
     while(1)
     {
         int exitFlag = 0;
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistgravprim_)
 #endif
         {
         if(BufferFullFlag != 0 || NextParticle < 0) {exitFlag=1;}
-            else {i=NextParticle; ProcessedFlag[i]=0; NextParticle=NextActiveParticle[NextParticle];}
+            else {i=NextParticle; NextParticle=NextActiveParticle[NextParticle];}
         }
         UNLOCK_NEXPORT;
         if(exitFlag) {break;}
+        if(ProcessedFlag[i]) {continue;}
 
 #ifdef HERMITE_INTEGRATION /* if we are in the Hermite extra loops and a particle is not flagged for this, simply mark it done and move on */
         if(HermiteOnlyFlag && !eligible_for_hermite(i)) {ProcessedFlag[i]=1; continue;}
@@ -685,7 +708,7 @@ void *gravity_secondary_loop(void *p)
     {
         LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nextlistgravsec_)
 #endif
         {
             j = NextJ;

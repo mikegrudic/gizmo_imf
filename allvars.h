@@ -1345,7 +1345,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 
 
 
-#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer, 21 for 64-bit integer, 42 for 128-bit integer */
+#define  BITS_PER_DIMENSION 42	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer, 21 for 64-bit integer, 42 for 128-bit integer */
 #define  PEANOCELLS (((peanokey)1)<<(3*BITS_PER_DIMENSION))
 #if(BITS_PER_DIMENSION <= 21)
 typedef unsigned long long peanokey;
@@ -3950,6 +3950,7 @@ enum siofields
  */
 
 extern long Nexport, Nimport;
+extern int BufferCollisionFlag;
 extern int BufferFullFlag;
 extern int NextParticle;
 extern int NextJ;

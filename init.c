@@ -40,6 +40,8 @@ void init(void)
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
 
+    if(RestartFlag != 1) {All.MinMassForParticleMerger = 0; All.MaxMassForParticleSplit = 0;}
+
     if(RestartFlag == 3 && RestartSnapNum < 0)
     {
         if(ThisTask == 0) {printf("Need to give the snapshot number if FOF/SUBFIND is selected for output\n");}
@@ -942,10 +944,26 @@ void init(void)
             if(P[i].Mass < mass_min) mass_min = P[i].Mass;
         }
         /* broadcast this and get the min and max values over all processors */
-        double mpi_mass_min,mpi_mass_max;
+        double mpi_mass_min, mpi_mass_max;
         MPI_Allreduce(&mass_min, &mpi_mass_min, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(&mass_max, &mpi_mass_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+        double mpi_splitmerge_readmin, mpi_splitmerge_readmax; /* check if this has been initialized by broadcasting to all processors */
+        MPI_Allreduce(&All.MinMassForParticleMerger, &mpi_splitmerge_readmin, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        MPI_Allreduce(&All.MaxMassForParticleSplit, &mpi_splitmerge_readmax, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        if(mpi_splitmerge_readmin <= 0) { /* initialize if this isn't saved in the ICs */
+            All.MinMassForParticleMerger = 0.49 * mpi_mass_min;
+#ifdef GALSF_GENERATIONS
+            All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
+#endif
+        } else {All.MinMassForParticleMerger = mpi_splitmerge_readmin;} /* use the version from the ICs */
+        if(mpi_splitmerge_readmax <= 0) {All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;} else {All.MaxMassForParticleSplit = mpi_splitmerge_readmax;}
+#ifdef MERGESPLIT_HARDCODE_MAX_MASS
+        All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
+#endif
+#ifdef MERGESPLIT_HARDCODE_MIN_MASS
+        All.MinMassForParticleMerger = MERGESPLIT_HARDCODE_MIN_MASS;
+#endif
+
 #ifdef SINGLE_STAR_SINK_DYNAMICS /* Get mean gas mass, used in various subroutines */
         double mpi_mass_tot; long mpi_Ngas; long Ngas_l = (long) N_gas;
         MPI_Allreduce(&mass_tot, &mpi_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -956,16 +974,6 @@ void init(void)
                 if(P[i].Type==5){P[i].Sink_Formation_Mass = All.MeanGasParticleMass;} // will behave as if this sink formed from a gas cell with the average mass
             }
         }
-#endif
-#ifdef GALSF_GENERATIONS
-        All.MinMassForParticleMerger /= (float)GALSF_GENERATIONS;
-#endif
-        All.MaxMassForParticleSplit  = 3.01 * mpi_mass_max;
-#ifdef MERGESPLIT_HARDCODE_MAX_MASS
-        All.MaxMassForParticleSplit = MERGESPLIT_HARDCODE_MAX_MASS;
-#endif
-#ifdef MERGESPLIT_HARDCODE_MIN_MASS
-        All.MinMassForParticleMerger = MERGESPLIT_HARDCODE_MIN_MASS;
 #endif
     }
 
