@@ -820,10 +820,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                     lum_D = (15./UNIT_LUM_IN_SOLAR) * (mdot_m_solar_per_year/(1e-5));
                     dm_D = 0; // all new D is burned
                     mass_D = 0; // no D left in protostar
-                    }
+		    }
                 }
                 // Let's evolve the stellar radius
-                rel_dr = ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); // Eq B4 of Offner 2009 divided by r, and corrected by a factor of 2 as per the ORION source used for Offner+McKee 2011
+		double fudge_factor = 1 + sigmoid_sqrt(2*log10(mdot_m_solar_per_year/1e-4)); // This factor interpolates between 1 for mdot << 1e-4 and 2 for mdot >> 1e-4. The physical evolution equation from Nakano 2000 gives just 2, but this model better reproduces detailed calculations like Hosokawa 2009 and Palla and Stahler 1991;2 if we reduce the value to ~1, as in Offner & Mckee 2011. Here we interpolate between the two regimes to try to tune the model to recover both regimes.
+                rel_dr = fudge_factor * ( dm_rel * (1.-(1.-fk)/(ag*beta)+0.5*dlogbeta_dlogm) - dt_curr/(ag*beta)*r/(All.G*mass*mass) * (lum_int+lum_I-lum_D) ); // Eq B4 of Offner 2009 divided by r, and corrected by a factor of 2 as per the ORION source used for Offner+McKee 2011
                 // Let's check if we need to subcycle
                 if (fabs(rel_dr) > max_rel_dr){
                     n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); // number of subcycle steps, at least 2, either double the previous number or estimated from dr
