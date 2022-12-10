@@ -26,6 +26,10 @@ void radiation_pressure_winds_consolidated(void)
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
     double h,wt_sum,delta_v_imparted_rp=0,total_n_wind=0,total_mom_wind=0,total_prob_kick=0,avg_v_kick=0,avg_taufac=0;
 
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(FIRE_BHS)
+#define GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST
+#endif
+
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
@@ -43,9 +47,13 @@ void radiation_pressure_winds_consolidated(void)
                 total_prob_kick += dE_over_c; // sum contributions
 
                 /* calculate some pre-amble properties */
+#if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
+                double RtauMax = DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , 4.*P[i].Hsml );
+#else
                 double RtauMax = P[i].Hsml * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
                 RtauMax = DMAX( 1./(UNIT_LENGTH_IN_KPC*All.cf_atime) , DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , RtauMax )); // restrict to 1-10 kpc here
-
+#endif
+                
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
                 double v_wind_threshold = 15. / UNIT_VEL_IN_KMS; // unit velocity for kicks
@@ -73,7 +81,12 @@ void radiation_pressure_winds_consolidated(void)
 #endif
                 { // within loop
                     /* ok, now open the neighbor list for the star particle */
-                    N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
+#if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
+                    N_MIN_KERNEL=1; N_MAX_KERNEL=256; MAXITER_FB=10; h=0.5*P[i].Hsml;
+#else
+                    N_MIN_KERNEL=10; N_MAX_KERNEL=256; MAXITER_FB=100; h=1.0*P[i].Hsml;
+#endif
+                    NITER=0; wt_sum=0; startnode=All.MaxPart; dummy=0; numngb_inbox=0; pos=P[i].Pos;
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
@@ -96,7 +109,7 @@ void radiation_pressure_winds_consolidated(void)
                             startnode=All.MaxPart;
                             if(numngb_inbox<N_MIN_KERNEL) {if(numngb_inbox<=0) {h*=2.0;} else {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MIN_KERNEL,-0.3333);} else {h*=1.26;}}} /* iterate until find appropriate > N_MIN # particles */
                             if(numngb_inbox>N_MAX_KERNEL) {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MAX_KERNEL,-0.3333);} else {h/=1.31;}} /* iterate until find appropriate < N_MAX # particles */
-                            if((NITER>MAXITER_FB/2) && (N_MIN_KERNEL>2)) {N_MIN_KERNEL/=2; N_MAX_KERNEL*=2; if(N_MIN_KERNEL<2) {N_MIN_KERNEL=2;} if(N_MAX_KERNEL>2000) {N_MAX_KERNEL=2000;}} // expand tolerance if we are doing a lot of iterations here //
+                            if((NITER>MAXITER_FB/2) && (N_MIN_KERNEL>2)) {N_MIN_KERNEL/=2; N_MAX_KERNEL*=2; if(N_MIN_KERNEL<2) {N_MIN_KERNEL=2;} if(N_MAX_KERNEL>1000) {N_MAX_KERNEL=1000;}} // expand tolerance if we are doing a lot of iterations here //
                         }
                         if(h>20.*RtauMax) {h=20.*RtauMax; if(NITER<MAXITER_FB-1) {NITER=MAXITER_FB-1;}} /* if h exceeds the maximum now, set it to that value, and set NITER to maximum to force end of iteration */
                         NITER++;
