@@ -620,7 +620,7 @@ double single_star_feedback_velocity_fortimestep(int n);
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-double ps_adiabatic_index(int stage, double mdot);
+double ps_polytropic_index(int stage, double mdot);
 double ps_rhoc(double m, double n_ad, double r);
 double ps_Pc(double m, double n_ad, double r);
 double ps_Tc(double rhoc, double Pc);
