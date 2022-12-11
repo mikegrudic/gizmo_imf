@@ -801,8 +801,8 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 		lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
 		t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
 		t_acc = mass/mdot;
-                n_ad = ps_adiabatic_index(stage, mdot); // get adiabatic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
-                ag = 3.0/(5.0-n_ad); //shorthand
+                n_ad = ps_polytropic_index(stage, mdot); // get polytropic index
+                ag = 3.0/(5.0-n_ad); // constant in front of GM^2/R for gravitational energy of polytrope
                 rhoc = ps_rhoc(mass, n_ad, r); // central density
                 Pc = ps_Pc(mass, n_ad, r); // central pressure
                 Tc = ps_Tc(rhoc,Pc); // central temperature
@@ -1126,7 +1126,8 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
         double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5;
         //double MBETMIN=0.1; if (mass < MBETMIN){return (1.0+ 0.25*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun, value adjusted from 1.15
         if (mass < MTABMIN){return (1.0);}  // Set beta = 1 for M < 5 Msun
-        if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("ps_beta: too high protostar mass, m: %g n_ad %g",m, n_ad); return(-1.0);}
+        if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("WARNING: protostellar mass or polytropic index outside of the range of interpolation for beta, m: %g n_ad %g.",m, n_ad);}
+	mass = DMIN(mass, MTABMAX); n_ad = DMIN(n_ad, NTABMAX);
         static double betatab[19][4] = {{0.98785, 0.988928, 0.98947, 0.989634}, {0.97438, 0.976428, 0.977462, 0.977774}, {0.957927, 0.960895, 0.962397, 0.962846},
           {0.939787, 0.943497, 0.945369, 0.945922}, {0.92091, 0.925151, 0.927276, 0.927896}, {0.901932, 0.906512, 0.908785, 0.909436}, {0.883254, 0.888017, 0.890353, 0.891013},
           {0.865111, 0.86994, 0.872277, 0.872927}, {0.847635, 0.852445, 0.854739, 0.855367}, {0.830886, 0.835619, 0.837842, 0.838441}, {0.814885, 0.8195, 0.821635, 0.822201},
@@ -1138,8 +1139,8 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
         return ( betatab[midx][nidx]*(1.0-mwgt)*(1.0-nwgt) + betatab[midx+1][nidx]*mwgt*(1.0-nwgt) + betatab[midx][nidx+1]*(1.0-mwgt)*nwgt + betatab[midx+1][nidx+1]*mwgt*nwgt );
     }
 }
-/* Sets the adiabatic index for pre burning protostars based on Eq B2 from Offner 2009 */
-double ps_adiabatic_index_func(double mdot) {
+/* Sets the polytropic index for pre burning protostars based on Eq B2 from Offner 2009 */
+double ps_polytropic_index_func(double mdot) {
     double mdot_m_solar_per_year = mdot * UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR; // accretion rate in msolar/yr
     //return ( 5.0 - 3/(1.475+0.07*log10(mdot_m_solar_per_year)) );
     if (mdot_m_solar_per_year < 1.0e-5){
@@ -1148,12 +1149,12 @@ double ps_adiabatic_index_func(double mdot) {
         return(2.5+0.25*log10(mdot_m_solar_per_year*1.0e5));
     }
 }
-/* Sets the adiabatic index for protostars based on Appendix B of Offner 2009 */
-double ps_adiabatic_index(int stage, double mdot){
+/* Sets the polytropic index for protostars based on Appendix B of Offner 2009 */
+double ps_polytropic_index(int stage, double mdot){
     double n_ad;
     switch(stage) {
-        case 0: n_ad = ps_adiabatic_index_func(mdot); break;
-        case 1: n_ad = ps_adiabatic_index_func(mdot); break;
+        case 0: n_ad = ps_polytropic_index_func(mdot); break;
+        case 1: n_ad = ps_polytropic_index_func(mdot); break;
         case 2: n_ad = 1.75; break;
         case 3: n_ad = 1.75; break;
         case 4: n_ad = 3.0; break;
