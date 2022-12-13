@@ -783,17 +783,17 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     double t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
     double t_acc = mass/mdot;
     double n_ad, ag, rhoc, Pc, Tc, beta, dlogbeta_dlogm, lum_D, dm_D, rel_dr;
+    int loop_subcycle=0;
+    int n_subcycle=(int) (dt/(0.1*DMIN(All.G * mass * mass / r / (lum_int+lum_acc+lum_I), t_acc)) + 1); // subcycle timestep criterion taking the shorter of the kelvin-helmholtz or accretion timescales
     if(stage < 5) { // not a main sequence star
         if (stage >= 1) { // we only evolve those that are beyond the pre-collapse phase
-            int loop_subcycle=0;
-            int n_subcycle=1; // no subcycle by default
-            double dm_curr = dm; double dt_curr = dt;
+            double dm_curr = dm/n_subcycle; double dt_curr = dt/n_subcycle;
             mass = m_initial; // value at the beginning o the timestep
-            do{ // we use a do-while loop here because we first try the full timestep and if dr is too large we subcycle
+            for(loop_subcycle=0; loop_subcycle<n_subcycle; loop_subcycle++){
                 // Note: this subcycling does not update stage, so a protostar could overshoot
                 // Evolve mass
+                double dm_rel = dm_curr/mass;
                 mass += dm_curr; // increase mass first
-                double dm_rel = dm_curr/(mass-dm_curr);
                 // Get properties for stellar evolution
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); // blackbody radiation assuming the star follows the Hayashi track
                 lum_MS = ps_lum_MS(mass); // luminosity of main sequence star of m mass
@@ -801,8 +801,8 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 		lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
 		t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
 		t_acc = mass/mdot;
-                n_ad = ps_polytropic_index(stage, mdot); // get polytropic index
-                ag = 3.0/(5.0-n_ad); // constant in front of GM^2/R for gravitational energy of polytrope
+                n_ad = ps_polytropic_index(stage, mdot, mass); // get polytropic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
+                ag = 3.0/(5.0-n_ad); //shorthand
                 rhoc = ps_rhoc(mass, n_ad, r); // central density
                 Pc = ps_Pc(mass, n_ad, r); // central pressure
                 Tc = ps_Tc(rhoc,Pc); // central temperature
@@ -824,22 +824,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 }
                 // Let's evolve the stellar radius
 		double dlogr_dlogm = 2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm - 2*r/(ag*beta*All.G*mass*mdot) * (lum_int+lum_acc+lum_I-lum_D); // Nakano 2000 Eq (8); this gives the slope of the M vs. R diagram 
-		rel_dr = dlogr_dlogm * dm/mass; // convert to relative change in mass
-                // Let's check if we need to subcycle
-                if (fabs(rel_dr) > max_rel_dr){
-                    n_subcycle = (int) DMAX(ceil(rel_dr/max_rel_dr), 2.0*n_subcycle); // number of subcycle steps, at least 2, either double the previous number or estimated from dr
-                    // reset protostar properties, restart loop
-                    loop_subcycle = 0;
-                    mass = m_initial; mass_D = BPP(n).Mass_D;
-                    dm_curr = dm/((double)n_subcycle); dt_curr = dt/((double)n_subcycle);
-                    r = BPP(n).ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR;
-                }
-                else{
-                    loop_subcycle++;
-                    r *= (1.0+rel_dr);
-                    mass_D += dm_D;
-                }
-            } while(loop_subcycle<n_subcycle); // repeat for the number of subcycle steps
+		rel_dr = dlogr_dlogm * dm_rel; // multiply by dlogm = dm/m to get dlogr
+		r *= exp(rel_dr); // interpolates properly to large timestep, but subcycling should limit it
+		mass_D += dm_D;
+            }
+
             // Update stellar properties
             BPP(n).ProtoStellarRadius_inSolar = r * UNIT_LENGTH_IN_SOLAR;
             BPP(n).Mass_D = mass_D;
@@ -849,7 +838,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 dm_D = mass_D - BPP(n).Mass_D; // get the tota change in D mass in the protostar
                 rel_dr = r/(BPP(n).ProtoStellarRadius_inSolar/UNIT_LENGTH_IN_SOLAR)-1.0; // get the actual relative change over the whole timestep
             }
-            printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, BPP(n).Mass_D*UNIT_MASS_IN_SOLAR,rel_dr,dm*UNIT_MASS_IN_SOLAR, dm_D*UNIT_MASS_IN_SOLAR, Tc, Pc*UNIT_PRESSURE_IN_CGS, rhoc*UNIT_DENSITY_IN_CGS, beta, dt*UNIT_TIME_IN_MYR, n_ad, lum_int*UNIT_LUM_IN_SOLAR, lum_I*UNIT_LUM_IN_SOLAR, lum_D*UNIT_LUM_IN_SOLAR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle, P[n].ZAMS_Mass );
+            printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g t_acc: %g t_KH: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g BH_Mass_AlphaDisk: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,m_solar,BPP(n).ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, t_acc, t_KH, BPP(n).Mass_D*UNIT_MASS_IN_SOLAR,rel_dr,dm*UNIT_MASS_IN_SOLAR, dm_D*UNIT_MASS_IN_SOLAR, Tc, Pc*UNIT_PRESSURE_IN_CGS, rhoc*UNIT_DENSITY_IN_CGS, beta, dt*UNIT_TIME_IN_MYR, n_ad, lum_int*UNIT_LUM_IN_SOLAR, lum_I*UNIT_LUM_IN_SOLAR, lum_D*UNIT_LUM_IN_SOLAR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, BPP(n).StarLuminosity_Solar, BPP(n).BH_Mass_AlphaDisk, BPP(n).SinkRadius, dlogbeta_dlogm, n_subcycle, P[n].ZAMS_Mass );
 #endif
             // Check whether the star can progress to the next state
             // move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
@@ -867,7 +856,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 BPP(n).ProtoStellarRadius_inSolar *= 3; //star swells due to the formation of radiative barrier
             }
             // move from "shell burn" to "main sequence" phase when the radius reaches the main sequence radius
-            if ( (stage==4) && (BPP(n).ProtoStellarRadius_inSolar <= ps_radius_MS_in_solar(mass)) ){
+            if ( (stage<5) && (BPP(n).ProtoStellarRadius_inSolar <= ps_radius_MS_in_solar(mass)) ){
                 stage_increase = 1; // particle qualifies to become a ZAMS star
                 BPP(n).ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass);
             }
@@ -1126,7 +1115,7 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
         double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5;
         //double MBETMIN=0.1; if (mass < MBETMIN){return (1.0+ 0.25*log(mass/MBETMIN)/log(0.01/MBETMIN) );}  // Setting from Offner+Mckee2011, not sure why, does not make much sense above 1, probably to fit to previous results. I made it change continously to avoid big drops in R at 0.1 Msun, value adjusted from 1.15
         if (mass < MTABMIN){return (1.0);}  // Set beta = 1 for M < 5 Msun
-        if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("WARNING: protostellar mass or polytropic index outside of the range of interpolation for beta, m: %g n_ad %g.",m, n_ad);}
+        if ((mass >= MTABMAX) || (n_ad >= NTABMAX)) {printf("WARNING: protostellar mass or polytropic index outside of the range of interpolation for beta, m: %g n_ad %g\n",m, n_ad);}
 	mass = DMIN(mass, MTABMAX); n_ad = DMIN(n_ad, NTABMAX);
         static double betatab[19][4] = {{0.98785, 0.988928, 0.98947, 0.989634}, {0.97438, 0.976428, 0.977462, 0.977774}, {0.957927, 0.960895, 0.962397, 0.962846},
           {0.939787, 0.943497, 0.945369, 0.945922}, {0.92091, 0.925151, 0.927276, 0.927896}, {0.901932, 0.906512, 0.908785, 0.909436}, {0.883254, 0.888017, 0.890353, 0.891013},
@@ -1150,8 +1139,9 @@ double ps_polytropic_index_func(double mdot) {
     }
 }
 /* Sets the polytropic index for protostars based on Appendix B of Offner 2009 */
-double ps_polytropic_index(int stage, double mdot){
+double ps_polytropic_index(int stage, double mdot, double mass){
     double n_ad;
+    if(mass * UNIT_MASS_IN_SOLAR > 40.){return 3.0;} // force n=3 polytrop for very massive stars even pre-main sequence, because tables for n != 3 don't extrapolate there
     switch(stage) {
         case 0: n_ad = ps_polytropic_index_func(mdot); break;
         case 1: n_ad = ps_polytropic_index_func(mdot); break;
