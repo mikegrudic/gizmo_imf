@@ -963,9 +963,9 @@ void hydro_force_initial_operations_preloop(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
         if(P[i].Type==0)
         {
-            SphP[i].MaxSignalVel = -1.e10;
+            SphP[i].MaxSignalVel = MIN_REAL_NUMBER;
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
-            SphP[i].MaxKineticEnergyNgb = -1.e10;
+            SphP[i].MaxKineticEnergyNgb = MIN_REAL_NUMBER;
 #endif
             SphP[i].DtInternalEnergy = 0; //SphP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
             for(k=0;k<3;k++) {SphP[i].HydroAccel[k] = 0;} //SphP[i].dMomentum[k] = 0;//manifest-indiv-timestep-debug//

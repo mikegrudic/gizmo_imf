@@ -1031,7 +1031,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) 
-        SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
+        SphP[j].MaxSignalVel = 2.*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 	P[j].ProtoStellarStage = P[i].ProtoStellarStage; // inherit this from the spawning sink particle so we can use it in subroutines
         // need to initialize the gas density and search radius so that we get sensible CFL timesteps (which happens before density() is called and we recalculate these self-consistently)

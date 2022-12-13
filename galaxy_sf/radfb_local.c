@@ -26,6 +26,10 @@ void radiation_pressure_winds_consolidated(void)
     MyDouble *pos; int N_MAX_KERNEL,N_MIN_KERNEL,MAXITER_FB,NITER,startnode,dummy,numngb_inbox,i,j,k,n;
     double h,wt_sum,delta_v_imparted_rp=0,total_n_wind=0,total_mom_wind=0,total_prob_kick=0,avg_v_kick=0,avg_taufac=0;
 
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(FIRE_BHS)
+#define GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST
+#endif
+
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
@@ -43,9 +47,13 @@ void radiation_pressure_winds_consolidated(void)
                 total_prob_kick += dE_over_c; // sum contributions
 
                 /* calculate some pre-amble properties */
+#if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
+                double RtauMax = DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , 4.*P[i].Hsml );
+#else
                 double RtauMax = P[i].Hsml * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
                 RtauMax = DMAX( 1./(UNIT_LENGTH_IN_KPC*All.cf_atime) , DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , RtauMax )); // restrict to 1-10 kpc here
-
+#endif
+                
 #ifndef GALSF_FB_FIRE_RT_CONTINUOUSRP
                 /* if kicks are stochastic, we don't want to waste time doing a neighbor search every timestep; it can be much faster to pre-estimate the kick probabilities */
                 double v_wind_threshold = 15. / UNIT_VEL_IN_KMS; // unit velocity for kicks
@@ -73,7 +81,12 @@ void radiation_pressure_winds_consolidated(void)
 #endif
                 { // within loop
                     /* ok, now open the neighbor list for the star particle */
-                    N_MIN_KERNEL=10;N_MAX_KERNEL=256;MAXITER_FB=100;NITER=0;wt_sum=0; startnode=All.MaxPart;dummy=0;numngb_inbox=0;h=1.0*P[i].Hsml;pos=P[i].Pos;
+#if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
+                    N_MIN_KERNEL=1; N_MAX_KERNEL=256; MAXITER_FB=10; h=0.5*P[i].Hsml;
+#else
+                    N_MIN_KERNEL=10; N_MAX_KERNEL=256; MAXITER_FB=100; h=1.0*P[i].Hsml;
+#endif
+                    NITER=0; wt_sum=0; startnode=All.MaxPart; dummy=0; numngb_inbox=0; pos=P[i].Pos;
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
                     do {
                         numngb_inbox = ngb_treefind_variable_targeted(pos, h, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
@@ -96,7 +109,7 @@ void radiation_pressure_winds_consolidated(void)
                             startnode=All.MaxPart;
                             if(numngb_inbox<N_MIN_KERNEL) {if(numngb_inbox<=0) {h*=2.0;} else {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MIN_KERNEL,-0.3333);} else {h*=1.26;}}} /* iterate until find appropriate > N_MIN # particles */
                             if(numngb_inbox>N_MAX_KERNEL) {if(NITER<=5) {h*=pow((float)numngb_inbox/(float)N_MAX_KERNEL,-0.3333);} else {h/=1.31;}} /* iterate until find appropriate < N_MAX # particles */
-                            if((NITER>MAXITER_FB/2) && (N_MIN_KERNEL>2)) {N_MIN_KERNEL/=2; N_MAX_KERNEL*=2; if(N_MIN_KERNEL<2) {N_MIN_KERNEL=2;} if(N_MAX_KERNEL>2000) {N_MAX_KERNEL=2000;}} // expand tolerance if we are doing a lot of iterations here //
+                            if((NITER>MAXITER_FB/2) && (N_MIN_KERNEL>2)) {N_MIN_KERNEL/=2; N_MAX_KERNEL*=2; if(N_MIN_KERNEL<2) {N_MIN_KERNEL=2;} if(N_MAX_KERNEL>1000) {N_MAX_KERNEL=1000;}} // expand tolerance if we are doing a lot of iterations here //
                         }
                         if(h>20.*RtauMax) {h=20.*RtauMax; if(NITER<MAXITER_FB-1) {NITER=MAXITER_FB-1;}} /* if h exceeds the maximum now, set it to that value, and set NITER to maximum to force end of iteration */
                         NITER++;
@@ -207,6 +220,11 @@ void radiation_pressure_winds_consolidated(void)
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
 /* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
 /*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
+
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(FIRE_BHS)
+#define GALSF_FB_FIRE_RT_HIIHEATING_OPTIMIZERS_TEST
+#endif
+
 void HII_heating_singledomain(void)    /* this version of the HII routine only communicates with particles on the same processor */
 {
 #ifdef RT_CHEM_PHOTOION
@@ -245,24 +263,35 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667); // Stromgren radius, RHII, computed using a case B recombination coefficient at 10^4 K of 2.59e-13 cm^3 s^-1, and assuming a Hydrogen mass fraction ~0.74.
             RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS; // convert to code units
             RHIIMAX = 2. * 240.0*pow(stellum,0.5) / (All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background, x2 safety factor
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING_OPTIMIZERS_TEST
+            if(RHIIMAX < 1.2*h_i) {RHIIMAX=1.2*h_i;} // limit max search radius: can't be below 2x kernel size
+            if(RHIIMAX > 4.0*h_i) {RHIIMAX=4.*h_i;} // limit search radius to 10x kernel size
+#else
             if(RHIIMAX < 2.0*h_i) {RHIIMAX=2.0*h_i;} // limit max search radius: can't be below 2x kernel size
             if(RHIIMAX > 10.0*h_i) {RHIIMAX=10.*h_i;} // limit search radius to 10x kernel size
+#endif
             mionizable = NORM_COEFF*rho*RHII*RHII*RHII; // estimated ionizable gas mass in code units, based on the gas density at star location [will be rescaled]
             double M_ionizing_emitted = (3.05e10 * PROTONMASS_CGS) * stellum * (dt * UNIT_TIME_IN_CGS) ; // number of ionizing photons times proton mass, gives max mass ionized [in cgs]
             mionizable = DMIN( mionizable , M_ionizing_emitted/UNIT_MASS_IN_CGS ); // in code units
             if(RHII > RHIIMAX) {RHII = RHIIMAX;} // limit initial guess to max
-            if(RHII < 0.5*h_i) {RHII=0.5*h_i;} // limit initial guess to above 1/2 kernel, so can find neighbors
+            if(RHII < 0.3*h_i) {RHII=0.3*h_i;} // limit initial guess to above 1/2 kernel, so can find neighbors
             RHII_initial=RHII;
             total_N_ionizing_part += 1; total_Ndot_ionizing += stellum * (3.05e10/HYDROGEN_MASSFRAC); // increment before loop //
 
             prandom = get_random_number(P[i].ID + 7); // pre-calc the (eventually) needed random number
             // guesstimate if this is even close to being interesting for the particle masses of interest
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING_OPTIMIZERS_TEST
+            if(prandom < 3.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
+#else
             if(prandom < 5.0*mionizable/P[i].Mass) // prandom > this, won't be able to ionize anything interesting
+#endif
             {
                 mionized=0.0; startnode = All.MaxPart; jnearest=-1; rnearest=MAX_REAL_NUMBER; dummy=0; NITER_HIIFB=0;
                 do {
+                    double RHII_2 = RHII*RHII;
                     jnearest=-1; rnearest=MAX_REAL_NUMBER;
-                    R_search = RHII; if(h_i>R_search) {R_search=h_i;}
+                    R_search = RHII;
+                    if(h_i>0.5*R_search) {R_search=0.5*h_i;}
                     numngb = ngb_treefind_variable_targeted(pos, R_search, -1, &startnode, 0, &dummy, &dummy, 1); // search for gas (2^0=1 for bitflag), use the 'see one way' search, since weights below are all within-kernel, for now
                     if(numngb>0)
                     {
@@ -272,23 +301,32 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 #endif
                         for(n = 0; n < numngb; n++)
                         {
+                            if(mionized>=mionizable) {break;}
+                            if(P[j].Mass <= 0 || P[j].Type !=0) {continue;}
+                            if(SphP[j].DelayTimeHII > 0) {continue;}
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(CHIMES_HII_REGIONS)
+                            if(SphP[j].Ne > 0.8) {continue;}
+#endif
                             j = ngb_list_touse[n];
                             if(P[j].Type == 0 && P[j].Mass > 0)
                             {
                                 double dx=pos[0]-P[j].Pos[0], dy=pos[1]-P[j].Pos[1], dz=pos[2]-P[j].Pos[2];
                                 NEAREST_XYZ(dx,dy,dz,1); /*  now find the closest image in the given box size */
-                                double r2 = dx * dx + dy * dy + dz * dz; double r=sqrt(r2), u=0;
+                                double r2 = dx * dx + dy * dy + dz * dz;
+                                if(r2 > RHII_2) {continue;}
+                                double r=sqrt(r2), u=0;
                                 /* check whether the particle is already ionized */
                                 already_ionized = 0; rho_j = Get_Gas_density_for_energy_i(j);
                                 if(SphP[j].InternalEnergy<SphP[j].InternalEnergyPred) {u=SphP[j].InternalEnergy;} else {u=SphP[j].InternalEnergyPred;}
                                 if(SphP[j].DelayTimeHII > 0) {already_ionized=1;}
 #if !defined(CHIMES_HII_REGIONS)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) 
-                                if((SphP[i].Ne>0.8) || (u>50.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
+                                if((SphP[j].Ne>0.8) || (u>50.*uion)) {already_ionized=1;} /* already mostly ionized by formal ionization fraction */
 #else
                                 if(u>uion) {already_ionized=1;}
 #endif
 #endif
+                                if(already_ionized) continue;
                                 /* now, if inside RHII and mionized<mionizeable and not already ionized, can be ionized! */
                                 do_ionize=0; prob=0;
                                 if((r<=RHII)&&(already_ionized==0)&&(mionized<mionizable))
@@ -343,7 +381,11 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                     if(mionized < 0.95*mionizable)
                     {
                         /* ok, this guy did not find enough gas to ionize, it needs to expand its search */
+#ifdef GALSF_FB_FIRE_RT_HIIHEATING_OPTIMIZERS_TEST
+                        if((RHII >= DMIN(30.0*RHII_initial, RHIIMAX)) || (NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
+#else
                         if((RHII >= DMAX(30.0*RHII_initial, RHIIMAX)) || (NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
+#endif
                         {
                             /* we're done looping, this is just too big an HII region */
                             mionized = 1.001*mionizable;
@@ -362,9 +404,9 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                         } // if((RHII >= 5.0*RHII_initial)||(RHII>=RHIIMAX)||(NITER_HIIFB >= MAX_N_ITERATIONS_HIIFB))
                     } // if(mionized < 0.95*mionizable)
                     NITER_HIIFB++;
-                } while(startnode >= 0);
+                } while(startnode >= 0 && mionized<mionizable);
                 if(mion_actual>0) {total_m_ionized += mion_actual;}
-            } // if(prandom < 2.0*mionizable/P[i].Mass)
+            } // if(prandom < 2.0*mionizable/P[j].Mass)
         } // if((P[i].Type == 4)||(P[i].Type == 2)||(P[i].Type == 3))
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     myfree(Ngblist);
