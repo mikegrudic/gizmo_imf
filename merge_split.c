@@ -50,7 +50,7 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].Type==3) {return 0;}
 #endif
 #ifdef BH_WIND_SPAWN
-    if(P[i].ID == All.AGNWindID)
+    if(P[i].ID==All.AGNWindID && P[i].Type==0)
     {
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
@@ -93,7 +93,7 @@ int does_particle_need_to_be_split(int i)
     if(P[i].Type==4) {return 0;}
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
-    if(P[i].ID == All.AGNWindID) {return 0;}
+    if(P[i].ID==All.AGNWindID && P[i].Type==0) {return 0;}
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i,1))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
@@ -320,7 +320,7 @@ void merge_and_split_particles(void)
 #endif
                             }
                         }
-                        if(P[j].ID == All.AGNWindID) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
+                        if(P[j].ID==All.AGNWindID && P[j].Type==0) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
 #endif
                         /* make sure we're not taking the same particle (and that its available to be merged into)! and that its the least-massive available candidate for merging onto */
                         if((j<0)||(j==i)||(P[j].Type!=P[i].Type)||(P[j].Mass<=0)||(Ptmp[j].flag!=0)||(m_eff>=threshold_val)) {do_allow_merger=0;}
