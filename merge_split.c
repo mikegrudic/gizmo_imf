@@ -1228,9 +1228,19 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
     if(All.Time <= All.TimeBegin) {return 0;} // don't allow on first timestep
     if(P[i].Type != 4) {return 0;} // only stars
     if(evaluate_stellar_age_Gyr(i) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense 
-    double r_NGB = 1.2 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
-    if(r_NGB > 2.*All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense
+    double r_NGB = 1.25 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
+    if(r_NGB > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+#else
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    double h_i=ForceSoftening_KernelRadius(i), tidal_mag=0., fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); int k,j; // get what's needed for tidal tensor computation
+    for(k=0;k<3;k++) {for(j=0;j<3;j++) {double ttkj=P[i].tidal_tensorps[k][j]; if(j==k) {ttkj+=fac_self;} // compute tidal tensor including self-contribution
+        tidal_mag+=ttkj*ttkj;}} // want the frobenius norm
+    if(tidal_mag > 0) {tidal_mag = sqrt(tidal_mag); // squared norm. note this is in code units
+        double ngb_dist = 1.25 * pow( (All.DesNumNgb * All.G * P[i].Mass / tidal_mag) , 1./3. ); // distance to the N'th nearest-neighbor
+        if(ngb_dist > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+    }
+#endif
 #endif
     return 1; // allow this particle to -consider- the possibility of a merger
 }
