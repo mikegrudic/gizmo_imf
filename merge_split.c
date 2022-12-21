@@ -50,7 +50,7 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].Type==3) {return 0;}
 #endif
 #ifdef BH_WIND_SPAWN
-    if(P[i].ID == All.AGNWindID)
+    if(P[i].ID==All.AGNWindID && P[i].Type==0)
     {
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
@@ -93,7 +93,7 @@ int does_particle_need_to_be_split(int i)
     if(P[i].Type==4) {return 0;}
 #endif
 #ifdef BH_DEBUG_SPAWN_JET_TEST
-    if(P[i].ID == All.AGNWindID) {return 0;}
+    if(P[i].ID==All.AGNWindID && P[i].Type==0) {return 0;}
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i,1))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
@@ -116,7 +116,8 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
     {
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
         double dt_to_ramp_refinement = 0.00001;
-        double minimum_refinement_mass_in_solar = 0.005; // aims at 0.01 effective
+        dt_to_ramp_refinement = 1.e-6; // testing [for specific time chosen, hard-coded but change as needed]
+        double minimum_refinement_mass_in_solar = 0.003; // aims at 0.01 effective
         
         double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
         if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);}
@@ -133,6 +134,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         double slope=0; slope = target_slope * (1. - exp(-(All.Time - All.TimeBegin) / dt_to_ramp_refinement)); // gradually ramp up refinement from snapshot
 
         double t_00 = All.TimeBegin;
+        t_00 = 0.1843705; // testing [for specific time chosen, hard-coded but change as needed]
         double dtau = (All.Time - t_00) / dt_to_ramp_refinement, dtdelay=0.1, tfinal=1.;
         if(dtau < dtdelay) {slope=0;} else {slope=target_slope * (1. - exp(- ((dtau-dtdelay) / (tfinal - dtdelay)) ));} // alt model
 
@@ -175,7 +177,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 #endif
         double M_target = DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR; // enforce minimum refinement to 7000 Msun, and convert to code units, compare to 0.001xJeans mass, which is designed to target desired levels
         double normal_median_mass = All.MaxMassForParticleSplit / 3.; // code median mass from ICs
-        ref_factor = DMAX(1.e-4, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
+        ref_factor = DMAX(1.e-30, DMIN( M_target / normal_median_mass , 1)); // this shouldn't get larger than unity since that would exceed the normal maximum mass
         return ref_factor; // return it
     }
 #endif
@@ -318,7 +320,7 @@ void merge_and_split_particles(void)
 #endif
                             }
                         }
-                        if(P[j].ID == All.AGNWindID) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
+                        if(P[j].ID==All.AGNWindID && P[j].Type==0) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
 #endif
                         /* make sure we're not taking the same particle (and that its available to be merged into)! and that its the least-massive available candidate for merging onto */
                         if((j<0)||(j==i)||(P[j].Type!=P[i].Type)||(P[j].Mass<=0)||(Ptmp[j].flag!=0)||(m_eff>=threshold_val)) {do_allow_merger=0;}
@@ -361,8 +363,8 @@ void merge_and_split_particles(void)
         }
     }
 
-    // actual merge-splitting loop loop
-    // No tree-walk is allowed below here
+    // actual merge-splitting loop loop. No tree-walk is allowed below here
+    int failed_splits = 0; /* record failed splits to output warning message */
     for (i = 0; i < NumPart; i++) {
 #ifdef PM_HIRES_REGION_CLIPDM
         if (Ptmp[i].flag == -1) { // clipping
@@ -376,9 +378,10 @@ void merge_and_split_particles(void)
         }
         if (Ptmp[i].flag == 2) {
             int did_split = split_particle_i(i, n_particles_split, Ptmp[i].target_index);
-            if(did_split == 1) {n_particles_split++; if(P[i].Type==0) {n_particles_gas_split++;}}
+            if(did_split == 1) {n_particles_split++; if(P[i].Type==0) {n_particles_gas_split++;}} else {failed_splits++;}
         }
     }
+    if(failed_splits) {printf ("On Task=%d with NumPart=%d we tried and failed to split %d elements, after running out of space (REDUC_FAC*All.MaxPart=%d, REDUC_FAC*All.MaxPartGas=%d ).\n We did split %d total (%d gas) elements. Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, failed_splits, (int)(REDUC_FAC*All.MaxPart), (int)(REDUC_FAC*All.MaxPartGas), n_particles_split, n_particles_gas_split); fflush(stdout);}
 
 #ifdef BOX_PERIODIC
     /* map the particles back onto the box (make sure they get wrapped if they go off the edges). this is redundant here,
@@ -416,9 +419,9 @@ void merge_and_split_particles(void)
 int split_particle_i(int i, int n_particles_split, int i_nearest)
 {
     double mass_of_new_particle;
-    if( ((P[i].Type==0) && (NumPart + n_particles_split >= All.MaxPartGas)) || ((P[i].Type!=0) && (NumPart + n_particles_split >= All.MaxPart)) )
+    if( ((P[i].Type==0) && (NumPart + n_particles_split + 1 >= (int)(REDUC_FAC*All.MaxPartGas))) || (NumPart + n_particles_split + 1 >= (int)(REDUC_FAC*All.MaxPart)) )
     {
-        printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart); fflush(stdout);
+        //printf ("On Task=%d with NumPart=%d we tried to split a particle, but there is no space left...(All.MaxPart=%d). Try using more nodes, or raising PartAllocFac, or changing the split conditions to avoid this.\n", ThisTask, NumPart, All.MaxPart); fflush(stdout);
         return 0;
         endrun(8888);
     }
@@ -699,9 +702,9 @@ int merge_particles_ij(int i, int j)
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
             P[j].TimeDistribOfStarFormation = wt_j*P[j].TimeDistribOfStarFormation + wt_i*P[i].TimeDistribOfStarFormation; // average formation time //
             if(P[i].IMF_NumMassiveStars + P[j].IMF_NumMassiveStars > 0) {
-                P[j].IMF_WeightedMeanStellarAge = (P[j].IMF_NumMassiveStars*P[j].IMF_WeightedMeanStellarAge + P[i].IMF_NumMassiveStars*P[i].IMF_WeightedMeanStellarAge)/(P[j].IMF_NumMassiveStars + P[i].IMF_NumMassiveStars);}
+                P[j].IMF_WeightedMeanStellarFormationTime = (P[j].IMF_NumMassiveStars*P[j].IMF_WeightedMeanStellarFormationTime + P[i].IMF_NumMassiveStars*P[i].IMF_WeightedMeanStellarFormationTime)/(P[j].IMF_NumMassiveStars + P[i].IMF_NumMassiveStars);}
             else {
-                P[j].IMF_WeightedMeanStellarAge = wt_j*P[j].IMF_WeightedMeanStellarAge + wt_i*P[i].IMF_WeightedMeanStellarAge;} // weight by number of massive stars if we still have any since these are still active and needed for stellar evolution, otherwise weight by mass
+                P[j].IMF_WeightedMeanStellarFormationTime = wt_j*P[j].IMF_WeightedMeanStellarFormationTime + wt_i*P[i].IMF_WeightedMeanStellarFormationTime;} // weight by number of massive stars if we still have any since these are still active and needed for stellar evolution, otherwise weight by mass
 #endif
             P[j].IMF_NumMassiveStars += P[i].IMF_NumMassiveStars; // O-star number conserving //
 #endif
@@ -1040,8 +1043,8 @@ void rearrange_particle_sequence(void)
         do_loop_check = 1;
     }
 #endif
-    if(NumPart <= N_gas) do_loop_check=0;
-    if(N_gas <= 0) do_loop_check=0;
+    if(NumPart <= N_gas) {do_loop_check=0;}
+    if(N_gas <= 0) {do_loop_check=0;}
 
     /* if more gas than stars, need to be sure the block ordering is correct (gas first, then stars) */
     if(do_loop_check)
@@ -1225,9 +1228,19 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
     if(All.Time <= All.TimeBegin) {return 0;} // don't allow on first timestep
     if(P[i].Type != 4) {return 0;} // only stars
     if(evaluate_stellar_age_Gyr(i) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense 
-    double r_NGB = 1.2 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
-    if(r_NGB > 2.*All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense
+    double r_NGB = 1.25 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
+    if(r_NGB > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+#else
+#ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
+    double h_i=ForceSoftening_KernelRadius(i), tidal_mag=0., fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); int k,j; // get what's needed for tidal tensor computation
+    for(k=0;k<3;k++) {for(j=0;j<3;j++) {double ttkj=P[i].tidal_tensorps[k][j]; if(j==k) {ttkj+=fac_self;} // compute tidal tensor including self-contribution
+        tidal_mag+=ttkj*ttkj;}} // want the frobenius norm
+    if(tidal_mag > 0) {tidal_mag = sqrt(tidal_mag); // squared norm. note this is in code units
+        double ngb_dist = 1.25 * pow( (All.DesNumNgb * All.G * P[i].Mass / tidal_mag) , 1./3. ); // distance to the N'th nearest-neighbor
+        if(ngb_dist > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+    }
+#endif
 #endif
     return 1; // allow this particle to -consider- the possibility of a merger
 }
@@ -1244,7 +1257,9 @@ int check_if_sufficient_mergesplit_time_has_passed(int i)
     double dtime_code = All.Time - P[i].Time_Of_Last_MergeSplit; // time [in code units] since last merge/split
     double dt_incodescale = (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * All.cf_hubble_a) * All.cf_atime; // timestep converted appropriately to code units [physical if non-comoving, else scale factor]
     if(dtime_code < N_timesteps_fac*dt_incodescale) {return 0;} // not enough time passed, prohibit
-    if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-8) {return 0;}} // also enforce an absolute time limit
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-8) {return 0;}} // also enforce an absolute time limit (don't use for nuclear zooms since absolute timesteps can become arbitrarily short
+#endif
     return 1; // otherwise, if no check so far to reject, allow this merge/split
 }
 #endif

@@ -85,8 +85,8 @@ void savepositions(int num)
 #endif
 
         sprintf(outputdir, "%s", All.OutputDir);
-#if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
-        if( (All.SnapshotFileCount-1) % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) )
+#if IO_SINKS_ONLY_SNAPSHOT_FREQUENCY > 0
+        if( (All.SnapshotFileCount-1) % (IO_SINKS_ONLY_SNAPSHOT_FREQUENCY+1) )
         {
             sprintf(outputdir, "%s/stars_only", All.OutputDir);
             mkdir(outputdir, 02755);
@@ -1007,7 +1007,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    double ne = SphP[pindex].Ne; u = SphP[pindex].InternalEnergyPred; tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, pindex); /* get cooling time */
+                    double ne = SphP[pindex].Ne, ne_out=ne; u = SphP[pindex].InternalEnergyPred; tcool = GetCoolingTime(u, SphP[pindex].Density * All.cf_a3inv, ne, &ne_out, pindex); /* get cooling time */
                     double coolrate_to_output = 0; if(tcool != 0) {coolrate_to_output = u / tcool;} /* convert cooling time with current thermal energy to du/dt */
                     *fp++ = (MyOutputFloat) coolrate_to_output;
                     n++;
@@ -1533,7 +1533,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(OUTPUT_EDDINGTON_TENSOR)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1971,7 +1971,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(OUTPUT_EDDINGTON_TENSOR)
             if(mode)
                 bytes_per_blockelement = (6*N_RT_FREQ_BINS) * sizeof(MyInputFloat);
             else
@@ -2232,7 +2232,7 @@ int get_values_per_blockelement(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#ifdef RADTRANSFER
+#if defined(OUTPUT_EDDINGTON_TENSOR)
             values = (6*N_RT_FREQ_BINS);
 #endif
             break;
@@ -3042,7 +3042,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_EDDINGTON_TENSOR:
-#if defined(RADTRANSFER)
+#if defined(OUTPUT_EDDINGTON_TENSOR)
             return 1;
 #endif
             break;
@@ -4178,8 +4178,8 @@ void write_file(char *fname, int writeTask, int lastTask)
 
                 for(type = 0; type < 6; type++)
                 {
-#if STARS_ONLY_SNAPSHOT_FREQUENCY > 0
-                    if ( typelist[type] && ( (type!=0) || !( (All.SnapshotFileCount-1) % (STARS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
+#if IO_SINKS_ONLY_SNAPSHOT_FREQUENCY > 0
+                    if ( typelist[type] && ( (type!=0) || !( (All.SnapshotFileCount-1) % (IO_SINKS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
 #else
                     if(typelist[type])
 #endif
@@ -4724,6 +4724,10 @@ void write_header_attributes_in_hdf5(hid_t handle)
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RHD_bins_nu_max_ev); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
+#if defined(RT_ISRF_BACKGROUND)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "InterstellarRadiationFieldStrength", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.InterstellarRadiationFieldStrength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_accretion", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
@@ -4839,8 +4843,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.MinFoFMassForNewSeed); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 #ifdef BH_WIND_SPAWN
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_wind_particle_mass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Cell_Spawn_Mass_ratio", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_wind_particle_mass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#ifdef SINGLE_STAR_FB_WINDS
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Cell_Spawn_Mass_ratio_MS", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Cell_Spawn_Mass_ratio_MS); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_internal_temperature", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_internal_temperature); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     {unsigned long long holder = (unsigned long long) All.AGNWindID; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Spawned_Cell_ID", H5T_NATIVE_ULLONG, hdf5_dataspace, H5P_DEFAULT);

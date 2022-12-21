@@ -77,7 +77,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #endif
     in->Dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-    if(P[i].Type == 5){in->Dt = P[i].dt_since_last_gas_search;}
+    in->Dt = P[i].dt_since_last_gas_search;
 #endif
 #if defined(BH_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {in->BH_Specific_AngMom[k] = BPP(i).BH_Specific_AngMom[k];}
@@ -104,6 +104,9 @@ struct OUTPUT_STRUCT_NAME
 #endif
 #ifdef GRAIN_FLUID
     MyDouble accreted_dust_Mass;
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyDouble accreted_photon_energy;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     MyDouble accreted_momentum[3];
@@ -140,6 +143,9 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #endif
 #ifdef GRAIN_FLUID
     ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_dust_Mass, out->accreted_dust_Mass, mode);
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_photon_energy, out->accreted_photon_energy, mode);
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(BlackholeTempInfo[target].accreted_momentum[k], out->accreted_momentum[k], mode);}
@@ -284,6 +290,13 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef GRAIN_FLUID
                     if((1<<P[j].Type) & GRAIN_PTYPES) {out.accreted_dust_Mass += FLT(Mass_j);}
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS 
+		            if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
+			            double photon_energy = 0;
+			            for(int kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
+			            out.accreted_photon_energy += photon_energy;
+		            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
                     for(k=0;k<3;k++) {out.accreted_momentum[k] += FLT( mcount_for_conserve * dvel[k]);}
@@ -1018,7 +1031,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) 
-        SphP[j].MaxSignalVel = 2*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
+        SphP[j].MaxSignalVel = 2.*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 	P[j].ProtoStellarStage = P[i].ProtoStellarStage; // inherit this from the spawning sink particle so we can use it in subroutines
         // need to initialize the gas density and search radius so that we get sensible CFL timesteps (which happens before density() is called and we recalculate these self-consistently)
@@ -1080,11 +1093,16 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 double target_mass_for_wind_spawning(int i)
 {
 #ifdef BH_WIND_SPAWN
-#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
+#if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS) // we specify the value relative to Sink_Formation_Mass
+    if((All.Cell_Spawn_Mass_ratio_MS>0.0)&&(P[i].ProtoStellarStage == 5)&&(P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS * P[i].Sink_Formation_Mass;} //use different (probably lower) mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
+#else // we specify the absolute value
+    if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)){return All.Cell_Spawn_Mass_ratio_MS;} // specified absolute mass resolution for stellar winds
+    else if(P[i].ProtoStellarStage == 6) {return P[i].Sink_Formation_Mass;} // If supernova, use the nominal "average" mass resolution
 #endif
     return All.BAL_wind_particle_mass;
-#else
+#endif
     return 0; // no well-defined answer, this shouldn't be called in this instance
 #endif
 }

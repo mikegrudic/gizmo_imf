@@ -522,9 +522,10 @@ size_t sizemax(size_t a, size_t b);
 
 void reconstruct_timebins(void);
 void init_peano_map(void);
-peanokey peano_hilbert_key(int x, int y, int z, int bits);
-peanokey peano_and_morton_key(int x, int y, int z, int bits, peanokey *morton);
-peanokey morton_key(int x, int y, int z, int bits);
+peano1D domain_double_to_int(double d);
+peanokey peano_hilbert_key(peano1D x, peano1D y, peano1D z, int bits);
+peanokey peano_and_morton_key(peano1D x, peano1D y, peano1D z, int bits, peanokey *morton);
+peanokey morton_key(peano1D x, peano1D y, peano1D z, int bits);
 
 void catch_abort(int sig);
 void catch_fatal(int sig);
@@ -619,7 +620,7 @@ double single_star_feedback_velocity_fortimestep(int n);
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-double ps_adiabatic_index(int stage, double mdot);
+double ps_polytropic_index(int stage, double mdot);
 double ps_rhoc(double m, double n_ad, double r);
 double ps_Pc(double m, double n_ad, double r);
 double ps_Tc(double rhoc, double Pc);
