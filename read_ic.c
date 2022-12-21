@@ -758,13 +758,13 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef INPUT_IN_DOUBLEPRECISION
     if(header.flag_doubleprecision == 0)
     {
-        if(ThisTask == 0) {printf("\nProblem: Code compiled with INPUT_IN_DOUBLEPRECISION, but input files are in single precision!\n");}
+        if(ThisTask == 0) {printf("\nProblem: Code compiled with INPUT_IN_DOUBLEPRECISION, but input files are in single precision!\n"); fflush(stdout);}
         endrun(11);
     }
 #else
     if(header.flag_doubleprecision)
     {
-        if(ThisTask == 0) {printf("\nProblem: Code not compiled with INPUT_IN_DOUBLEPRECISION, but input files are in double precision!\n");}
+        if(ThisTask == 0) {printf("\nProblem: Code not compiled with INPUT_IN_DOUBLEPRECISION, but input files are in double precision!\n"); fflush(stdout);}
         endrun(10);
     }
 #endif
@@ -1170,16 +1170,11 @@ void read_file(char *fname, int readTask, int lastTask)
                         if(All.ICFormat == 1 || All.ICFormat == 2)
                         {
                             SKIP2;
-
                             if(blksize1 != blksize2)
                             {
                                 printf("incorrect block-sizes detected!\n");
                                 printf("Task=%d   blocknr=%d  blksize1=%d  blksize2=%d\n", ThisTask, bnr, blksize1, blksize2);
-                                if(blocknr == IO_ID)
-                                {
-                                    printf
-                                    ("Possible mismatch of 32bit and 64bit ID's in IC file and GIZMO compilation !\n");
-                                }
+                                if(blocknr == IO_ID) {printf("Possible mismatch of 32bit and 64bit ID's in IC file and GIZMO compilation !\n");}
                                 fflush(stdout);
                                 endrun(1889);
                             }
@@ -1395,6 +1390,15 @@ void read_header_attributes_in_hdf5(char *fname)
     }
 #endif
     
+    /* things that are not part of the header 'structure' we define in-code, but used in the hdf5 headers and wanted for read here, can be read below */
+    if(H5Aexists(hdf5_headergrp, "Minimum_Mass_For_Cell_Merge")) { /* test for existence of this field */
+        hdf5_attribute = H5Aopen_name(hdf5_headergrp, "Minimum_Mass_For_Cell_Merge"); /* open it */
+        H5Aread(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.MinMassForParticleMerger); H5Aclose(hdf5_attribute);} /* read it and close */
+    
+    if(H5Aexists(hdf5_headergrp, "Maximum_Mass_For_Cell_Split")) { /* test for existence of this field */
+        hdf5_attribute = H5Aopen_name(hdf5_headergrp, "Maximum_Mass_For_Cell_Split"); /* open it */
+        H5Aread(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.MaxMassForParticleSplit); H5Aclose(hdf5_attribute);} /* read it and close */
+
     H5Gclose(hdf5_headergrp);
     H5Fclose(hdf5_file);
 }

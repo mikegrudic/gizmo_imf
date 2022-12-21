@@ -117,7 +117,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     P[i].IMF_NumMassiveStars = (double)kk;
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
     P[i].IMF_NumMassiveStars = 0; // set to zero, these will increase with time now
-    P[i].IMF_WeightedMeanStellarAge = All.Time; // set to the code value the same as the normal StellarAge parameter at this time
+    P[i].IMF_WeightedMeanStellarFormationTime = All.Time; // set to the code value the same as the normal StellarAge parameter at this time
     P[i].TimeDistribOfStarFormation = (GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF) * 0.54 / sqrt(All.G * SphP[i].Density * All.cf_a3inv); // distribute over the specified number of free-fall times
 #endif
 #endif
@@ -131,7 +131,7 @@ double evaluate_stellar_age_Gyr(long i)
 {
     double tform_code = P[i].StellarAge; // formation time as tracked in-code
 #if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
-    if(P[i].Type==4) {tform_code = P[i].IMF_WeightedMeanStellarAge;} // use this 'effective' age for this module, to reflect the spread-out duration of SF
+    if(P[i].Type==4) {tform_code = P[i].IMF_WeightedMeanStellarFormationTime;} // use this 'effective' age for this module, to reflect the spread-out duration of SF
 #endif
     double age = evaluate_time_since_t_initial_in_Gyr(tform_code);
     age = DMAX(age, 1.e-5); // set a floor for some routines
@@ -215,7 +215,8 @@ double get_starformation_rate(int i, int mode)
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
     double factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP; /* evaporation factor */
     double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold; /* specific energy of hot [volume-filling] phase gas */
-    double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, SphP[i].Ne, i); /* cooling time of two-phase mix */
+    double ne_in = SphP[i].Ne, ne_out = ne_in; /* free electron fraction */
+    double tcool = GetCoolingTime(egyhot, SphP[i].Density * All.cf_a3inv, ne_in, &ne_out, i); /* cooling time of two-phase mix */
     y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold); /* parameter */
     double cloudmass_fraction = (1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y))); /* quasi-equilibrium mass in cold phase */
     rateOfSF = (1 - All.FactorSN) * cloudmass_fraction * P[i].Mass / tsfr; /* SFR given by cold mass (less SNe-entrainment fraction) divided by tSFR */
@@ -239,7 +240,7 @@ double get_starformation_rate(int i, int mode)
             gradv[3*j + k]=vt; dv2abs+=vt*vt; if(j==k) {divv+=vt;} // save for possible use below
         }}
     dv2abs_0=dv2abs; // save for possible use below
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION) && ((defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED)) || defined(EOS_GMC_BAROTROPIC)) // if we have to deal with optically-thick thermo
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION) && ((defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY)) || defined(RT_INFRARED) || defined(EOS_GMC_BAROTROPIC)) // if we have to deal with optically-thick thermo
     double nHcgs = HYDROGEN_MASSFRAC * (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
     if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 0.2/UNIT_VEL_IN_KMS);} // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
 #endif
@@ -374,8 +375,8 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
 {
     double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); /*  the actual time-step */
     double x = cloudmass_fraction, factorEVP = pow(SphP[i].Density * All.cf_a3inv / All.PhysDensThresh, -0.8) * All.FactorEVP, trelax = tsfr * (1 - x) / x / (All.FactorSN * (1 + factorEVP));
-    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne;
-    ne=1.0;
+    double egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold, egyeff = egyhot * (1 - x) + All.EgySpecCold * x, egycurrent = SphP[i].InternalEnergy, ne, ne_out;
+    ne=1.0; ne_out=ne;
 
 #if defined(BH_THERMALFEEDBACK)
     if((SphP[i].Injected_BH_Energy > 0) && (P[i].Mass>0))
@@ -383,7 +384,7 @@ void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double t
         egycurrent += SphP[i].Injected_BH_Energy / P[i].Mass;
         if(egycurrent > egyeff)
         {
-            tcool = GetCoolingTime(egycurrent, SphP[i].Density * All.cf_a3inv, ne, i);
+            tcool = GetCoolingTime(egycurrent, SphP[i].Density * All.cf_a3inv, ne, &ne_out, i);
             if(tcool < trelax && tcool > 0) trelax = tcool;
         }
         SphP[i].Injected_BH_Energy = 0;
@@ -541,7 +542,10 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             P[i].Mass = SphP[i].MassTrue + SphP[i].dMass;
 #endif
-                            
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                            P[i].NewStar_Momentum_For_JetFeedback = P[i].Mass * 40./UNIT_VEL_IN_KMS;
+#endif
+
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                             if(is_particle_single_star_eligible(i))
                             {
@@ -652,6 +656,9 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             SphP[i].MassTrue -= P[NumPart + stars_spawned].Mass;
                             if(SphP[i].MassTrue<0) SphP[i].MassTrue=0;
+#endif
+#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+                            P[NumPart + stars_spawned].NewStar_Momentum_For_JetFeedback = P[NumPart + stars_spawned].Mass * 40./UNIT_VEL_IN_KMS;
 #endif
                             sum_mass_stars += P[NumPart + stars_spawned].Mass;
                             P[NumPart + stars_spawned].StellarAge = All.Time;
@@ -841,7 +848,7 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double pvt
 /* Routine to initialize quantities needed for the Spingel & Hernquist effective equation of state */
 void init_clouds(void)
 {
-  double A0, dens, tcool, ne, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
+  double A0, dens, tcool, ne, ne_out, coolrate, egyhot, x, u4, meanweight, gamma_minus1_eff;
   double tsfr, y, peff, fac, neff, egyeff, factorEVP, thresholdStarburst;
 #ifdef COOL_METAL_LINES_BY_SPECIES
   int k; double Z[NUM_METAL_SPECIES]; for(k=0;k<NUM_METAL_SPECIES;k++) Z[k]=0;
@@ -864,7 +871,7 @@ void init_clouds(void)
 
       ne = 1.0;
       SetZeroIonization();
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
       coolrate = egyhot / tcool / dens;
       x = (egyhot - u4) / (egyhot - All.EgySpecCold);
 
@@ -887,7 +894,7 @@ void init_clouds(void)
 	  egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
 
 	  ne = 0.5;
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
 
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));
@@ -902,7 +909,7 @@ void init_clouds(void)
 	  egyhot = All.EgySpecSN / (1 + factorEVP) + All.EgySpecCold;
 
 	  ne = 0.5;
-      tcool = GetCoolingTime(egyhot, dens, ne, -1);
+      tcool = GetCoolingTime(egyhot, dens, ne, &ne_out, -1);
 
 	  y = tsfr / tcool * egyhot / (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold);
 	  x = 1 + 1 / (2 * y) - sqrt(1 / y + 1 / (4 * y * y));

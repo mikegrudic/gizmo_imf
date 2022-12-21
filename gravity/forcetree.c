@@ -118,7 +118,7 @@ int force_treebuild(int npart, struct unbind_data *mp)
             force_treefree();
             if(ThisTask == 0) {printf("Increasing TreeAllocFactor=%g", All.TreeAllocFactor);}
             All.TreeAllocFactor *= 1.15;
-            if(ThisTask == 0) {printf("new value=%g\n", All.TreeAllocFactor);}
+            if(ThisTask == 0) {printf(" new value=%g\n", All.TreeAllocFactor);}
             force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
         }
     }
@@ -180,10 +180,17 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
     {
         if(mp) {i = mp[k].index;} else {i = k;}
         rep = 0;
+        /* new code */
+        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        key = peano_and_morton_key(xb, yb, zb, BITS_PER_DIMENSION, &morton);
+        /* old code
         key = peano_and_morton_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
                                    (int) ((P[i].Pos[1] - DomainCorner[1]) * DomainFac),
                                    (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac), BITS_PER_DIMENSION,
                                    &morton);
+        */
         morton_list[i] = morton;
         shift = 3 * (BITS_PER_DIMENSION - 1);
         no = 0;
@@ -1835,7 +1842,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_particledriftforce_)
 #endif
                     drift_particle(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -1986,7 +1993,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                             int exitFlag = 0;
                             LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nexportforce_)
 #endif
                             {
                                 if(Nexport >= bunchSize)
@@ -2045,7 +2052,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_nodedriftforce_)
 #endif
                     force_drift_node(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -2140,11 +2147,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #endif
 #if (defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)) && defined(SINGLE_STAR_DIRECT_GRAVITY_RADIUS)
-                    if((nop->N_BH > 0) && (r2 < (SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len)*(SINGLE_STAR_DIRECT_GRAVITY_RADIUS + 0.6*nop->len))) // we have a star within the specified radius, open cell
-                    {
-                        no = nop->u.d.nextnode;
-                        continue;
-                    }
+		        if(ptype == 5) {
+			        if((nop->N_BH > 0) && (r2 < pow(SINGLE_STAR_DIRECT_GRAVITY_RADIUS/UNIT_LENGTH_IN_AU + 0.6*nop->len,2))) // we are a star looking at another star within the specified radius, open cell to get direct force summation
+			        {
+			            no = nop->u.d.nextnode;
+			            continue;
+			        }
+		        }
 #endif
                 }
 
@@ -2358,10 +2367,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
 
 #if defined(BH_DYNFRICTION_FROMTREE)
-                if( (ptype==5) && (mass>0) )
+                if( (fac_accel>MIN_REAL_NUMBER) && (ptype==5) && (mass>MIN_REAL_NUMBER) )
                 {
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
-                    if(dv2 > 0)
+                    if((dv2 > MIN_REAL_NUMBER) && (bh_mass > MIN_REAL_NUMBER))
                     {
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
@@ -2369,13 +2378,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
                             double m_j=m_j_eff_for_df; /* estimate mean mass of the particles in the node */
-                            if(bh_mass > m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
+                            if(bh_mass > 14.251*m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
                         }
+                        if((m_j_eff_for_df <= MIN_REAL_NUMBER) || (b_impact <= MIN_REAL_NUMBER) || (dv2 <= MIN_REAL_NUMBER)) {fac_df = 0;}
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
                         acc_x += fac_df * dvx_h; acc_y += fac_df * dvy_h; acc_z += fac_df * dvz_h;
                         /* perpendicular deflection component bx_im = P[distant particle/node] - P[bh], so positive = accel -towards- P[ext], but this is the residual term (after subtracting the homogeneous term), which points in the opposite direction */
                         double fac_df_p = -fac_df / (b_impact * a_im + MIN_REAL_NUMBER);
-                        acc_x += fac_df_p * bx_im; acc_y += fac_df_p * by_im; acc_z += fac_df_p * bz_im;
+                        if(fabs(fac_df_p)<MAX_REAL_NUMBER && isfinite(fac_df_p)) {acc_x += fac_df_p * bx_im; acc_y += fac_df_p * by_im; acc_z += fac_df_p * bz_im;}
                     }
                 }
 #endif
@@ -2871,7 +2881,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_particledriftewald_)
 #endif
                     drift_particle(no, All.Ti_Current);
                     UNLOCK_PARTNODEDRIFT;
@@ -2899,7 +2909,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                             int exitFlag = 0;
                             LOCK_NEXPORT;
 #ifdef _OPENMP
-#pragma omp critical(_nexport_)
+#pragma omp critical(_nexportewald_)
 #endif
                             {
                                 if(Nexport >= All.BunchSize)
@@ -2954,7 +2964,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                 {
                     LOCK_PARTNODEDRIFT;
 #ifdef _OPENMP
-#pragma omp critical(_partnodedrift_)
+#pragma omp critical(_nodedriftewald_)
 #endif
                     force_drift_node(no, All.Ti_Current);
                     UNLOCK_PARTNODEDRIFT;

@@ -1810,7 +1810,7 @@ double cr_get_source_injection_rate(int i)
 #ifdef BLACK_HOLES
     if(P[i].Type == 5) {
         double mdot_eff = BPP(i).BH_Mdot; // code units
-        mdot_eff = DMIN( mdot_eff , BPP(i).BH_Mass / (10./UNIT_TIME_IN_MYR) ); // if time-averaging over ~Gyr, can't have time-averaged injection rate above Mbh/<t> more or less (modulo order-one corrections for all this)
+        mdot_eff = DMIN( mdot_eff , BPP(i).BH_Mass / (100./UNIT_TIME_IN_MYR) ); // if time-averaging over ~Gyr, can't have time-averaged injection rate above Mbh/<t> more or less (modulo order-one corrections for all this)
         Edot = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * mdot_eff * C_LIGHT_CODE*C_LIGHT_CODE; // injection in code units
     }
 #endif

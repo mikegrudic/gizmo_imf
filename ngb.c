@@ -180,7 +180,7 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, 
 #include "system/ngb_codeblock_before_condition.h"
     if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
     if(P[p].Mass <= 0) continue; // skip zero-mass particles
-#define SEARCHBOTHWAYS 1 // only need neighbors inside of search radius, not particles 'looking at' primary
+#define SEARCHBOTHWAYS 1 // also want particles 'looking at' primary
 #include "system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
 }

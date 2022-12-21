@@ -352,6 +352,7 @@ struct blackhole_temp_particle_data *BlackholeTempInfo; /*! declare this structu
  */
 
 long Nexport, Nimport;
+int BufferCollisionFlag;
 int BufferFullFlag;
 int NextParticle;
 int NextJ;

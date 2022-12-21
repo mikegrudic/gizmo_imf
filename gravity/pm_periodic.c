@@ -303,7 +303,7 @@ void pm_init_periodic_free(void)
   *(pk2) = *(pk1);      \
 }
 #define QSORT qsort_pm_periodic
-#include "system/myqsort.h"
+#include "../system/myqsort.h"
 #endif
 
 /*! Calculates the long-range periodic force given the particle positions

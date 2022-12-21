@@ -44,7 +44,6 @@
 #define WALLCLOCK               /* track timing of different routines */
 #define MYSORT                  /* use our custom sort (as opposed to C default, which is compiler-dependent) */
 #define ALLOWEXTRAPARAMS        /* don't crash (just warn) if there are extra lines in the input parameterfile */
-#define INHOMOG_GASDISTR_HINT   /* if the gas is distributed very different from collisionless particles, this can helps to avoid problems in the domain decomposition */
 #ifndef OUTPUT_ADDITIONAL_RUNINFO
 #define IO_REDUCED_MODE
 #endif
@@ -109,6 +108,7 @@
 #define MAINTAIN_TREE_IN_REARRANGE
 #endif
 
+#define REDUC_FAC      0.98 /* used to pad memory in domain decomposition structures, should be slightly less than unity */
 
 #ifdef PMGRID
 #define PM_ENLARGEREGION 1.1    /* enlarges PMGRID region as the simulation evolves */
@@ -326,9 +326,6 @@
 //#define BH_DYNFRICTION_FROMTREE
 #endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
-#ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
-#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-#endif
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
@@ -451,6 +448,9 @@
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
+#if !defined(CRFLUID_DIFFUSION_CORRECTION_TERMS) && !defined(CRFLUID_BINCENTERED_TRANSPORT)
+#define CRFLUID_DIFFUSION_CORRECTION_TERMS
+#endif
 #if (CRFLUID_EVOLVE_SPECTRUM == 2)
 #define N_CR_PARTICLE_BINS 70       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
@@ -539,7 +539,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
 #define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
-#define RT_SPEEDOFLIGHT_REDUCTION (0.01)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
+#define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION
@@ -558,8 +558,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
-#ifndef STARS_ONLY_SNAPSHOT_FREQUENCY
-#define STARS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
+#ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
+#define IO_SINKS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
 #endif
 #define SINGLE_STAR_SINK_DYNAMICS
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
@@ -568,6 +568,12 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_TIMESTEPPING 0
 #define SINGLE_STAR_ACCRETION 12
 #define SINGLE_STAR_SINK_FORMATION (0+1+2+4+8+16+32+64+2048) // 0=density threshold, 1=virial criterion, 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024=numerical escape if too dense, 2048=virial is time-averaged
+#ifndef SINGLE_STAR_DIRECT_GRAVITY_RADIUS 
+#define SINGLE_STAR_DIRECT_GRAVITY_RADIUS (1000.) // distance inside of which star-star gravitational interactions are calculated exactly, in AU
+#endif
+#ifndef ADAPTIVE_TREEFORCE_UPDATE
+#define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization
+#endif
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
@@ -597,6 +603,13 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #ifdef SINGLE_STAR_FB_RAD
 #define RT_M1
+#define RT_COMOVING
+#ifndef OUTPUT_RT_RAD_FLUX
+#define OUTPUT_RT_RAD_FLUX
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#define IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR
+#endif
+#endif
 #ifndef RT_SOURCES
 #define RT_SOURCES 32
 #endif
@@ -613,7 +626,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #define RT_INFRARED
 #if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
-#define RT_ISRF_BACKGROUND 1
+#define RT_ISRF_BACKGROUND
+#endif
+#if defined(RT_INFRARED)
+#define RT_REINJECT_ACCRETED_PHOTONS // need to reinject any photons that are removed from the simulation by the accretion algorithm; particularly important at small RSOL and high optical depths
 #endif
 #endif
 // Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
@@ -624,17 +640,25 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
-#define EOS_SUBSTELLAR_ISM
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_FB_RAD)
-#define RT_ISRF_BACKGROUND 1 // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
+#if defined(MAGNETIC) && !defined(CONDUCTION) && !defined(VISCOSITY) // if we have cooling and magnetic fields, enable conduction + viscosity
+#define CONDUCTION           /* enable conduction */
+#define CONDUCTION_SPITZER   /* compute proper coefficients and anisotropy for conduction */
+#define VISCOSITY            /* enable viscosity */
+#define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
+#define DIFFUSION_OPTIMIZERS
+#endif // MAGNETIC
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
-#endif
+#endif // COOLING
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) || defined(COOLING)
 #define GALSF_FB_FIRE_STELLAREVOLUTION 3 // enable multi-loop feedback from such sources [this is specific to the DG-MG implementations here, not for public use right now!]. for now set to =2, which should force the code version to match previous iterations, as compared to the newer implementations.
 #endif
 #if defined(RT_ISRF_BACKGROUND)
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(RT_ISRF_BACKGROUND)
 #if (RT_ISRF_BACKGROUND <= 0)
 #undef RT_ISRF_BACKGROUND /* use the negative or zero value above as a key to specifically -undefine- this variable, otherwise it will cause problems below by calling 0 to reset quantities it should not */
+#endif
 #endif
 #endif
 #endif // SINGLE_STAR_STARFORGE_DEFAULTS
@@ -935,10 +959,17 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SELFGRAVITY_OFF // safely define SELFGRAVITY_OFF in this case, otherwise we act like there is gravity except in the final setting of accelerations
 #endif
 
+/* turn on outputs appropriately */
+#ifdef RADTRANSFER
+#if !defined(OUTPUT_EDDINGTON_TENSOR) && !defined(IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR)
+#define OUTPUT_EDDINGTON_TENSOR
+#endif
+#endif
+
 /* ----- end block of options for RHD modules ------ */
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES)
+#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES) || defined(RT_REPROCESS_INJECTED_PHOTONS)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -1022,9 +1053,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(COOL_MOLECFRAC)
 #if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
-#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 5) && !defined(COOL_MOLECFRAC_LOCALEQM)
-#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins+2021, in prep)
+#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #elif (COOL_MOLECFRAC == 4) && !defined(COOL_MOLECFRAC_KMT)
 #define COOL_MOLECFRAC_KMT  // estimate f_H2 from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K). use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field
 #elif (COOL_MOLECFRAC == 3) && !defined(COOL_MOLECFRAC_GD)
@@ -1163,7 +1194,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef LONG_INTEGER_TIME
 typedef  long long integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_LONG_LONG;
-#define  TIMEBINS        39
+#define  TIMEBINS        60
 #else
 typedef  int integertime;
 static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
@@ -1290,11 +1321,15 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 #ifndef  TOPNODEFACTOR
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define  TOPNODEFACTOR       8.0
+#else
 #define  TOPNODEFACTOR       4.0
+#endif
 #endif
 
 #ifndef  GRAVCOSTLEVELS
-#define  GRAVCOSTLEVELS      6
+#define  GRAVCOSTLEVELS      20
 #endif
 
 #define  NUMBER_OF_MEASUREMENTS_TO_RECORD  6  /* this is the number of past executions of a timebin that the reported average CPU-times average over */
@@ -1309,16 +1344,16 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 
 
-typedef unsigned long long peanokey;
 
-
-#define  BITS_PER_DIMENSION 21	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer ! */
+#define  BITS_PER_DIMENSION 42	/* for Peano-Hilbert order. Note: Maximum is 10 to fit in 32-bit integer, 21 for 64-bit integer, 42 for 128-bit integer */
 #define  PEANOCELLS (((peanokey)1)<<(3*BITS_PER_DIMENSION))
-
-#define  BITS_PER_DIMENSION_SAVE_KEYS 10
-#define  PEANOCELLS_SAVE_KEYS (((peanokey)1)<<(3*BITS_PER_DIMENSION_SAVE_KEYS))
-
-
+#if(BITS_PER_DIMENSION <= 21)
+typedef unsigned long long peanokey;
+typedef unsigned int peano1D;
+#else
+typedef __int128 peanokey;
+typedef unsigned long long peano1D;
+#endif
 
 
 #ifndef DISABLE_MEMORY_MANAGER
@@ -1360,8 +1395,8 @@ typedef unsigned long long peanokey;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
-#define  MAX_REAL_NUMBER  1e37
-#define  MIN_REAL_NUMBER  1e-37
+#define  MAX_REAL_NUMBER  1e56
+#define  MIN_REAL_NUMBER  1e-56
 
 #if (defined(MAGNETIC) && !defined(COOLING)) || defined(EOS_ELASTIC)
 #define  CONDITION_NUMBER_DANGER  1.0e7 /*!< condition number above which we will not trust matrix-based gradients */
@@ -2375,6 +2410,10 @@ extern struct global_data_all_processes
     double star_Teff;
 #endif
 
+#ifdef RT_ISRF_BACKGROUND
+    double InterstellarRadiationFieldStrength;
+#endif
+
 #ifdef RT_LEBRON
     double PhotonMomentum_Coupled_Fraction;
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
@@ -2624,6 +2663,9 @@ extern struct global_data_all_processes
   double BAL_wind_particle_mass;        /*!< target mass for feedback particles to be spawned */
   double BAL_internal_temperature;
   MyIDType AGNWindID;
+#ifdef SINGLE_STAR_FB_WINDS
+  double Cell_Spawn_Mass_ratio_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
+#endif
 #endif
 #ifdef BH_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
@@ -2818,7 +2860,7 @@ extern ALIGN(32) struct particle_data
     MyFloat IMF_NumMassiveStars; /*!< number of massive stars to associate with this star particle (for feedback) */
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
     MyFloat TimeDistribOfStarFormation; /*!< free-fall time at the moment of star formation, which defines for this particle the delay distribution for forming the relevant O-stars */
-    MyFloat IMF_WeightedMeanStellarAge; /*!< weighted mean stellar formation time, to use instead of the normal stellarage parameter on-the-fly */
+    MyFloat IMF_WeightedMeanStellarFormationTime; /*!< weighted mean stellar formation time, to use instead of the normal stellarage parameter on-the-fly */
 #endif
 #endif
 
@@ -2852,6 +2894,9 @@ extern ALIGN(32) struct particle_data
 #ifdef GALSF_FB_MECHANICAL
 #define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
+#endif
+#ifdef GALSF_FB_FIRE_PROTOSTELLARJETS
+    MyFloat NewStar_Momentum_For_JetFeedback; /* amount of momentum to return from protostellar jet sub-grid model */
 #endif
 
 #if defined(GRAIN_FLUID)
@@ -2891,6 +2936,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef GRAIN_FLUID
     MyFloat BH_Dust_Mass;
+#endif
+#ifdef RT_REINJECT_ACCRETED_PHOTONS
+    MyFloat BH_accreted_photon_energy;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
@@ -3298,9 +3346,7 @@ extern struct gas_cell_data
     int CoolingIsOperatorSplitThisTimestep; /* flag to tell us if cooling is operator split or not on a given timestep */
 #endif
 #ifndef CHIMES
-    MyFloat Ne;  /*!< electron fraction, expressed as local electron number
-		    density normalized to the hydrogen number density. Gives
-		    indirectly ionization state and mean molecular weight. */
+    MyFloat Ne;  /*!< electron fraction, expressed as local electron number density normalized to the hydrogen number density. Gives indirectly ionization state and mean molecular weight. */
 #endif
 #endif
 #ifdef GALSF
@@ -3760,6 +3806,7 @@ extern struct io_header
   int flag_species;         /*!< flags whether the file contains dust species values for gas particles */
 
   unsigned int npartTotalHighWord[6];   /*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
+  int flag_entropy_instead_u; /*!< flag here strictly for historical compatibility with unformatted binary files from GADGET-3 era formats, which expect this flag to exist. this does nothing in gizmo */
   int flag_doubleprecision; /*!< flags that snapshot contains double-precision instead of single precision */
 
   int flag_ic_info;             /*!< flag to inform whether IC files are generated with ordinary Zeldovich approximation,
@@ -3775,7 +3822,7 @@ extern struct io_header
                                  */
   float lpt_scalingfactor;      /*!< scaling factor for 2lpt initial conditions */
 
-  char fill[14];		/*!< fills to 256 Bytes */
+  char fill[14];		        /*!< fills to 256 Bytes */
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
@@ -3975,6 +4022,7 @@ enum siofields
  */
 
 extern long Nexport, Nimport;
+extern int BufferCollisionFlag;
 extern int BufferFullFlag;
 extern int NextParticle;
 extern int NextJ;

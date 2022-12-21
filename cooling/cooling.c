@@ -96,11 +96,11 @@ void cooling_parent_routine(void)
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
 {
-    double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+    double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i), ne_in, ne_out;
 
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
-        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); int k; k=0;
+        double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); int k; k=0; ne_in=0; ne_out=0;
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(SphP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
@@ -143,16 +143,16 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 
-#ifndef RT_COOLING_PHOTOHEATING_OLDFORMAT
-        /* Call the actual COOLING subroutine! */
-#ifdef CHIMES
-        double dummy_ne = 0.0;
-        unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, dummy_ne, i);
-#else
-        unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, SphP[i].Ne, i);
+#if !defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) /* standard behavior, call the actual cooling subroutine */
+#if !defined(CHIMES)
+        ne_in = SphP[i].Ne; ne_out = ne_in; /* this variable is not defined if chimes is on */
+#endif
+        unew = DoCooling(uold, SphP[i].Density * All.cf_a3inv, dtime, ne_in, &ne_out, i);
+#if !defined(CHIMES)
+        SphP[i].Ne = ne_out; /* update the free electron variable */
 #endif
 #else
-        unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));
+        unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));  /* call this special subroutine for cooling for the rt 'oldformat' [limited applications] */
 #endif
 
 
@@ -180,34 +180,46 @@ void do_the_cooling_for_particle(int i)
 #if defined(RADTRANSFER) /* account for cooling radiation which should, according to our modules, come out in certain bands */
         double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
         double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
+        double de_u = (unew - SphP[i].InternalEnergy) * P[i].Mass; /* change in the total internal energy of the gas cell [integrating over everything] */
+        double de_rad_tot_final = 0, de_rad_tot = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {de_rad_tot += SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact;} /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
+        if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
-            if(fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER)
+            if((fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
             {
-                double de_u = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-                if(de_u<=-0.99*SphP[i].Rad_E_gamma[k]) {de_u=-0.99*SphP[i].Rad_E_gamma[k]; unew=DMAX(0.01*SphP[i].InternalEnergy , SphP[i].InternalEnergy-de_u/P[i].Mass);}
-#ifdef RT_INFRARED
-                if(k==RT_FREQ_BIN_INFRARED) // need to also update the IR band temperature measure
+                double de_rad = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
+                if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+                if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
-                    double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
-                    temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-                    double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_u, temp_de0 = MIN_REAL_NUMBER + temp;
-                    SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
-                    SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
-                }
+                    double de_rad_min = DMIN(DMAX( -0.99*SphP[i].Rad_E_gamma[k] , -de_u ), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
+                    double de_rad_max = DMAX(DMIN( 100.*unew*P[i].Mass, -de_u), 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
+                    de_rad = DMAX(DMIN(de_rad, de_rad_max), de_rad_min); // limit de_rad appropriately
+                    if(fabs(de_rad) > MIN_REAL_NUMBER)
+                    {
+                        de_rad_tot_final += de_rad; // add to our running total
+#ifdef RT_INFRARED
+                        if(k==RT_FREQ_BIN_INFRARED) // need to also update the IR band temperature measure
+                        {
+                            double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
+                            temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+                            double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp;
+                            SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
+                            SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
+                        }
 #endif
-                SphP[i].Rad_E_gamma[k] += de_u; /* energy gained by gas is lost here (or vice versa if dust is acting as a net coolant) */
-                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
+                        SphP[i].Rad_E_gamma[k] += de_rad; /* energy gained by gas is lost here (or vice versa if dust is acting as a net coolant) */
+                        SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; /* updated drifted */
 #if defined(RT_EVOLVE_INTENSITIES)
-                int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_u/RT_INTENSITY_BINS_DOMEGA;}
+                        int k_tmp; for(k_tmp=0;k_tmp<N_RT_INTENSITY_BINS;k_tmp++) {SphP[i].Rad_Intensity[k][k_tmp] += de_rad/RT_INTENSITY_BINS_DOMEGA; SphP[i].Rad_Intensity_Pred[k][k_tmp] += de_rad/RT_INTENSITY_BINS_DOMEGA;}
 #endif
-                int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux:
+                        int kv; // add leading-order relativistic corrections here, accounting for gas motion in the addition/subtraction to the flux
 #if defined(RT_EVOLVE_FLUX)
-                for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_u;
-                    SphP[i].Rad_Flux[k][kv] += fluxfac; SphP[i].Rad_Flux_Pred[k][kv] += fluxfac;}
+                        for(kv=0;kv<3;kv++) {double fluxfac = RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS*SphP[i].VelPred[kv]/All.cf_atime * de_rad; SphP[i].Rad_Flux[k][kv] += fluxfac; SphP[i].Rad_Flux_Pred[k][kv] += fluxfac;}
 #endif
-                double momfac = 1. - de_u / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
-                for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
+                        double momfac = 1. - de_rad / (P[i].Mass * C_LIGHT_CODE*C_LIGHT_CODE_REDUCED); // back-reaction on gas from emission [note peculiar units here, its b/c of how we fold in the existing value of v and tilde[u] in our derivation - one rsol factor in denominator needed]
+                        for(kv=0;kv<3;kv++) {P[i].Vel[kv] *= momfac; SphP[i].VelPred[kv] *= momfac;}
+                    }
+                }
             }
         }
 #endif // done with RHD-cooling block update
@@ -797,7 +809,7 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
 /* returns new internal energy per unit mass.
  * Arguments are passed in code units, density is proper density.
  */
-double DoCooling(double u_old, double rho, double dt, double ne_guess, int target)
+double DoCooling(double u_old, double rho, double dt, double ne_guess, double *ne_eval, int target)
 {
     double u, du; u=0; du=0;
 
@@ -846,64 +858,87 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 
 #else // CHIMES
 
-    int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0; double LambdaNet, ratefact, u_upper, u_lower;
+    int iter=0, iter_upper=0, iter_lower=0, iter_condition = 0, maxiter_uplo=10*MAXITER; double LambdaNet, ratefact, u_upper, u_lower;
 #ifdef RT_INFRARED
     double Lambda_IRBand;
 #endif    
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
+    double u_min = All.MinEgySpec * UNIT_SPECEGY_IN_CGS;
     dt *= UNIT_TIME_IN_CGS;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho;
 
     u = u_old; u_lower = u; u_upper = u; /* initialize values */
-    LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
+    LambdaNet = CoolingRateFromU(u, rho, ne_guess, ne_eval, target);
+    double du_net = u - u_old - ratefact * LambdaNet * dt , du_net_upper = du_net, du_net_lower = du_net;
 
     /* bracketing */
     if(u - u_old - ratefact * LambdaNet * dt < 0)	/* heating */
     {
         u_upper *= sqrt(1.1); u_lower /= sqrt(1.1);
-        while((iter_upper<MAXITER)&&(u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, target) * dt < 0))
+        du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
+        while((iter_upper<maxiter_uplo)&&(u_upper>u_min)&&(du_net_upper < 0))
         {
             u_upper *= 1.1; u_lower *= 1.1; iter_upper++;
+            du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
         }
-
+        du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
     }
 
     if(u - u_old - ratefact * LambdaNet * dt > 0) /* cooling */
     {
         u_lower /= sqrt(1.1); u_upper *= sqrt(1.1);
-        while((iter_lower<MAXITER)&&(u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, target) * dt > 0))
+        du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
+        while((iter_lower<maxiter_uplo)&&(u_lower>u_min)&&(du_net_lower > 0))
         {
             u_upper /= 1.1; u_lower /= 1.1; iter_lower++;
+            du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
         }
+        du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
     }
+
+    /* check if our initial iteration already overshot */
+    if(du_net_upper < 0 && du_net > 0) {u_upper = u;}
+    if(du_net_lower > 0 && du_net < 0) {u_lower = u;}
+    if(u_upper < u_lower) {double u_temp = u_lower; u_lower = u_upper; u_upper = u_temp;} /* ensure ordering */
+    /* check against going below the minimum temperature limit */
+    if(u_upper < u_min) {u_upper=u_lower=u_min;} else {
+        if(u_lower < u_min) {u_lower=u_min;}
+        if(u_upper>u_min && u_lower <= u_min) {
+            du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
+            if(du_net_lower > 0) {u_upper=u_lower=u_min;}}}
 
     /* core iteration to convergence */
     do
     {
         u = 0.5 * (u_lower + u_upper);
+	    if(u <= u_min) {u = u_min; break;}
 #ifdef RT_INFRARED
         Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
-        LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);      
+        LambdaNet = CoolingRateFromU(u, rho, ne_guess, ne_eval, target);
         if(u - u_old - ratefact * LambdaNet * dt > 0) {u_upper = u;} else {u_lower = u;}
         du = u_upper - u_lower;
         iter++;
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-#ifdef RT_INFRARED  // additional, stronger convergence criteria for problems where you have tightly coupled gas dust and radiation and want reasonably accurate conservation
-        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)) && (iter < MAXITER-11));
-        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-4*fabs(Lambda_IRBand)) && (iter < MAXITER-11));
-#endif        
+#if defined(RT_INFRARED) && defined(SINGLE_STAR_STARFORGE_DEFAULTS) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+        // Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms. these are useful when you have very specific conditions, namely when dust and gas temperatures are strongly coupled, dust is abundant (not sublimated or destroyed), the metallicities are relatively high, and you are in neutral gas. but in other situations may prevent convergence artificially.
+	    if(iter < MAXITER-10) { // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
+	        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
+//	        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
+	     }
+#endif
         iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
         
     }
     while(iter_condition); /* iteration condition */
     /* crash condition */
-    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g target=%d \n",u_old,rho,dt,ne_guess,target); endrun(10);}
+    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, P[target].ID); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
+    SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
     /* set variables used by RT routines; this must be set only -outside- of iteration, since this is the key chemistry update */
     double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=SphP[target].HI, nHII=SphP[target].HII, nHeI=1, nHeII=0, nHeIII=0;
@@ -933,7 +968,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, int targe
 /* returns cooling time.
  * NOTE: If we actually have heating, a cooling time of 0 is returned.
  */
-double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
+double GetCoolingTime(double u_old, double rho, double ne_guess, double *ne_eval, int target)
 {
 #if defined(COOL_GRACKLE) && !defined(GALSF_EFFECTIVE_EQS)
     double LambdaNet = CallGrackle(u_old, rho, 0.0, ne_guess, target, 1);
@@ -943,7 +978,7 @@ double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
     rho *= UNIT_DENSITY_IN_CGS;	/* convert to physical cgs units */
     u_old *= UNIT_SPECEGY_IN_CGS;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
-    double LambdaNet = CoolingRateFromU(u_old, rho, ne_guess, target);
+    double LambdaNet = CoolingRateFromU(u_old, rho, ne_guess, ne_eval, target);
     if(LambdaNet >= 0) {return 0;} /* net heating due to UV background */
     return u_old / (-(nHcgs * nHcgs / rho) * LambdaNet) / UNIT_TIME_IN_CGS;
 #endif
@@ -953,7 +988,7 @@ double GetCoolingTime(double u_old, double rho, double ne_guess, int target)
 /* returns new internal energy per unit mass.
  * Arguments are passed in code units, density is proper density.
  */
-double DoInstabilityCooling(double m_old, double u, double rho, double dt, double fac, double ne_guess, int target)
+double DoInstabilityCooling(double m_old, double u, double rho, double dt, double fac, double ne_guess, double *ne_eval, int target)
 {
     if(fac <= 0) {return 0.01*m_old;} /* the hot phase is actually colder than the cold reservoir! */
     double m, dm, m_lower, m_upper, ratefact, LambdaNet;
@@ -966,13 +1001,13 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho * fac;
     m = m_old; m_lower = m; m_upper = m;
-    LambdaNet = CoolingRateFromU(u, rho, ne_guess, target);
+    LambdaNet = CoolingRateFromU(u, rho, ne_guess, ne_eval, target);
 
     /* bracketing */
     if(m - m_old - m * m / m_old * ratefact * LambdaNet * dt < 0)	/* heating */
     {
         m_upper *= sqrt(1.1); m_lower /= sqrt(1.1);
-        while(m_upper - m_old - m_upper * m_upper / m_old * ratefact * CoolingRateFromU(u, rho * m_upper / m_old, ne_guess, target) * dt < 0)
+        while(m_upper - m_old - m_upper * m_upper / m_old * ratefact * CoolingRateFromU(u, rho * m_upper / m_old, ne_guess, ne_eval, target) * dt < 0)
         {
             m_upper *= 1.1; m_lower *= 1.1;
         }
@@ -980,7 +1015,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
     if(m - m_old - m_old * ratefact * LambdaNet * dt > 0)
     {
         m_lower /= sqrt(1.1); m_upper *= sqrt(1.1);
-        while(m_lower - m_old - m_lower * m_lower / m_old * ratefact * CoolingRateFromU(u, rho * m_lower / m_old, ne_guess, target) * dt > 0)
+        while(m_lower - m_old - m_lower * m_lower / m_old * ratefact * CoolingRateFromU(u, rho * m_lower / m_old, ne_guess, ne_eval, target) * dt > 0)
         {
             m_upper /= 1.1; m_lower /= 1.1;
         }
@@ -989,14 +1024,14 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
     do
     {
         m = 0.5 * (m_lower + m_upper);
-        LambdaNet = CoolingRateFromU(u, rho * m / m_old, ne_guess, target);
+        LambdaNet = CoolingRateFromU(u, rho * m / m_old, ne_guess, ne_eval, target);
         if(m - m_old - m * m / m_old * ratefact * LambdaNet * dt > 0) {m_upper = m;} else {m_lower = m;}
         dm = m_upper - m_lower;
         iter++;
         if(iter >= (MAXITER - 10)) {printf("->m= %g\n", m);}
     }
     while(fabs(dm / m) > 1.0e-6 && iter < MAXITER);
-    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d \n",m_old,u,rho,dt,fac,ne_guess,target); endrun(11);}
+    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d ID=%ld\n",m_old,u,rho,dt,fac,ne_guess,target,P[target].ID); endrun(11);}
     return m;
 }
 
@@ -1059,7 +1094,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         //max = DMAX(max , temp_new / (*mu_guess) * fabs(*mu_guess - qfun_old) / (fabs(temp_new - temp_old) + 1.e-4*(All.MinGasTemp+0.1))); // newer - more flexible mu, and dimensionless T dependence
         //temp = temp_old + (temp_new - temp_old) / (1 + max);
         
-        if(fabs(prefac_fun-prefac_fun_old) < 1.e-4 || fabs(temp_new-temp_old)/(temp_new+temp_old) < 1.e-4) {break;} // break pre-emptively if we'll trigger a nan below
+        if((fabs(prefac_fun-prefac_fun_old) < 1.e-4) && (fabs(temp_new-temp_old)/(temp_new+temp_old) < 1.e-4)) {break;} // break pre-emptively if we'll trigger a nan below
         fac = (prefac_fun-prefac_fun_old)*T_0 / (temp_old-temp_old_old); // numerical derivative factor: want to use this to limit for convergence
 
         if(fac > 1) {fac = 1;} // don't allow us to move in the opposite direction from the new evaluation (should 'guess' in the direction of T_new-T_old) -- this tells us Newton-Raphson/Secant-type method fails here, so we simply follow the iteration to t_new
@@ -1076,9 +1111,11 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
         {
             if(temp >= T_bracket_max || temp <= T_bracket_min) {temp = sqrt(T_bracket_min*T_bracket_max);} // bisect (in log-space)
         }
+        /*
 #ifndef RT_INFRARED        
         if(fabs(temp-temp_old_old)/(temp+temp_old_old) < 1.e-3) {double wt=get_random_number(12*iter+340*ThisTask+5435*target); temp=(wt*temp_old + (1.-wt)*temp_new);}
-#endif        
+#endif
+        */
         temp_old_old = temp_old;
         iter++;
         if(iter > (MAXITER - 10)) {printf("-> temp_next/new/old/oldold=%g/%g/%g/%g ne=%g mu=%g rho=%g iter=%d target=%d err_new/prev=%g/%g gamma_minus_1_mu_new/prev=%g/%g Brackets: Error_bracket_positive=%g Error_bracket_negative=%g T_bracket_Min/Max=%g/%g fac_for_SecantDT=%g \n", temp,temp_new,temp_old,temp_old_old,*ne_guess, (*mu_guess) ,rho,iter,target,err_new,err_old,prefac_fun,prefac_fun_old,T_bracket_errpos,T_bracket_errneg,T_bracket_min,T_bracket_max,fac); fflush(stdout);}
@@ -1093,7 +1130,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
            ((fabs(temp - temp_old) > 0.01 * temp) && (temp > 200.) && (iter<100)) ||
            ((fabs(temp - temp_old) > 1.0e-3 * temp) && (temp > 200.) && (iter<10))) && iter < MAXITER);
 #endif
-    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d\n", u_input, rho_input, *ne_guess, target); endrun(12);}
+    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d ID=%ld\n", u_input, rho_input, *ne_guess, target, P[target].ID); endrun(12);}
 
     if(temp<=0) temp=pow(10.0,Tmin);
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
@@ -1157,7 +1194,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     if(shieldfac < 0) {shieldfac = return_uvb_shieldfac(target, local_gammamultiplier*gJH0/1.0e-12, nHcgs, logT);} // if < 0, that's a key to tell us this needs to be recalculated
     n_elec = *ne_guess; if(!isfinite(n_elec)) {n_elec=1;}
     neold = n_elec; niter = 0;
-    double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs; /* more initialized quantities */
+    double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs, ne_lower=0, ne_upper=1.; /* more initialized quantities */
+    int bisection_mode=0; // 0 if doing the usual fixed-point iteration; 1 if switched to bisection method
     if(target >= 0) {dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target);} // dtime [code units]
     fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
 
@@ -1290,28 +1328,40 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
         if(!isfinite(n_elec)) {printf("target=%d niter=%d logT=%g n_elec/old=%g/%g nHp/nHep/nHepp=%g/%g/%g nHcgs=%g yHe=%g dt=%g shieldfac/local_gammamult=%g/%g aHp/aHep/aHepp=%g/%g/%g geH0/geHe0/geHep=%g/%g/%g gJH0ne/gJHe0ne/gJHepne=%g/%g/%g \n",target,niter,logT,n_elec,neold,nHp,nHep,nHepp,nHcgs,yhelium(target),dt,shieldfac,local_gammamultiplier,aHp,aHep,aHepp,geH0,geHe0,geHep,gJH0ne,gJHe0ne,gJHepne);}
 
+	double error_old = fabs(n_elec - neold); // save the old error to compare with the new one, so we can check if we're converging
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
 #ifdef COOL_LOW_TEMPERATURES
         n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho, n_elec);
 #endif
-        necgs = n_elec * nHcgs;
-
+	
         if(J_UV == 0) break;
+	
+	    // keep track of these bounds in case we need to switch to bisection
+	    if(n_elec > neold) {ne_lower = DMAX(neold, ne_lower);}
+	    if(n_elec < neold) {ne_upper = DMIN(neold, ne_upper);}
 
-        nenew = 0.5 * (n_elec + neold);
+	    if(bisection_mode) { // if fixed-point mode is not converging fast enough and we switched to bisection mode
+	        if(n_elec < neold) {nenew = 0.5*(ne_lower + neold); ne_upper=neold;} // go to left midpoint and update the upper bound
+	        else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
+	    } else { // otherwise we do the usual fixed-point iteration
+	        nenew = 0.5 * (n_elec + neold);
+	        if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-14)) { // if we're converging slower than bisection, just switch to bisection
+		        bisection_mode = 1;}
+	    }
+
         n_elec = nenew;
         if(!isfinite(n_elec)) {n_elec=1;}
         necgs = n_elec * nHcgs;
 
-        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-4);
+        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-14); // desired absolute tolerance for n_elec
         if(fabs(n_elec - neold) < dneTHhold) break;
 
         if(niter > (MAXITER - 10)) {printf("n_elec= %g/%g/%g yh=%g nHcgs=%g niter=%d\n", n_elec,neold,nenew, yhelium(target), nHcgs, niter);}
     }
     while(niter < MAXITER);
 
-    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, shieldfac, return_cooling_mode); endrun(13);}
+    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d ID=%ld shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, P[target].ID, shieldfac, return_cooling_mode); endrun(13);}
 
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
@@ -1320,7 +1370,6 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
     {
-        SphP[target].Ne = n_elec;
 #if defined(OUTPUT_MOLECULAR_FRACTION)
         SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, pow(10.,logT), nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));
 #endif
@@ -1347,9 +1396,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         double LambdaRec = LambdaRecHp + LambdaRecHep + LambdaRecHepp + LambdaRecHepd; /* recombination */
 
         double LambdaFF = bff * (nHp + nHep + 4 * nHepp) * n_elec; /* free-free (Bremsstrahlung) */
+        double Lambda = LambdaExc + LambdaIon + LambdaRec + LambdaFF; /* sum all of the above */
 
         *LambdaExc_return = LambdaExc; *LambdaIon_return = LambdaIon; *LambdaRec_return = LambdaRec; *LambdaFF_return = LambdaFF; /* send data back if needed */
-        double Lambda = LambdaExc + LambdaIon + LambdaRec + LambdaFF; /* sum all of the above */
         return Lambda; /* send it back */
     }
     return 0;
@@ -1358,11 +1407,12 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
 
 /*  this function first computes the self-consistent temperature and abundance ratios, and then it calculates (heating rate-cooling rate)/n_h^2 in cgs units */
-double CoolingRateFromU(double u, double rho, double ne_guess, int target)
+double CoolingRateFromU(double u, double rho, double ne_guess, double *ne_eval, int target)
 {
     double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu; nH0_guess = DMAX(0,DMIN(1,1.-ne_guess/1.2));
     double temp = convert_u_to_temp(u, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess, &mu);
-    return CoolingRate(log10(temp), rho, ne_guess, target);
+    double Lambda = CoolingRate(log10(temp), rho, ne_guess, ne_eval, target);
+    return Lambda;
 }
 
 
@@ -1377,13 +1427,13 @@ extern FILE *fd;
 #ifndef CHIMES
 /*  Calculates (heating rate-cooling rate)/n_h^2 in cgs units
  */
-double CoolingRate(double logT, double rho, double n_elec_guess, int target)
+double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_eval, int target)
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExc, LambdaExcH0, LambdaExcHep, LambdaIon, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
     double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
-    LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; /* make sure these are all initialized to zero */
+    Lambda=0; Heat=0; LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; /* make sure these are all initialized to zero */
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
@@ -1434,6 +1484,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
     {
         /* get ionization states for H and He with associated ionization, collision, recombination, and free-free heating/cooling */
         Lambda += find_abundances_and_rates(logT, rho, target, shieldfac, 1, &n_elec, &nH0, &nHp, &nHe0, &nHep, &nHepp, &mu, &LambdaExc, &LambdaIon, &LambdaRec, &LambdaFF); /* adds all of these to our running total for cooling */
+        *n_elec_eval = n_elec; /* save this value for the output cycle */
         LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); /* note this can have either sign: heating or cooling */
         if(LambdaCompton > 0) {Lambda += LambdaCompton;}
         
@@ -1513,7 +1564,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
             photoelec = SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_CGS / 3.9e-14; photoelec=DMAX(DMIN(photoelec,1.e4),0); // convert to Habing field //
 #endif
 #if defined(RT_ISRF_BACKGROUND) && (!defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)) // latter flag decides whether we do treecol/sobolev here to get the background intensity
-            photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+            photoelec += All.InterstellarRadiationFieldStrength * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
 #if !(defined(GALSF_FB_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND))
             photoelec = 1; // if no explicit modeling of FUV, just assume Habing
@@ -1640,7 +1691,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 #if defined(RT_ISRF_BACKGROUND) && (!defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)) // latter flag decides whether we do treecol/sobolev here to get the background intensity // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
-            photoelec += RT_ISRF_BACKGROUND * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+            photoelec += All.InterstellarRadiationFieldStrength * 1.7 * exp(-DMAX(P[target].Metallicity[0]/All.SolarAbundances[0],1e-4) * column * 500.); // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
 #endif
             if(photoelec > 0) {if(photoelec > 1.e4) {photoelec = 1.e4;}}
 
@@ -1659,7 +1710,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
         /* at high T (fully ionized); only free-free and Compton cooling are present.  Assumes no heating. */
         Heat = LambdaExc = LambdaExcH0 = LambdaExcHep = LambdaIon = LambdaIonH0 = LambdaIonHe0 = LambdaIonHep = LambdaRec = LambdaRecHp = LambdaRecHep = LambdaRecHepp = LambdaRecHepd = 0;
         nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
-        
+        *n_elec_eval = n_elec; /* save this value for the output cycle */
+
         LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
         LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); // Compton
         Lambda = LambdaFF + DMAX(LambdaCompton,0);
@@ -1743,7 +1795,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, int target)
 #endif
 
 #if defined(OUTPUT_COOLRATE_DETAIL)
-    if(target>=0){SphP[target].NetHeatingRateQ = Q;}
+    if(target>=0) {SphP[target].NetHeatingRateQ = Q;}
 #endif
 #ifdef OUTPUT_MOLECULAR_FRACTION
     if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));}
@@ -2450,7 +2502,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
 #ifdef RT_ISRF_BACKGROUND
-    e_IR *= RT_ISRF_BACKGROUND; e_HiEgy *= RT_ISRF_BACKGROUND; // need to re-scale the assumed ISRF components
+    e_IR *= All.InterstellarRadiationFieldStrength; e_HiEgy *= All.InterstellarRadiationFieldStrength; // need to re-scale the assumed ISRF components
 #endif
     if(i >= 0)
     {
