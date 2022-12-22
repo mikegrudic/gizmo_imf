@@ -333,6 +333,9 @@ double return_dust_to_metals_ratio_vs_solar(int i)
     double Z_scaled = P[i].Metallicity[0]/All.SolarAbundances[0]; // metallicity of the particle in solar
     return (kappa_interp_geo_cgs / kappa_solar_geo_cgs) / (Z_scaled); // will be multiplied by metallicity to convert later
 #endif
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    if(P[i].Metallicity[0]>0) {return (SphP[i].ISMDustChem_Dust_Metal[0]/P[i].Metallicity[0])/0.5;} else {return 0;} // use total amount of dust from 'live' dust evolution models
+#endif
 #if defined(RT_INFRARED)
     double T_evap = 1500.; // 2e3 * pow(SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, 0.0195); // latter function from Kuiper 2010 eqs 21-22; sublimation temeprature from Isella & Natta 2005, fit to Pollack 1994. works for protostellar environments, but extrapolates poorly to diffuse ISM and/or stellar/AGN atmosphere environments, so for now use a simpler 1500 K which is a rough median between these, with more sophisticated dust modules required to fit all different parameter regimes.
     return sigmoid_sqrt(-0.006*(SphP[i].Dust_Temperature - T_evap));
