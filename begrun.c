@@ -1092,6 +1092,17 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
+#ifdef DUST
+        strcpy(tag[nt],"InitDustDepl");
+        strcpy(alternate_tag[nt],"Initial_Dust_Depletion");
+        addr[nt] = &All.InitDustDepl;
+        id[nt++] = REAL;
+
+        strcpy(tag[nt],"InitSiltoCarbRatio");
+        strcpy(alternate_tag[nt],"Initial_Silicate_to_Carbon_Dust_Ratio");
+        addr[nt] = &All.SilToCarbRatio;
+        id[nt++] = REAL;
+#endif
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
         strcpy(tag[nt], "SNeIIEnergyFrac");
@@ -2251,6 +2262,10 @@ void read_parameter_file(char *fname)
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED)
                 if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
                 if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
+#endif
+#ifdef DUST
+                if(strcmp("InitDustDepl",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g) \n",tag[i],alternate_tag[i],All.InitDustDepl); continue;}
+                if(strcmp("InitSiltoCarbRatio",tag[i])==0) {*((double *)addr[i])=0.; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g)\n",tag[i],alternate_tag[i],All.SilToCarbRatio); continue;}     
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(strcmp("SNeIIEnergyFrac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.SNe_Energy_Renormalization); continue;}

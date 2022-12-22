@@ -238,6 +238,13 @@ struct INPUT_STRUCT_NAME
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     MyFloat Metallicity[NUM_METAL_SPECIES];
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER)
+    MyFloat Dust_Metal[NUM_DUST_ELEMENTS];
+    MyFloat Dust_Source[NUM_DUST_SOURCES];
+#ifdef SPECIES
+    MyFloat Dust_Species[NUM_DUST_SPECIES];
+#endif
+#endif
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
@@ -343,6 +350,13 @@ struct OUTPUT_STRUCT_NAME
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     MyFloat Dyield[NUM_METAL_SPECIES];
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER)
+    MyFloat Dyield_dust[NUM_DUST_ELEMENTS];
+    MyFloat Dyield_source[NUM_DUST_SOURCES];
+#ifdef SPECIES
+    MyFloat Dyield_species[NUM_DUST_SPECIES];
+#endif
+#endif
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
@@ -501,6 +515,13 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++) {in->Metallicity[k] = P[i].Metallicity[k];}
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER)
+    for(k=0;k<NUM_DUST_ELEMENTS;k++) {in->Dust_Metal[k] = SphP[i].Dust_Metal[k];}
+    for(k=0;k<NUM_DUST_SOURCES;k++) {in->Dust_Source[k] = SphP[i].Dust_Source[k];}
+#ifdef SPECIES
+    for(k=0;k<NUM_DUST_SPECIES;k++) {in->Dust_Species[k] = SphP[i].Dust_Species[k];}
+#endif
+#endif
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
@@ -597,6 +618,13 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 #endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
     for(k=0;k<NUM_METAL_SPECIES;k++) {SphP[i].Dyield[k] += out->Dyield[k];}
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER)
+    for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dyield_dust[k] += out->Dyield_dust[k];}
+    for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dyield_source[k] += out->Dyield_source[k];}
+#ifdef SPECIES
+    for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[i].Dyield_species[k] += out->Dyield_species[k];}
+#endif
+#endif
 #endif
 
 #ifdef CHIMES_TURB_DIFF_IONS
@@ -826,6 +854,13 @@ void hydro_final_operations_and_cleanup(void)
 
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME)) /* update the metal masses from exchange */
             for(k=0;k<NUM_METAL_SPECIES;k++) {P[i].Metallicity[k] = DMAX(P[i].Metallicity[k] + SphP[i].Dyield[k] / P[i].Mass , 0.01*P[i].Metallicity[k]);}
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER) /* update the dust masses from exchange */
+            for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dust_Metal[k] = DMAX(SphP[i].Dust_Metal[k] + SphP[i].Dyield_dust[k] / P[i].Mass , 0.01*SphP[i].Dust_Metal[k]);}
+            for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dust_Source[k] = DMAX(SphP[i].Dust_Source[k] + SphP[i].Dyield_source[k] / P[i].Mass , 0.01*SphP[i].Dust_Source[k]);}
+#ifdef SPECIES
+            for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[i].Dust_Species[k] = DMAX(SphP[i].Dust_Species[k] + SphP[i].Dyield_species[k] / P[i].Mass , 0.01*SphP[i].Dust_Species[k]);}
+#endif
+#endif
 #endif
             
             
@@ -974,6 +1009,13 @@ void hydro_force_initial_operations_preloop(void)
 #endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
             for(k=0;k<NUM_METAL_SPECIES;k++) {SphP[i].Dyield[k] = 0;}
+#if defined(DUST) && defined(TURB_DIFF_METALS_LOWORDER)
+            for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[i].Dyield_dust[k] = 0;}
+            for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[i].Dyield_source[k] = 0;}
+#ifdef SPECIES
+            for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[i].Dyield_species[k] = 0;}
+#endif
+#endif
 #endif
 #if defined(RT_SOLVER_EXPLICIT)
 #if defined(RT_EVOLVE_ENERGY)
