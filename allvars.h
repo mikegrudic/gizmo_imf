@@ -2574,11 +2574,9 @@ extern struct global_data_all_processes
     double Initial_ISMDustChem_SiliconToCarbonRatio; /* sets rough mass ratio between silicates are carbonaceous dust for given initial depletion */
     double ISMDustChem_AtomicMassTable[NUM_ISMDUSTCHEM_ELEMENTS]; /* atomic mass for each element in metallicity field */
     double ISMDustChem_SNeSputteringShutOffTime; /* amount of time to turn off thermal sputtering after SNe event to avoid double counting dust destruction */
-#if (GALSF_ISMDUSTCHEM_MODEL & 2)
     int ISMDustChem_SilicateMetallicityFieldIndexTable[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES]; /* index in metallicity field for elements which make up silicate dust (O, Mg, Si, and possibly Fe) */
     double ISMDustChem_SilicateNumberOfAtomsTable[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES]; /* number of O, Mg, Si, and possibly Fe in one formula unit of silicate dust */
     double ISMDustChem_EffectiveSilicateDustAtomicWeight; /* atomic weight of one formula unit of silicate dust, depends on which optional module you use */
-#endif
 #endif
 
     

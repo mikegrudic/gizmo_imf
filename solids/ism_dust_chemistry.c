@@ -20,14 +20,14 @@
 /* routine to give yields for dust for different types of SNe (Ia & II) followed in-code */
 void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; double SNeIa_age = 0.03753; int source_key=1;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; double SNeIa_age = 0.03753; int k,source_key=1;
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
     SNeIa_age =  0.044;
 #endif
     if(t_gyr < SNeIa_age) {source_key=2;} // 1=1a, 2=II
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES+NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES]=0;} // initialize yields to null
     if(GALSF_ISMDUSTCHEM_MODEL & 1) {
-        int k; double C_condens_eff = 0.5, other_condens_eff = 0.8;
+        double C_condens_eff = 0.5, other_condens_eff = 0.8;
         dust_yields[2] = C_condens_eff * yields[2];         // C
         dust_yields[6] = other_condens_eff * yields[6];     // Mg
         dust_yields[7] = other_condens_eff * yields[7];     // Si
@@ -40,7 +40,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
         return; // all done, if only using this model
     } // below follows species model, will be default if above not set
     
-    int k; double SNeII_sil_cond = 0.00035, SNeII_C_cond = 0.15, SNeII_SiC_cond = 0.0003, SNeII_Fe_cond = 0.001, SNeI_Fe_cond = 0.005, sil_elem_abund[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES];
+    double SNeII_sil_cond = 0.00035, SNeII_C_cond = 0.15, SNeII_SiC_cond = 0.0003, SNeII_Fe_cond = 0.001, SNeI_Fe_cond = 0.005, sil_elem_abund[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES];
     int missing_element = 0, key_elem = 0;
     // For each dust species find the key element and condense a fraction of that element into dust
     if(t_gyr < SNeIa_age)
@@ -88,15 +88,15 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
 /* routine to give the dust yields for AGB winds (currently no dust yield assumed for stars younger than AGB age from continuous mass-loss, i.e. O/B winds) */
 void ISMDustChem_get_wind_dust_yields(double *yields, int i)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; int source_key=3;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; int k,source_key=3;
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES+NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES]=0;} // initialize yields to null
-    double transition_age = 0.044, star_age = evaluate_stellar_age_Gyr(i); // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-    transition_age =  0.03753;
+    double transition_age = 0.03753, star_age = evaluate_stellar_age_Gyr(i); // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+    transition_age =  0.044;
 #endif
-    if(star_age <= transition_age) {return}; // no yield here if too young, otherwise continue
+    if(star_age <= transition_age) {return;} // no yield here if too young, otherwise continue
     if(GALSF_ISMDUSTCHEM_MODEL & 1) {
-        int k; double condens_eff = 0.8;
+        double condens_eff = 0.8;
         if((yields[2]/All.ISMDustChem_AtomicMassTable[2])/(yields[4]/All.ISMDustChem_AtomicMassTable[4]) > 1.0) // AGB stars with abundace ratio C/O > 1 only produce carbonacous dust
         {
             dust_yields[2] = yields[2] - 0.75*yields[4]; dust_yields[0] = dust_yields[2]; // C
@@ -112,7 +112,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
         for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
         return; // end routine
     } // below follows species model, and will be default if above not set
-    int k; double star_age,dt,Z,elem_yield,wind_rate;
+    double dt,Z,elem_yield,wind_rate;
     dt=GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*UNIT_TIME_IN_GYR;
     Z = Z_for_stellar_evol(i);
     
@@ -125,9 +125,8 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
     if (species_yields[0]+species_yields[1]+species_yields[2]+species_yields[3]>0.)
     {
         // Now convert from instantaneous dust injection rates to dust yields using instantaneous wind rate
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
         wind_rate=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         double f_agb=0.1, t_agb=0.8, x_agb=t_agb/DMAX(star_age,1.e-4); x_agb*=x_agb; wind_rate = f_agb * pow(x_agb,0.8) * (exp(-DMIN(50.,x_agb*x_agb*x_agb)) + 1./(100. + x_agb)); /* only need AGB component for FIRE-3 */
 #endif
         if(star_age < 0.033) {wind_rate *= 0.01 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);} // late-time independent of massive stars
@@ -343,6 +342,7 @@ double cumulative_AGB_dust_returns(int dust_type, double star_age, double z)
 /* initialize values of tables and variables for startup of runs */
 void Initialize_ISMDustChem_Variables(int i)
 {
+    int j;
     /* atomic mass for each element in metallicity field, and some other variables. these always need to be initialized */
     All.ISMDustChem_AtomicMassTable[0] = 1.01;    // H
     All.ISMDustChem_AtomicMassTable[1] = 4.0;     // He
@@ -356,7 +356,6 @@ void Initialize_ISMDustChem_Variables(int i)
     All.ISMDustChem_AtomicMassTable[9] = 40.078;  // Ca
     All.ISMDustChem_AtomicMassTable[10] = 55.845; // Fe
     All.ISMDustChem_SNeSputteringShutOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe
-#if (GALSF_ISMDUSTCHEM_MODEL & 2)
     // Fiducial olivine-pyroxene silicate dust composition with olivine fraction = 0.63 and Mg frac = 0.65. If using iron nanoparticles assume iron is always present for silicate structure in the form of iron inclusions. index in metallicity field for elements which make up silicate dust (O,Mg,Si)
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[0] = 4;
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[1] = 6;
@@ -367,13 +366,13 @@ void Initialize_ISMDustChem_Variables(int i)
     All.ISMDustChem_SilicateNumberOfAtomsTable[2] = 1.;
     if(!(GALSF_ISMDUSTCHEM_MODEL & 4)) {All.ISMDustChem_SilicateMetallicityFieldIndexTable[3] = 10; All.ISMDustChem_SilicateNumberOfAtomsTable[3] = 0.571;} // add Fe as well if not accounting for iron inclusions
     All.ISMDustChem_EffectiveSilicateDustAtomicWeight = 0.; for(j=0;j<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;j++) {All.ISMDustChem_EffectiveSilicateDustAtomicWeight += All.ISMDustChem_SilicateNumberOfAtomsTable[j] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]];}
-#endif
+
     /* only initialize these on a new run */
     if(RestartFlag == 0) {
         SphP[i].ISMDustChem_DelayTimeSNeSputtering = SphP[i].ISMDustChem_C_in_CO = SphP[i].ISMDustChem_MassFractionInDenseMolecular = 0.;
-        if (All.Initial_ISMDustChem_Depletion > 0)
+        if(All.Initial_ISMDustChem_Depletion > 0)
         {
-            for (j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[j] = 0.;}
+            for(j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[j] = 0.;}
             if(GALSF_ISMDUSTCHEM_MODEL & 1) {
                 SphP[i].ISMDustChem_Dust_Metal[4] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[4]; // Silicate dust O
                 SphP[i].ISMDustChem_Dust_Metal[6] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[6]; // Silicate dust Mg
@@ -381,27 +380,27 @@ void Initialize_ISMDustChem_Variables(int i)
                 SphP[i].ISMDustChem_Dust_Metal[10] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[10]; // Silicate dust Fe
                 SphP[i].ISMDustChem_Dust_Metal[2] = DMIN(P[i].Metallicity[2],SphP[i].ISMDustChem_Dust_Metal[4]+SphP[i].ISMDustChem_Dust_Metal[6]+SphP[i].ISMDustChem_Dust_Metal[7]+SphP[i].ISMDustChem_Dust_Metal[10]/All.Initial_ISMDustChem_SiliconToCarbonRatio); // Carbonaceous dust
             }
-#if (GALSF_ISMDUSTCHEM_MODEL & 2)
-            // Silicate dust
-            double sil_mass_frac=0.; SphP[i].ISMDustChem_Dust_Metal[7] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[7]; // Set Si depletion
-            sil_mass_frac+=SphP[i].ISMDustChem_Dust_Metal[7];
-            for(j=0;j<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;j++) // Set element depletions for all other elements in silicates given initial Si depletion
-            {
-                if(j != 2)
+            if(GALSF_ISMDUSTCHEM_MODEL & 2) {
+                // Silicate dust
+                double sil_mass_frac=0.; SphP[i].ISMDustChem_Dust_Metal[7] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[7]; // Set Si depletion
+                sil_mass_frac+=SphP[i].ISMDustChem_Dust_Metal[7];
+                for(j=0;j<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;j++) // Set element depletions for all other elements in silicates given initial Si depletion
                 {
-                    SphP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]] += SphP[i].ISMDustChem_Dust_Metal[7] / (All.ISMDustChem_SilicateNumberOfAtomsTable[2] * All.ISMDustChem_AtomicMassTable[7]) * (All.ISMDustChem_SilicateNumberOfAtomsTable[j] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]]);
-                    sil_mass_frac += SphP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]];
+                    if(j != 2)
+                    {
+                        SphP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]] += SphP[i].ISMDustChem_Dust_Metal[7] / (All.ISMDustChem_SilicateNumberOfAtomsTable[2] * All.ISMDustChem_AtomicMassTable[7]) * (All.ISMDustChem_SilicateNumberOfAtomsTable[j] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]]);
+                        sil_mass_frac += SphP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]];
+                    }
+                }
+                SphP[i].ISMDustChem_Dust_Species[0] = sil_mass_frac;
+                // Carbonaceous dust
+                SphP[i].ISMDustChem_Dust_Metal[2] = DMIN(P[i].Metallicity[2],sil_mass_frac/All.Initial_ISMDustChem_SiliconToCarbonRatio); SphP[i].ISMDustChem_Dust_Species[1] = SphP[i].ISMDustChem_Dust_Metal[2];
+                if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Metallic Iron Nanoparticles
+                    SphP[i].ISMDustChem_Dust_Metal[10] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[10];
+                    SphP[i].ISMDustChem_Dust_Species[3] = (1.-GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC)*SphP[i].ISMDustChem_Dust_Metal[10];
+                    SphP[i].ISMDustChem_Dust_Species[5] = GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*SphP[i].ISMDustChem_Dust_Metal[10];
                 }
             }
-            SphP[i].ISMDustChem_Dust_Species[0] = sil_mass_frac;
-            // Carbonaceous dust
-            SphP[i].ISMDustChem_Dust_Metal[2] = DMIN(P[i].Metallicity[2],sil_mass_frac/All.Initial_ISMDustChem_SiliconToCarbonRatio); SphP[i].ISMDustChem_Dust_Species[1] = SphP[i].ISMDustChem_Dust_Metal[2];
-            if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Metallic Iron Nanoparticles
-                SphP[i].ISMDustChem_Dust_Metal[10] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[10];
-                SphP[i].ISMDustChem_Dust_Species[3] = (1.-GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC)*SphP[i].ISMDustChem_Dust_Metal[10];
-                SphP[i].ISMDustChem_Dust_Species[5] = GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*SphP[i].ISMDustChem_Dust_Metal[10];
-            }
-#endif
             for (j=1;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[0] += SphP[i].ISMDustChem_Dust_Metal[j];}
             for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {SphP[i].ISMDustChem_Dust_Source[j] = 0.;}
             SphP[i].ISMDustChem_Dust_Source[2] = 1.;  // Assume initial dust population is from SNe II
@@ -410,13 +409,8 @@ void Initialize_ISMDustChem_Variables(int i)
         {
             for (j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[j] = 0.;}
             for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {SphP[i].ISMDustChem_Dust_Source[j] = 0.;}
-#if (GALSF_ISMDUSTCHEM_MODEL & 2)
             for (j=0;j<NUM_ISMDUSTCHEM_SPECIES;j++) {SphP[i].ISMDustChem_Dust_Species[j] = 0.;}
-#endif
         }
-#ifdef GALSF_USE_SNE_ONELOOP_SCHEME // Need to zero data fields used to inject dust from feedback for FIRE-2
-        SphP[i].ISMDustChem_Mass_Cleared = 0.; SphP[i].ISMDustChem_GasMassAddedByFeedback = 0.;
-#endif
     }
 }
 
@@ -425,17 +419,17 @@ void Initialize_ISMDustChem_Variables(int i)
 double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, int k)
 {
     k -= NUM_METAL_SPECIES;
-    if(k<NUM_ISMDUSTCHEM_ELEMENTS) {return P[i].ISMDustChem_Dust_Metal[k];}
+    if(k<NUM_ISMDUSTCHEM_ELEMENTS) {return SphP[i].ISMDustChem_Dust_Metal[k];}
     k -= NUM_ISMDUSTCHEM_ELEMENTS;
-    if(k<NUM_ISMDUSTCHEM_SOURCES) {return P[i].ISMDustChem_Dust_Source[k];}
+    if(k<NUM_ISMDUSTCHEM_SOURCES) {return SphP[i].ISMDustChem_Dust_Source[k];}
     k -= NUM_ISMDUSTCHEM_SOURCES;
-    if(k<NUM_ISMDUSTCHEM_SPECIES) {return P[i].ISMDustChem_Dust_Species[k];}
+    if(k<NUM_ISMDUSTCHEM_SPECIES) {return SphP[i].ISMDustChem_Dust_Species[k];}
     return 0;
 }
 
 
 /* Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981). Should surpass metal-line cooling for >10^6 K, but this will also overpredicts dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering */
-double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T)
+double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T, double n_elec)
 {
     if(target<0 || T<1.e5) {return 0;}
     if(SphP[target].ISMDustChem_Dust_Metal[0] <= 0) {return 0;}
@@ -450,7 +444,7 @@ double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T)
 
 
 
-/* return the mass fraction we will assume of dust destroyed in surrounding gas due to SNe shock, taken from McKee 1989 and Cioffi 1988 */*/
+/* return the mass fraction we will assume of dust destroyed in surrounding gas due to SNe shock, taken from McKee 1989 and Cioffi 1988 */
 double ISMDustChem_Return_Mass_Fraction_Where_Dust_Destroyed(double rho_cell_in_code_units, double Esne51_into_cell, double mass_preshock_in_code_units)
 {
     double dest_eff=0.4, vs7=1., local_n0=rho_cell_in_code_units*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS; // dust destruction efficiency, minimum gas shock velocity in 10^7 cm/s which destroys dust, and number density around SNe
@@ -463,6 +457,7 @@ double ISMDustChem_Return_Mass_Fraction_Where_Dust_Destroyed(double rho_cell_in_
 void update_ISMDustChem_after_mechanical_injection(int j, double massfrac_destroyed, double m0, double mf, double *Z_injected)
 {
     // If SNe events happened need to first destroy the appropriate amount of dust if there is any dust
+    int k;
     if((massfrac_destroyed > 0) && (SphP[j].ISMDustChem_Dust_Metal[0] > 0))
     {
         SphP[j].ISMDustChem_DelayTimeSNeSputtering = All.ISMDustChem_SNeSputteringShutOffTime; // update thermal sputtering delay time due to SNe
@@ -475,13 +470,11 @@ void update_ISMDustChem_after_mechanical_injection(int j, double massfrac_destro
         else
         {
             double protected_frac = 0.; // Fraction of dust protected from destruction (only iron inclusions are currently considered)
-#if (GALSF_ISMDUSTCHEM_MODEL & 2)
             if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Take out the iron inclusions protected in silicate dust and then add it back in later
                 protected_frac = SphP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1]/SphP[j].ISMDustChem_Dust_Metal[0];
                 SphP[j].ISMDustChem_Dust_Metal[10] -= SphP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1]; // Assume all dust species are destroyed evenly but leave out iron inclusions
             }
             for(k=0;k<NUM_ISMDUSTCHEM_SPECIES-1;k++) {SphP[j].ISMDustChem_Dust_Species[k] *= 1.-massfrac_destroyed;} // Assume all dust species are destroyed evenly
-#endif
             // Assume all dust sources are destroyed evenly and take into account protected dust
             for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {SphP[j].ISMDustChem_Dust_Source[k] *= (1.-(1.-protected_frac)*massfrac_destroyed);}
             SphP[j].ISMDustChem_Dust_Metal[0] = 0.0;
@@ -575,8 +568,7 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     
     // now accrete and sputter dust //
 #if (GALSF_ISMDUSTCHEM_MODEL & 1)
-    // First renorm dust due to building numerical error that can arise from stellar feedback
-    SphP[i].ISMDustChem_Dust_Metal[0] = 0.;
+    SphP[i].ISMDustChem_Dust_Metal[0] = 0.; // First renorm dust due to building numerical error that can arise from stellar feedback. This may no longer be necessary.
     for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {SphP[i].ISMDustChem_Dust_Metal[0] += SphP[i].ISMDustChem_Dust_Metal[k];}
     double total = SphP[i].ISMDustChem_Dust_Source[0]+SphP[i].ISMDustChem_Dust_Source[1]+SphP[i].ISMDustChem_Dust_Source[2]+SphP[i].ISMDustChem_Dust_Source[3];
     for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) SphP[i].ISMDustChem_Dust_Source[k] = DMAX(0,SphP[i].ISMDustChem_Dust_Metal[0]/total*SphP[i].ISMDustChem_Dust_Source[k]);
@@ -653,9 +645,8 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     }
 #endif // model == 1, elemental model
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
-    // This may no longer be necessary.
-    // First renorm dust due to building numerical error that can arise from stellar feedback
-    for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) SphP[i].ISMDustChem_Dust_Metal[k]=0.;
+    // First renorm dust due to building numerical error that can arise from stellar feedback. This may no longer be necessary.
+    for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {SphP[i].ISMDustChem_Dust_Metal[k]=0.;}
     // silicate
     for (k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
     {

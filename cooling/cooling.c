@@ -962,7 +962,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #endif
 
 #if defined(GALSF_ISMDUSTCHEM_HIGHTEMPDUSTCOOLING)
-        Lambda += Lambda_Dust_HighTemperature_Gas_ISM(target,T);
+        Lambda += Lambda_Dust_HighTemperature_Gas_ISM(target,T,n_elec);
 #endif
 
 #ifdef COOL_LOW_TEMPERATURES
