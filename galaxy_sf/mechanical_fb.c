@@ -62,7 +62,7 @@ void determine_where_SNe_occur(void)
         P[i].AgeDeposition_ThisTimeStep=0;
 #endif
 #endif
-
+    
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
         if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
@@ -303,7 +303,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double Mass_Fraction_Where_Dust_Destroyed = 0;
                 for(k=NUM_METAL_SPECIES;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j[k] = return_ismdustchem_species_of_interest_for_diffusion_and_yields(j,k);} // load local dust properties
 #endif
-                for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j_0[k] = Metallicity_j[k]; // save initial values to  use below
+                for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j_0[k] = Metallicity_j[k];} // save initial values to  use below
 #endif
                 
                 /* define initial mass and ejecta velocity in this 'cone' */
@@ -396,7 +396,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;}; // for r-process, age-tracers, etc., nothing left here to bother coupling //
+                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;} // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
 
@@ -632,7 +632,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 double Mass_Fraction_Where_Dust_Destroyed=0.; // mass fraction of gas cleared of dust from SNe
                 for(k=NUM_METAL_SPECIES;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j[k] = return_ismdustchem_species_of_interest_for_diffusion_and_yields(j,k);} // load local dust properties
 #endif
-                for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j_0[k] = Metallicity_j[k]; // save initial values to  use below
+                for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Metallicity_j_0[k] = Metallicity_j[k];} // save initial values to  use below
 #endif
                 
                 RsneKPC = RsneKPC_0;
@@ -753,7 +753,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;}; // for r-process, age-tracers, etc., nothing left here to bother coupling //
+                if(loop_iteration >= 2) {couple_anything_but_scalar_mass_and_metals = 0;} // for r-process, age-tracers, etc., nothing left here to bother coupling //
 #endif
 #endif
 

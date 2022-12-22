@@ -200,6 +200,7 @@ void init(void)
         All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
 #endif
 #endif
+#endif
 
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
@@ -396,6 +397,7 @@ void init(void)
 #endif // closes grain_fluid
 
 
+#ifdef METALS
         if(RestartFlag == 0) {
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
