@@ -179,6 +179,28 @@ void init(void)
     init_self_interactions();
 #endif
 
+#ifdef METALS
+    for(j=0;j<NUM_METAL_SPECIES;j++) {All.SolarAbundances[j]=0;} // initialize all to zero
+    All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
+    //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
+#ifdef COOL_METAL_LINES_BY_SPECIES
+    All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314), with proto-solar Y=0.27
+    All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3); proto-solar from Asplund=8.47 -> 2.53e-3
+    All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3); PS=7.87->7.41e-4
+    All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3); PS=8.73->6.13e-3
+    All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3); PS=7.97->1.34e-3
+    All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4); PS=7.64->7.57e-4
+    All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4); PS=7.55->7.12e-4
+    All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
+    All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
+    All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances
+    All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
+        All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
+        All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
+#endif
+#endif
+
 
     for(i = 0; i < NumPart; i++)	/*  start-up initialization */
     {
@@ -374,65 +396,6 @@ void init(void)
 #endif // closes grain_fluid
 
 
-
-#ifdef METALS
-        for(j=0;j<NUM_METAL_SPECIES;j++) {All.SolarAbundances[j]=0;} // initialize all to zero
-        All.SolarAbundances[0]=0.02;        // all metals (by mass); present photospheric abundances from Asplund et al. 2009 (Z=0.0134, proto-solar=0.0142) in notes;
-                                            //   also Anders+Grevesse 1989 (older, but hugely-cited compilation; their Z=0.0201, proto-solar=0.0213)
-#ifdef COOL_METAL_LINES_BY_SPECIES
-        All.SolarAbundances[1]=0.28;    // He  (10.93 in units where log[H]=12, so photospheric mass fraction -> Y=0.2485 [Hydrogen X=0.7381]; Anders+Grevesse Y=0.2485, X=0.7314), with proto-solar Y=0.27
-        All.SolarAbundances[2]=3.26e-3; // C   (8.43 -> 2.38e-3, AG=3.18e-3); proto-solar from Asplund=8.47 -> 2.53e-3
-        All.SolarAbundances[3]=1.32e-3; // N   (7.83 -> 0.70e-3, AG=1.15e-3); PS=7.87->7.41e-4
-        All.SolarAbundances[4]=8.65e-3; // O   (8.69 -> 5.79e-3, AG=9.97e-3); PS=8.73->6.13e-3
-        All.SolarAbundances[5]=2.22e-3; // Ne  (7.93 -> 1.26e-3, AG=1.72e-3); PS=7.97->1.34e-3
-        All.SolarAbundances[6]=9.31e-4; // Mg  (7.60 -> 7.14e-4, AG=6.75e-4); PS=7.64->7.57e-4
-        All.SolarAbundances[7]=1.08e-3; // Si  (7.51 -> 6.71e-4, AG=7.30e-4); PS=7.55->7.12e-4
-        All.SolarAbundances[8]=6.44e-4; // S   (7.12 -> 3.12e-4, AG=3.80e-4); PS=7.16->3.31e-4
-        All.SolarAbundances[9]=1.01e-4; // Ca  (6.34 -> 0.65e-4, AG=0.67e-4); PS=6.38->6.87e-5
-        All.SolarAbundances[10]=1.73e-3; // Fe (7.50 -> 1.31e-3, AG=1.92e-3); PS=7.54->1.38e-3
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) // new default abundances; using Asplund et al. 2009 proto-solar abundances
-        All.SolarAbundances[0]=0.0142; if(NUM_METAL_SPECIES>=10) {
-            All.SolarAbundances[1]=0.27030; All.SolarAbundances[2]=2.53e-3; All.SolarAbundances[3]=7.41e-4; All.SolarAbundances[4]=6.13e-3; All.SolarAbundances[5]=1.34e-3;
-            All.SolarAbundances[6]=7.57e-4; All.SolarAbundances[7]=7.12e-4; All.SolarAbundances[8]=3.31e-4; All.SolarAbundances[9]=6.87e-5; All.SolarAbundances[10]=1.38e-3;}
-#endif
-#ifdef DUST
-        All.SNeSputOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe
-        // atomic mass for each element in metallicity field
-        All.AtomicMass[0] = 1.01;    // H
-        All.AtomicMass[1] = 4.0;     // He
-        All.AtomicMass[2] = 12.01;   // C
-        All.AtomicMass[3] = 14;      // N
-        All.AtomicMass[4] = 15.99;   // O
-        All.AtomicMass[5] = 20.2;    // Ne
-        All.AtomicMass[6] = 24.305;  // Mg
-        All.AtomicMass[7] = 28.086;  // Si
-        All.AtomicMass[8] = 32.065;  // S
-        All.AtomicMass[9] = 40.078;  // Ca
-        All.AtomicMass[10] = 55.845; // Fe
-#ifdef SPECIES
-        // Fiducial olivine-pyroxene silicate dust composition with olivine fraction = 0.63 and Mg frac = 0.65
-        // If using iron nanoparticles assume iron is always present for silicate structure in the form of 
-        // iron inclusions
-        // index in metallicity field for elements which make up silicate dust (O,Mg,Si)
-        All.SilElemsIndex[0] = 4;
-        All.SilElemsIndex[1] = 6;
-        All.SilElemsIndex[2] = 7;
-        // number of O, Mg, and Si in one formula unit of silicate dust   
-        All.SilNumAtoms[0] = 3.63;
-        All.SilNumAtoms[1] = 1.06;
-        All.SilNumAtoms[2] = 1.;  
-#if !defined(IRON_NANOPARTICLES)
-        // add Fe as well if not accounting for iron inclusions
-        All.SilElemsIndex[3] = 10;
-        All.SilNumAtoms[3] = 0.571;  
-#endif
-        All.SilFormulaMass = 0.;
-        for (j=0;j<ELEM_IN_SILICATES;j++) {All.SilFormulaMass += All.SilNumAtoms[j] * All.AtomicMass[All.SilElemsIndex[j]];}
-#endif // SPECIES 
-#endif // DUST
-
-#endif // COOL_METAL_LINES_BY_SPECIES
-
         if(RestartFlag == 0) {
 #if defined(INIT_STELLAR_METALS_AGES_DEFINED)
             P[i].Metallicity[0] = All.InitMetallicityinSolar*All.SolarAbundances[0];
@@ -443,75 +406,11 @@ void init(void)
             for(j=0;j<NUM_METAL_SPECIES;j++) {P[i].Metallicity[j]=All.SolarAbundances[j]*(P[i].Metallicity[0]/All.SolarAbundances[0]);}
             /* need to allow for a primordial He abundance */
             if(NUM_LIVE_SPECIES_FOR_COOLTABLES>=10) P[i].Metallicity[1]=(1.-HYDROGEN_MASSFRAC)+(All.SolarAbundances[1]-(1.-HYDROGEN_MASSFRAC))*P[i].Metallicity[0]/All.SolarAbundances[0];
-#ifdef DUST
-            SphP[i].DelayTimeSNeSput = 0;
-            SphP[i].C_in_CO = 0.;
-            SphP[i].fDense = 0.;
-            if (All.InitDustDepl > 0)
-            {
-                for (j=0;j<NUM_DUST_ELEMENTS;j++) {SphP[i].Dust_Metal[j] = 0.;}
-#ifdef ELEMENTAL
-                // Silicate dust
-                SphP[i].Dust_Metal[4] = All.InitDustDepl*P[i].Metallicity[4];
-                SphP[i].Dust_Metal[6] = All.InitDustDepl*P[i].Metallicity[6];
-                SphP[i].Dust_Metal[7] = All.InitDustDepl*P[i].Metallicity[7];
-                SphP[i].Dust_Metal[10] = All.InitDustDepl*P[i].Metallicity[10];
-                // Carbonaceous dust
-                SphP[i].Dust_Metal[2] = DMIN(P[i].Metallicity[2],SphP[i].Dust_Metal[4]+SphP[i].Dust_Metal[6]+SphP[i].Dust_Metal[7]+SphP[i].Dust_Metal[10]/All.SilToCarbRatio);
-#endif
-#ifdef SPECIES
-                // Silicate dust
-                double sil_mass_frac=0.;
-                // Set Si depletion
-                SphP[i].Dust_Metal[7] = All.InitDustDepl*P[i].Metallicity[7];
-                sil_mass_frac+=SphP[i].Dust_Metal[7];
-                // Set element depletions for all other elements in silicates given initial Si depletion
-                for (j=0;j<ELEM_IN_SILICATES;j++)
-                {
-                    if (j != 2)
-                    {
-                        SphP[i].Dust_Metal[All.SilElemsIndex[j]] += SphP[i].Dust_Metal[7] / (All.SilNumAtoms[2] * All.AtomicMass[7]) * (All.SilNumAtoms[j] * All.AtomicMass[All.SilElemsIndex[j]]);
-                        sil_mass_frac += SphP[i].Dust_Metal[All.SilElemsIndex[j]];
-                    }
-                }
-                SphP[i].Dust_Species[0] = sil_mass_frac;
-                // Carbonaceous dust
-                SphP[i].Dust_Metal[2] = DMIN(P[i].Metallicity[2],sil_mass_frac/All.SilToCarbRatio);
-                SphP[i].Dust_Species[1] = SphP[i].Dust_Metal[2];
-#ifdef IRON_NANOPARTICLES
-                // Metallic Iron Nanoparticles
-                SphP[i].Dust_Metal[10] = All.InitDustDepl*P[i].Metallicity[10];
-                SphP[i].Dust_Species[3] = (1.-IRON_INCL_FRAC)*SphP[i].Dust_Metal[10];
-#ifdef O_RESERVOIR
-                SphP[i].Dust_Species[5] = IRON_INCL_FRAC*SphP[i].Dust_Metal[10];
-#else 
-                SphP[i].Dust_Species[4] = IRON_INCL_FRAC*SphP[i].Dust_Metal[10];
-#endif
-#endif
-#endif // SPECIES
-                for (j=1;j<NUM_DUST_ELEMENTS;j++) {SphP[i].Dust_Metal[0] += SphP[i].Dust_Metal[j];}
-                for (j=0;j<NUM_DUST_SOURCES;j++) {SphP[i].Dust_Source[j] = 0.;}
-                SphP[i].Dust_Source[2] = 1.;  // Assume initial dust population is from SNe II
-            }
-            else
-            {
-                for (j=0;j<NUM_DUST_ELEMENTS;j++) {SphP[i].Dust_Metal[j] = 0.;}
-                for (j=0;j<NUM_DUST_SOURCES;j++) {SphP[i].Dust_Source[j] = 0.;}
-#ifdef SPECIES
-                for (j=0;j<NUM_DUST_SPECIES;j++) {SphP[i].Dust_Species[j] = 0.;}
-#endif
-            }
-#ifdef GALSF_USE_SNE_ONELOOP_SCHEME
-            // Need to zero data fields used to inject dust from feedback for FIRE-2
-            SphP[i].Mass_Cleared = 0.; SphP[i].Dmass_added = 0.;
-            for (j=1;j<NUM_DUST_ELEMENTS;j++) {SphP[i].Dstellar_dust[j] = 0.;}
-            for (j=0;j<NUM_DUST_SOURCES;j++) {SphP[i].Dstellar_source[j] = 0.;}
-#ifdef SPECIES
-            for (j=0;j<NUM_DUST_SPECIES;j++) {SphP[i].Dstellar_species[j] = 0.;}
-#endif
-#endif
-#endif // DUST      
         } // if(RestartFlag == 0)
+
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+        Initialize_ISMDustChem_Variables(i);
+#endif
 
 #ifdef CHIMES
 #ifdef COOL_METAL_LINES_BY_SPECIES

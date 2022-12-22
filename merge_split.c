@@ -886,12 +886,10 @@ int merge_particles_ij(int i, int j)
 #endif // CHIMES
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} /* metal-mass conserving */
-#ifdef DUST
-    for(k=0;k<NUM_DUST_ELEMENTS;k++) {SphP[j].Dust_Metal[k] = wt_j*SphP[j].Dust_Metal[k] + wt_i*SphP[i].Dust_Metal[k];} /* dust-mass conserving */
-    for(k=0;k<NUM_DUST_SOURCES;k++) {SphP[j].Dust_Source[k] = wt_j*SphP[j].Dust_Source[k] + wt_i*SphP[i].Dust_Source[k];} /* dust source-mass conserving */
-#ifdef SPECIES
-    for(k=0;k<NUM_DUST_SPECIES;k++) {SphP[j].Dust_Species[k] = wt_j*SphP[j].Dust_Species[k] + wt_i*SphP[i].Dust_Species[k];} /* dust species-mass conserving */
-#endif
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {SphP[j].ISMDustChem_Dust_Metal[k] = wt_j*SphP[j].ISMDustChem_Dust_Metal[k] + wt_i*SphP[i].ISMDustChem_Dust_Metal[k];} /* dust-mass conserving */
+    for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {SphP[j].ISMDustChem_Dust_Source[k] = wt_j*SphP[j].ISMDustChem_Dust_Source[k] + wt_i*SphP[i].ISMDustChem_Dust_Source[k];} /* dust source-mass conserving */
+    for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {SphP[j].ISMDustChem_Dust_Species[k] = wt_j*SphP[j].ISMDustChem_Dust_Species[k] + wt_i*SphP[i].ISMDustChem_Dust_Species[k];} /* dust species-mass conserving */
 #endif
 #endif
 #ifdef COSMIC_RAY_FLUID

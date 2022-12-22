@@ -1231,6 +1231,7 @@ EOSCOOL_OBJS =  cooling/cooling.o \
 				eos/cosmic_ray_fluid/cosmic_ray_utilities.o \
 				solids/elastic_physics.o \
 				solids/grain_physics.o \
+				solids/ism_dust_chemistry.o \
 				nuclear/nuclear_network_solver.o \
 				nuclear/nuclear_network.o 
 

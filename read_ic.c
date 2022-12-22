@@ -320,33 +320,24 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-       case IO_DZ:
-#ifdef DUST
+       case IO_DUSTCHEMZMET:
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
             for(n = 0; n < pc; n++) {
-                // Get dust fractions
-                for(k = 0; k < NUM_DUST_ELEMENTS; k++) {SphP[offset + n].Dust_Metal[k] = *fp++;}
-                // Then get the sources of dust, convert source dust fraction to source mass fraction
-                for(k = 0; k < NUM_DUST_SOURCES; k++) {SphP[offset + n].Dust_Source[k] = *fp++ * SphP[offset + n].Dust_Metal[0];}
+                for(k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {SphP[offset + n].ISMDustChem_Dust_Metal[k] = *fp++;} // Get dust fractions
+                for(k = 0; k < NUM_ISMDUSTCHEM_SOURCES; k++) {SphP[offset + n].ISMDustChem_Dust_Source[k] = *fp++ * SphP[offset + n].ISMDustChem_Dust_Metal[0];} // Then get the sources of dust, convert source dust fraction to source mass fraction
             }
 #endif
             break;
 
         case IO_SPECIESZ:
-#if defined(DUST) && defined(SPECIES)
-            for(n = 0; n < pc; n++)
-            {
-                for(k = 0; k < NUM_DUST_SPECIES; k++) {SphP[offset + n].Dust_Species[k] = *fp++;}
-            }
+#if (GALSF_ISMDUSTCHEM_MODEL & 2)
+            for(n = 0; n < pc; n++) {for(k = 0; k < NUM_ISMDUSTCHEM_SPECIES; k++) {SphP[offset + n].ISMDustChem_Dust_Species[k] = *fp++;}}
 #endif
             break;
 
-        case IO_DMOL:    /* gas dust species following Species routines */
-#if defined(DUST) && defined(DUST_MOL_OUTPUT)
-            for(n = 0; n < pc; n++)
-            {
-                SphP[offset + n].fDense = *fp++;
-                SphP[offset + n].C_in_CO = *fp++;
-            }
+        case IO_ISMDUSTCHEMMOL:    /* gas dust species following Species routines */
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+            for(n = 0; n < pc; n++) {SphP[offset + n].ISMDustChem_MassFractionInDenseMolecular = *fp++; SphP[offset + n].ISMDustChem_C_in_CO = *fp++;}
 #endif
             break;
 
@@ -370,7 +361,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-        case IO_BHDUSTMASS:
+        case IO_SINKDUSTMASSACC:
 #if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
             for(n = 0; n < pc; n++) {P[offset + n].BH_Dust_Mass = *fp++;}
 #endif

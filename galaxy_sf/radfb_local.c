@@ -458,8 +458,8 @@ int do_the_local_ionization(int target, double dt, int source)
     double Theat_star = 1.38 * 3.2, Z_sol = 1.; // typical IMF-averaged temp of ionizing star=32,000 K, with effective ionization temperature parameter psi=1.38 (temp of ionized e's in units of stellar temp). Then metallicity in solar units.
 #ifdef METALS
     Z_sol = P[target].Metallicity[0]/All.SolarAbundances[0]; // set metallicity
-#if defined(DUST) && defined(INTEGRATE_DUST_IN_FIRE)
-    Z_sol = (P[target].Metallicity[4]-SphP[target].Dust_Metal[4])/All.SolarAbundances[4]; // cooling for HII equilibrium depends predominantly on gas-phase O so need to account for any locked up in dust
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    Z_sol = (P[target].Metallicity[4]-SphP[target].ISMDustChem_Dust_Metal[4])/All.SolarAbundances[4]; // cooling for HII equilibrium depends predominantly on gas-phase O so need to account for any locked up in dust
 #endif
 #endif
     double t4_eqm = DMIN( 1.5*Theat_star , 3.85/DMAX(log(DMAX(390.*Z_sol/Theat_star,1.001)),0.01) ); // equilibrium H2 region temperature in 1e4 K: 1.5*Theat = eqm temp for pure-H region, while second expression assumes eqm cooling with O+C, etc, but breaks down at low-Z when metals don't dominate cooling.

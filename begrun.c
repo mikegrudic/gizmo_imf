@@ -557,8 +557,10 @@ void set_units(void)
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
     All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity / UNIT_DENSITY_IN_NHCGS)));
-#ifdef PROTECT_FROZEN_FIRE
+#if defined(PROTECT_FROZEN_FIRE) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION < 3)
     All.MaxSfrTimescale /= sqrt(meanweight);
+#endif
 #endif
 #endif
     set_units_sfr();
@@ -1092,15 +1094,15 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef DUST
-        strcpy(tag[nt],"InitDustDepl");
-        strcpy(alternate_tag[nt],"Initial_Dust_Depletion");
-        addr[nt] = &All.InitDustDepl;
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+        strcpy(tag[nt],"Initial_ISMDustChem_Depletion");
+        strcpy(alternate_tag[nt],"Initial_ISMDustChem_Dust_Depletion");
+        addr[nt] = &All.Initial_ISMDustChem_Depletion;
         id[nt++] = REAL;
 
-        strcpy(tag[nt],"InitSiltoCarbRatio");
-        strcpy(alternate_tag[nt],"Initial_Silicate_to_Carbon_Dust_Ratio");
-        addr[nt] = &All.SilToCarbRatio;
+        strcpy(tag[nt],"Initial_ISMDustChem_SiltoCarbRatio");
+        strcpy(alternate_tag[nt],"Initial_ISMDustChem_Silicate_to_Carbon_Dust_Ratio");
+        addr[nt] = &All.Initial_ISMDustChem_SiliconToCarbonRatio;
         id[nt++] = REAL;
 #endif
 
@@ -2263,9 +2265,9 @@ void read_parameter_file(char *fname)
                 if(strcmp("InitMetallicity",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (Z=%g) \n",tag[i],alternate_tag[i],All.InitMetallicityinSolar); continue;}
                 if(strcmp("InitStellarAge",tag[i])==0) {*((double *)addr[i])=10.; printf("Tag %s (%s) not set in parameter file: defaulting to very old pre-existing stars [if any exist, otherwise this is irrelevant] (=%g Gyr) \n",tag[i],alternate_tag[i],All.InitStellarAgeinGyr); continue;}
 #endif
-#ifdef DUST
-                if(strcmp("InitDustDepl",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g) \n",tag[i],alternate_tag[i],All.InitDustDepl); continue;}
-                if(strcmp("InitSiltoCarbRatio",tag[i])==0) {*((double *)addr[i])=0.; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g)\n",tag[i],alternate_tag[i],All.SilToCarbRatio); continue;}     
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+                if(strcmp("Initial_ISMDustChem_Depletion",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g) \n",tag[i],alternate_tag[i],All.Initial_ISMDustChem_Depletion); continue;}
+                if(strcmp("Initial_ISMDustChem_SiltoCarbRatio",tag[i])==0) {*((double *)addr[i])=0.; printf("Tag %s (%s) not set in parameter file: defaulting to zero (=%g)\n",tag[i],alternate_tag[i],All.Initial_ISMDustChem_SiliconToCarbonRatio); continue;}
 #endif
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
                 if(strcmp("SNeIIEnergyFrac",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to standard stellar-evolution-defaults (=%g) \n",tag[i],alternate_tag[i],All.SNe_Energy_Renormalization); continue;}

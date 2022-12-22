@@ -237,24 +237,6 @@
 
 
 ############################################################################################################################
-# ----------------- Live Dust Evolution Models and Physics
-# ----------------- Users of any of these modules should cite Choban et al., 2022 for the methods/implementation in GIZMO and FIRE
-############################################################################################################################
-## ---------------------------------------------------------------------------------------------------
-#DUST                           # enable live dust evolution model (must select either ELEMENTAL or SPECIES as well)
-#ELEMENTAL                      # "dust by element" dust evolution model based off Bekki(2013)/McKinnon+(2016). Track generalized silicates and carbonaceous dust.
-#SPECIES                        # "dust by species" dust evolution model based off Zhukovska+(2008/2016/2018). Tracks silicates (set composition), carbonaceous, SiC, and metallic iron dust along with optional IRON_NANOPARTICLES and/or O_RESERVOIR dust species.
-#IRON_NANOPARTICLES             # additional metallic iron dust nano-particles with set fraction assumed to be locked in silicate dust as inclusions based on Zhukovska+(2018)
-#O_RESERVOIR                    # additional oxygen bearing dust species which is a simple match to observations of MW oxygen depletion since they cannot be explained with purely silicate dust
-#INTEGRATE_DUST_IN_FIRE         # integrates dust evolution into core FIRE feedback and physics (heating, cooling, radiative transfer), without this dust evolution is entirely passive and the constant dust-to-metals ratio (or no dust in some cases) used in FIRE is assumed for all feedback processes and physics
-#DUST_MOL_OUTPUT                # output molecular data (molecular fraction, dense MC fraction, C in CO) used by dust routines to track Coloumb Enhancement for gas-dust accretion (only for Species) and C in CO for each gas particle
-#COOL_HIGH_TEMP_DUST            # (requires COOLING) include high temperature dust cooling from collisional electron heating in hot gas/plasma, similar to Vogelsberger+(2019) based on calculations from Dwek&Werner(1981)/Dwek(1987)
-##-----------------------------------------------------------------------------------------------------
-############################################################################################################################
-
-
-
-############################################################################################################################
 ## ----------------------------------------------------------------------------------------------------
 # --------------- Star+Planet+Compact Object Formation (Sink Particle + Explicit/Keplerian N-Body Dynamics)
 # -------------------- (unlike GALSF options, these sinks are individual accretors, not populations). Much in common with Black Hole modules below.
@@ -691,3 +673,14 @@
 #SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #- module for special nuclear zoom-in simulations. currently entirely custom behavior, not designed for wide use.
 #CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
 ####################################################################################################-
+
+############################################################################################################################
+# ----------------- Live Dust Evolution Models and Physics
+# ----------------- Users of any of these modules should cite Choban et al., 2022 for the methods/implementation in GIZMO and FIRE
+############################################################################################################################
+#GALSF_ISMDUSTCHEM_MODEL=(2+4+8) # enable live dust evolution model (must select either elemental or species or other model codes as well)
+                                # model = 1: "dust by element" dust evolution model based off Bekki(2013)/McKinnon+(2016). Track generalized silicates and carbonaceous dust.
+                                # model = 2: "dust by species" dust evolution model based off Zhukovska+(2008/2016/2018). Tracks silicates (set composition), carbonaceous, SiC, and metallic iron dust along with optional iron nanoparticles and/or O reservoir dust species.
+                                # model = 4: additional metallic iron dust nano-particles with set fraction assumed to be locked in silicate dust as inclusions based on Zhukovska+(2018)
+                                # model = 8: additional oxygen bearing dust species which is a simple match to observations of MW oxygen depletion since they cannot be explained with purely silicate dust
+############################################################################################################################

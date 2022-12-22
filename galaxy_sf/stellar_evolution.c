@@ -394,10 +394,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
             if(star_age<=0.1){p=29.4*pow(star_age/0.0035,-3.25)+0.0041987;} else {p=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));}}} // normalized  to give expected return fraction from stellar winds alone (~17%)
 #elif (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
         double t_agb = 0.1;
-#ifdef DUST
-        // dust routines slightly adjust the wind rates so that prompt AGB winds start at the same time SNe II end instead of at 100 Myr.
-        // Overall has neglible effects to energetics but a large amount of dust can be produced by these massive AGBs early on in a stellar population's life
-        t_agb = 0.03753;
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+        t_agb = 0.03753; // dust routines slightly adjust the wind rates so that prompt AGB winds start at the same time SNe II end instead of at 100 Myr. Overall has neglible effects to energetics but a large amount of dust can be produced by these massive AGBs early on in a stellar population's life
 #endif
         if(star_age<=0.001){p=4.76317*ZZ;} else {if(star_age<=0.0035){p=4.76317*ZZ*pow(10.,1.838*(0.79+log10(ZZ))*(log10(star_age)-(-3.00)));} else {
             if(star_age<=t_agb){p=29.4*pow(star_age/0.0035,-3.25)+0.0041987;} else {p=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));}}} // normalized  to give expected return fraction from stellar winds alone (~17%)
@@ -486,20 +484,9 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
 #ifdef METALS
-    double yields[NUM_METAL_SPECIES]={0}; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne); // call subroutine to collect the yields
-#ifdef DUST
-    in->source = 2; if(SNeIaFlag) {in->source = 1;} // 1 = Sne Ia, 2 = SNe II 
-#ifdef ELEMENTAL
-    double dust_yields[NUM_DUST_ELEMENTS]={0}; get_SNe_dust(yields,dust_yields); // call subroutine to collect dust yields by element
-    for(k=0;k<NUM_DUST_ELEMENTS;k++) {in->dust_yields[k]=DMIN(1.,DMAX(0.,dust_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-#elif defined(SPECIES)
-    double dust_yields[NUM_DUST_ELEMENTS]={0}, species_yields[NUM_DUST_SPECIES]={0}; get_SNe_dust(yields,dust_yields,species_yields,t_gyr); // call subroutine to collect dust yields by element
-    for(k=0;k<NUM_DUST_ELEMENTS;k++) {in->dust_yields[k]=DMIN(1.,DMAX(0.,dust_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-    for(k=0;k<NUM_DUST_SPECIES;k++) {in->species_yields[k]=DMIN(1.,DMAX(0.,species_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
+    double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne); // call subroutine to collect the yields
+    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
 #endif
-#endif // DUST
-    for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-#endif // METALS
     in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     if(is_particle_single_star_eligible(i)) {in->Msne = P[i].Mass;} // conserve mass and destroy star completely
@@ -580,81 +567,14 @@ void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *
 #ifdef STARFORGE_FEEDBACK_TRACERS
     for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+k]=0;} yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+2]=1; // this is 'fully' sne material, so mark as such here, so it is noted for all wind routines [whichever form of the wind subroutine we actually use, otherwise it would only appear in the jet version]
 #endif
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    ISMDustChem_get_SNe_dust_yields(yields,i,t_gyr,SNeIaFlag,*Msne); // get dust yields
+#endif
 }
 #endif
 
 
 
-
-#ifdef DUST
-#ifdef ELEMENTAL
-void get_SNe_dust(double *yields, double *dust_yields)
-{
-    int k;
-    double C_condens_eff = 0.5;
-    double other_condens_eff = 0.8;
-    dust_yields[2] = C_condens_eff * yields[2];         // C
-    dust_yields[6] = other_condens_eff * yields[6];     // Mg
-    dust_yields[7] = other_condens_eff * yields[7];     // Si
-    dust_yields[10] = other_condens_eff * yields[10];   // Fe
-    dust_yields[4] = 16 * (dust_yields[6]/All.AtomicMass[6] + dust_yields[7]/All.AtomicMass[7] + dust_yields[10]/All.AtomicMass[10]); // O
-    if (dust_yields[4]>yields[4]) {dust_yields[4]=yields[4];} // Just in case there's not enough O
-    for(k=2;k<NUM_DUST_ELEMENTS;k++)  dust_yields[0] += dust_yields[k]; // Fraction of yields that is dust
-}
-
-#elif defined(SPECIES)
-void get_SNe_dust(double *yields, double *dust_yields, double *species_yields, double t_gyr)
-{
-    int k;
-    double SNeII_sil_cond = 0.00035, SNeII_C_cond = 0.15, SNeII_SiC_cond = 0.0003, SNeII_Fe_cond = 0.001, SNeI_Fe_cond = 0.005;
-    double sil_elem_abund[ELEM_IN_SILICATES];
-    int missing_element = 0, key_elem = 0;
-    double SNeIa_age;
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) 
-    SNeIa_age =  0.044;
-#else
-    SNeIa_age =  0.03753;
-#endif    
-    // For each dust species find the key element and condense a fraction of that element into dust
-    if (t_gyr < SNeIa_age)
-    {
-        /******** SILICATE ********/
-        // first check that there are non-zero amounts of all elements required to make dust species
-        for(k=0;k<ELEM_IN_SILICATES;k++) {if(yields[All.SilElemsIndex[k]] <= 0) {missing_element = 1;}}
-        if(!missing_element)
-        {
-            // Find the key element for silicate dust
-            for (k=0;k<ELEM_IN_SILICATES;k++) {sil_elem_abund[k] = yields[All.SilElemsIndex[k]] / (All.AtomicMass[All.SilElemsIndex[k]] * All.SilNumAtoms[k]);}
-            for (k=1;k<ELEM_IN_SILICATES;k++) {if (sil_elem_abund[key_elem]>sil_elem_abund[k]) key_elem = k;}
-            species_yields[0] = SNeII_sil_cond * yields[All.SilElemsIndex[key_elem]] * All.SilFormulaMass / (All.SilNumAtoms[key_elem] * All.AtomicMass[All.SilElemsIndex[key_elem]]);
-            for (k=0;k<ELEM_IN_SILICATES;k++) {dust_yields[All.SilElemsIndex[k]] += species_yields[0] * All.SilNumAtoms[k] * All.AtomicMass[All.SilElemsIndex[k]] / All.SilFormulaMass;}
-        }
-        /******** CARBONACEOUS ********/
-        species_yields[1] = SNeII_C_cond * yields[2];
-        dust_yields[2] += species_yields[1];
-        /******** SILICONE CARBIDE ********/
-        if (yields[2]>0 && yields[7]>0)
-        {
-            if (yields[7]/All.AtomicMass[7] < yields[2]/All.AtomicMass[2]) key_elem = 7;
-            else key_elem = 2;
-            species_yields[2] = SNeII_SiC_cond * yields[key_elem] * ((All.AtomicMass[2] + All.AtomicMass[7]) / All.AtomicMass[key_elem]);
-            dust_yields[2] += species_yields[2] * All.AtomicMass[2] / (All.AtomicMass[2] + All.AtomicMass[7]);
-            dust_yields[7] += species_yields[2] * All.AtomicMass[7] / (All.AtomicMass[2] + All.AtomicMass[7]);
-        }
-        /******** METALLIC IRON ********/
-        species_yields[3] = SNeII_Fe_cond * yields[10];
-        dust_yields[10] += species_yields[3];
-    }
-    else
-    {
-        // Only a little bit of metallic iron dust from SNIa
-        species_yields[3] = SNeI_Fe_cond * yields[10];
-        dust_yields[10] = species_yields[3]; 
-    }
-    for(k=2;k<NUM_DUST_ELEMENTS;k++)  dust_yields[0] += dust_yields[k]; // Fraction of yields that is dust
-}
-#endif
-#endif // DUST
 
 
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
@@ -663,8 +583,11 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     
     /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-    double star_age = evaluate_stellar_age_Gyr(i), E_wind_tscaling=0.0013;
-    if(star_age <= 0.1) {E_wind_tscaling=0.0013 + 16.0/(1+pow(star_age/0.0025,1.4)+pow(star_age/0.01,5.0));} // stellar population age dependence of specific wind energy, in units of an effective internal energy/temperature
+    double star_age = evaluate_stellar_age_Gyr(i), E_wind_tscaling=0.0013, age_agbthreshold=0.1;
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    age_agbthreshold = 0.03753; // shift the age threshold here to earlier onset for AGB stars because we need to follow their early enrichment. does lower the energetics a bit here, but this is a small effect
+#endif
+    if(star_age <= age_agbthreshold) {E_wind_tscaling=0.0013 + 16.0/(1+pow(star_age/0.0025,1.4)+pow(star_age/0.01,5.0));} // stellar population age dependence of specific wind energy, in units of an effective internal energy/temperature
     in->SNe_v_ejecta = sqrt(2.0 * (All.StellarMassLoss_Energy_Renormalization * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
 #elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     double star_age=evaluate_stellar_age_Gyr(i), Z=Z_for_stellar_evol(i), f0=pow(Z,0.12); /* setup: updated fit here uses the same stellar evolution models/tracks as used to compute mass-loss rates. see those for references here. */
@@ -683,39 +606,10 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 #endif
 
 #ifdef METALS /* assume track initial metallicity; turn on COOL_METAL_LINES_BY_SPECIES for more detailed tracking of light elements */
-    double yields[NUM_METAL_SPECIES]={0}; get_wind_yields(yields, i);
-#ifdef DUST
-    in->source = 3; // 3 = AGB 
-    double transition_age; // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-    transition_age =  0.03753;
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-    transition_age =  0.044;
+    double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_wind_yields(yields, i);
+    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
 #endif
-    // If we are past the transition age for AGB stars calculate AGB dust yields
-    if (star_age > transition_age)
-    {
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-        // Need to make sure the the wind energy is set to AGB values since this O/B-AGB transition has been shifted from default FIRE-2
-        E_wind_tscaling=0.0013;
-        in->SNe_v_ejecta = sqrt(2.0 * (All.StellarMassLoss_Energy_Renormalization * E_wind_tscaling * (3.0e7/((5./3.-1.)*U_TO_TEMP_UNITS)))); // get the actual wind velocity (multiply specific energy by units, user-set normalization, and convert)
-#endif
-        // Deal with unphysical yields before passing on to dust routines
-        for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=DMIN(1.,DMAX(0.,yields[k]));}
-#ifdef ELEMENTAL
-        double dust_yields[NUM_DUST_ELEMENTS]={0}; get_wind_dust(yields,dust_yields,i); // call subroutine to collect dust yields by element
-        for(k=0;k<NUM_DUST_ELEMENTS;k++) {in->dust_yields[k]=DMIN(1.,DMAX(0.,dust_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-#elif defined(SPECIES)
-        double dust_yields[NUM_DUST_ELEMENTS]={0}, species_yields[NUM_DUST_SPECIES]={0}; get_wind_dust(yields,dust_yields,species_yields,i); // call subroutine to collect dust yields by element
-        for(k=0;k<NUM_DUST_ELEMENTS;k++) {in->dust_yields[k]=DMIN(1.,DMAX(0.,dust_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-        for(k=0;k<NUM_DUST_SPECIES;k++) {in->species_yields[k]=DMIN(1.,DMAX(0.,species_yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-#endif
-    }
-#endif // DUST
-    for(k=0;k<NUM_METAL_SPECIES;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
-#endif // METALS
-    in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned    
-
+    in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
 }
 
 
@@ -761,271 +655,13 @@ void get_wind_yields(double *yields, int i)
         yields[0]=0.0; for(k=2;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[0]+=yields[k];}
 #endif
     } else {yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}} /* if <10 species, adopt toy model for simple enrichment [not using extended networks] */
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+    ISMDustChem_get_wind_dust_yields(yields,i); // get dust yields
+#endif
 }
 #endif
 
 
-#ifdef DUST
-#ifdef ELEMENTAL
-void get_wind_dust(double *yields, double *dust_yields, int i)
-{
-    int k;
-    double condens_eff = 0.8;
-    // AGB stars with abundace ratio C/O > 1 only produce carbonacous dust
-    if ((yields[2]/All.AtomicMass[2])/(yields[4]/All.AtomicMass[4]) > 1.0)
-    {
-        dust_yields[2] = yields[2] - 0.75*yields[4]; // C 
-        dust_yields[0] = dust_yields[2]; 
-    }
-    // AGB stars with abundance C/O < 1 produce general silicate dust
-    else
-    {
-        dust_yields[6] = condens_eff * yields[6]; // Mg
-        dust_yields[7] = condens_eff * yields[7]; // Si
-        dust_yields[10] = condens_eff * yields[10]; // Fe
-        dust_yields[4] = 16 * (dust_yields[6]/All.AtomicMass[6] + dust_yields[7]/All.AtomicMass[7] + dust_yields[10]/All.AtomicMass[10]); // O
-        // Check to make sure we dont produce too much O dust given the leftover O dust not in CO
-        if (dust_yields[4] > yields[4]-(4./3.*yields[2])) {dust_yields[4] = yields[4]-(4./3.*yields[2]);}
-        for(k=2;k<NUM_DUST_ELEMENTS;k++) {dust_yields[0]+=dust_yields[k];}
-    }
-}
-
-#elif defined(SPECIES)
-void get_wind_dust(double *yields, double *dust_yields, double *species_yields, int i)
-{
-    int k;
-    double star_age,dt,Z,elem_yield,wind_rate;
-    star_age = evaluate_stellar_age_Gyr(P[i].StellarAge);
-    dt=GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*UNIT_TIME_IN_GYR;
-    Z = Z_for_stellar_evol(i);
-
-    // Take difference in cumulative dust production between start and end time to get estimate of instantaneous dust injection rate (M_solar/Gyr)
-    for (k=0;k<NUM_DUST_SPECIES;k++) {
-        species_yields[k] = (cumulative_AGB_dust_returns(k,(star_age+dt)*1E3,Z)-cumulative_AGB_dust_returns(k,star_age*1E3,Z))/dt;
-        species_yields[k] = DMAX(0.,species_yields[k]); // Deal with unphysical values which can result near boundaries in fit
-    }
-    // All done if no dust is produced
-    if (species_yields[0]+species_yields[1]+species_yields[2]+species_yields[3]>0.)
-    {
-        // Now convert from instantaneous dust injection rates to dust yields using instantaneous wind rate
-#if (GALSF_FB_FIRE_STELLAREVOLUTION == 2)
-        wind_rate=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));
-#elif (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-        double f_agb=0.1, t_agb=0.8, x_agb=t_agb/DMAX(star_age,1.e-4); x_agb*=x_agb; wind_rate = f_agb * pow(x_agb,0.8) * (exp(-DMIN(50.,x_agb*x_agb*x_agb)) + 1./(100. + x_agb)); /* only need AGB component for FIRE-3 */
-#endif
-        if(star_age < 0.033) {wind_rate *= 0.01 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);} // late-time independent of massive stars
-        wind_rate *= All.StellarMassLoss_Rate_Renormalization;
-
-        for (k=0;k<NUM_DUST_SPECIES;k++) {
-            species_yields[k] = species_yields[k]/wind_rate;
-            species_yields[k] = DMAX(0.,species_yields[k]);
-        }
-
-        // Now check to make sure there are enough metals in the wind to produce the dust since the metal and dust yields are calculated separately
-        // If not renorm dust species which are made up of the element in question
-        // Check C
-        elem_yield = species_yields[1] + species_yields[2] * All.AtomicMass[2] / (All.AtomicMass[2] + All.AtomicMass[7]);
-        if (elem_yield > yields[2])
-        {
-            species_yields[1] *= yields[2]/elem_yield;
-            species_yields[2] *= yields[2]/elem_yield;
-        }
-        // Check O
-        elem_yield = species_yields[0] * All.AtomicMass[4] * All.SilNumAtoms[0] / All.SilFormulaMass;
-        if (elem_yield > yields[4])
-        {
-            species_yields[0] *= yields[4]/elem_yield;
-        }            
-        // Check Mg
-        elem_yield = species_yields[0] * All.AtomicMass[6] * All.SilNumAtoms[1] / All.SilFormulaMass;
-        if (elem_yield > yields[6])
-        {
-            species_yields[0] *= yields[6]/elem_yield;
-        }     
-        // Check Si
-        elem_yield = species_yields[0] * All.AtomicMass[7] * All.SilNumAtoms[2] / All.SilFormulaMass + species_yields[2] * All.AtomicMass[7] / (All.AtomicMass[2] + All.AtomicMass[7]);
-        if (elem_yield > yields[7])
-        {
-            species_yields[0] *= yields[7]/elem_yield;
-            species_yields[2] *= yields[7]/elem_yield;
-        }       
-        // Check Fe
-#ifdef IRON_NANOPARTICLES
-        // Fe is only in free-flying iron, assume no iron inclusions in stellar dust
-        if (species_yields[3] > yields[10]) {species_yields[3] = yields[10];}
-#else
-        // Fe is in free-flying iron and silicates
-        elem_yield = species_yields[0] * All.AtomicMass[10] * All.SilNumAtoms[3] / All.SilFormulaMass + species_yields[3];
-        if (elem_yield > yields[10])
-        {
-            species_yields[0] *= yields[10]/elem_yield;
-            species_yields[3] *= yields[10]/elem_yield;
-        }
-#endif
-        // Now convert from dust species to dust elemental mass
-        // silicates
-        for (k=0;k<ELEM_IN_SILICATES;k++) 
-        {
-            dust_yields[All.SilElemsIndex[k]] += species_yields[0] * All.SilNumAtoms[k] * All.AtomicMass[All.SilElemsIndex[k]] / All.SilFormulaMass;
-        }
-        // carbonaceous
-        dust_yields[2] += species_yields[1];
-        // SiC
-        dust_yields[2] += species_yields[2] * All.AtomicMass[2] / (All.AtomicMass[2] + All.AtomicMass[7]);
-        dust_yields[7] += species_yields[2] * All.AtomicMass[7] / (All.AtomicMass[2] + All.AtomicMass[7]);
-        // iron
-        dust_yields[10] += species_yields[3];
-
-        for (k=2;k<NUM_DUST_ELEMENTS;k++) {dust_yields[0] += dust_yields[k];}
-    }
-}
-
-
-
-/* Simple fit to cumulative AGB dust production for a Kroupa IMF stellar population only with specific metallicities and stellar ages (assuming stars become AGBs at the ends of the main sequence lifetime) derived from AGB data table in Zhukovska+(08) */
-double specific_Z_AGB_dust(int dust_type, double star_age, int z_bound)
-{
-    /* dust_type: 0 = silicate, 1 = carbon, 2 = silicon carbide, 3 = metallic iron */
-    /* z_bound: 0 = 2*Z_solar, 1 = Z_solar, 2 = 0.4*Z_solar, 3 = 0.2*Z_solar, 4 = 0.05*Z_solar*/
-    double cum_return;
-    double logt = log10(star_age);
-    switch(dust_type) {
-        case 0:
-            if (z_bound == 0) {
-                if (star_age < 284) {cum_return = 1.77E-4*logt - 2.87E-4;}
-                else if (star_age < 1244) {cum_return = 3.03E-5*(logt - 2.45) + 1.47E-4;}
-                else {cum_return = 5.93E-4*(logt - 3.09) + 1.67E-4;}
-            }
-            else if (z_bound == 1) {
-                if (star_age < 295) {cum_return = 4.18E-5*logt - 6.78E-5;}
-                else if (star_age < 1808) {cum_return = 1.72E-6*(logt - 2.47) + 3.55E-5;}
-                else {cum_return = 1.05E-4*(logt - 3.26) + 3.68E-5;}
-            }
-            else if (z_bound == 2) {
-                if (star_age < 286) {cum_return = 5.00E-6*logt - 8.01E-6;}
-                else if (star_age < 3948) {cum_return = 1.85E-9*(logt - 2.46) + 4.25E-6;}
-                else {cum_return = 3.35E-7*(logt - 3.60) + 4.26E-6;}
-            }
-            else if (z_bound == 3) {
-                if (star_age < 269) {cum_return = 1.04E-8*logt - 1.64E-08;}
-                else if (star_age < 1560) {cum_return = 2.69E-10*(logt - 2.43) + 8.82E-9;}
-                else {cum_return = 3.05E-19*(logt - 3.19) + 9.03E-9;}
-            }
-            else if (z_bound == 4) {
-                if (star_age < 147) {cum_return = 5.80E-11*logt - 9.10E-11;}
-                else if (star_age < 252) {cum_return = 4.10E-11*(logt - 2.17) + 3.47E-11;}
-                else {cum_return = 6.05E-14*(logt - 2.40) + 4.43E-11;}
-            }
-            break;
-
-        case 1:
-            if (z_bound == 0) {
-                if (star_age < 262) {cum_return = 8.10E-7*logt - 1.54E-6;}
-                else if (star_age < 840) {cum_return = 4.00E-4*(logt - 2.42) + 4.23E-7;}
-                else {cum_return = 7.37E-6*(logt - 2.92) + 2.02E-4;}
-            }
-            else if (z_bound == 1) {
-                if (star_age < 305) {cum_return = 3.66E-6*logt - 6.75E-6;}
-                else if (star_age < 1250) {cum_return = 3.71E-4*(logt - 2.48) +  2.34E-6;}
-                else {cum_return = 8.67E-6*(logt - 3.10) + 2.29E-4;}
-            }
-            else if (z_bound == 2) {
-                if (star_age < 367) {cum_return = 1.27E-5*logt - 2.34E-5;}
-                else if (star_age < 2329) {cum_return = 4.24E-4*(logt - 2.56) + 9.27E-6;}
-                else {cum_return = 7.55E-5*(logt - 3.37) + 3.49E-4;}
-            }
-            else if (z_bound == 3) {
-                if (star_age < 344) {cum_return = 1.40E-5*logt - 2.53E-5;}
-                else if (star_age < 3105) {cum_return = 4.44E-4*(logt - 2.54) + 1.03e-5;}
-                else {cum_return = 9.59e-5*(logt - 3.49) + 4.35E-4;}
-            }
-            else if (z_bound == 4) {
-                if (star_age < 280) {cum_return = 8.48E-6*logt - 1.43E-5;}
-                else if (star_age < 4504) {cum_return = 3.10E-4*(logt - 2.45) + 6.47E-6;}
-                else {cum_return = 5.73E-5*(logt - 3.65) + 3.80E-4;}
-            }
-            break;
-
-        case 2:
-            if (z_bound == 0) {
-                if (star_age < 272) {cum_return = 3.55E-7*logt - 6.64E-7;}
-                else if (star_age < 890) {cum_return = 1.03E-4*(logt - 2.44) + 2.00E-7;}
-                else {cum_return = 8.64E-7*(logt - 2.95) + 5.31E-5;}
-            }
-            else if (z_bound == 1) {
-                if (star_age < 272) {cum_return = 3.73E-7*logt - 6.33E-7;}
-                else if (star_age < 1544) {cum_return = 2.93E-5*(logt - 2.43) +  2.75E-7;}
-                else {cum_return = 5.82E-7*(logt - 3.19) + 2.24E-5;}
-            }
-            else if (z_bound == 2) {
-                if (star_age < 235) {cum_return = 1.06E-7*logt - 1.74E-7;}
-                else if (star_age < 4812) {cum_return = 1.04E-6*(logt - 2.37) + 7.84E-8;}
-                else {cum_return = 2.47E-7*(logt - 3.68) + 1.44E-6;}
-            }
-            else if (z_bound == 3) {
-                if (star_age < 202) {cum_return = 6.38E-9*logt - 1.02E-8;}
-                else if (star_age < 3394) {cum_return = 2.48E-8*(logt - 2.31) + 4.52E-9;}
-                else {cum_return = 9.51E-9*(logt - 3.53) + 3.48E-8;}
-            }
-            else if (z_bound == 4) {
-                if (star_age < 245) {cum_return = 2.97E-11*logt - 4.81E-11;}
-                else if (star_age < 2392) {cum_return = 1.11E-10*(logt - 2.39) + 2.28E-11;}
-                else {cum_return = 3.73E-13*(logt - 3.38) + 1.33E-10;}
-            }
-            break;
-
-        case 3:
-            if (z_bound == 0) {
-                if (star_age < 525) {cum_return = 5.98E-6*logt - 9.97E-6;}
-                else if (star_age < 1108) {cum_return = 1.02E-4*(logt - 2.72) + 6.30E-6;}
-                else {cum_return = 5.98E-5*(logt - 3.04) + 3.94E-5;}
-            }
-            else if (z_bound == 1) {
-                if (star_age < 339) {cum_return = 2.16E-6*logt - 3.60E-6;}
-                else if (star_age < 1074) {cum_return = 4.09E-7*(logt - 2.53) + 1.87E-6;}
-                else {cum_return = 1.50E-5*(logt - 3.03) + 2.08E-6;}
-            }
-            else if (z_bound == 2) {
-                if (star_age < 307) {cum_return = 9.86E-7*logt - 1.62E-6;}
-                else if (star_age < 4120) {cum_return = 1.13e-9*(logt - 2.49) + 8.34E-7;}
-                else {cum_return = 2.23E-7*(logt - 3.61) + 8.36E-07;}
-            }
-            else if (z_bound == 3) {
-                if (star_age < 253) {cum_return = 5.53E-9*logt - 8.71E-9;}
-                else if (star_age < 297) {cum_return = 2.50E-9*(logt - 2.40) +  4.57E-9;}
-                else {cum_return = 9.50E-12 *(logt - 2.47) + 4.75E-9;}
-            }
-            else if (z_bound == 4) {
-                if (star_age < 128) {cum_return = 3.18E-11*logt - 5.00E-11;}
-                else if (star_age < 269) {cum_return = 2.69E-11*(logt - 2.11) + 1.70E-11;}
-                else {cum_return = 2.14E-14*(logt - 2.43) + 2.57E-11;}
-            }
-            break;
-
-        default:
-            cum_return = 0.;
-            break;
-    }
-    if (cum_return < 0.) {cum_return = 0.;} // catch case were some fits are negative near the beginning of the AGB start time
-    return cum_return;
-}
-
-
-/* Simple fit to cumulative AGB dust mass returns for a stellar population*/
-double cumulative_AGB_dust_returns(int dust_type, double star_age, double z)
-{
-    /* dust_type: 0 = silicate, 1 = carbon, 2 = silicon carbide, 3 = metallic iron */
-    double cumulative_mass;
-    if (z <= 0.05)     {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,4);}
-    else if (z <= 0.2) {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,4) + (z-0.05)/(0.2-0.05)*(specific_Z_AGB_dust(dust_type,star_age,3) - specific_Z_AGB_dust(dust_type,star_age,4));}
-    else if (z <= 0.4) {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,3) + (z-0.2)/(0.4-0.2)*(specific_Z_AGB_dust(dust_type,star_age,2) - specific_Z_AGB_dust(dust_type,star_age,3));}
-    else if (z <= 1.)  {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,2) + (z-0.4)/(1.-0.4)*(specific_Z_AGB_dust(dust_type,star_age,1) - specific_Z_AGB_dust(dust_type,star_age,2));}
-    else if (z <= 2.)  {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,1) + (z-1.)/(2.-1.)*(specific_Z_AGB_dust(dust_type,star_age,0) - specific_Z_AGB_dust(dust_type,star_age,1));}
-    else               {cumulative_mass = specific_Z_AGB_dust(dust_type,star_age,0);}
-    return cumulative_mass;
-}
-#endif // SPECIES
-#endif // DUST
 #endif // GALSF_FB_MECHANICAL+GALSF_FB_FIRE_STELLAREVOLUTION
 
 
