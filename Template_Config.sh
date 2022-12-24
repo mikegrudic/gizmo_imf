@@ -673,3 +673,14 @@
 #SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #- module for special nuclear zoom-in simulations. currently entirely custom behavior, not designed for wide use.
 #CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
 ####################################################################################################-
+
+############################################################################################################################-
+#------------------ ISM Dust Chemical Evolution Models (follow growth and destruction of different grain types)
+#----------------- Users of any of these modules should cite Choban et al., 2022 for the methods/implementation in GIZMO and FIRE
+############################################################################################################################-
+#GALSF_ISMDUSTCHEM_MODEL=(2+4+8) #- enable live dust evolution model (must select either elemental or species or other model codes as well)
+                                 #- model = 1: "dust by element" dust evolution model based off Bekki(2013)/McKinnon+(2016). Track generalized silicates and carbonaceous dust.
+                                 #- model = 2: "dust by species" dust evolution model based off Zhukovska+(2008/2016/2018). Tracks silicates (set composition), carbonaceous, SiC, and metallic iron dust along with optional iron nanoparticles and/or O reservoir dust species.
+                                 #- model = 4: additional metallic iron dust nano-particles with set fraction assumed to be locked in silicate dust as inclusions based on Zhukovska+(2018)
+                                 #- model = 8: additional oxygen bearing dust species which is a simple match to observations of MW oxygen depletion since they cannot be explained with purely silicate dust
+############################################################################################################################-

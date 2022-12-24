@@ -606,6 +606,21 @@ double get_age_tracer_bin_start_time(int k);
 #endif
 
 
+#if defined(GALSF_ISMDUSTCHEM_MODEL)
+void update_dust_acc_and_sput(int i, double dtime_gyr);
+void get_SNe_dust(double *yields, double *dust_yields, double *species_yields, double t_gyr);
+void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne);
+void ISMDustChem_get_wind_dust_yields(double *yields, int i);
+double specific_Z_AGB_dust(int dust_type, double star_age, int z_bound);
+double cumulative_AGB_dust_returns(int dust_type, double star_age, double z);
+double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T, double n_elec);
+void Initialize_ISMDustChem_Variables(int i);
+double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, int k);
+double ISMDustChem_Return_Mass_Fraction_Where_Dust_Destroyed(double rho_cell_in_code_units, double Esne51_into_cell, double mass_preshock_in_code_units);
+void update_ISMDustChem_after_mechanical_injection(int j, double massfrac_destroyed, double m0, double mf, double *Z_injected);
+#endif
+
+
 #if defined(GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF)
 void update_stellarnumber_and_timedistribofstarformation(void);
 #endif
