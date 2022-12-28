@@ -1515,7 +1515,13 @@ typedef unsigned long long peano1D;
 #define NUM_ISMDUSTCHEM_SOURCES (4) // Sources of dust creation/growth 0=gas-dust accretion, 1=SNe Ia, 2=SNe II, 3=AGB outflows
 #define GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC 0.7 /* assumed fraction of iron dust mass locked as inclusions in silicates, this scales with the total fraction of silicate formed vs maximum amount of possible silicate dust */
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
+#if (GALSF_ISMDUSTCHEM_MODEL & 4) && (GALSF_ISMDUSTCHEM_MODEL & 8)
 #define NUM_ISMDUSTCHEM_SPECIES 6 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron, 4=O reservoir, 5=iron inclusions in silicates */
+#elif (GALSF_ISMDUSTCHEM_MODEL & 4) || (GALSF_ISMDUSTCHEM_MODEL & 8)
+#define NUM_ISMDUSTCHEM_SPECIES 5 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron, 4=O reservoir or iron inclusions in silicates */
+#else
+#define NUM_ISMDUSTCHEM_SPECIES 4 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron */
+#endif
 #else
 #define NUM_ISMDUSTCHEM_SPECIES 0 /* no explicit dust species evolved */
 #endif
@@ -3776,6 +3782,7 @@ extern struct io_header
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
   int flag_metals;		    /*!< flags whether the file contains metallicity values for gas and star particles */
+  int flag_dust_species;    /*!< flags whether the file contains dust metallicty and species values for gas particles */
 
   unsigned int npartTotalHighWord[6];   /*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_entropy_instead_u; /*!< flag here strictly for historical compatibility with unformatted binary files from GADGET-3 era formats, which expect this flag to exist. this does nothing in gizmo */
@@ -3794,7 +3801,7 @@ extern struct io_header
                                  */
   float lpt_scalingfactor;      /*!< scaling factor for 2lpt initial conditions */
 
-  char fill[18];		        /*!< fills to 256 Bytes */
+  char fill[16];		        /*!< fills to 256 Bytes */
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */

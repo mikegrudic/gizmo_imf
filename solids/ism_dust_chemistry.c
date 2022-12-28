@@ -355,7 +355,7 @@ void Initialize_ISMDustChem_Variables(int i)
     All.ISMDustChem_AtomicMassTable[8] = 32.065;  // S
     All.ISMDustChem_AtomicMassTable[9] = 40.078;  // Ca
     All.ISMDustChem_AtomicMassTable[10] = 55.845; // Fe
-    All.ISMDustChem_SNeSputteringShutOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe
+    All.ISMDustChem_SNeSputteringShutOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe (from idealized SNe in Hu+2019)
     // Fiducial olivine-pyroxene silicate dust composition with olivine fraction = 0.63 and Mg frac = 0.65. If using iron nanoparticles assume iron is always present for silicate structure in the form of iron inclusions. index in metallicity field for elements which make up silicate dust (O,Mg,Si)
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[0] = 4;
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[1] = 6;

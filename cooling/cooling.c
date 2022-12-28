@@ -902,7 +902,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
     if(target>=0)
     {
         Z = P[target].Metallicity;
-#if defined(GALSF_ISMDUSTCHEM_MODEL)
+#if defined(GALSF_ISMDUSTCHEM_MODEL) && !defined(GALSF_ISMDUSTCHEM_PASSIVE)
         int k; for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {Z[k] = DMAX(0.,P[target].Metallicity[k]-SphP[target].ISMDustChem_Dust_Metal[k]);}
 #endif
     } else { /* initialize dummy values here so the function doesn't crash, if called when there isn't a target particle */
@@ -981,7 +981,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
             double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar and 1/2 factor for original assumed 0.5 depletion), critical density and column
-#if defined(GALSF_ISMDUSTCHEM_MODEL)
+#if defined(GALSF_ISMDUSTCHEM_MODEL) && !defined(GALSF_ISMDUSTCHEM_PASSIVE)
             Z_C = DMAX(1.e-6, Z[2]/(0.5*All.SolarAbundances[2])); // gas-phase carbon abundance (relative to solar/2, usual assumption implicitly)
 #endif
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3), photoelec=0; // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines
@@ -1033,7 +1033,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
-#if !defined(GALSF_ISMDUSTCHEM_MODEL)
+#if !defined(GALSF_ISMDUSTCHEM_MODEL) || defined(GALSF_ISMDUSTCHEM_PASSIVE)
             if(T>3.e5) {double dx=(T-3.e5)/2.e5; LambdaDust *= exp(-DMIN(dx*dx,40.));} /* needs to truncate at high temperatures b/c of dust destruction (in some modules we solve for this explicitly - in that case can protect this more explicitly, but here, we will make a simple approximation, otherwise we run into problems. note this is not sublimation generally, but sputtering, that causes the destruction */
 #endif
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
