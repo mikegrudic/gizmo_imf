@@ -1513,7 +1513,6 @@ typedef unsigned long long peano1D;
 #endif
 #define NUM_ISMDUSTCHEM_ELEMENTS (1+NUM_LIVE_SPECIES_FOR_COOLTABLES) // number of metal species evolved for dust
 #define NUM_ISMDUSTCHEM_SOURCES (4) // Sources of dust creation/growth 0=gas-dust accretion, 1=SNe Ia, 2=SNe II, 3=AGB outflows
-#define GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC 0.7 /* assumed fraction of iron dust mass locked as inclusions in silicates, this scales with the total fraction of silicate formed vs maximum amount of possible silicate dust */
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
 #define NUM_ISMDUSTCHEM_SPECIES 6 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron, 4=O reservoir, 5=iron inclusions in silicates */
 #else
