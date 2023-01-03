@@ -136,7 +136,7 @@ void do_the_cooling_for_particle(int i)
 #endif
         /* limit the magnitude of the hydro dtinternalenergy */
         if(DtInternalEnergyEffCGS < 0) {
-            double qfac = DMIN(0,DMAX(DMAX(-0.9, exp(-DtInternalEnergyEffCGS*dtime/SphP[i].InternalEnergy)-1.), All.MinEgySpec/SphP[i].InternalEnergy-1.)); // equivalent to saying this wouldn't lower internal energy to below 10% in one timestep
+            double qfac = DMIN(0,DMAX(DMAX(-0.9, exp(DtInternalEnergyEffCGS*dtime/SphP[i].InternalEnergy)-1.), All.MinEgySpec/SphP[i].InternalEnergy-1.)); // equivalent to saying this wouldn't lower internal energy to below 10% in one timestep
             DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , qfac*SphP[i].InternalEnergy/dtime );
         }
         DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
