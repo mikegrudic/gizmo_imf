@@ -377,10 +377,18 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
         t_acc_disk = sqrt(reff*reff*reff * Gm_i); // dynamical time at radius "reff", essentially fastest-possible accretion time
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM) && defined(BH_MDOT_FROM_ALPHAMODEL)
+        reff = SinkParticle_GravityKernelRadius; Gm_i = 1./(All.G*P[n].Mass); // these need to be reset in case they are re-defined above
         double j=0; for(k=0;k<3;k++) {j+=P[n].BH_Specific_AngMom[k]*P[n].BH_Specific_AngMom[k];}  // calculate magnitude of specific ang mom
         j = sqrt(j) * (1. + 1./BH_ALPHADISK_ACCRETION); // correction assuming a ratio of accretion disk to sink mass ~BH_ALPHADISK_ACCRETION [max allowed], with the material in the sink having given its angular momentum to the sink [which is what should happen]
         t_acc_disk = 2.*M_PI*j*j*j*Gm_i*Gm_i / fabs(BH_MDOT_FROM_ALPHAMODEL); // orbital time at circularization radius of the alpha-disk: BH_MDOT_FROM_ALPHAMODEL is approximately equivalent to the 'alpha' parameter, setting how rapidly accretion occurs (=0.01 -> 100 orbits)
         if(BH_MDOT_FROM_ALPHAMODEL>0) {t_acc_disk = 100. * t_acc_disk * (1 / (Gm_i * DMIN(reff, j*j*Gm_i))) / soundspeed2;} // Shakura-Sunyaev prescription with alpha=0.01, using minimum of sink and circularization radius
+#endif
+#if defined(TIDAL_TIMESTEP_CRITERION) /* limit the accretion timescale to not be more than some multiple of the maximum disk dynamical time allowed by tidal truncation */
+        double tidal_tensor_mag2 = 0.; {int k,j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {tidal_tensor_mag2 += P[n].tidal_tensorps[k][j]*P[n].tidal_tensorps[k][j];}}} /* get the frobenius norm */
+        if(tidal_tensor_mag2 > 0) {
+            double t_dyn_extgrav = sqrt(1. / (All.cf_a3inv * sqrt(tidal_tensor_mag2 / 6.))); /* recovers tdyn=1/Omega=sqrt[r^3/GM] for a Keplerian potential */
+            t_acc_disk = DMIN(t_acc_disk, 100. * t_dyn_extgrav); /* coefficient here is the arbitrary number of dynamical times to limit accretion timescale to */
+        }
 #endif
 #endif
 

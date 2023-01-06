@@ -1093,16 +1093,23 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 double target_mass_for_wind_spawning(int i)
 {
 #ifdef BH_WIND_SPAWN
+    
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS) // we specify the value relative to Sink_Formation_Mass
     if((All.Cell_Spawn_Mass_ratio_MS>0.0)&&(P[i].ProtoStellarStage == 5)&&(P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS * P[i].Sink_Formation_Mass;} //use different (probably lower) mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
-    return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
+     else {return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;}
 #else // we specify the absolute value
-    if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)){return All.Cell_Spawn_Mass_ratio_MS;} // specified absolute mass resolution for stellar winds
+    if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS;} // specified absolute mass resolution for stellar winds
     else if(P[i].ProtoStellarStage == 6) {return P[i].Sink_Formation_Mass;} // If supernova, use the nominal "average" mass resolution
 #endif
+
+#if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
+    return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
+#else
     return All.BAL_wind_particle_mass;
 #endif
+
+#endif // BH_WIND_SPAWN clause
     return 0; // no well-defined answer, this shouldn't be called in this instance
 #endif
 }
