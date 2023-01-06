@@ -86,7 +86,11 @@ double bh_vesc(int j, double mass, double r_code, double bh_softening)
 #endif
     double m_eff = mass + P[j].Mass; // acount for 2-body mass
 #if defined(BH_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
-    if(P[j].Type==0) {m_eff += 4.*M_PI * r_code*r_code*r_code * SphP[j].Density;} // assume an isothermal sphere interior, for Shu-type solution
+    double gas_density = -1; if(P[j].Type == 0) {gas_density = SphP[j].Density;}
+#ifdef GRAIN_FLUID
+    if((1<<P[j].Type) & GRAIN_PTYPES) {gas_density = P[j].Gas_Density;}
+#endif
+    if(gas_density > 0) {m_eff += 4.*M_PI * r_code*r_code*r_code * gas_density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
     double hinv = 1./bh_softening, fac=2.*All.G*m_eff/All.cf_atime;
 #if defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_EXCISION_NONGAS)
@@ -110,12 +114,16 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
     } // use the fast MHD wavespeed to account for magnetic+thermal energy (but not e.g. cosmic ray), in allowing accretion //
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    if(P[j].Type == 0)
+    double gas_density = -1; if(P[j].Type == 0) {gas_density = SphP[j].Density;}
+#ifdef GRAIN_FLUID
+    if((1<<P[j].Type) & GRAIN_PTYPES) {gas_density = P[j].Gas_Density;}
+#endif
+    if(gas_density > 0)
     {
         if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
 #if defined(COOLING)  // check if we're probably sitting at the bottom of a quasi-hydrostatic Larson core
-        double nHcgs = HYDROGEN_MASSFRAC * (SphP[j].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
-        if(nHcgs > 1e13 && cs > 0.1 * vrel) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * SphP[j].Density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+        double nHcgs = HYDROGEN_MASSFRAC * (gas_density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
+        if(nHcgs > 1e13 && cs > 0.1 * vrel) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * gas_density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
 #endif
     }
 #endif
