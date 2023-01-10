@@ -120,10 +120,10 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
 #endif
     if(gas_density > 0)
     {
-        if(Get_Particle_Size(j) > sink_radius*1.396263) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
+        if((Get_Particle_Size(j) > sink_radius*1.396263) && (P[j].Type == 0)) {return 0;} // particle volume should be less than sink volume, enforcing a minimum spatial resolution around the sink
 #if defined(COOLING)  // check if we're probably sitting at the bottom of a quasi-hydrostatic Larson core
         double nHcgs = HYDROGEN_MASSFRAC * (gas_density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS);
-        if(nHcgs > 1e13 && cs > 0.1 * vrel) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * gas_density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
+        if(nHcgs > 1e13 && (cs > 0.1 * vrel || P[j].Type != 0)) {double m_eff = 4. * M_PI * dr_code * dr_code * dr_code * gas_density; vesc = DMAX(sqrt(2*All.G * m_eff / dr_code), vesc);} // assume an isothermal sphere interior, for Shu-type solution, and re-estimate vesc using self-gravity of the gas
 #endif
     }
 #endif
