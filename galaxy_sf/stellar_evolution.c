@@ -793,7 +793,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     double lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
     double lum_I = ps_lum_I(mdot); // luminosity needed to ionize the accreted material
     double t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
-    double t_acc = mass/mdot;
+    double t_acc = mass/(mdot + MIN_REAL_NUMBER);
     double n_ad, ag, rhoc, Pc, Tc, beta, dlogbeta_dlogm, lum_D, dm_D, rel_dr;
     int loop_subcycle=0;
     int n_subcycle=(int) (dt/(0.1*DMIN(All.G * mass * mass / r / (lum_int+lum_acc+lum_I), t_acc)) + 1); // subcycle timestep criterion taking the shorter of the kelvin-helmholtz or accretion timescales
@@ -812,7 +812,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 		lum_int = DMAX(lum_Hayashi, lum_MS); // luminosity from the stellar interior
 		lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
 		t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
-		t_acc = mass/mdot;
+		t_acc = mass/(mdot + MIN_REAL_NUMBER);
                 n_ad = ps_polytropic_index(stage, mdot, mass); // get polytropic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
                 ag = 3.0/(5.0-n_ad); //shorthand
                 rhoc = ps_rhoc(mass, n_ad, r); // central density
@@ -835,8 +835,9 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 			mass_D = 0; // no D left in protostar
                 }
                 // Let's evolve the stellar radius
-		double dlogr_dlogm = 2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm - 2*r/(ag*beta*All.G*mass*mdot) * (lum_int+lum_acc+lum_I-lum_D); // Nakano 2000 Eq (8); this gives the slope of the M vs. R diagram 
-		rel_dr = dlogr_dlogm * dm_rel; // multiply by dlogm = dm/m to get dlogr
+//		double dlogr_dlogm = 2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm - 2*r/(ag*beta*All.G*mass*mdot) * (lum_int+lum_acc+lum_I-lum_D); // Nakano 2000 Eq (8); this gives the slope of the M vs. R diagram 
+//		rel_dr = dlogr_dlogm * dm_rel; // multiply by dlogm = dm/m to get dlogr
+		double rel_dr = (2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm) * dm_rel - 2*r*dt_curr/(ag*beta*All.G*mass*mass) * (lum_int+lum_acc+lum_I-lum_D);
 		r *= exp(rel_dr); // interpolates properly to large timestep, but subcycling should limit it
 		mass_D += dm_D;
             }
