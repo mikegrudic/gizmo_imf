@@ -574,10 +574,10 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
-#define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
-#define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #endif
+#define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
+#define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
 #if ( defined(STARFORGE_GMC_TURBINIT) || defined(STARFORGE_FILAMENT_TURBINIT) ) // these flags should be given numerical values equal to the desired virial parameter
 #define TURB_DRIVING
 #define GRAVITY_ANALYTIC
