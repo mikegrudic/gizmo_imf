@@ -611,7 +611,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SOURCES 32
 #endif
 #ifndef RT_SPEEDOFLIGHT_REDUCTION
-#define RT_SPEEDOFLIGHT_REDUCTION (1.0e-4)
+#define RT_SPEEDOFLIGHT_REDUCTION (3.0e-4)
 #endif
 #define RT_REPROCESS_INJECTED_PHOTONS
 #define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
