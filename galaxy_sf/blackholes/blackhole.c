@@ -876,12 +876,12 @@ void blackhole_final_operations(void)
 
 #if defined(BH_OUTPUT_MOREINFO)
 #ifdef SINGLE_STAR_STARFORGE_DEFAULTS
-        fprintf(FdBlackHolesDetails, "%2.12f %llu  %g %g %g %g %g  %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
+        fprintf(FdBlackHolesDetails, "%.16g %llu  %g %g %g %g %g  %g %g %g %g %g %g  %2.16g %2.16g %2.16g  %2.16g %2.16g %2.16g  %g %g %g  %g %g %g\n",
                 All.Time, (unsigned long long)P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt, BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
                 BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BPP(n).BH_Specific_AngMom[0]*P[n].Mass, BPP(n).BH_Specific_AngMom[1]*P[n].Mass, BPP(n).BH_Specific_AngMom[2]*P[n].Mass ); fflush(FdBlackHolesDetails);
 #else
-        fprintf(FdBlackHolesDetails, "%2.12f %llu  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.10f %2.10f %2.10f  %2.7f %2.7f %2.7f  %g %g %g  %g %g %g\n",
+        fprintf(FdBlackHolesDetails, "%.16g %llu  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.16g %2.16g %2.16g  %2.16g %2.16g %2.16g  %g %g %g  %g %g %g\n",
                 All.Time, (unsigned long long)P[n].ID,  P[n].Mass, BPP(n).BH_Mass, mass_disk, BPP(n).BH_Mdot, mdot_disk, dt, BPP(n).DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, BlackholeTempInfo[i].Sfr_in_Kernel,
                 BlackholeTempInfo[i].Mgas_in_Kernel, BlackholeTempInfo[i].Mstar_in_Kernel, MgasBulge, MstarBulge, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
                 BlackholeTempInfo[i].Jgas_in_Kernel[0], BlackholeTempInfo[i].Jgas_in_Kernel[1], BlackholeTempInfo[i].Jgas_in_Kernel[2], BlackholeTempInfo[i].Jstar_in_Kernel[0], BlackholeTempInfo[i].Jstar_in_Kernel[1], BlackholeTempInfo[i].Jstar_in_Kernel[2] ); fflush(FdBlackHolesDetails);
@@ -889,7 +889,7 @@ void blackhole_final_operations(void)
 #else
 
 #ifndef IO_REDUCED_MODE
-        fprintf(FdBlackHolesDetails, "BH=%llu %g %g %g %g %g %g %g %g   %2.7f %2.7f %2.7f\n", (unsigned long long)P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,
+        fprintf(FdBlackHolesDetails, "BH=%llu %.16g %g %g %g %g %g %g %g   %2.16g %2.16g %2.16g\n", (unsigned long long)P[n].ID, All.Time, BPP(n).BH_Mass, mass_disk, P[n].Mass, BPP(n).BH_Mdot, mdot_disk,
                 P[n].DensAroundStar*All.cf_a3inv, BlackholeTempInfo[i].BH_InternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]); fflush(FdBlackHolesDetails);           // DAA: DensAroundStar is actually not defined in BHP->BPP...
 #endif
 #endif

@@ -156,7 +156,7 @@ void twopoint_save(void)
     {
       sprintf(buf, "%s/correl_%03d.txt", All.OutputDir, RestartSnapNum);
       if(!(fd = fopen(buf, "w"))) {printf("can't open file `%s`\n", buf); endrun(1323);}
-      fprintf(fd, "%g\n", All.Time); i = BINS_TP; fprintf(fd, "%d\n", i);
+      fprintf(fd, "%.16g\n", All.Time); i = BINS_TP; fprintf(fd, "%d\n", i);
       for(i = 0; i < BINS_TP; i++) {fprintf(fd, "%g %g %g %g\n", Rbin[i], Xi[i], (double) Count[i], (double) CountSpheres[i]);}
       fclose(fd);
     }

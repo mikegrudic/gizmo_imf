@@ -202,7 +202,7 @@ void radiation_pressure_winds_consolidated(void)
         if(totMPI_prob_kick>0)
         {
             totMPI_avg_v /= MIN_REAL_NUMBER + totMPI_n_wind; totMPI_avg_taufac /= MIN_REAL_NUMBER + totMPI_mom_wind;
-            fprintf(FdMomWinds, "%lg %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac); fflush(FdMomWinds);
+            fprintf(FdMomWinds, "%.16g %g %g %g %g %g \n", All.Time,totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac); fflush(FdMomWinds);
             PRINT_STATUS(" ..Ncells_pushed=%g (L/c)dt=%g dP_coupled=%g <dv_cell>=%g <dP_multi/dP_single>=%g",totMPI_n_wind,totMPI_prob_kick,totMPI_mom_wind,totMPI_avg_v,totMPI_avg_taufac);
         }
     } // if(ThisTask==0)
@@ -423,7 +423,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         {
             if(totMPI_m_ionized>0) {totMPI_avg_RHII /= totMPI_m_ionized;}
             PRINT_STATUS(" ..Nsources=%g with dN/dt=%g/s ionized N=%g (M=%g sol) cells in <R_HII>=%g kpc",totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII);
-            fprintf(FdHIIHeating,"%lg %g %g %g %g %g \n",All.Time,totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII); fflush(FdHIIHeating);
+            fprintf(FdHIIHeating,"%.16g %g %g %g %g %g \n",All.Time,totMPI_N_ionizing_part,totMPI_Ndot_ionizing,totMPI_N_ionized,totMPI_m_ionized*UNIT_MASS_IN_SOLAR,totMPI_avg_RHII); fflush(FdHIIHeating);
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdHIIHeating);}
     } // ThisTask == 0

@@ -220,7 +220,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if defined(BH_OUTPUT_MOREINFO)     // DAA: BH merger info will be saved in a separate output file
                                     printf(" ..ThisTask=%d, time=%g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, vrel, vesc);
 #elif !defined(IO_REDUCED_MODE)
-                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, vrel, vesc); fflush(FdBlackHolesDetails);
+                                    fprintf(FdBlackHolesDetails, "ThisTask=%d, time=%.16g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, vrel, vesc); fflush(FdBlackHolesDetails);
 #endif
                                 }
                             } // if eligible for bh-bh mergers //
