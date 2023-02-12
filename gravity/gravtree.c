@@ -630,7 +630,7 @@ void gravity_tree(void)
 #ifndef IO_REDUCED_MODE
     if(ThisTask == 0)
     {
-        fprintf(FdTimings, "Step= %lld  t= %g  dt= %g \n",(long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
+        fprintf(FdTimings, "Step= %lld  t= %.16g  dt= %.16g \n",(long long) All.NumCurrentTiStep, All.Time, All.TimeStep);
         fprintf(FdTimings, "Nf= %d%09d  total-Nf= %d%09d  ex-frac= %g (%g) iter= %d\n", (int) (GlobNumForceUpdate / 1000000000), (int) (GlobNumForceUpdate % 1000000000), (int) (All.TotNumOfForces / 1000000000), (int) (All.TotNumOfForces % 1000000000), n_exported / ((double) GlobNumForceUpdate), N_nodesinlist / ((double) n_exported + 1.0e-10), iter); /* note: on Linux, the 8-byte integer could be printed with the format identifier "%qd", but doesn't work on AIX */
         fprintf(FdTimings, "work-load balance: %g (%g %g) rel1to2=%g   max=%g avg=%g\n", maxt / (1.0e-6 + sumt / NTask), maxt1 / (1.0e-6 + sumt1 / NTask), maxt2 / (1.0e-6 + sumt2 / NTask), sumt1 / (1.0e-6 + sumt1 + sumt2), maxt, sumt / NTask);
         fprintf(FdTimings, "particle-load balance: %g\n", plb_max);

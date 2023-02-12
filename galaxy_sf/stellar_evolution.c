@@ -911,7 +911,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 FILE *FdBhSNDetails2;
                 sprintf(buf, "%s%s", All.OutputDir, "SN_details_STARFORGE.txt");
                 FdBhSNDetails2 = fopen(buf, "a");
-                fprintf(FdBhSNDetails2, "%g %llu %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails2);
+                fprintf(FdBhSNDetails2, "%.16g %llu %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[n].ID, P[n].BH_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdBhSNDetails2);
                 fclose(FdBhSNDetails2);
             }
 #endif

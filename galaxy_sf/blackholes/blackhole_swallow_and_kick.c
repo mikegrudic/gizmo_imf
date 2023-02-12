@@ -319,9 +319,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                     if(P[j].Type == 5)  /* this is a BH-BH merger */
                     {
 #ifdef BH_OUTPUT_MOREINFO
-                        fprintf(FdBhMergerDetails,"%g  %llu %g %2.7f %2.7f %2.7f  %llu %g %2.7f %2.7f %2.7f\n", All.Time,  (unsigned long long)local.ID,local.BH_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdBhMergerDetails);
+                        fprintf(FdBhMergerDetails,"%.16g  %llu %g %2.16g %2.16g %2.16g  %llu %g %2.16g %2.16g %2.16g\n", All.Time,  (unsigned long long)local.ID,local.BH_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,BPP(j).BH_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdBhMergerDetails);
 #elif !defined(IO_REDUCED_MODE)
-                        fprintf(FdBlackHolesDetails,"ThisTask=%d, time=%g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.BH_Mass, BPP(j).BH_Mass); fflush(FdBlackHolesDetails);
+                        fprintf(FdBlackHolesDetails,"ThisTask=%d, time=%.16g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.BH_Mass, BPP(j).BH_Mass); fflush(FdBlackHolesDetails);
 #endif
 #ifdef BH_INCREASE_DYNAMIC_MASS
                         /* the true dynamical mass of the merging BH is Mass_j/BH_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
@@ -419,7 +419,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef BH_OUTPUT_MOREINFO
                         printf(" ..BAL kick: P[j].ID %llu ID %llu Type(j) %d f_acc %g M(j) %g V(j).xyz %g/%g/%g P(j).xyz %g/%g/%g p(i).xyz %g/%g/%g v_out %g \n",(unsigned long long) P[j].ID, (unsigned long long) P[j].SwallowID,P[j].Type, All.BAL_f_accretion,Mass_j,Vel_j[0],Vel_j[1],Vel_j[2],P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],local.Pos[0],local.Pos[1],local.Pos[2],v_kick);
-                        fprintf(FdBhWindDetails,"%g  %llu %g  %2.7f %2.7f %2.7f  %2.7f %2.7f %2.7f %g %g %g %llu  %2.7f %2.7f %2.7f\n",All.Time, (unsigned long long)P[j].ID, Mass_j, P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  Vel_j[0],Vel_j[1],Vel_j[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, (unsigned long long)local.ID, local.Pos[0],local.Pos[1],local.Pos[2]); fflush(FdBhWindDetails);
+                        fprintf(FdBhWindDetails,"%.16g  %llu %g  %2.16g %2.16g %2.16g  %2.16g %2.16g %2.16g %g %g %g %llu  %2.16g %2.16g %2.16g\n",All.Time, (unsigned long long)P[j].ID, Mass_j, P[j].Pos[0],P[j].Pos[1],P[j].Pos[2],  Vel_j[0],Vel_j[1],Vel_j[2],dir[0]/norm,dir[1]/norm,dir[2]/norm, (unsigned long long)local.ID, local.Pos[0],local.Pos[1],local.Pos[2]); fflush(FdBhWindDetails);
 #endif
 #endif // #ifdef BH_WIND_KICK
                         #pragma omp atomic
@@ -429,7 +429,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #ifdef MAGNETIC
                         for(k=0;k<3;k++) {tempB[k]=Get_Gas_BField(j,k);} //use particle magnetic field
 #endif
-                        fprintf(FdBhSwallowDetails,"%g %llu %g %2.7f %2.7f %2.7f %llu %g %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f %2.7f\n", All.Time, (unsigned long long)local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID, Mass_initial, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (Vel_j[0]-local.Vel[0]),(Vel_j[1]-local.Vel[1]),(Vel_j[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density); fflush(FdBhSwallowDetails);
+                        fprintf(FdBhSwallowDetails,"%.16g %llu %g %2.16g %2.16g %2.16g %llu %g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g\n", All.Time, (unsigned long long)local.ID,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID, Mass_initial, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (Vel_j[0]-local.Vel[0]),(Vel_j[1]-local.Vel[1]),(Vel_j[2]-local.Vel[2]), SphP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], SphP[j].Density); fflush(FdBhSwallowDetails);
 #endif
                     }  // if(P[j].Type == 0)
                     //P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep [PFH: no longer necessary with the new way we re-initialize the SwallowIDs] */
@@ -990,8 +990,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         if(mass_of_new_particle >= 0.5*BPP(i).Sink_Formation_Mass) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
 #endif
 
-        P[j].ID_child_number = P[i].ID_child_number; P[i].ID_child_number +=1; P[j].ID_generation = P[i].ID; // this allows us to track spawned particles by giving them unique sub-IDs
-
+        P[j].ID_child_number = P[i].ID_child_number + P[i].ID_generation; P[i].ID_generation++; P[j].ID_generation = P[i].ID; // this allows us to track spawned particles by giving them unique sub-IDs. Remember we MUST NEVER alter an existing particle ID OR ID_child_number!
+        
         P[j].Mass = mass_of_new_particle; /* assign masses to both particles (so they sum correctly) */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         SphP[j].MassTrue = P[j].Mass;
