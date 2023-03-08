@@ -1210,7 +1210,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-#define AGS_OUTPUTGRAVSOFT 1  /*! output softening to snapshots */
+#define OUTPUT_SOFTENING  /*! output softening to snapshots */
 //#define AGS_OUTPUTZETA 1 /*! output correction zeta term to snapshots */
 #endif
 
@@ -1551,6 +1551,7 @@ typedef unsigned long long peano1D;
 
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define OUTPUT_TIDAL_TENSOR
+#define OUTPUT_SOFTENING
 #endif
 
 #ifdef RT_INFRARED
@@ -3899,7 +3900,8 @@ enum iofields
   IO_VDIV,
   IO_VORT,
   IO_DELAYTIME,
-  IO_AGS_SOFT,
+  IO_SOFT,
+  IO_AGS_HKERN,
   IO_AGS_RHO,
   IO_AGS_QPT,
   IO_AGS_PSI_RE,
