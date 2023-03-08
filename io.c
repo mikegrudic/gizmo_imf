@@ -1588,8 +1588,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_AGS_SOFT:		/* Adaptive Gravitational Softening: softening */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
+        case IO_SOFT:		/* Adaptive Gravitational Softening: softening */
+#if defined(OUTPUT_SOFTENING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) (ForceSoftening_KernelRadius(pindex));
+                    n++;
+                }
+#endif
+            break;
+
+        case IO_AGS_HKERN:        /* neighbor search radius for various particle types */
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1931,7 +1942,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_EOSCS:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -2248,7 +2260,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -2430,7 +2443,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
         case IO_POT:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -3157,8 +3171,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_AGS_SOFT:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
+        case IO_SOFT:
+#if defined(OUTPUT_SOFTENING)
+            return 1;
+#endif
+            break;
+
+        case IO_AGS_HKERN:
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE)
             return 1;
 #endif
             break;
@@ -3558,7 +3578,10 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EDDINGTON_TENSOR:
             strncpy(label, "ET", 4);
             break;
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+            strncpy(label, "SOFT", 4);
+            break;
+        case IO_AGS_HKERN:
             strncpy(label, "AGSH", 4);
             break;
         case IO_AGS_RHO:
@@ -3959,8 +3982,11 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EDDINGTON_TENSOR:
             strcpy(buf, "EddingtonTensor");
             break;
-        case IO_AGS_SOFT:
-            strcpy(buf, "AGS-Softening");
+        case IO_SOFT:
+            strcpy(buf, "Softening_KernelRadius");
+            break;
+        case IO_AGS_HKERN:
+            strcpy(buf, "AGS-KernelRadius");
             break;
         case IO_AGS_RHO:
             strcpy(buf, "AGS-Density");
