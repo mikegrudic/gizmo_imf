@@ -37,7 +37,9 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     PRINT_STATUS("Black-hole operations begin...");
-    //     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ //  This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
+#if defined(BH_EXCISION_NONGAS) || defined(BH_GRAVCAPTURE_NONGAS)
+    long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ // This zero-out loop is effectively performed in density.c now, only on -gas- particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active. But it still needs to be done for non-gas particles.
+#endif
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
 
     /* this is the PRE-PASS loop.*/
@@ -70,7 +72,9 @@ void blackhole_accretion(void)
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
     PRINT_STATUS(" ..closing black-hole operations");
-    //    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
+#if defined(BH_EXCISION_NONGAS) || defined(BH_GRAVCAPTURE_NONGAS)
+    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
+#endif
 }
 
 
@@ -546,7 +550,7 @@ void set_blackhole_drag(int i, int n, double dt)
         fac = meddington * dt / BPP(n).BH_Mass; /* make the force stronger to keep the BH from wandering */
 #endif
         if(fac>1) fac=1;
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;}
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;} // currently incompatible with hermite integrator -- need to update to Other_Accel
     } // if((dt>0)&&(BPP(n).BH_Mass>0))
 #endif
 
@@ -554,7 +558,6 @@ void set_blackhole_drag(int i, int n, double dt)
 
 #ifdef BH_DYNFRICTION
     double bh_mass, x;
-
     if(BlackholeTempInfo[i].DF_mmax_particles>0) /* found something in the kernel, we can proceed */
     {
         /* averaged value for colomb logarithm and integral over the distribution function */
@@ -613,14 +616,13 @@ void set_blackhole_drag(int i, int n, double dt)
             for(k = 0; k < 3; k++) {P[n].Vel[k] += BlackholeTempInfo[i].DF_mean_vel[k]*All.cf_atime * fac_vel;}
         }
 #else
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];}
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];} // currently incompatible with hermite integrator -- need to update to Other_Accel
 #endif
     }
-#endif
-
+#endif // BH_DYNFRICTION
 
 }
-#endif
+#endif // BH_DRAG) || BH_DYNFRICTION
 
 
 

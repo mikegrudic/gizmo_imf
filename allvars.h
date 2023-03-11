@@ -1020,6 +1020,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) || defined(GALSF_ISMDUSTCHEM_MODEL) || defined(RT_INFRARED)
+#define OUTPUT_DUST_TO_GAS_RATIO // helpful if these special modules are on to see this output and save it for use in analysis
+#endif
 
 #if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
 #define EVALPOTENTIAL
@@ -2770,9 +2773,9 @@ extern ALIGN(32) struct particle_data
 
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
 #ifdef PMGRID
-    MyFloat GravPM[3];		/*!< particle acceleration due to long-range PM gravity force */
+    MyFloat GravPM[3];		        /*!< particle acceleration due to long-range PM gravity force */
 #endif
-    MyFloat OldAcc;			/*!< magnitude of old gravitational force. Used in relative opening criterion */
+    MyFloat OldAcc;			        /*!< magnitude of old gravitational force. Used in relative opening criterion */
 #ifdef HERMITE_INTEGRATION
     MyFloat Hermite_OldAcc[3];
     MyFloat OldPos[3];
@@ -3820,6 +3823,7 @@ enum iofields
   IO_SFR,
   IO_AGE,
   IO_GRAINSIZE,
+  IO_DUST_TO_GAS, 
   IO_GRAINTYPE,
   IO_HSMS,
   IO_Z,

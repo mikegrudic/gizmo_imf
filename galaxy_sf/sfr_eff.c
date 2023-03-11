@@ -735,7 +735,7 @@ void star_formation_parent_routine(void)
         } // thistask==0
     }
     CPU_Step[CPU_COOLINGSFR] += measure_time();
-} /* end of main sfr_cooling routine!!! */
+} /* end of main sfr_cooling routine */
 
 
 
