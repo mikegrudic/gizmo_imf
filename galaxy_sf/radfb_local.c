@@ -302,12 +302,12 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
                         for(n = 0; n < numngb; n++)
                         {
                             if(mionized>=mionizable) {break;}
+                            j = ngb_list_touse[n];
                             if(P[j].Mass <= 0 || P[j].Type !=0) {continue;}
                             if(SphP[j].DelayTimeHII > 0) {continue;}
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(CHIMES_HII_REGIONS)
                             if(SphP[j].Ne > 0.8) {continue;}
 #endif
-                            j = ngb_list_touse[n];
                             if(P[j].Type == 0 && P[j].Mass > 0)
                             {
                                 double dx=pos[0]-P[j].Pos[0], dy=pos[1]-P[j].Pos[1], dz=pos[2]-P[j].Pos[2];
