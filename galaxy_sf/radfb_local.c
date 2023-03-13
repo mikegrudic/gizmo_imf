@@ -13,7 +13,7 @@
  */
 
 #if defined(GALSF_FB_FIRE_RT_LOCALRP) /* first the radiation pressure coupled in the immediate vicinity of the star */
-/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here! -- */
 void radiation_pressure_winds_consolidated(void)
 {
     double age_threshold_in_gyr = 0.15; // don't bother for older populations, they contribute negligibly here //
@@ -219,7 +219,7 @@ void radiation_pressure_winds_consolidated(void)
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
 /* Routines for simple FIRE local photo-ionization heating feedback model. This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO. */
-/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here!!! -- */
+/*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here! -- */
 
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(FIRE_BHS)
 #define GALSF_FB_FIRE_RT_HIIHEATING_OPTIMIZERS_TEST
