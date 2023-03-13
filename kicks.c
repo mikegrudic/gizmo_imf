@@ -103,7 +103,7 @@ int eligible_for_hermite(int i)
     if(P[i].Type==1) {return 0;} // not compatible with these flags for these types
 #endif
 #if defined(GRAIN_FLUID)
-    if((1 << local->Type) & (GRAIN_PTYPES)) {return 0;} // not compatible with these flags for these types
+    if((1 << P[i].Type) & (GRAIN_PTYPES)) {return 0;} // not compatible with these flags for these types
 #endif
 #if defined(BLACK_HOLES) || defined(GALSF)
     if(P[i].StellarAge >= DMAX(All.Time - 2*(GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*All.cf_hubble_a), 0)) {return 0;} // if we were literally born yesterday then let things settle down a bit with the less-accurate, but more-robust regular integration

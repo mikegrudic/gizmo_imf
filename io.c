@@ -537,7 +537,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_DUST_TO_GAS:        /* grain size */
-#if OUTPUT_DUST_TO_GAS_RATIO
+#ifdef OUTPUT_DUST_TO_GAS_RATIO
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
