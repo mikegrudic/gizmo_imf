@@ -301,7 +301,7 @@ void do_postgravity_cbe_calcs(int i)
     for(k=0;k<3;k++)
     {
         dv0[k] = m_inv * dmom_tot[k+1]; // total acceleration
-        P[i].GravAccel[k] += dv0[k] / All.cf_a2inv; // write as gravitational acceleration, convert to cosmological units
+        P[i].GravAccel[k] += dv0[k] / All.cf_a2inv; // write as gravitational acceleration, convert to cosmological units // currently incompatible with hermite integrator -- need to update to Other_Accel
     }
     // now need to add that shift back into the momentum-change terms //
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)

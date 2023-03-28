@@ -37,7 +37,9 @@ void blackhole_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     PRINT_STATUS("Black-hole operations begin...");
-    //     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ //  This zero-out loop is effectively performed in density.c now, only on gas particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active
+#if defined(BH_EXCISION_NONGAS) || defined(BH_GRAVCAPTURE_NONGAS)
+    long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ // This zero-out loop is effectively performed in density.c now, only on -gas- particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active. But it still needs to be done for non-gas particles.
+#endif
     blackhole_start();              /* allocates and cleans BlackholeTempInfo struct */
 
     /* this is the PRE-PASS loop.*/
@@ -70,7 +72,9 @@ void blackhole_accretion(void)
     blackhole_final_operations(); /* final operations on the BH with tabulated quantities (not a neighbor loop) */
     blackhole_end();            /* frees BlackholeTempInfo; cleans up */
     PRINT_STATUS(" ..closing black-hole operations");
-    //    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;P[i].SwallowEnergy = MAX_REAL_NUMBER;} /* re-zero accretion */
+#if defined(BH_EXCISION_NONGAS) || defined(BH_GRAVCAPTURE_NONGAS)
+    for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
+#endif
 }
 
 
@@ -134,6 +138,9 @@ int bh_check_boundedness(int j, double vrel, double vesc, double dr_code, double
         double apocenter = dr_code / (1.-v2); // furthest distance the cell -could- get from the sink, on a purely radial orbit [ignoring internal energy effects, in e.g. a Keplerian potential, this is approximately twice the equivalent circular orbit, while for a highly-eccentric orbit, this is exactly the apocentric radius]
         double apocenter_max = 2.*SinkParticle_GravityKernelRadius; //  = few x epsilon (softening length); check that this is within 2x epsilon is statement that circular orbit with equivalent energy is entirely inside epsilon //
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS // Bate 1995-style criterion, with a fixed sink/accretion radius that is distinct from both the force softening and the search radius
+#ifdef GRAIN_FLUID
+        if((1 << P[j].Type) & (GRAIN_PTYPES)) {if(dr_code>1.4*sink_radius) {return 0;} else {return 1;}} // simply yes-no, if bound and within sink radius, gets accreted
+#endif
         if(dr_code>sink_radius) {return 0;} else {return 1;} // simply yes-no, if bound and within sink radius, gets accreted
 #endif
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(BH_SEED_GROWTH_TESTS)
@@ -546,7 +553,7 @@ void set_blackhole_drag(int i, int n, double dt)
         fac = meddington * dt / BPP(n).BH_Mass; /* make the force stronger to keep the BH from wandering */
 #endif
         if(fac>1) fac=1;
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;}
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * BlackholeTempInfo[i].BH_SurroundingGasVel[k] / dt;} // currently incompatible with hermite integrator -- need to update to Other_Accel
     } // if((dt>0)&&(BPP(n).BH_Mass>0))
 #endif
 
@@ -554,7 +561,6 @@ void set_blackhole_drag(int i, int n, double dt)
 
 #ifdef BH_DYNFRICTION
     double bh_mass, x;
-
     if(BlackholeTempInfo[i].DF_mmax_particles>0) /* found something in the kernel, we can proceed */
     {
         /* averaged value for colomb logarithm and integral over the distribution function */
@@ -613,14 +619,13 @@ void set_blackhole_drag(int i, int n, double dt)
             for(k = 0; k < 3; k++) {P[n].Vel[k] += BlackholeTempInfo[i].DF_mean_vel[k]*All.cf_atime * fac_vel;}
         }
 #else
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];}
+        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * BlackholeTempInfo[i].DF_mean_vel[k];} // currently incompatible with hermite integrator -- need to update to Other_Accel
 #endif
     }
-#endif
-
+#endif // BH_DYNFRICTION
 
 }
-#endif
+#endif // BH_DRAG) || BH_DYNFRICTION
 
 
 

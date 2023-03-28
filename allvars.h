@@ -322,7 +322,7 @@
 #define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
 #endif
-#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1)
+#define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1/UNIT_LENGTH_IN_KPC)
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
@@ -1020,6 +1020,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
+#if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS) || defined(GALSF_ISMDUSTCHEM_MODEL) || defined(RT_INFRARED)
+#define OUTPUT_DUST_TO_GAS_RATIO // helpful if these special modules are on to see this output and save it for use in analysis
+#endif
 
 #if defined(OUTPUT_POTENTIAL) && !defined(EVALPOTENTIAL)
 #define EVALPOTENTIAL
@@ -1210,7 +1213,7 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-#define AGS_OUTPUTGRAVSOFT 1  /*! output softening to snapshots */
+#define OUTPUT_SOFTENING  /*! output softening to snapshots */
 //#define AGS_OUTPUTZETA 1 /*! output correction zeta term to snapshots */
 #endif
 
@@ -1551,6 +1554,7 @@ typedef unsigned long long peano1D;
 
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define OUTPUT_TIDAL_TENSOR
+#define OUTPUT_SOFTENING
 #endif
 
 #ifdef RT_INFRARED
@@ -2769,9 +2773,9 @@ extern ALIGN(32) struct particle_data
 
     MyDouble GravAccel[3];          /*!< particle acceleration due to gravity */
 #ifdef PMGRID
-    MyFloat GravPM[3];		/*!< particle acceleration due to long-range PM gravity force */
+    MyFloat GravPM[3];		        /*!< particle acceleration due to long-range PM gravity force */
 #endif
-    MyFloat OldAcc;			/*!< magnitude of old gravitational force. Used in relative opening criterion */
+    MyFloat OldAcc;			        /*!< magnitude of old gravitational force. Used in relative opening criterion */
 #ifdef HERMITE_INTEGRATION
     MyFloat Hermite_OldAcc[3];
     MyFloat OldPos[3];
@@ -3819,6 +3823,7 @@ enum iofields
   IO_SFR,
   IO_AGE,
   IO_GRAINSIZE,
+  IO_DUST_TO_GAS, 
   IO_GRAINTYPE,
   IO_HSMS,
   IO_Z,
@@ -3899,7 +3904,8 @@ enum iofields
   IO_VDIV,
   IO_VORT,
   IO_DELAYTIME,
-  IO_AGS_SOFT,
+  IO_SOFT,
+  IO_AGS_HKERN,
   IO_AGS_RHO,
   IO_AGS_QPT,
   IO_AGS_PSI_RE,

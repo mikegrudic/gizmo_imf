@@ -433,7 +433,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
                     }  // if(P[j].Type == 0)
                     //P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep [PFH: no longer necessary with the new way we re-initialize the SwallowIDs] */
-                } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed!!!
+                } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed
 
                 
                 

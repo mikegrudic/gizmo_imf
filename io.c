@@ -536,6 +536,17 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_DUST_TO_GAS:        /* grain size */
+#ifdef OUTPUT_DUST_TO_GAS_RATIO
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) P[pindex].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(pindex);
+                    n++;
+                }
+#endif
+            break;
+
         case IO_GRAINTYPE:      /* grain type */
 #if defined(PIC_MHD)
             for(n = 0; n < pc; pindex++)
@@ -1588,8 +1599,19 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_AGS_SOFT:		/* Adaptive Gravitational Softening: softening */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
+        case IO_SOFT:		/* Adaptive Gravitational Softening: softening */
+#if defined(OUTPUT_SOFTENING)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) (ForceSoftening_KernelRadius(pindex));
+                    n++;
+                }
+#endif
+            break;
+
+        case IO_AGS_HKERN:        /* neighbor search radius for various particle types */
+#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1899,6 +1921,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_OSTAR:
         case IO_DTOSTAR:
         case IO_GRAINSIZE:
+        case IO_DUST_TO_GAS:
         case IO_DELAYTIME:
         case IO_HSMS:
         case IO_POT:
@@ -1931,7 +1954,8 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_EOSCS:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -2211,6 +2235,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_OSTAR:
         case IO_DTOSTAR:
         case IO_GRAINSIZE:
+        case IO_DUST_TO_GAS:
         case IO_GRAINTYPE:
         case IO_DELAYTIME:
         case IO_HSMS:
@@ -2248,7 +2273,8 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_EOSYE:
         case IO_PRESSURE:
         case IO_INIT_DENSITY:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -2430,7 +2456,8 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
         case IO_POT:
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+        case IO_AGS_HKERN:
         case IO_AGS_RHO:
         case IO_AGS_QPT:
         case IO_AGS_PSI_RE:
@@ -2439,6 +2466,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_BH_DIST:
         case IO_CBE_MOMENTS:
         case IO_TIDALTENSORPS:
+        case IO_DUST_TO_GAS:
             return nall;
             break;
 
@@ -2473,7 +2501,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_NHRATE:
         case IO_HHRATE:
         case IO_MCRATE:
-        case IO_HSML:
         case IO_DELAYTIME:
         case IO_SFR:
         case IO_DTENTR:
@@ -2531,6 +2558,13 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return ngas;
             break;
 
+        case IO_HSML:
+#if defined(GRAIN_FLUID)
+            return nall;
+#endif
+            for(i = 1; i < 6; i++) {typelist[i] = 0;}
+            return ngas;
+            
         case IO_AGE:
             for(i=0; i<6; i++) {if(!((1 << i) & (valid_star_types))) {typelist[i]=0;}}
             return nstars_tot;
@@ -2688,6 +2722,12 @@ int blockpresent(enum iofields blocknr)
 
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
+            return 1;
+#endif
+            break;
+
+        case IO_DUST_TO_GAS:
+#ifdef OUTPUT_DUST_TO_GAS_RATIO
             return 1;
 #endif
             break;
@@ -3157,8 +3197,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_AGS_SOFT:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTGRAVSOFT)
+        case IO_SOFT:
+#if defined(OUTPUT_SOFTENING)
+            return 1;
+#endif
+            break;
+
+        case IO_AGS_HKERN:
+#if defined(AGS_HSML_CALCULATION_IS_ACTIVE)
             return 1;
 #endif
             break;
@@ -3314,6 +3360,9 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
             break;
         case IO_GRAINSIZE:
             strncpy(label, "GRSZ", 4);
+            break;
+        case IO_DUST_TO_GAS:
+            strncpy(label, "GRDG", 4);
             break;
         case IO_GRAINTYPE:
             strncpy(label, "GRTP", 4);
@@ -3558,7 +3607,10 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_EDDINGTON_TENSOR:
             strncpy(label, "ET", 4);
             break;
-        case IO_AGS_SOFT:
+        case IO_SOFT:
+            strncpy(label, "SOFT", 4);
+            break;
+        case IO_AGS_HKERN:
             strncpy(label, "AGSH", 4);
             break;
         case IO_AGS_RHO:
@@ -3733,6 +3785,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_GRAINSIZE:
             strcpy(buf, "GrainSize");
+            break;
+        case IO_DUST_TO_GAS:
+            strcpy(buf, "DustToGasRatio_Local");
             break;
         case IO_GRAINTYPE:
             strcpy(buf, "PICParticleType");
@@ -3959,8 +4014,11 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_EDDINGTON_TENSOR:
             strcpy(buf, "EddingtonTensor");
             break;
-        case IO_AGS_SOFT:
-            strcpy(buf, "AGS-Softening");
+        case IO_SOFT:
+            strcpy(buf, "Softening_KernelRadius");
+            break;
+        case IO_AGS_HKERN:
+            strcpy(buf, "AGS-KernelRadius");
             break;
         case IO_AGS_RHO:
             strcpy(buf, "AGS-Density");

@@ -323,7 +323,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     {
                         if(local.Type == 0)
                         {
-                            wk = kernel.wk; /* MAKE SURE THIS MATCHES CHOICE IN GRADIENTS.c!!! */
+                            wk = kernel.wk; /* MAKE SURE THIS MATCHES CHOICE IN GRADIENTS.c! */
                             /* the weights for the MLS tensor used for gradient estimation */
                             out.NV_T[0][0] +=  wk * kernel.dp[0] * kernel.dp[0];
                             out.NV_T[0][1] +=  wk * kernel.dp[0] * kernel.dp[1];
