@@ -293,9 +293,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef RT_REINJECT_ACCRETED_PHOTONS 
 		            if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
-			            double photon_energy = 0;
-			            for(int kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
-			            out.accreted_photon_energy += photon_energy;
+			        double photon_energy = 0; int kfreq;
+			        for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
+				out.accreted_photon_energy += photon_energy;
 		            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
