@@ -713,7 +713,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 #if defined(BH_DEBUG_SPAWN_JET_TEST)
     else if (mode==4) { // old-style of jet being initialized as a cylinder around the BH
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        if(P[i].ID_child_number % 2 == 0) {cos_theta=fabs(cos_theta);} else {cos_theta=-1.0*fabs(cos_theta);} // balance vertical directions
+        if(P[i].ID_generation % 2 == 0) {cos_theta=fabs(cos_theta);} else {cos_theta=-1.0*fabs(cos_theta);} // balance vertical directions
         double ct_v=1.-(1-cos((BH_DEBUG_SPAWN_JET_TEST)*(M_PI/180.)))*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v); if(cos_theta<0) {ct_v*=-1;}
         for(k=0;k<3;k++) {dpdir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k]; veldir[k] = st_v*cos_phi*nx[k] + st_v*sin_phi*ny[k] + ct_v*nz[k];}
     }
