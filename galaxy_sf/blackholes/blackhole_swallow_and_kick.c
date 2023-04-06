@@ -693,11 +693,11 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
     }
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
-        if(((P[i].ID_child_number-1) % 6) == 0) { // need to generate a brand new coordinate frame
-            get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);
+        if(((P[i].ID_generation-1) % 6) == 0) { // need to generate a brand new coordinate frame
+            get_random_orthonormal_basis(P[i].ID_generation, nx, ny, nz);
             for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k]; dpdir[k]=veldir[k];}
         }
-        else if(((P[i].ID_child_number-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k]; dpdir[k]=veldir[k];}}
+        else if(((P[i].ID_generation-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k]; dpdir[k]=veldir[k];}}
         else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3]; dpdir[k]=veldir[k];}}
     }
 #endif
@@ -877,7 +877,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     }
 #endif
     if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
-        get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
+        get_random_orthonormal_basis(P[i].ID_generation, jx, jy, jz);
     }
 #ifdef BH_WIND_SPAWN_SET_JET_PRECESSION /* rotate the jet angle according to the explicitly-included precession parameters */
     double degree = All.BH_jet_precess_degree, period = All.BH_jet_precess_period/UNIT_TIME_IN_GYR, new_dir[3];
