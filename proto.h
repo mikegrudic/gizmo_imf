@@ -33,6 +33,7 @@ void get_core_set(void);
 
 void init_turb(void);
 void set_turb_ampl(void);
+int new_turbforce_needed_this_timestep(void);
 void add_turb_accel(void);
 void log_turb_temp(void);
 

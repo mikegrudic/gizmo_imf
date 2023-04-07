@@ -535,7 +535,9 @@ void set_blackhole_new_mass(int i, int n, double dt)
     }
     BPP(n).Mgas_in_Kernel=BlackholeTempInfo[i].Mgas_in_Kernel;
 #endif
-
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+    BPP(n).ZAMS_Mass = DMAX(P[n].ZAMS_Mass, P[n].BH_Mass); // keep a running maximum of the stellar mass as the ZAMS mass
+#endif
 }
 
 
@@ -757,9 +759,6 @@ void blackhole_final_operations(void)
 #endif
 #ifdef RT_REINJECT_ACCRETED_PHOTONS
 	    BPP(n).BH_accreted_photon_energy += BlackholeTempInfo[i].accreted_photon_energy;
-#endif
-#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-	    P[n].ZAMS_Mass = DMAX(P[n].ZAMS_Mass, P[n].BH_Mass); // keep a running maximum of the stellar mass as the ZAMS mass
 #endif
         } // if(masses > 0) check
 #ifdef HERMITE_INTEGRATION

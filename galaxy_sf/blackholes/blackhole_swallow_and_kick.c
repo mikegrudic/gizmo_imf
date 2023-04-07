@@ -293,9 +293,9 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 #endif
 #ifdef RT_REINJECT_ACCRETED_PHOTONS 
 		            if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
-			            double photon_energy = 0;
-			            for(int kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
-			            out.accreted_photon_energy += photon_energy;
+			        double photon_energy = 0; int kfreq;
+			        for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
+				out.accreted_photon_energy += photon_energy;
 		            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
@@ -693,11 +693,11 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
     }
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     else if (mode==2){ //random 3-axis isotropized - spawn along z axis, then y, then x
-        if(((P[i].ID_child_number-1) % 6) == 0) { // need to generate a brand new coordinate frame
-            get_random_orthonormal_basis(P[i].ID_child_number, nx, ny, nz);
+        if(((P[i].ID_generation-1) % 6) == 0) { // need to generate a brand new coordinate frame
+            get_random_orthonormal_basis(P[i].ID_generation, nx, ny, nz);
             for(k=0; k<3; k++) {veldir[k] = nz[k]; P[i].Wind_direction[k]=nx[k]; P[i].Wind_direction[k+3]=ny[k]; dpdir[k]=veldir[k];}
         }
-        else if(((P[i].ID_child_number-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k]; dpdir[k]=veldir[k];}}
+        else if(((P[i].ID_generation-1) % 6) == 2) {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k]; dpdir[k]=veldir[k];}}
         else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3]; dpdir[k]=veldir[k];}}
     }
 #endif
@@ -713,7 +713,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 #if defined(BH_DEBUG_SPAWN_JET_TEST)
     else if (mode==4) { // old-style of jet being initialized as a cylinder around the BH
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        if(P[i].ID_child_number % 2 == 0) {cos_theta=fabs(cos_theta);} else {cos_theta=-1.0*fabs(cos_theta);} // balance vertical directions
+        if(P[i].ID_generation % 2 == 0) {cos_theta=fabs(cos_theta);} else {cos_theta=-1.0*fabs(cos_theta);} // balance vertical directions
         double ct_v=1.-(1-cos((BH_DEBUG_SPAWN_JET_TEST)*(M_PI/180.)))*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v); if(cos_theta<0) {ct_v*=-1;}
         for(k=0;k<3;k++) {dpdir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k]; veldir[k] = st_v*cos_phi*nx[k] + st_v*sin_phi*ny[k] + ct_v*nz[k];}
     }
@@ -877,7 +877,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     }
 #endif
     if(mode == 3){ // if doing an angular grid, need some fixed coordinates to orient it, but want to switch em up each time to avoid artifacts
-        get_random_orthonormal_basis(P[i].ID_child_number, jx, jy, jz);
+        get_random_orthonormal_basis(P[i].ID_generation, jx, jy, jz);
     }
 #ifdef BH_WIND_SPAWN_SET_JET_PRECESSION /* rotate the jet angle according to the explicitly-included precession parameters */
     double degree = All.BH_jet_precess_degree, period = All.BH_jet_precess_period/UNIT_TIME_IN_GYR, new_dir[3];
