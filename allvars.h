@@ -3801,7 +3801,7 @@ extern struct io_header
                                  */
   float lpt_scalingfactor;      /*!< scaling factor for 2lpt initial conditions */
 
-  char fill[16];		        /*!< fills to 256 Bytes */
+  char fill[14];		        /*!< fills to 256 Bytes */
   char names[15][2];
 }
 header;				/*!< holds header for snapshot files */
@@ -3831,7 +3831,7 @@ enum iofields
   IO_HSMS,
   IO_Z,
   IO_DUSTCHEMZMET,
-  IO_SPECIESZ,
+  IO_DUSTCHEMSPECIESMET,
   IO_ISMDUSTCHEMMOL,
   IO_BHMASS,
   IO_BHMASSALPHA,

@@ -329,7 +329,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             for(n = 0; n < pc; n++) {for(k = 0; k < NUM_ISMDUSTCHEM_SPECIES; k++) {SphP[offset + n].ISMDustChem_Dust_Species[k] = *fp++;}}
 #endif
