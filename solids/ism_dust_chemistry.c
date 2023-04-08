@@ -16,6 +16,7 @@
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
 
 
+#define GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC 0.7 /* assumed fraction of iron dust mass locked as inclusions in silicates, this scales with the total fraction of silicate formed vs maximum amount of possible silicate dust */
 
 /* routine to give yields for dust for different types of SNe (Ia & II) followed in-code */
 void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne)
