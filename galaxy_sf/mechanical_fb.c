@@ -111,7 +111,7 @@ void determine_where_SNe_occur(void)
         if(mpi_npossible>0)
         {
             mpi_dtmean /= mpi_npossible; mpi_rmean /= mpi_npossible;
-            fprintf(FdSneIIHeating, "%lg %g %g %g %g %g %g \n", All.Time,mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean); fflush(FdSneIIHeating);
+            fprintf(FdSneIIHeating, "%.16g %g %g %g %g %g %g \n", All.Time,mpi_npossible,mpi_nhosttotal,mpi_ntotal,mpi_ptotal,mpi_dtmean,mpi_rmean); fflush(FdSneIIHeating);
         }
         if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) {fflush(FdSneIIHeating);}
     } // if(ThisTask == 0) //
