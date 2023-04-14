@@ -81,7 +81,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
     }
     for(k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)  dust_yields[0] += dust_yields[k]; // Fraction of yields that is dust
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
-    yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
+    yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
     for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]=species_yields[k];}
 }
 
@@ -190,7 +190,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
         for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {dust_yields[0] += dust_yields[k];}
     }
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
-    yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
+    yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
     for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]=species_yields[k];}
 }
 
@@ -404,7 +404,7 @@ void Initialize_ISMDustChem_Variables(int i)
             }
             for (j=1;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[0] += SphP[i].ISMDustChem_Dust_Metal[j];}
             for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {SphP[i].ISMDustChem_Dust_Source[j] = 0.;}
-            SphP[i].ISMDustChem_Dust_Source[2] = 1.;  // Assume initial dust population is from SNe II
+            SphP[i].ISMDustChem_Dust_Source[2] = SphP[i].ISMDustChem_Dust_Metal[0];  // Assume initial dust population is from SNe II
         }
         else
         {
