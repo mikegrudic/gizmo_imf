@@ -897,11 +897,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             double age_Gyr = evaluate_stellar_age_Gyr(n);
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
-#ifdef SINGLE_STAR_RELICS
-                if(P[n].BH_Mass < 7./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (should be a white dwarf here - for now treat as compact relic)
-                if(P[n].BH_Mass > 25./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
-#endif
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
+#ifdef SINGLE_STAR_RELICS
+                if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6
+                if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
+#endif
 #if defined(BH_ALPHADISK_ACCRETION) && !defined(SINGLE_STAR_RELICS)
                 BPP(n).BH_Mass_AlphaDisk = 0; // probably does not matter, but let's make sure these don't cause issues
                 P[n].Mass = P[n].BH_Mass;
