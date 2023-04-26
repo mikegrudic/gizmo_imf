@@ -138,6 +138,12 @@ void do_the_cooling_for_particle(int i)
         if(DtInternalEnergyEffCGS < 0) {
             double qfac = DMIN(0,DMAX(DMAX(-0.9, exp(DtInternalEnergyEffCGS*dtime/SphP[i].InternalEnergy)-1.), All.MinEgySpec/SphP[i].InternalEnergy-1.)); // equivalent to saying this wouldn't lower internal energy to below 10% in one timestep
             DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , qfac*SphP[i].InternalEnergy/dtime );
+            double u_gamma_minus_1 = (GAMMA(i)-1.) * SphP[i].InternalEnergy, rho = SphP[i].Density*All.cf_a3inv, pressure_thermalonly = u_gamma_minus_1 * rho;
+            double vA = Get_Gas_Alfven_speed_i(i), pressure_total = 0.5*vA*vA*rho + SphP[i].Pressure*All.cf_a3inv;
+            if(pressure_thermalonly < 0.05*pressure_total) {
+                double DtInternalEnergyPdV = - u_gamma_minus_1 * (P[i].Particle_DivVel*All.cf_a2inv); /* change from expansion in PdV term */
+                DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , DMIN(DtInternalEnergyPdV, 0)); /* limit to PdV expansion change in limit where the thermal energy is small compared to the total */
+            }
         }
         DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
         /* and convert to cgs before use in the cooling sub-routine */
