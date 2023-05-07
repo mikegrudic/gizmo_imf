@@ -316,15 +316,28 @@
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
-#if defined(FIRE_BHS)
-#define BH_EXCISION_NONGAS
+//#if defined(FIRE_BHS)
+//#define BH_EXCISION_NONGAS
 //#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
-#define BH_EXCISION_GAS
+//#define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
-#endif
+//#endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1/UNIT_LENGTH_IN_KPC)
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
+
+#if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
+#define GALSF_SFR_IMF_SAMPLING
+#define GALSF_MERGER_STARCLUSTER_PARTICLES
+#define GALSF_FB_FIRE_PROTOSTELLARJETS
+#define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0)
+#if defined(FIRE_BHS)
+#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS
+#define BH_EXCISION_NONGAS
+#define BH_EXCISION_GAS
+#define BH_DYNFRICTION_FROMTREE
+#endif
+#endif
 
 #if defined(FIRE_MHD)
 #define MAGNETIC            /* top-level flag */
@@ -333,7 +346,7 @@
 #define CONDUCTION_SPITZER  /* compute proper coefficients and anisotropy for conduction */
 #define VISCOSITY           /* enable viscosity */
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
-#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
+//#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
@@ -372,6 +385,7 @@
 #endif
 #endif
 #endif
+#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
