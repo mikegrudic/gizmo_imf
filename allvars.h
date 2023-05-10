@@ -354,20 +354,24 @@
 #define COSMIC_RAY_SUBGRID_LEBRON   /*! this simply uses the sub-grid model */
 #else /* use 'explicit' CR integration in one of the code formulations */
 #define COSMIC_RAY_FLUID /*! top-level flag */
-#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS >= 3) /* enable multi-spectrum CRs if this set and FIRE version high enough */
+#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) /* enable multi-spectrum CRs if this set and FIRE version high enough */
 #if (FIRE_CRS >= 2)
-#define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve proton + electron spectrum by default */
+#define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve full set of 10 different CR species */
 #else
 #define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
-#define CRFLUID_DIFFUSION_CORRECTION_TERMS /*! use the correction terms from Hopkins 2022 to ensure the spectrum has the correct shape under spatial transport */
 #endif
 #if (FIRE_CRS <= 0)
 #if !defined(CRFLUID_M1)
 #define CRFLUID_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
 #endif
 #if !defined(CRFLUID_DIFFUSION_MODEL)
+#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
 #define CRFLUID_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
+#else
+#if (CRFLUID_DIFFUSION_MODEL > 0)
+#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
+#endif
 #endif
 #else
 #if !defined(CRFLUID_M1)
@@ -377,10 +381,10 @@
 #define CRFLUID_DIFFUSION_MODEL 6   /*! best-guess for variable-kappa model, combining updated SC+ET */
 #endif
 #define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
-#if !defined(CRFLUID_SET_SC_MODEL)
+#if !defined(CRFLUID_SET_SC_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
 #define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS, and best model for extrinsic driving of CRs */
 #endif
-#if !defined(CRFLUID_SET_ET_MODEL)
+#if !defined(CRFLUID_SET_ET_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
 #endif
