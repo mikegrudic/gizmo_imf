@@ -3198,6 +3198,7 @@ extern struct gas_cell_data
 #ifdef MAGNETIC
     MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];              /*!< current magnetic field strength */
+    MyDouble BField_prerefinement[3]; /*!< safety variable that stores the B-field before a refinement-type operation to allow it to be more conservatively reset correctly after the (de)refinement completes */
     MyDouble B[3];                  /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
     MyDouble DtB[3];                /*!< time derivative of B-field (of -conserved- B-field) */
     MyFloat divB;                   /*!< storage for the 'effective' divB used in div-cleaning procedure */
@@ -3308,7 +3309,8 @@ extern struct gas_cell_data
 #endif
 
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
-
+    int recent_refinement_flag;     /*!< key that tells the code this cell was just refined or de-refined, to know to treat some other operations with care */
+    
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat Rad_Flux_UV;              /*!< local UV field strength */
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
@@ -3407,7 +3409,7 @@ extern struct gas_cell_data
 #endif
 
 #ifdef HYDRO_SPH
-  MyFloat alpha_limiter;                /*!< artificial viscosity limiter (Balsara-like) */
+    MyFloat alpha_limiter;                /*!< artificial viscosity limiter (Balsara-like) */
 #endif
 
 #ifdef CONDUCTION

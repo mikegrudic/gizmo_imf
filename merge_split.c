@@ -477,7 +477,9 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
 
-    /* assign masses to both particles (so they sum correctly) */
+    /* assign masses to both particles (so they sum correctly), but first record some numbers in case we need them below */
+    double mass_before_split = 0, density_before_split = 0, volume_before_split = 0; mass_before_split = P[i].Mass; // save for use below
+    if(P[i].Type==0) {density_before_split = SphP[i].Density; volume_before_split = mass_before_split/density_before_split;} // save for use below
     P[j].Mass = mass_of_new_particle * P[i].Mass;
     P[i].Mass -= P[j].Mass;
 #ifdef BOX_BND_PARTICLES
@@ -509,17 +511,24 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[j].ConditionNumber = SphP[i].ConditionNumber;
 #ifdef MAGNETIC
         /* we evolve the -conserved- VB and Vphi, so this must be partitioned */
-        for(k=0;k<3;k++)
-        {
-            SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k];
-            SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k]; SphP[i].BPred[k] -= SphP[j].BPred[k];
-            SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k]; SphP[i].DtB[k] -= SphP[j].DtB[k];
-        }
+/* // old method below, no longer used, because less stable
+        for(k=0;k<3;k++) {SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k]; SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k]; SphP[i].BPred[k] -= SphP[j].BPred[k]; SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k]; SphP[i].DtB[k] -= SphP[j].DtB[k];}
         SphP[j].divB = mass_of_new_particle * SphP[i].divB; SphP[i].divB -= SphP[j].divB;
+        #ifdef DIVBCLEANING_DEDNER
+        SphP[j].Phi = mass_of_new_particle * SphP[i].Phi; SphP[i].Phi -= SphP[j].Phi; SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi; SphP[i].DtPhi -= SphP[j].DtPhi; SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred; SphP[i].PhiPred -= SphP[j].PhiPred;
+        #endif
+*/
+        for(k=0;k<3;k++) {
+            double B_before_split = SphP[i].B[k] / volume_before_split; /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
+            SphP[j].BField_prerefinement[k] = B_before_split; SphP[i].BField_prerefinement[k] = B_before_split; /* record the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
+            SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k]; /* take a reasonable -guess- for the new updated conserved B */
+            SphP[j].BPred[k] = SphP[j].B[k]; SphP[i].BPred[k] = SphP[i].B[k]; /* set BPred equal to the conserved B */
+            SphP[j].DtB[k] = SphP[i].DtB[k] = 0; /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
+        }
+        SphP[i].divB = SphP[j].divB = 0; /* this will be self-consistently recomputed on the next timestep */
 #ifdef DIVBCLEANING_DEDNER
-        SphP[j].Phi = mass_of_new_particle * SphP[i].Phi; SphP[i].Phi -= SphP[j].Phi;
-        SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi; SphP[i].DtPhi -= SphP[j].DtPhi;
-        SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred; SphP[i].PhiPred -= SphP[j].PhiPred;
+        for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] = SphP[j].DtB_PhiCorr[k] = 0;} /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
+        SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = SphP[j].Phi = SphP[j].PhiPred = SphP[j].DtPhi = 0; /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
 #endif
         /* ideally, particle-splits should be accompanied by a re-partition of the density via the density() call
          for the particles affected, after the tree-reconstruction, with quantities like B used to re-calculate after */
@@ -640,6 +649,10 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     force_add_star_to_tree(i, j);
 #endif    
     /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+    
+    /* flag cells as having just undergone refinement/derefinement for other subroutines to be aware */
+    SphP[j].recent_refinement_flag = SphP[i].recent_refinement_flag = 1;
+
     return 1; // completed routine successfully
 }
 
@@ -667,6 +680,8 @@ int merge_particles_ij(int i, int j)
     double mtot = P[j].Mass + P[i].Mass;
     double wt_i = P[i].Mass / mtot;
     double wt_j = P[j].Mass / mtot;
+    
+    if(((P[i].Type==0)||(P[j].Type==0)) && (P[j].Type!=P[i].Type)) {printf("WARNING: code is trying to merge a gas cell with a non-gas particle. I dont know how to do this. Exiting the merge subroutine."); fflush(stdout); return 0;}
 
     // block for merging non-gas particles (much simpler, assume collisionless)
     if((P[i].Type>0)&&(P[j].Type>0))
@@ -725,6 +740,7 @@ int merge_particles_ij(int i, int j)
 
 
     // now we have to deal with gas particle mergers //
+    double mass_before_merger_i,mass_before_merger_j,volume_before_merger_i,volume_before_merger_j; mass_before_merger_i=P[i].Mass; mass_before_merger_j=P[j].Mass; volume_before_merger_i=P[i].Mass/SphP[i].Density; volume_before_merger_j=P[j].Mass/SphP[j].Density; // save some numbers for potential use below
     if(P[i].TimeBin < P[j].TimeBin)
     {
 #ifdef WAKEUP
@@ -804,18 +820,25 @@ int merge_particles_ij(int i, int j)
         P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
 #endif
     }
-#ifdef MAGNETIC
+#ifdef MAGNETIC 
     // we evolve the conservative variables VB and Vpsi, these should simply add in particle-merge operations //
-    for(k=0;k<3;k++)
-    {
-        SphP[j].B[k] += SphP[i].B[k];
-        SphP[j].BPred[k] += SphP[i].BPred[k];
-        SphP[j].DtB[k] += SphP[i].DtB[k];
+    /* // old method below, no longer used, because less stable
+     for(k=0;k<3;k++) {SphP[j].B[k] += SphP[i].B[k]; SphP[j].BPred[k] += SphP[i].BPred[k]; SphP[j].DtB[k] += SphP[i].DtB[k];}
+     #ifdef DIVBCLEANING_DEDNER
+     SphP[j].Phi += SphP[i].Phi; SphP[j].PhiPred += SphP[i].PhiPred; SphP[j].DtPhi += SphP[i].DtPhi;
+     #endif
+     */
+    for(k=0;k<3;k++) {
+        double B_before_split = (SphP[i].B[k] + SphP[j].B[k]) / (volume_before_merger_i + volume_before_merger_j); /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed. here since VB is the conserved variable explicitly integrated, that gets added with the pre-summation volumes (so we take a volume-weighted mean here) */
+        SphP[j].BField_prerefinement[k] = B_before_split; SphP[i].BField_prerefinement[k] = B_before_split; /* record the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
+        SphP[j].B[k] = SphP[j].B[k] + SphP[i].B[k]; SphP[i].B[k] = 0; /* take a reasonable -guess- for the new updated conserved B */
+        SphP[j].BPred[k] = SphP[j].B[k]; SphP[i].BPred[k] = SphP[i].B[k]; /* set BPred equal to the conserved B */
+        SphP[j].DtB[k] = SphP[i].DtB[k] = 0; /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
     }
+    SphP[i].divB = SphP[j].divB = 0; /* this will be self-consistently recomputed on the next timestep */
 #ifdef DIVBCLEANING_DEDNER
-    SphP[j].Phi += SphP[i].Phi;
-    SphP[j].PhiPred += SphP[i].PhiPred;
-    SphP[j].DtPhi += SphP[i].DtPhi;
+    for(k=0;k<3;k++) {SphP[i].DtB_PhiCorr[k] = SphP[j].DtB_PhiCorr[k] = 0;} /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
+    SphP[i].Phi = SphP[i].PhiPred = SphP[i].DtPhi = SphP[j].Phi = SphP[j].PhiPred = SphP[j].DtPhi = 0; /* zero the time derivatives and cleaning terms: these need to be re-calculated self-consistently from the new mesh configuration */
 #endif
 #endif
 
@@ -935,6 +958,8 @@ int merge_particles_ij(int i, int j)
     }
     /* call the pressure routine to re-calculate pressure (and sound speeds) as needed */
     SphP[j].Pressure = get_pressure(j);
+    /* flag cells as having just undergone refinement/derefinement for other subroutines to be aware */
+    SphP[j].recent_refinement_flag = SphP[i].recent_refinement_flag = 1;
     return 1;
 }
 
