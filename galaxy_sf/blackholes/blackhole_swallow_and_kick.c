@@ -1105,6 +1105,7 @@ double target_mass_for_wind_spawning(int i)
     if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS;} // specified absolute mass resolution for stellar winds
     else if(P[i].ProtoStellarStage == 6) {return P[i].Sink_Formation_Mass;} // If supernova, use the nominal "average" mass resolution
 #endif
+#endif // single-star if above 
 
 #if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
@@ -1114,7 +1115,6 @@ double target_mass_for_wind_spawning(int i)
 
 #endif // BH_WIND_SPAWN clause
     return 0; // no well-defined answer, this shouldn't be called in this instance
-#endif
 }
 
 
