@@ -726,7 +726,7 @@ void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz, doub
 {
     int k; SphP[j].divB = 0; for(k=0;k<3;k++) {SphP[j].DtB[k] = 0;}
 #ifdef DIVBCLEANING_DEDNER
-    SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0; for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr = 0;}
+    SphP[j].DtPhi = SphP[j].PhiPred = SphP[j].Phi = 0; for(k=0;k<3;k++) {SphP[j].DtB_PhiCorr[k] = 0;}
 #endif
     
     double volume_for_BtoVB = P[j].Mass / SphP[j].Density;
