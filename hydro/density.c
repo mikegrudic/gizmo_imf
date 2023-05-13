@@ -32,6 +32,7 @@ int density_isactive(int n)
 {
     /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
     if(P[n].TimeBin < 0) {return 0;}
+    if(P[n].Type == 0) {if(SphP[n].recent_refinement_flag == 1) return 1;}
     
 #if defined(GRAIN_FLUID)
     if((1 << P[n].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */
