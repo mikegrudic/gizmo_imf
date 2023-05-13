@@ -36,6 +36,7 @@ int does_particle_need_to_be_merged(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+    if(P[i].Type==0) {if(SphP[i].recent_refinement_flag==1) return 0;}
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
 #endif
@@ -86,6 +87,7 @@ int does_particle_need_to_be_split(int i)
 #ifdef PREVENT_PARTICLE_MERGE_SPLIT
     return 0;
 #else
+    if(P[i].Type==0) {if(SphP[i].recent_refinement_flag==1) return 0;}
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
 #endif
