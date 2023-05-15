@@ -21,7 +21,7 @@
 /* routine to give yields for dust for different types of SNe (Ia & II) followed in-code */
 void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; double SNeIa_age = 0.03753; int k,source_key=1;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; double SNeIa_age = 0.03753; int k,source_key=1;
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
     SNeIa_age =  0.044;
 #endif
@@ -89,7 +89,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
 /* routine to give the dust yields for AGB winds (currently no dust yield assumed for stars younger than AGB age from continuous mass-loss, i.e. O/B winds) */
 void ISMDustChem_get_wind_dust_yields(double *yields, int i)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; int k,source_key=3;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; int k,source_key=3;
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES+NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES]=0;} // initialize yields to null
     double transition_age = 0.03753, star_age = evaluate_stellar_age_Gyr(i); // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
@@ -430,7 +430,7 @@ double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, in
 }
 
 
-/* Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981). Should surpass metal-line cooling for >10^6 K, but this will also overpredicts dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering */
+/* Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981). Should surpass metal-line cooling for >10^6 K, but this will also overpredict dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering */
 double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T, double n_elec)
 {
     if(target<0 || T<1.e5) {return 0;}
