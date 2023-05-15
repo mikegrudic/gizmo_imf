@@ -4903,8 +4903,12 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #ifdef GALSF_ISMDUSTCHEM_MODEL
     {int holder=NUM_ISMDUSTCHEM_SPECIES; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ISMDustChem_NumberOfSpecies", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+#ifdef GALSF_ISMDUSTCHEM_PASSIVE
+    {int holder=1; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ISMDustChem_PassiveDustEvolution", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}    
 #endif
 #endif
+#endif // METALS
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
