@@ -837,6 +837,7 @@ void init(void)
     {
         int k; k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
+        SphP[i].recent_refinement_flag = 0; // always initialize to zero, no recent refinements
 
         // re-match the predicted and initial velocities and B-field values, just to be sure //
         for(j=0;j<3;j++) SphP[i].VelPred[j]=P[i].Vel[j];
@@ -846,7 +847,7 @@ void init(void)
 
 #ifdef MAGNETIC
         for(j=0;j<3;j++) {SphP[i].B[j] = SphP[i].BPred[j] * P[i].Mass / SphP[i].Density;} // convert to the conserved unit V*B //
-        for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0;}
+        for(j=0;j<3;j++) {SphP[i].BPred[j]=SphP[i].B[j]; SphP[i].DtB[j]=0; SphP[i].BField_prerefinement[j]=0;}
 #endif
 #ifdef COSMIC_RAY_FLUID
         for(k=0;k<N_CR_PARTICLE_BINS;k++)

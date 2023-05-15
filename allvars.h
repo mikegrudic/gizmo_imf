@@ -316,15 +316,28 @@
 #if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
-#if defined(FIRE_BHS)
-#define BH_EXCISION_NONGAS
+//#if defined(FIRE_BHS)
+//#define BH_EXCISION_NONGAS
 //#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS // testing for now but will probably promote to default status: automatically scale BH spawn mass to fixed fraction of initial cell mass of the thing that forms it
-#define BH_EXCISION_GAS
+//#define BH_EXCISION_GAS
 //#define BH_DYNFRICTION_FROMTREE
-#endif
+//#endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1/UNIT_LENGTH_IN_KPC)
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
+
+#if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
+#define GALSF_SFR_IMF_SAMPLING
+#define GALSF_MERGER_STARCLUSTER_PARTICLES
+#define GALSF_FB_FIRE_PROTOSTELLARJETS
+#define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0)
+#if defined(FIRE_BHS)
+#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS
+#define BH_EXCISION_NONGAS
+#define BH_EXCISION_GAS
+#define BH_DYNFRICTION_FROMTREE
+#endif
+#endif
 
 #if defined(FIRE_MHD)
 #define MAGNETIC            /* top-level flag */
@@ -333,7 +346,7 @@
 #define CONDUCTION_SPITZER  /* compute proper coefficients and anisotropy for conduction */
 #define VISCOSITY           /* enable viscosity */
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
-#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
+//#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
@@ -341,20 +354,24 @@
 #define COSMIC_RAY_SUBGRID_LEBRON   /*! this simply uses the sub-grid model */
 #else /* use 'explicit' CR integration in one of the code formulations */
 #define COSMIC_RAY_FLUID /*! top-level flag */
-#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) && (FIRE_PHYSICS_DEFAULTS >= 3) /* enable multi-spectrum CRs if this set and FIRE version high enough */
+#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) /* enable multi-spectrum CRs if this set and FIRE version high enough */
 #if (FIRE_CRS >= 2)
-#define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve proton + electron spectrum by default */
+#define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve full set of 10 different CR species */
 #else
 #define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
-#define CRFLUID_DIFFUSION_CORRECTION_TERMS /*! use the correction terms from Hopkins 2022 to ensure the spectrum has the correct shape under spatial transport */
 #endif
 #if (FIRE_CRS <= 0)
 #if !defined(CRFLUID_M1)
 #define CRFLUID_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
 #endif
 #if !defined(CRFLUID_DIFFUSION_MODEL)
+#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
 #define CRFLUID_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
+#else
+#if (CRFLUID_DIFFUSION_MODEL > 0)
+#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
+#endif
 #endif
 #else
 #if !defined(CRFLUID_M1)
@@ -364,14 +381,15 @@
 #define CRFLUID_DIFFUSION_MODEL 6   /*! best-guess for variable-kappa model, combining updated SC+ET */
 #endif
 #define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
-#if !defined(CRFLUID_SET_SC_MODEL)
+#if !defined(CRFLUID_SET_SC_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
 #define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS, and best model for extrinsic driving of CRs */
 #endif
-#if !defined(CRFLUID_SET_ET_MODEL)
+#if !defined(CRFLUID_SET_ET_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
 #define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
 #endif
 #endif
+#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
@@ -3180,6 +3198,7 @@ extern struct gas_cell_data
 #ifdef MAGNETIC
     MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];              /*!< current magnetic field strength */
+    MyDouble BField_prerefinement[3]; /*!< safety variable that stores the B-field before a refinement-type operation to allow it to be more conservatively reset correctly after the (de)refinement completes */
     MyDouble B[3];                  /*!< actual B (conserved variable used for integration; can be B*V for flux schemes) */
     MyDouble DtB[3];                /*!< time derivative of B-field (of -conserved- B-field) */
     MyFloat divB;                   /*!< storage for the 'effective' divB used in div-cleaning procedure */
@@ -3290,7 +3309,8 @@ extern struct gas_cell_data
 #endif
 
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
-
+    int recent_refinement_flag;     /*!< key that tells the code this cell was just refined or de-refined, to know to treat some other operations with care */
+    
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     MyFloat Rad_Flux_UV;              /*!< local UV field strength */
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
@@ -3389,7 +3409,7 @@ extern struct gas_cell_data
 #endif
 
 #ifdef HYDRO_SPH
-  MyFloat alpha_limiter;                /*!< artificial viscosity limiter (Balsara-like) */
+    MyFloat alpha_limiter;                /*!< artificial viscosity limiter (Balsara-like) */
 #endif
 
 #ifdef CONDUCTION
