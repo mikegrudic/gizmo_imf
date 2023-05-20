@@ -324,12 +324,12 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
             for(n = 0; n < pc; n++) {
                 for(k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {SphP[offset + n].ISMDustChem_Dust_Metal[k] = *fp++;} // Get dust fractions
-                for(k = 0; k < NUM_ISMDUSTCHEM_SOURCES; k++) {SphP[offset + n].ISMDustChem_Dust_Source[k] = *fp++ * SphP[offset + n].ISMDustChem_Dust_Metal[0];} // Then get the sources of dust, convert source dust fraction to source mass fraction
+                for(k = 0; k < NUM_ISMDUSTCHEM_SOURCES; k++) {SphP[offset + n].ISMDustChem_Dust_Source[k] = *fp++;} // Then get the sources of dust
             }
 #endif
             break;
 
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             for(n = 0; n < pc; n++) {for(k = 0; k < NUM_ISMDUSTCHEM_SPECIES; k++) {SphP[offset + n].ISMDustChem_Dust_Species[k] = *fp++;}}
 #endif

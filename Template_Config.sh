@@ -688,4 +688,5 @@
                                  #- model = 2: "dust by species" dust evolution model based off Zhukovska+(2008/2016/2018). Tracks silicates (set composition), carbonaceous, SiC, and metallic iron dust along with optional iron nanoparticles and/or O reservoir dust species.
                                  #- model = 4: additional metallic iron dust nano-particles with set fraction assumed to be locked in silicate dust as inclusions based on Zhukovska+(2018)
                                  #- model = 8: additional oxygen bearing dust species which is a simple match to observations of MW oxygen depletion since they cannot be explained with purely silicate dust
+#GALSF_ISMDUSTCHEM_PASSIVE       #- decouples dust evolution from dust physics, chemisty, and feedback. Dust will evolve passively, with any physics or chemistry involving dust using constant, preset values (typically D/Z=0.4) 
 ############################################################################################################################-

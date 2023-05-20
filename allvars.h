@@ -1535,7 +1535,13 @@ typedef unsigned long long peano1D;
 #define NUM_ISMDUSTCHEM_ELEMENTS (1+NUM_LIVE_SPECIES_FOR_COOLTABLES) // number of metal species evolved for dust
 #define NUM_ISMDUSTCHEM_SOURCES (4) // Sources of dust creation/growth 0=gas-dust accretion, 1=SNe Ia, 2=SNe II, 3=AGB outflows
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
+#if (GALSF_ISMDUSTCHEM_MODEL & 4) && (GALSF_ISMDUSTCHEM_MODEL & 8)
 #define NUM_ISMDUSTCHEM_SPECIES 6 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron, 4=O reservoir, 5=iron inclusions in silicates */
+#elif (GALSF_ISMDUSTCHEM_MODEL & 4) || (GALSF_ISMDUSTCHEM_MODEL & 8)
+#define NUM_ISMDUSTCHEM_SPECIES 5 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron, 4=O reservoir or iron inclusions in silicates */
+#else
+#define NUM_ISMDUSTCHEM_SPECIES 4 /* 0=silicates, 1=carbonaceous, 2=SiC, 3=free-flying iron */
+#endif
 #else
 #define NUM_ISMDUSTCHEM_SPECIES 0 /* no explicit dust species evolved */
 #endif
@@ -3848,7 +3854,7 @@ enum iofields
   IO_HSMS,
   IO_Z,
   IO_DUSTCHEMZMET,
-  IO_SPECIESZ,
+  IO_DUSTCHEMSPECIESMET,
   IO_ISMDUSTCHEMMOL,
   IO_BHMASS,
   IO_BHMASSALPHA,

@@ -622,7 +622,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
         break;
             
-        case IO_SPECIESZ:    /* gas dust species following Species routines */
+        case IO_DUSTCHEMSPECIESMET:    /* gas dust species following Species routines */
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -2066,7 +2066,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 #endif
             break;
 
-            case IO_SPECIESZ:
+            case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             if(mode)
                 bytes_per_blockelement = (NUM_ISMDUSTCHEM_SPECIES) * sizeof(MyInputFloat);
@@ -2358,7 +2358,7 @@ int get_values_per_blockelement(enum iofields blocknr)
 #endif
             break;
 
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             values = NUM_ISMDUSTCHEM_SPECIES;
 #else
@@ -2552,7 +2552,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_CHIMES_FLUX_G0:
         case IO_CHIMES_FLUX_ION:
         case IO_DUSTCHEMZMET:
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
         case IO_ISMDUSTCHEMMOL:
             for(i = 1; i < 6; i++) {typelist[i] = 0;}
             return ngas;
@@ -2750,7 +2750,7 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;               
           
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
             return 1;
 #endif
@@ -3379,7 +3379,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_DUSTCHEMZMET:
             strncpy(label, "DZ  ", 4);
             break;
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
             strncpy(label, "SPEZ", 4);
             break;
         case IO_ISMDUSTCHEMMOL:
@@ -3801,7 +3801,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_DUSTCHEMZMET:
             strcpy(buf, "DustMetallicity");
             break;
-        case IO_SPECIESZ:
+        case IO_DUSTCHEMSPECIESMET:
             strcpy(buf, "DustSpeciesAbundance");
             break;
         case IO_ISMDUSTCHEMMOL:
@@ -4899,7 +4899,16 @@ void write_header_attributes_in_hdf5(hid_t handle)
         for(k=0;k<NUM_AGE_TRACERS;k++) {zkey[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+k]=-2;}
         for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {zkey[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+NUM_RPROCESS_SPECIES+NUM_AGE_TRACERS+k]=-3;}
         H5Awrite(hdf5_attribute, H5T_NATIVE_INT, zkey); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+
+#ifdef GALSF_ISMDUSTCHEM_MODEL
+    {int holder=NUM_ISMDUSTCHEM_SPECIES; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ISMDustChem_NumberOfSpecies", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
+#ifdef GALSF_ISMDUSTCHEM_PASSIVE
+    {int holder=1; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "ISMDustChem_PassiveDustEvolution", H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_INT, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}    
 #endif
+#endif
+#endif // METALS
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
     {hdf5_dataspace = H5Screate(H5S_SIMPLE); hsize_t tmp_dim[1]={N_RT_FREQ_BINS}; H5Sset_extent_simple(hdf5_dataspace, 1, tmp_dim, NULL);
