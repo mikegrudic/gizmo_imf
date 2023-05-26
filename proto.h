@@ -416,6 +416,7 @@ void blackhole_accretion(void);
 #ifdef BH_WIND_SPAWN
 void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
 void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir, double *dpdir);
+void get_spawned_cell_launch_speed(int i);
 #ifdef MAGNETIC
 void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r);
 #endif

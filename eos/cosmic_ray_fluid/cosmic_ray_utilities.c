@@ -567,7 +567,7 @@ void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i)
 
 
 
-/* utility routine which handles the numerically-necessary parts of the CR 'injection' for you */
+/* utility routine which handles the numerically-necessary parts of the CR 'injection' for you; here 'injection_velocity' should be in physical (not comoving) units */
 void inject_cosmic_rays(double CR_energy_to_inject, double injection_velocity, int source_type, int target, double *dir)
 {
     if(CR_energy_to_inject <= 0) {return;}
