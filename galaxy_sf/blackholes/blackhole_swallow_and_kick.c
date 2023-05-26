@@ -729,7 +729,7 @@ double get_spawned_cell_launch_speed(int i)
 #ifdef BH_WIND_SUBEDDINGTON_MODEL
     double MBH_4 = BPP(i).BH_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
     double lambda_edd_eff = DMAX( BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
-    double v_eff_esc_BLR = 270. * sqrt(sqrt(MBH_4 / lambda_edd_eff)); // escape velocity from BLR in km/s, using canonical RBLR ~ 20 light-days * (L_bol/1e45)^(1/2)-ish scaling
+    double v_eff_esc_BLR = 270. * sqrt(sqrt(MBH_4 / lambda_edd_eff)) / UNIT_VEL_IN_KMS; // escape velocity from BLR in km/s, using canonical RBLR ~ 20 light-days * (L_bol/1e45)^(1/2)-ish scaling
     v_magnitude = DMIN(v_magnitude , v_eff_esc_BLR); // the input BAL_v_outflow parameter now sets the maximum efficiency/velocity this is allowed to reach, but it can be arbitrarily lower
 #endif
 #ifdef SINGLE_STAR_FB_JETS
