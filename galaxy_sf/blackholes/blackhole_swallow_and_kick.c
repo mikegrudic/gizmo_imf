@@ -723,7 +723,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 
 
 /* return desired cell launch speed for spawned cells, in physical (not comoving) units */
-void get_spawned_cell_launch_speed(int i)
+double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
 #ifdef BH_WIND_SUBEDDINGTON_MODEL
