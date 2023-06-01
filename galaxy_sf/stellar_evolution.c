@@ -485,7 +485,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
 #ifdef METALS
     double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne); // call subroutine to collect the yields
-    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
+    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=yields[k];} // assign them back to the vector
 #endif
     in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
@@ -567,6 +567,8 @@ void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *
 #ifdef STARFORGE_FEEDBACK_TRACERS
     for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+k]=0;} yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+2]=1; // this is 'fully' sne material, so mark as such here, so it is noted for all wind routines [whichever form of the wind subroutine we actually use, otherwise it would only appear in the jet version]
 #endif
+    // just a catch to prevent un-physical yields, need to do this here before handing them off to other routines which may use the yields (currently just the dust routines)
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=DMIN(1.,DMAX(0.,yields[k]));}
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
     ISMDustChem_get_SNe_dust_yields(yields,i,t_gyr,SNeIaFlag,*Msne); // get dust yields
 #endif
@@ -607,7 +609,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 
 #ifdef METALS /* assume track initial metallicity; turn on COOL_METAL_LINES_BY_SPECIES for more detailed tracking of light elements */
     double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_wind_yields(yields, i);
-    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=DMIN(1.,DMAX(0.,yields[k]));} // just a catch to prevent un-physical yields, and assign them back to the vector
+    for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=yields[k];} // assign them back to the vector
 #endif
     in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
 }
@@ -656,6 +658,8 @@ void get_wind_yields(double *yields, int i)
 #endif
     } else {yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}} /* if <10 species, adopt toy model for simple enrichment [not using extended networks] */
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
+    // just a catch to prevent un-physical yields, need to do this here before handing them off to other routines which may use the yields (currently just the dust routines)
+    for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=DMIN(1.,DMAX(0.,yields[k]));}    
     ISMDustChem_get_wind_dust_yields(yields,i); // get dust yields
 #endif
 }
@@ -672,7 +676,7 @@ double Z_for_stellar_evol(int i)
 #ifdef METALS
     double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES)
-    int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!!!
+    int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!
 #endif
     return DMIN(DMAX(Z_solar,0.01),3.); // stellar evolution tables here are not arbitrarily extrapolable, so this is bounded //
 #else
@@ -897,11 +901,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             double age_Gyr = evaluate_stellar_age_Gyr(n);
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
-#ifdef SINGLE_STAR_RELICS
-                if(P[n].BH_Mass < 7./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (should be a white dwarf here - for now treat as compact relic)
-                if(P[n].BH_Mass > 25./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
-#endif
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
+#ifdef SINGLE_STAR_RELICS
+                if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6
+                if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
+#endif
 #if defined(BH_ALPHADISK_ACCRETION) && !defined(SINGLE_STAR_RELICS)
                 BPP(n).BH_Mass_AlphaDisk = 0; // probably does not matter, but let's make sure these don't cause issues
                 P[n].Mass = P[n].BH_Mass;

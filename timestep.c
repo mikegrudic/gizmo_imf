@@ -196,6 +196,9 @@ void find_timesteps(void)
                     P[i].do_gas_search_this_timestep = 1;
                 } else {P[i].do_gas_search_this_timestep = 0;}
             }
+#if defined(SINGLE_STAR_FB_SNE)
+	    if(P[i].ProtoStellarStage == 6){P[i].do_gas_search_this_timestep = 1;} // always do gas search if we're rapidly spawning in new gas shells
+#endif
         }
 #endif
         
@@ -809,7 +812,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
 
 
-#if defined(TURB_DRIVING)
+#if defined(TURB_DRIVING) && !defined(TURB_DRIVING_UPDATE_FORCE_ON_TURBUPDATE)
                 /* gas cannot step larger than major updates to turbulent driving routine */
                 double dt_turb_driving = 1.9 * st_return_dt_between_updates();
                 if (dt > dt_turb_driving) {dt = dt_turb_driving;}
@@ -887,7 +890,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
             double p_dt = prob_of_interaction(P[p].Mass,0.,PPP[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
 #endif
-            if(p_dt > p_target) {dt = p_target;}
+            if(p_dt > p_target) {dt *= p_target / p_dt;}
         }
     }
 #endif

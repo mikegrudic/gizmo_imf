@@ -327,6 +327,32 @@ endif
 
 
 #----------------------------------------------------------------------------------------------
+ifeq ($(SYSTYPE),"Expanse")
+CC       = mpicc
+CXX      = mpicxx
+FC       = $(CC)
+OPTIMIZE = -Ofast
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -qopenmp
+endif
+
+GSL_INCL = -I$(GSLHOME)/include
+GSL_LIBS = -L$(GSLHOME)/lib
+FFTW_INCL= -I$(FFTWHOME)/include
+FFTW_LIBS= -L$(FFTWHOME)/lib
+HDF5INCL = -I$(HDF5HOME)/include -DH5_USE_16_API
+HDF5LIB  = -L$(HDF5HOME)/lib -lhdf5 -lz
+MPICHLIB =
+OPT     += -DUSE_MPI_IN_PLACE
+## modules to load
+## module load slurm intel openmpi_ib fftw/2.1.5 gsl hdf5
+##  -- Make sure to use NOTYPEPREFIX_FFTW when compiling
+## run job with
+## mpirun -v -x LD_LIBRARY_PATH ./GIZMO params.txt
+endif
+
+
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Bridges2")
 CC       = mpicc
 CXX      = mpic++

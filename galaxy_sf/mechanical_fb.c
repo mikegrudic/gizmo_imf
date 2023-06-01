@@ -180,6 +180,9 @@ void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loo
             for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
         } else {
             P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
+#ifdef SINGLE_STAR_FB_WINDS
+            P[i].BH_Mass -= out->M_coupled; if((P[i].BH_Mass<0)||(isnan(P[i].BH_Mass))) {P[i].BH_Mass=0;}
+#endif
         }
     }
 }
@@ -503,7 +506,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
 
     // now define quantities that will be used below //
-    double psi_cool=1, psi_egycon=1, v_ejecta_eff_init=local.SNe_v_ejecta, v_ejecta_eff=v_ejecta_eff_init, residual_thermal_frac=0; // separate initial [pre-shock] ejecta velocity, which defines energy, and post-shock
+    double v_speedlim_fac=0, psi_cool=1, psi_egycon=1, v_ejecta_eff_init=local.SNe_v_ejecta, v_ejecta_eff=v_ejecta_eff_init, residual_thermal_frac=0; // separate initial [pre-shock] ejecta velocity, which defines energy, and post-shock
     double wk_norm = 1. / (MIN_REAL_NUMBER + fabs(local.Area_weighted_sum[0])); // normalization for scalar weight sum
     double pnorm_sum = 1./(MIN_REAL_NUMBER + fabs(local.Area_weighted_sum[10])); // re-normalization after second pass for normalized "pnorm" (should be close to ~1)
     double thermal_to_kinetic_ratio_universal = 2.54, f_sedov_kin, thermal_kinetic_ratio_lim_wvinwards = 0; // define ratio of thermal-to-kinetic energy for sedov-taylor phase
@@ -524,6 +527,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
         v_ejecta_eff = v_ejecta_eff_init * sqrt(f_sedov_kin); // effective velocity after reverse shock in sedov phase
         double beta_egycon = sqrt(pnorm_sum / local.Msne) * (1./v_ejecta_eff) * local.Area_weighted_sum[8]; // beta term for re-normalization for energy [can be positive or negative]
         double beta_cool = pnorm_sum * local.Area_weighted_sum[9]; // beta term if all particles in terminal-momentum-limit
+        v_speedlim_fac = DMAX( -beta_cool, v_speedlim_fac ); // save this for below because its needed to limit individually-varying vcool
         psi_egycon = sqrt(1. + beta_egycon*beta_egycon) - beta_egycon; // exact solution for energy equation for constant psi
         if(beta_egycon > 20.) {psi_egycon = 1./(2.*beta_egycon);} // replace with series expansion to avoid roundoff error at high beta
         if(beta_egycon < beta_egycon_thold) {psi_egycon=psi_thold; residual_thermal_frac=DMAX(0., (thermal_kinetic_ratio_lim_wvinwards-2.*beta_egycon*sqrt(1.+thermal_kinetic_ratio_lim_wvinwards))/(1.+thermal_kinetic_ratio_lim_wvinwards) * f_sedov_kin);} // in this case (blastwave in a converging flow) we don't boost the momentum beyond the 'normal' maximum but assign the residual energy to thermal, since the timescale to convert this additional post-shock thermal energy to kinetic is actually quite long for this situation
@@ -640,13 +644,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(loop_iteration < 2)
                 {
                     double e0 = Esne51;
-                    if(loop_iteration < 0) {e0=1;} else {if(feedback_type_is_SNe == 1) {e0+=1;} else {e0=0.1;}} // set to small number for non-SNe feedback
                     double n0 = rho_j*density_to_n; if(n0 < 0.001) {n0=0.001;}
                     double z0 = Metallicity_j[0]/All.SolarAbundances[0];
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+                    if(loop_iteration < 0) {e0=1;} else {if(feedback_type_is_SNe == 1) {e0=e0;} else {e0=1.e-10;}} // set to small number for non-SNe feedback
                     double z0_term=1.; if(z0 < 1.) {z0_term = pow(DMAX(z0,1.e-2),1.5);} else {z0_term = z0;}
                     double nz_dep = pow(n0, 0.143) * pow(z0_term, 0.12); v_cooling = 210. * nz_dep / UNIT_VEL_IN_KMS; // updated fit from Martizzi et al. 2015 for Z-dependence, using more detailed cooling fits. newer fits from there and Walsh+Naab, etc, bracket around this slope for the n-dependence. normalization ranges from this value to factor ~2-3 lower, depending on various assumptions
 #else
+                    if(loop_iteration < 0) {e0=1;} else {if(feedback_type_is_SNe == 1) {e0+=1;} else {e0=0.1;}} // set to small number for non-SNe feedback
                     if(z0 < 0.01) {z0 = 0.01;}
                     double z0_term=1.; if(z0 < 1.) {z0_term = z0*sqrt(z0);} else {z0_term = z0;}
                     double nz_dep  = pow(n0 * z0_term , 0.14);
@@ -792,6 +797,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     if(mj_preshock > m_cooling) {residual_thermal_frac=0; retain_thermal_flag=0;} // figure out if we've passed the cooling time/distance (which is -not- the same as reaching the terminal momentum for an arbitrary inflow structure around the explosion)
                     if(mj_preshock > m_terminal) {mom_boost_fac = DMIN(boost_terminal,boost_egycon);} // if swept mass where reach the terminal solution is less than the cell mass, apply it, otherwise apply the conservative solution
 #endif
+                    double v_speedlim = DMAX(DMAX( v_cooling * v_speedlim_fac , vcool_eff),    v_ejecta_eff_init * sqrt(dM_ejecta_in/mj_preshock)); // maximum physical velocity before must enter cooling phase
+                    mom_boost_fac = DMAX(1., DMIN(mom_boost_fac , v_ejecta_eff_init / v_speedlim)); // restrict boost factor according to this limit
                 } else {mom_boost_fac=DMIN(1,boost_egycon*psi_egycon); residual_thermal_frac=0;} // prevent energy conservation issues when coupling mass-loss
                 
                 /* save summation values for outputs */

@@ -290,7 +290,9 @@ double diffusion_coefficient_self_confinement(int mode, int target, int k_CRegy,
     Z_sol = P[target].Metallicity[0]/0.014;
 #endif
     double G_dust = vA_code*k_L * Z_sol * f_grainsize; // also can increase by up to a factor of 2 for regimes where charge collisionally saturated, though this is unlikely to be realized
-    if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term 
+    double RGV_dust_crit = 0.01 * (vA_code*UNIT_VEL_IN_KMS) / (1. + pow(cs_thermal*UNIT_VEL_IN_KMS/8.1,2)); // critical rigidity below which there are no gyro-resonant dust grains expected with >10 nm sizes
+    if(R_CR_GV < RGV_dust_crit) {G_dust *= pow(R_CR_GV/RGV_dust_crit, 2);} // suppression factor for the dust-damping term when outside of this relevant rigidity range (thanks to Margot Fitz Axen for helping identify regimes where this would kick in which we were simulating in GMCs)
+    if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term
     double G_ion_neutral = (5.77e-11 * n_cgs * (0.97*nh0 + 0.03*nHe0) * sqrt(temperature)) * UNIT_TIME_IN_CGS / sqrt(M_cr_mp); // ion-neutral damping: need to get thermodynamic quantities [neutral fraction, temperature in Kelvin] to compute here -- // G_ion_neutral = (xiH + xiHe); // xiH = nH * siH * sqrt[(32/9pi) *kB*T*mH/(mi*(mi+mH))]
     double fac_turb = sqrt(k_turb*k_L) * fturb_multiplier; // factor to use below
     double G_turb_plus_linear_landau = (vA_noion + sqrt(M_PI)*cs_thermal/4.) * fac_turb; // linear Landau + turbulent (both have same form, assume k_turb from cascade above)

@@ -21,7 +21,7 @@
 /* routine to give yields for dust for different types of SNe (Ia & II) followed in-code */
 void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; double SNeIa_age = 0.03753; int k,source_key=1;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; double SNeIa_age = 0.03753; int k,source_key=1;
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
     SNeIa_age =  0.044;
 #endif
@@ -37,7 +37,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
         if(dust_yields[4]>yields[4]) {dust_yields[4]=yields[4];} // Just in case there's not enough O
         for(k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)  dust_yields[0] += dust_yields[k]; // Fraction of yields that is dust
         for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
-        yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
+        yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
         return; // all done, if only using this model
     } // below follows species model, will be default if above not set
     
@@ -81,7 +81,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
     }
     for(k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)  dust_yields[0] += dust_yields[k]; // Fraction of yields that is dust
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
-    yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
+    yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
     for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]=species_yields[k];}
 }
 
@@ -89,7 +89,7 @@ void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SN
 /* routine to give the dust yields for AGB winds (currently no dust yield assumed for stars younger than AGB age from continuous mass-loss, i.e. O/B winds) */
 void ISMDustChem_get_wind_dust_yields(double *yields, int i)
 {
-    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]; int k,source_key=3;
+    double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; int k,source_key=3;
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES+NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES]=0;} // initialize yields to null
     double transition_age = 0.03753, star_age = evaluate_stellar_age_Gyr(i); // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
@@ -111,6 +111,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
             for(k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {dust_yields[0]+=dust_yields[k];}
         }
         for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
+        yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
         return; // end routine
     } // below follows species model, and will be default if above not set
     double dt,Z,elem_yield,wind_rate;
@@ -190,7 +191,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
         for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {dust_yields[0] += dust_yields[k];}
     }
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {yields[k+NUM_METAL_SPECIES]=dust_yields[k];}
-    yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
+    yields[NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+source_key] = dust_yields[0]; // total yield goes to the source term of this type
     for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]=species_yields[k];}
 }
 
@@ -356,7 +357,7 @@ void Initialize_ISMDustChem_Variables(int i)
     All.ISMDustChem_AtomicMassTable[8] = 32.065;  // S
     All.ISMDustChem_AtomicMassTable[9] = 40.078;  // Ca
     All.ISMDustChem_AtomicMassTable[10] = 55.845; // Fe
-    All.ISMDustChem_SNeSputteringShutOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe
+    All.ISMDustChem_SNeSputteringShutOffTime = 0.3E-3; // Destruction of dust due to SNe thermal sputtering ends around 0.3 Myr after SNe (from idealized SNe in Hu+2019)
     // Fiducial olivine-pyroxene silicate dust composition with olivine fraction = 0.63 and Mg frac = 0.65. If using iron nanoparticles assume iron is always present for silicate structure in the form of iron inclusions. index in metallicity field for elements which make up silicate dust (O,Mg,Si)
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[0] = 4;
     All.ISMDustChem_SilicateMetallicityFieldIndexTable[1] = 6;
@@ -404,7 +405,7 @@ void Initialize_ISMDustChem_Variables(int i)
             }
             for (j=1;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {SphP[i].ISMDustChem_Dust_Metal[0] += SphP[i].ISMDustChem_Dust_Metal[j];}
             for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {SphP[i].ISMDustChem_Dust_Source[j] = 0.;}
-            SphP[i].ISMDustChem_Dust_Source[2] = 1.;  // Assume initial dust population is from SNe II
+            SphP[i].ISMDustChem_Dust_Source[2] = SphP[i].ISMDustChem_Dust_Metal[0];  // Assume initial dust population is from SNe II
         }
         else
         {
@@ -429,7 +430,7 @@ double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, in
 }
 
 
-/* Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981). Should surpass metal-line cooling for >10^6 K, but this will also overpredicts dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering */
+/* Approximate dust cooling via electron-dust collisions for MRN sized dust in plasmas from Dwek(1987)+Dewk&Werner(1981). Should surpass metal-line cooling for >10^6 K, but this will also overpredict dust cooling for <10^7 K since cooling is dominated by small grains which should be destroyed via sputtering */
 double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T, double n_elec)
 {
     if(target<0 || T<1.e5) {return 0;}
