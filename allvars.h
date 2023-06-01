@@ -521,8 +521,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 
 
-#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) /* options for hybrid/combined FIRE+STARFORGE simulations */
+#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) /* options for hybrid/combined FIRE+STARFORGE simulations */
 #define SINGLE_STAR_STARFORGE_DEFAULTS   /* parent flag enabling the STARFORGE modules, which themselves enable the FIRE modules */
+#define SINGLE_STAR_AND_SSP_HYBRID_MODEL 0.01 /* do single-star routines below this mass resolution in solar, FIRE-like above */
 #define GALSF_SFR_IMF_SAMPLING           /* use discrete sampling of 'number of O-stars' so we can handle the intermediate-mass regime in at least a simple approximate manner */
 #define COOLING              /* only physical if include cooling for both sides, using same cooling functions */
 #define MAGNETIC             /* enable MHD, important for systems here */
@@ -552,7 +553,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
-#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
+#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
 #ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
@@ -603,7 +604,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_COMOVING
 #ifndef OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_FLUX
-#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
 #define IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR
 #endif
 #endif
@@ -622,7 +623,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_CHEM_PHOTOION 1
 #endif
 #define RT_INFRARED
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
 #define RT_ISRF_BACKGROUND
 #endif
 #if defined(RT_INFRARED)
@@ -644,7 +645,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define DIFFUSION_OPTIMIZERS
 #endif // MAGNETIC
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
 #define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
 #endif // COOLING
