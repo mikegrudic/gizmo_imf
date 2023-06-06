@@ -232,47 +232,18 @@ double rt_kappa(int i, int k_freq)
         if(SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
-        if(Trad <= 0) {Trad = 5600.;}
+        if((Trad <= 0) || (T_dust_em<=0)) {PRINT_WARNING("\n Cell-ID=%llu  has T_rad=%g and T_dust=%g\n", (unsigned long long) P[i].ID, Tad, T_dust_em);}
         double kappa = 0.0, x_elec = 1.;
 #ifdef COOLING
         x_elec = SphP[i].Ne; // actual free electron fraction
 #endif
-        /* opacities are from tables of Semenov et al 2003; we use their 'standard'
-            model, for each -dust- temperature range (which gives a different dust composition, 
-            hence different wavelength-dependent specific opacity). We then integrate to 
-            get the Rosseland-mean opacity for the given dust composition, assuming 
-            the radiation is a blackbody with the specified -radiation- temperature. 
-            We adopt their 'porous 5-layered sphere' model for dust composition. 
-            We use simple fitting functions to the full tabulated data: however, note that
-            (because the blackbody assumption smoothes fine structure in the opacities), 
-            the deviations from the fit functions are much smaller than the deviations owing 
-            to different grain composition choices (porous/non, composite/non, 5-layer/aggregated/etc) 
-            in Semenov et al's paper */
+
 #if defined(RT_INFRARED) || defined(COOL_LOW_TEMPERATURES)
         T_dust_em = DMIN(T_dust_em , 1499.9); // limit to <1500 so always use opacities for 'capped' value at 1500 below, but don't ignore, because we're assuming the dust destruction above 1500K is accounted for in the self-consistent calculation of the dust-to-metals ratio, NOT in the opacities here //
 #endif
-        if(T_dust_em < 1500.) // < 1500 K, dust is present
-        {
-            double x = 4.*log10(Trad) - 8.; // needed for fitting functions to opacities (may come up with cheaper function later)
-            double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
-            if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
-            if(T_dust_em < 160.) // Tdust < 160 K (all dust constituents present)
-            {
-                kappa = exp(0.72819004 + 0.75142468*x - 0.07225763*x*x - 0.01159257*x*x*x + 0.00249064*x*x*x*x);
-            } else if(T_dust_em < 275.) { // 160 < Tdust < 275 (no ice present)
-                kappa = exp(0.16658241 + 0.70072926*x - 0.04230367*x*x - 0.01133852*x*x*x + 0.0021335*x*x*x*x);
-            } else if(T_dust_em < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
-                kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);        
-            } else if(T_dust_em < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
-                kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
-            } else { // 680 < Tdust < 1500 (silicates & iron present)
-                kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
-            }
-            if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
-            kappa *= Zfac*dust_to_metals_vs_standard; // the above are all dust opacities, so they scale with dust content per our usual expressions
-            //kappa += 0.35 * x_elec; // plus Thompson scattering [included in more detailed calculation below, we just need the dust opacity here] //
-        }
-        {
+        if(T_dust_em < 1500.){kappa = rt_kappa_dust_IR(i,T_dust_em,Trad,0);} // < 1500 K, dust is present; here flag 0 uses the radiation temperature because we want to know the Planck-mean *absorption* opacity
+
+        { // non-dust IR opacities
             /* this is an approximate result for a wide range of low-to-high-temperature opacities -not- from the dust phase, but provides a pretty good fit from 1.5e3 - 1.0e9 K, and valid at O(1) level down to <10 K, with updates from PFH in Sept 2022 */
             double f_neutral_approx = DMAX(0., 1.-x_elec); /* approximate neutral fraction (good enough for us for what we need below) */
             double f_free_metals_approx = P[i].Metallicity[0] * DMAX(0, 1.-0.5*dust_to_metals_vs_standard); /* metal mass fraction times the free (not locked in dust abundance), assuming the default solar scaling is 1/2 */
@@ -305,14 +276,59 @@ double rt_kappa(int i, int k_freq)
 		return kappa * fac; // convert units and return
     }
 #endif
-#endif
-    
-    
+#endif    
     return 0;
 }
 
+#ifdef RT_INFRARED
+/***********************************************************************************************************/
+/* calculate the IR dust opacity [in physical code units = Length^2/Mass]. 
+/* NOTE: The flag do_emission_opacity toggles special behaviour.
+/* 0: returns the scattering+absorption opacity using the radiation temperature (usually want this)
+/* 1: returns the *emission* opacity, assuming the dust radiates as a blackbody (depends only on T_dust)
+/***********************************************************************************************************/
+double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opacity)
+{
+    if(do_emission_opacity){Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust
+    double x = 4.*log10(Trad) - 8.; // needed for fitting functions to opacities (may come up with cheaper function later)
+    double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
+    if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
 
+    /* opacities are from tables of Semenov et al 2003; we use their 'standard'
+    model, for each -dust- temperature range (which gives a different dust composition, 
+    hence different wavelength-dependent specific opacity). We then integrate to 
+    get the Rosseland-mean opacity for the given dust composition, assuming 
+    the radiation is a blackbody with the specified -radiation- temperature. 
+    We adopt their 'porous 5-layered sphere' model for dust composition. 
+    We use simple fitting functions to the full tabulated data: however, note that
+    (because the blackbody assumption smoothes fine structure in the opacities), 
+    the deviations from the fit functions are much smaller than the deviations owing 
+    to different grain composition choices (porous/non, composite/non, 5-layer/aggregated/etc) 
+    in Semenov et al's paper */
 
+    if(T_dust < 160.) // Tdust < 160 K (all dust constituents present)
+    {
+        kappa = exp(0.72819004 + 0.75142468*x - 0.07225763*x*x - 0.01159257*x*x*x + 0.00249064*x*x*x*x);
+    } else if(T_dust < 275.) { // 160 < Tdust < 275 (no ice present)
+        kappa = exp(0.16658241 + 0.70072926*x - 0.04230367*x*x - 0.01133852*x*x*x + 0.0021335*x*x*x*x);
+    } else if(T_dust < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
+        kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);        
+    } else if(T_dust < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
+        kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
+    } else { // 680 < Tdust < 1500 (silicates & iron present)
+        kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
+    }
+    if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
+
+    double Zfac = 1.0, dust_to_metals_vs_standard = return_dust_to_metals_ratio_vs_solar(i); 
+#ifdef METALS
+    if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
+#endif
+    kappa *= Zfac*dust_to_metals_vs_standard; // the above are all dust opacities, so they scale with dust content per our usual expressions        
+    if(do_emission_opacity){kappa *= rt_absorb_frac_albedo(i, RT_FREQ_BIN_INFRARED);} // multiply by (1-albedo) because emission cross section depends only on absorption
+    return kappa;
+}
+#endif
 
 
 /***********************************************************************************************************/
@@ -798,7 +814,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
         {
             kf = k_tmp; // normal loop
-            double e0, dt_e_gamma_band=0, total_de_dt=0, a0 = -rt_absorption_rate(i,kf);
+            double e0, dt_e_gamma_band=0, total_de_dt=0, a0_abs = -rt_absorption_rate(i,kf);
 #if defined(RT_EVOLVE_INTENSITIES)
             if(mode==0) {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Rad_Intensity[kf][k_angle];} else {e0 = RT_INTENSITY_BINS_DOMEGA*SphP[i].Rad_Intensity_Pred[kf][k_angle];}
             dt_e_gamma_band = RT_INTENSITY_BINS_DOMEGA*SphP[i].Dt_Rad_Intensity[kf][k_angle];
@@ -822,20 +838,22 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     // advected radiation changes temperature of radiation field, before absorption //
                     double dE_fac = dt_e_gamma_band * dt_entr; // change in energy from advection
                     double dTE_fac = SphP[i].Dt_Rad_E_gamma_T_weighted_IR * dt_entr; // T-weighted change from advection
-                    double dE_abs = -e0 * (1. - exp(a0*dt_entr)); // change in energy from absorption
+                    double dE_abs = -e0 * (1. - exp(a0_abs*dt_entr)); // change in energy from absorption
                     double T_max = DMAX(SphP[i].Radiation_Temperature , dE_fac / dTE_fac); 
                     double rfac=1; if(dE_fac < -0.5*(e0+dE_abs)) {rfac=fabs(0.5*(e0+dE_abs))/fabs(dE_fac);} else {if(dE_fac > 0.5*e0) {rfac=0.5*e0/dE_fac;}}
                     dE_fac*=rfac; dTE_fac*=rfac; // limit temperature change from advection to prevent spurious divergences
                     
                     SphP[i].Radiation_Temperature = (e0 + dE_fac) / (MIN_REAL_NUMBER + DMAX(0., e0 / SphP[i].Radiation_Temperature + dTE_fac));
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
-                    a0 = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
+                    a0_abs = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
                 }
-                double total_emission_rate = E_abs_tot + fabs(a0)*e0 + SphP[i].Rad_Je[kf]; // add the summed absorption as emissivity here //
+                double total_emission_rate = E_abs_tot + fabs(a0_abs)*e0 + SphP[i].Rad_Je[kf]; // add the summed absorption and equate to dust emission //
                 total_de_dt = E_abs_tot + SphP[i].Rad_Je[kf] + dt_e_gamma_band;
-                if(fabs(a0)>0)
+                if(total_emission_rate>0)
                 {
-                    Dust_Temperature_4 = total_emission_rate * vol_inv_phys / (MIN_REAL_NUMBER + fabs(a0)); // physical energy density units, both emission and absorption rates reduced by one power of RSOL so cancel
+                    double kappa_dust_emission = rt_kappa_dust_IR(i, SphP[i].Dust_Temperature,SphP[i].Radiation_Temperature,1);  // opacity for dust *emission* - albedo is already accounted for here when rt_kappa_dust_IR is in emission mode
+                    double a0_dust_emission = C_LIGHT_CODE_REDUCED * kappa_dust_emission * SphP[i].Density * All.cf_a3inv;
+                    Dust_Temperature_4 = total_emission_rate * vol_inv_phys / (MIN_REAL_NUMBER +  a0_dust_emission); // physical energy density units, both emission and absorption rates reduced by one power of RSOL so cancel
                     Dust_Temperature_4 *= UNIT_PRESSURE_IN_CGS * a_rad_inverse; // convert to cgs; physical a_r here
                     SphP[i].Dust_Temperature = sqrt(sqrt(Dust_Temperature_4)); // now we can self-consistently reset the dust temperature accounting for radiative equilibrium (note that exchange with the gas has been taken care of on the half-step, via calculating the energy loss/gain from the IR band from the dust-gas collisions: that energy is already appropriately corrected //
                     if(SphP[i].Dust_Temperature < T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
