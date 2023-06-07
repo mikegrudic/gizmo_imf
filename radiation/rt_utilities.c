@@ -864,7 +864,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 			if(T_dust < T_min) {T_dust = T_min;} // // dust temperature shouldn't be below CMB
 			n_iter++;
 			if(n_iter > MAXITER) PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%d iter=%d Tdust=%g.\n",P[i].ID,n_iter,T_dust);
-		    } while(T_dust_old-T_dust > 1e-4);
+		    } while(fabs(T_dust_old-T_dust) > 1e-4);
 		    SphP[i].Dust_Temperature = T_dust;
                 }
                 double Tdust_eff = DMAX(sqrt(sqrt(Dust_Temperature_4)) , SphP[i].Dust_Temperature);
