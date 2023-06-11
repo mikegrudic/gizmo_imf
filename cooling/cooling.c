@@ -211,6 +211,7 @@ void do_the_cooling_for_particle(int i)
                         {
                             double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
                             temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+//                            double temp = SphP[i].Dust_Temperature; // assume radiation emerges at the dust temperature?
                             double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp;
                             SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
                             SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
@@ -884,7 +885,16 @@ double CoolingRateFromU(double u, double rho, double ne_guess, double *ne_eval, 
 
 extern FILE *fd;
 
-
+/* Calculates the coefficient for gas-dust collisional heat transfer, such that 
+LambdaDust = gas_dust_heating_coeff * (T-Tdust) in erg cm^3 s^-1.
+*/
+double gas_dust_heating_coeff(int i, double T){
+    double Z_sol=1;
+#ifdef METALS
+    Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
+#endif
+    return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * return_dust_to_metals_ratio_vs_solar(i);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
+}
 
 #ifndef CHIMES
 /*  Calculates (heating rate-cooling rate)/n_h^2 in cgs units
@@ -1035,7 +1045,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             Lambda += LambdaMol;
 
             /* now add the dust cooling/heating terms */
-            LambdaDust = -1.116e-32 * (Tdust-T) * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * return_dust_to_metals_ratio_vs_solar(target);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. note our sign convention is such that positive lambda = gas cooling, here T>T_dust //
+            LambdaDust = gas_dust_heating_coeff(target,T) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
@@ -1921,9 +1931,6 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     SphP[i].MolecularMassFraction = xH0 * SphP[i].MolecularMassFraction_perNeutralH; // record variable -- this is largely what is needed below
 #endif
 }
-
-
-
 
 
 /* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
