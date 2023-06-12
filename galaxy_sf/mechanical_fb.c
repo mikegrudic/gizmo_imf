@@ -235,7 +235,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) {continue;} // require a gas particle //
-                
+#ifdef BH_WIND_SPAWN
+                if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
+#endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
                 #pragma omp atomic read
                 Mass_j = P[j].Mass; // this can get modified below, so we need to read it thread-safe now
@@ -577,7 +579,9 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) {continue;} // require a gas particle //
-                
+#ifdef BH_WIND_SPAWN
+                if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
+#endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
                 #pragma omp atomic read
                 Mass_j = P[j].Mass; // this can get modified below, so we need to read it thread-safe now
