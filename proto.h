@@ -790,8 +790,8 @@ void gravity_tree(void);
 void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
-double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg);
-double gas_dust_heating_coeff(int i, double T);
+double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg, double T);
+double gas_dust_heating_coeff(int i, double T, double Tdust);
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate);
 double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate);
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe);
@@ -888,7 +888,6 @@ void rt_define_effective_frequencies_in_bands(void);
 void eddington_tensor_dot_vector(double ET[6], double vec_in[3], double vec_out[3]);
 double return_flux_limiter(int target, int k_freq);
 double rt_kappa(int j, int k_freq);
-double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opacity);
 int check_if_absorbed_photons_can_be_reemitted_into_same_band(int kfreq);
 double rt_absorb_frac_albedo(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
@@ -932,6 +931,7 @@ void rt_write_chemistry_stats(void);
 #endif
 
 #endif
+double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opacity);
 
 
 void find_block(char *label,FILE *fd);

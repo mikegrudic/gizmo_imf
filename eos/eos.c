@@ -342,7 +342,7 @@ double return_dust_to_metals_ratio_vs_solar(int i)
 //    return exp(-DMIN(SphP[i].Dust_Temperature/1500., 40.)); // crudely don't both accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
 #endif
 #if defined(COOL_LOW_TEMPERATURES)
-    double Tdust = get_equilibrium_dust_temperature_estimate(i,0);
+    double Tdust = get_equilibrium_dust_temperature_estimate(i,0,0);
     if(Tdust >= 2000.) {return 1.e-4;} else {return exp(-pow(Tdust/1000.,3));} // this hit the maximum allowed temperature in the routine if it gets >2000; for lower temps, let it smoothly cut off
 #endif
     return 1; // default behavior

@@ -888,12 +888,13 @@ extern FILE *fd;
 /* Calculates the coefficient for gas-dust collisional heat transfer, such that 
 LambdaDust = gas_dust_heating_coeff * (T-Tdust) in erg cm^3 s^-1.
 */
-double gas_dust_heating_coeff(int i, double T){
+double gas_dust_heating_coeff(int i, double T, double Tdust){
     double Z_sol=1;
 #ifdef METALS
     Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
-    return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * return_dust_to_metals_ratio_vs_solar(i);  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
+    double fdust = sigmoid_sqrt(-0.006*(Tdust - 1500));
+    return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
 }
 
 #ifndef CHIMES
@@ -932,7 +933,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
-    Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac);
+    Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac, T);
 #endif
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
     Tdust = DMIN(DMAX(10., T_cmb),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
@@ -1045,7 +1046,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             Lambda += LambdaMol;
 
             /* now add the dust cooling/heating terms */
-            LambdaDust = gas_dust_heating_coeff(target,T) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
+            LambdaDust = gas_dust_heating_coeff(target,T,Tdust) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
 #ifdef RT_INFRARED
             if(target >= 0) {LambdaDust = get_rt_ir_lambdadust_effective(T, rho, &nH0, &n_elec, target, 0);} // call our specialized subroutine, because radiation and gas energy fields are co-evolving and tightly-coupled here //
 #endif
@@ -1824,7 +1825,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     
     double Tdust = 30.; // need to assume something about dust temperature for reaction rates below for dust-phase formation
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
-    Tdust = get_equilibrium_dust_temperature_estimate(i, shieldfac);
+    Tdust = get_equilibrium_dust_temperature_estimate(i, shieldfac, T);
 #endif
     double a_Z = 3.e-18*sqrt_T / ((1. +4.e-2*sqrt(T+Tdust) +2.e-3*T +8.e-6*T*T )*(1. +1.e4/exp(DMIN(EXPmax,600./Tdust)))) * f_dustgas_solar * nH0 * clumping_factor; // dust surface formation (assuming dust-to-metals ratio is 0.5*(Z/solar)*dust-to-gas-relative-to-solar in all regions where this is significant), from Glover & Jappsen 2007
 
@@ -1934,19 +1935,48 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 
 
 /* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
-double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg)
-{   /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
+double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg, double T)
+{   
 #if defined(RT_INFRARED)
     if(i >= 0) {return SphP[i].Dust_Temperature;} // this is pre-computed -- simply return it
 #endif
+/* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
     double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
 #ifdef RT_ISRF_BACKGROUND
     e_IR *= All.InterstellarRadiationFieldStrength; e_HiEgy *= All.InterstellarRadiationFieldStrength; // need to re-scale the assumed ISRF components
 #endif
+
     if(i >= 0)
     {
+#ifdef SINGLE_STAR_SINK_DYNAMICS // treatment using direct dust temperature solver accounting for absorption and gas-dust coupling - want this when capturing the dynamics of dense collapsing cores
+	double absorption_rate=0, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
+#if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // we have information about individual radiation bands and their opacities; use these to compute dust absorption rate
+	for(int k=0;k<N_RT_FREQ_BINS;k++){
+	    if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)){continue;} // skip ionizing bands where the dust cross section is not accounted for
+	    absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k];
+	}
+#endif
+	absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_dust_IR(i,T_cmb, T_cmb, 0); // CMB absorption; assume cloud is optically-thin to the CMB 
+#if defined(RT_ISRF_BACKGROUND) //account for additional optical + IR radiation field with extinction
+	double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
+	double kappa_IR = rt_kappa_dust_IR(i,20,20,0); // assume Trad=20 for IR dust opacity
+	double Zfac = 1.;
+#ifdef METALS
+	Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+#endif
+	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS; //return_dust_to_metals_ratio_vs_solar(i);
+	double tau_opt = kappa_opt*column;
+	e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
+	absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
+	absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
+#endif
+	// OK now we have our dust absorption rate, let's call the solver
+	double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
+	return DMAX(DMIN(Tdust_eqm , 2000.) , 1.);;
+#endif // SINGLE_STAR_SINK_DYNAMICS
+
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
         e_HiEgy=0; e_IR = 0; int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
         for(k=0;k<N_RT_FREQ_BINS;k++) {
