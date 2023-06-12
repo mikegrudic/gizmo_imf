@@ -721,6 +721,30 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
     return;
 }
 
+
+/* return desired cell launch speed for spawned cells, in physical (not comoving) units */
+double get_spawned_cell_launch_speed(int i)
+{
+    double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
+#ifdef BH_WIND_SUBEDDINGTON_MODEL
+    double MBH_4 = BPP(i).BH_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
+    double lambda_edd_eff = DMAX( BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
+    double v_eff_esc_BLR = 270. * sqrt(sqrt(MBH_4 / lambda_edd_eff)) / UNIT_VEL_IN_KMS; // escape velocity from BLR in km/s, using canonical RBLR ~ 20 light-days * (L_bol/1e45)^(1/2)-ish scaling
+    v_magnitude = DMIN(v_magnitude , v_eff_esc_BLR); // the input BAL_v_outflow parameter now sets the maximum efficiency/velocity this is allowed to reach, but it can be arbitrarily lower
+#endif
+#ifdef SINGLE_STAR_FB_JETS
+    v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
+#endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
+    if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
+#endif
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
+    if(P[i].ProtoStellarStage==6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
+#endif
+    return v_magnitude;
+}
+
+
 #ifdef MAGNETIC
 void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz, double *dpdir, double d_r)
 {
@@ -1003,17 +1027,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
-        double v_magnitude = All.BAL_v_outflow * All.cf_atime; // velocity of the jet: default mode is to set this manually to a specific value
-#ifdef SINGLE_STAR_FB_JETS
-        v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
-#endif
-#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
-        if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
-#endif
-#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
-        if(P[i].ProtoStellarStage==6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
-#endif
-        
+        double v_magnitude_physical = get_spawned_cell_launch_speed(i); /* call subroutine for this velocity */
 
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
@@ -1028,13 +1042,13 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         
         // actually lay down position and velocities using coordinate basis
         get_wind_spawn_direction(i, j - (NumPart + num_already_spawned), mode, jy, jz, veldir, dpdir);
-        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dpdir[k]*d_r; P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude; SphP[j].VelPred[k]=P[j].Vel[k];}
+        for(k=0;k<3;k++) {P[j].Pos[k]=P[i].Pos[k] + dpdir[k]*d_r; P[j].Vel[k]=P[i].Vel[k] + veldir[k]*v_magnitude_physical*All.cf_atime; SphP[j].VelPred[k]=P[j].Vel[k];} // convert to code (comoving) velocity units
 
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[j].recent_refinement_flag = 1; /* tag the newly-created cell as recently-refined for all purposes */
 #if defined(SINGLE_STAR_SINK_DYNAMICS) 
-        SphP[j].MaxSignalVel = 2.*DMAX(v_magnitude, SphP[j].MaxSignalVel);// need this to satisfy the Courant condition in the first timestep after spawn
+        SphP[j].MaxSignalVel = 2.*DMAX(v_magnitude_physical, SphP[j].MaxSignalVel); // need this to satisfy the Courant condition in the first timestep after spawn; note here MaxSignalVel is now defined in physical code units
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 	P[j].ProtoStellarStage = P[i].ProtoStellarStage; // inherit this from the spawning sink particle so we can use it in subroutines
         // need to initialize the gas density and search radius so that we get sensible CFL timesteps (which happens before density() is called and we recalculate these self-consistently)
@@ -1080,7 +1094,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
 #if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
-        inject_cosmic_rays(dEcr,All.BAL_v_outflow,5,j,veldir);
+        inject_cosmic_rays(dEcr,v_magnitude_phys,5,j,veldir);
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
