@@ -1517,7 +1517,7 @@ double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opaci
     if(do_emission_opacity){Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust
     double fac=UNIT_SURFDEN_IN_CGS, x = 4.*log10(Trad) - 8., kappa=0; // needed for fitting functions to opacities (may come up with cheaper function later)
     double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
-    if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
+//    if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
 
     /* opacities are from tables of Semenov et al 2003; we use their 'standard'
     model, for each -dust- temperature range (which gives a different dust composition, 
@@ -1545,6 +1545,8 @@ double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opaci
         kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
     }
     if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
+
+    kappa = DMIN(0.1*pow(Trad/10.,2), kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
 #ifdef RADTRANSFER
     if(do_emission_opacity){kappa *= rt_absorb_frac_albedo(i, RT_FREQ_BIN_INFRARED);} // multiply by (1-albedo) because emission cross section depends only on kappa_absorption
 #endif
