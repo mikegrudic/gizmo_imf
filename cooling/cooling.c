@@ -1936,7 +1936,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 
 /* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg, double T)
-{   
+{
 #if defined(RT_INFRARED)
     if(i >= 0) {return SphP[i].Dust_Temperature;} // this is pre-computed -- simply return it
 #endif
@@ -1974,7 +1974,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 #endif
 	// OK now we have our dust absorption rate, let's call the solver
 	double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
-	return DMAX(DMIN(Tdust_eqm , 2000.) , 1.);;
+	return Tdust;
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
