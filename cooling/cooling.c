@@ -376,7 +376,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     do
     {
         u = 0.5 * (u_lower + u_upper);
-	    if(u <= u_min) {u = u_min; break;}
+	if(u <= u_min) {u = u_min; break;}
 #ifdef RT_INFRARED
         Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
 #endif          
@@ -387,7 +387,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
 
         iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-#if defined(RT_INFRARED) && defined(SINGLE_STAR_STARFORGE_DEFAULTS) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
+#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
         // Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms. these are useful when you have very specific conditions, namely when dust and gas temperatures are strongly coupled, dust is abundant (not sublimated or destroyed), the metallicities are relatively high, and you are in neutral gas. but in other situations may prevent convergence artificially.
 	    if(iter < MAXITER-11) { // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
 	        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
@@ -1215,12 +1215,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
     if( (nHcgs > 0.1) && (target >= 0) )  /* don't bother at very low densities, since youre not optically thick, and protect from target=-1 with GALSF_EFFECTIVE_EQS */
     {
         double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
-        surface_density *= 0.2 * UNIT_SURFDEN_IN_CGS; // converts to cgs; 0.2 is a tuning factor so that the Masunaga & Inutsuka 2000 solution is reproduced
+        surface_density *=  UNIT_SURFDEN_IN_CGS; // converts to cgs
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
 	
-	    if(T < 150.) {kappa_eff=0.0027*T*sqrt(T);} else {kappa_eff=5.;}
-        kappa_eff *= (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); // cutoff in dust opacity is now built into return_dust_to_metals_ratio_vs_solar
+	kappa_eff = rt_kappa_dust_IR(i,T,T,0); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
         if(kappa_eff < 0.1) {kappa_eff=0.1;}
 	
         if(T>1500.){

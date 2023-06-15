@@ -1357,10 +1357,9 @@ correcting for the reduced speed of light if applicable.
 ******************************************************************************************************/
 double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate){
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
-    //    double a_rad = (4.*5.67e-5)/C_LIGHT_CGS; // radiation constant in erg cm^-3 K^-4
     double fac_emission=4.*5.67e-5/(UNIT_PRESSURE_IN_CGS*UNIT_VEL_IN_CGS)*SphP[i].Density*All.cf_a3inv; // in code units
     double LambdaDust_fac=0;
-#ifdef COOLING    
+#ifdef COOLING
     if(T>0){LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);}
 #endif    
     double dust_emission = fac_emission * rt_kappa_dust_IR(i, Tdust, Tdust,1) * pow(Tdust,4);
@@ -1378,8 +1377,12 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
 #ifdef RT_INFRARED
     double Tdust = DMAX(SphP[i].Dust_Temperature,1.);
 #else
-    double fac = (4.*5.67e-5)/(UNIT_VEL_IN_CGS*UNIT_PRESSURE_IN_CGS)*SphP[i].Density*All.cf_a3inv * (0.1*UNIT_SURFDEN_IN_CGS) * P[i].Metallicity[0]/All.SolarAbundances[0]/100;
-    double Tdust = sqrt(cbrt(dust_absorption_rate/fac));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
+    double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+    double rho_c_arad_fac = (4.*5.67e-5)/(UNIT_VEL_IN_CGS*UNIT_PRESSURE_IN_CGS)*SphP[i].Density*All.cf_a3inv; // a c rho in code units
+    double Tdust = sqrt(cbrt(100 * dust_absorption_rate/(rho_c_arad_fac * (0.1*UNIT_SURFDEN_IN_CGS) * Zfac)));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
+    Tdust = DMAX(Tdust, sqrt(sqrt(dust_absorption_rate / (rho_c_arad_fac * (5.*UNIT_SURFDEN_IN_CGS) * Zfac)))); // account for how opacity tops out around 5 Z cm^2/g	
+    double Tdust_guess = Tdust;
+    if(T==0){return Tdust;} // if just calling for a rough estimate this is good enough
 #endif
     int n_iter=0;    
     double dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate), dEdt_old, dT_dustgas;
@@ -1387,11 +1390,11 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
     /* bracketing the dust temperature */
     if(dEdt < 0){
 	T_upper = Tdust; 
-	while(dEdt<0){T_old=Tdust; Tdust *= 0.9; dEdt_old=dEdt; dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); n_iter++;}
+	while(dEdt<0){T_old=Tdust; Tdust *= 0.5; dEdt_old=dEdt; dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); n_iter++;}
 	T_lower = Tdust;
     } else {
 	T_lower = Tdust; 
-	while(dEdt>0){T_old=Tdust; Tdust *= 1.1; dEdt_old=dEdt; dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); n_iter++;}
+	while(dEdt>0){T_old=Tdust; Tdust *= 2; dEdt_old=dEdt; dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); n_iter++;}
 	T_upper = Tdust;
     }
     if(fabs(dEdt_old) < fabs(dEdt)){double Tdust_temp = Tdust, dEdt_temp = dEdt; Tdust = T_old; T_old = Tdust_temp; dEdt = dEdt_old; dEdt_old = dEdt_temp;} // swap if T_old is a better solution
@@ -1399,6 +1402,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
     {
         dT_dustgas = T - Tdust;
         T_secant = Tdust - dEdt * (Tdust - T_old) / (dEdt - dEdt_old);
+	T_secant = DMAX(DMIN(T_secant,T_upper),T_lower);
 	dEdt_old = dEdt;
 	dEdt = dust_dEdt(i,T,T_secant,dust_absorption_rate);
 	double fac = fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
@@ -1413,11 +1417,10 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
 
 	n_iter++;
 	if(n_iter > MAXITER-10){
-	    PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g dEdt=%g fac=%g.\n",P[i].ID,n_iter,T,Tdust,dEdt,fac);
+	    PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
 	    if(n_iter > MAXITER){break;}
 	}
     } while((fabs(dEdt) > 1e-4) || (fabs(dT_dustgas - (T-Tdust)) > 1e-2 * fabs(T-Tdust))); // sufficient to converge dust cooling to 1%, uncertainties in dust properties will dominate the error budget
-    //    printf("n_iter=%d dEdt=%g T=%g Tdust_guess=%g Tdust=%g fabs(dT_dustgas - (T-Tdust))=%g\n",n_iter,dEdt,T,Tdust_guess, Tdust,fabs(dT_dustgas - (T-Tdust)));
     return Tdust;
 }
 
@@ -1522,6 +1525,7 @@ double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opaci
     double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
 //    if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
 
+#ifdef RT_INFRARED // use fancy detailed fit with composition varying by dust temperature
     /* opacities are from tables of Semenov et al 2003; we use their 'standard'
     model, for each -dust- temperature range (which gives a different dust composition, 
     hence different wavelength-dependent specific opacity). We then integrate to 
@@ -1549,7 +1553,10 @@ double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opaci
     }
     if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
 
-    kappa = DMIN(0.1*pow(Trad/10.,2), kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
+    kappa = DMIN(1e-3 * Trad * Trad, kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
+#else
+    kappa = DMIN(1e-3 * Trad * Trad, 5.); // beta=2 law capped at 5 cm^2/g, rough approximation of Semenov model neglecting jumps in composition
+#endif
 #ifdef RADTRANSFER
     if(do_emission_opacity){kappa *= rt_absorb_frac_albedo(i, RT_FREQ_BIN_INFRARED);} // multiply by (1-albedo) because emission cross section depends only on kappa_absorption
 #endif
