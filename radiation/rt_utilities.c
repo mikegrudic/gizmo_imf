@@ -1363,7 +1363,7 @@ double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate){
     if(T>0){LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);}
 #endif    
     double dust_emission = fac_emission * rt_kappa_dust_IR(i, Tdust, Tdust,1) * pow(Tdust,4);
-    return (LambdaDust_fac * (T-Tdust) + dust_absorption_rate - dust_emission)/dust_emission;
+    return LambdaDust_fac * (T-Tdust) + dust_absorption_rate - dust_emission;
 }
 
 /***********************************************************************************************************
@@ -1375,17 +1375,21 @@ and we only solve for equilibrium between emission and absorption.
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
     double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant;
 #ifdef RT_INFRARED
-    double Tdust = DMAX(SphP[i].Dust_Temperature,1.);
+    double Tdust = DMAX(SphP[i].Dust_Temperature,1.); // previous dust temperature should be a good guess
 #else
     double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
     double rho_c_arad_fac = (4.*5.67e-5)/(UNIT_VEL_IN_CGS*UNIT_PRESSURE_IN_CGS)*SphP[i].Density*All.cf_a3inv; // a c rho in code units
     double Tdust = sqrt(cbrt(100 * dust_absorption_rate/(rho_c_arad_fac * (0.1*UNIT_SURFDEN_IN_CGS) * Zfac)));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
     Tdust = DMAX(Tdust, sqrt(sqrt(dust_absorption_rate / (rho_c_arad_fac * (5.*UNIT_SURFDEN_IN_CGS) * Zfac)))); // account for how opacity tops out around 5 Z cm^2/g	
+    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
+    double LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);
+    double Tdust_coupled = T - rho_c_arad_fac * rt_kappa_dust_IR(i,T,T,1) * pow(T,4) / LambdaDust_fac; // bound for the gas-dust coupled regime assuming T ~ Td
+    Tdust = DMAX(Tdust_coupled, Tdust);
     double Tdust_guess = Tdust;
     if(T==0){return Tdust;} // if just calling for a rough estimate this is good enough
 #endif
     int n_iter=0;    
-    double dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate), dEdt_old, dT_dustgas;
+    double dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate), dEdt_old, dT_dustgas, fac;
         
     /* bracketing the dust temperature */
     if(dEdt < 0){
@@ -1397,7 +1401,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
 	while(dEdt>0){T_old=Tdust; Tdust *= 2; dEdt_old=dEdt; dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); n_iter++;}
 	T_upper = Tdust;
     }
-    if(fabs(dEdt_old) < fabs(dEdt)){double Tdust_temp = Tdust, dEdt_temp = dEdt; Tdust = T_old; T_old = Tdust_temp; dEdt = dEdt_old; dEdt_old = dEdt_temp;} // swap if T_old is a better solution
+
     do  // secant method iterations with bisection as a backup; usually converges to machine epsilon in 4-5 iterations
     {
         dT_dustgas = T - Tdust;
@@ -1405,13 +1409,13 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
 	T_secant = DMAX(DMIN(T_secant,T_upper),T_lower);
 	dEdt_old = dEdt;
 	dEdt = dust_dEdt(i,T,T_secant,dust_absorption_rate);
-	double fac = fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
+	fac = fabs(T_secant - Tdust)/fabs(Tdust-T_old); //fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
 	if(fac < 0.5){T_old=Tdust; Tdust=T_secant;}  // accept the secant iteration if it is converging more rapidly
-	else { // if secant isn't working do bisection iteration instead; guaranteed to reduce the error
+	else { // if secant isn't working do bisection iteration instead; guaranteed to reduce the error	    
 	    T_old = Tdust;
 	    Tdust = sqrt(T_lower*T_upper);
 	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate);
-	    fac = fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
+	    fac = 0.5;
 	}
 	if(dEdt>0){T_lower = Tdust;} else {T_upper=Tdust;} // either way, update upper and lower bounds
 
@@ -1420,7 +1424,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
 	    PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
 	    if(n_iter > MAXITER){break;}
 	}
-    } while((fabs(dEdt) > 1e-4) || (fabs(dT_dustgas - (T-Tdust)) > 1e-2 * fabs(T-Tdust))); // sufficient to converge dust cooling to 1%, uncertainties in dust properties will dominate the error budget
+    } while(fabs(dT_dustgas - (T-Tdust)) > 1e-2 * fabs(T-Tdust)); // sufficient to converge dust cooling to 1%, uncertainties in dust properties will dominate the error budget
     return Tdust;
 }
 
