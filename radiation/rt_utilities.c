@@ -1349,8 +1349,8 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
 #endif
 
 /******************************************************************************************************
-This returns the dimensionless ratio (heat transfer from gas + photon absorption - emission)/emission for dust,
-which we will root-find to determine the dust temperature. 
+This returns the volumetric quantity de/dt = heat transfer from gas + photon absorption - emission 
+for dust, which we will root-find to determine the dust temperature. 
 
 dust_absorption_rate must be passed as the dust photon absorption rate per unit volume in code units,
 correcting for the reduced speed of light if applicable.
