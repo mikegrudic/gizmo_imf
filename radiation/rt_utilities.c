@@ -1375,7 +1375,7 @@ and we only solve for equilibrium between emission and absorption.
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
     double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant;
 #ifdef RT_INFRARED
-    double Tdust = DMAX(SphP[i].Dust_Temperature,1.); // previous dust temperature should be a good guess
+    double Tdust = DMAX(SphP[i].Dust_Temperature,1.), Tdust_guess=Tdust; // previous dust temperature should be a good guess
 #else
     double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
     double rho_c_arad_fac = (4.*5.67e-5)/(UNIT_VEL_IN_CGS*UNIT_PRESSURE_IN_CGS)*SphP[i].Density*All.cf_a3inv; // a c rho in code units
