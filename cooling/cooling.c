@@ -1851,6 +1851,9 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * xH0 * clumping_factor_3; // 3-body collisional formation
     double G_LW = 3.3e-11 * urad_G0 * (1./2.); // photo-dissociation (+ionization); note we're assuming a spectral shape identical to the MW background mean, scaling by G0, 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction
     double xi_cr_H2 = (7.525e-16) * (1./2.); // CR dissociation (+ionization), 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction. Using value favored by Indriolo et al for dense GMCs.
+#ifdef RT_ISRF_BRACKGROUND
+    xi_cr_H2 *= All.InterstellarRadiationFieldStrength;
+#endif    
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON) // scale ionization+dissociation rates with local CR energy density
     xi_cr_H2 = Get_CosmicRayIonizationRate_cgs(i) * (1./2.); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
 #endif
@@ -2008,6 +2011,9 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 {
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
+#ifdef RT_ISRF_BACKGROUND
+    zeta_cr *= All.IntestellarRadiationFieldStrength;
+#endif    
     if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
     if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target) + 1.e-15;} // constant dust-to-metals ratio [floor purely numerical here, needed to avoid a spurious divergence below]
