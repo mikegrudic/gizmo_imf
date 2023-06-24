@@ -2012,7 +2012,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
     if(All.ComovingIntegrationOn) {double rhofac=density_cgs/(1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac<0.2) {return 0;}} // ignore these reactions in the IGM
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
 #ifdef RT_ISRF_BACKGROUND
-    zeta_cr *= All.IntestellarRadiationFieldStrength;
+    zeta_cr *= All.InterstellarRadiationFieldStrength;
 #endif    
     if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
