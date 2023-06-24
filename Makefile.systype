@@ -6,7 +6,7 @@
 #
 #############
 
-#SYSTYPE="Frontera"
+SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Bridges2"
 #SYSTYPE="Anvil"
@@ -23,7 +23,7 @@
 #SYSTYPE="Gordon"
 #SYSTYPE="odyssey"
 #SYSTYPE="antares"
-SYSTYPE="Pleiades"
+#SYSTYPE="Pleiades"
 #SYSTYPE="Mira"
 #SYSTYPE="Titan"
 #SYSTYPE="Edison"
