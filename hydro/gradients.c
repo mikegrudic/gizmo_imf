@@ -1323,7 +1323,7 @@ void hydro_gradient_calc(void)
                 double temperature = mean_molecular_weight * (GAMMA(i)-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; // will use appropriate EOS to estimate temperature
                 double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef RT_ISRF_BACKGROUND
-		zeta_cr *= All.InterstellarRadiationFieldStrength;
+		zeta_cr *= Get_CosmicRayEnergyDensity_cgs(i)/1e-5;
 #endif		
 #ifdef COSMIC_RAY_FLUID
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
