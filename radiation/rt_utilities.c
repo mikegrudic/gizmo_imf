@@ -1382,9 +1382,11 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
     double Tdust = sqrt(cbrt(100 * dust_absorption_rate/(rho_c_arad_fac * (0.1*UNIT_SURFDEN_IN_CGS) * Zfac)));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
     Tdust = DMAX(Tdust, sqrt(sqrt(dust_absorption_rate / (rho_c_arad_fac * (5.*UNIT_SURFDEN_IN_CGS) * Zfac)))); // account for how opacity tops out around 5 Z cm^2/g	
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
+#ifdef COOLING
     double LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);
-    double Tdust_coupled = T - rho_c_arad_fac * rt_kappa_dust_IR(i,T,T,1) * pow(T,4) / LambdaDust_fac; // bound for the gas-dust coupled regime assuming T ~ Td
+    double Tdust_coupled = T - rho_c_arad_fac * rt_kappa_dust_IR(i,T,T,1) * pow(T,4) / (LambdaDust_fac+MIN_REAL_NUMBER); // bound for the gas-dust coupled regime assuming T ~ Td
     Tdust = DMAX(Tdust_coupled, Tdust);
+#endif
     double Tdust_guess = Tdust;
     if(T==0){return Tdust;} // if just calling for a rough estimate this is good enough
 #endif
