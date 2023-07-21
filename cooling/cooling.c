@@ -891,7 +891,7 @@ double gas_dust_heating_coeff(int i, double T, double Tdust){
 #ifdef METALS
     Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
-    double fdust = sigmoid_sqrt(-0.006*(Tdust - 1500));
+    double fdust = sigmoid_sqrt(-0.006*(Tdust - 1500)); // accounting for dust destruction; we avoid calling the function for this because it can create a circular dependency
     return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
 }
 

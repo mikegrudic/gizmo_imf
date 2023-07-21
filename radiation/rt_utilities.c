@@ -1373,21 +1373,25 @@ correcting for the reduced speed of light if applicable. If T=0 then gas-dust co
 and we only solve for equilibrium between emission and absorption.
 ************************************************************************************************************/
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate){
-    double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant;
+    double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant, Tdust_guess, Tdust;
 #ifdef RT_INFRARED
-    double Tdust = DMAX(SphP[i].Dust_Temperature,1.), Tdust_guess=Tdust; // previous dust temperature should be a good guess
+    Tdust = DMAX(SphP[i].Dust_Temperature,1.); Tdust_guess=Tdust; // previous dust temperature should be a good guess
+#ifdef METALS
+    double Zfac = 1.0, dust_to_metals_vs_standard = sigmoid_sqrt(-0.006*(Tdust - 1500)); // avoid call to return_dust_to_metals_ratio_vs_solar to avoid circular dependency (since dust_to_metals depends on Tdust)
+    if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #else
-    double Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+    double Zfac = 1, dust_to_metals_vs_standard = 1;
+#endif
     double rho_c_arad_fac = (4.*5.67e-5)/(UNIT_VEL_IN_CGS*UNIT_PRESSURE_IN_CGS)*SphP[i].Density*All.cf_a3inv; // a c rho in code units
-    double Tdust = sqrt(cbrt(100 * dust_absorption_rate/(rho_c_arad_fac * (0.1*UNIT_SURFDEN_IN_CGS) * Zfac)));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
-    Tdust = DMAX(Tdust, sqrt(sqrt(dust_absorption_rate / (rho_c_arad_fac * (5.*UNIT_SURFDEN_IN_CGS) * Zfac)))); // account for how opacity tops out around 5 Z cm^2/g	
+    Tdust = sqrt(cbrt(100 * dust_absorption_rate/(rho_c_arad_fac * (0.1*UNIT_SURFDEN_IN_CGS) * Zfac * dust_to_metals_vs_standard)));  // guess neglecting gas-dust coupling term and assuming a beta=2 emission opacity law kappa = 0.1 cm^2/g Z (T/10K)^2
+    Tdust = DMAX(Tdust, sqrt(sqrt(dust_absorption_rate / (rho_c_arad_fac * (5.*UNIT_SURFDEN_IN_CGS) * Zfac * dust_to_metals_vs_standard)))); // account for how opacity tops out around 5 Z cm^2/g	
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;    /* hydrogen number dens in cgs units */
 #ifdef COOLING
     double LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);
     double Tdust_coupled = T - rho_c_arad_fac * rt_kappa_dust_IR(i,T,T,1) * pow(T,4) / (LambdaDust_fac+MIN_REAL_NUMBER); // bound for the gas-dust coupled regime assuming T ~ Td
     Tdust = DMAX(Tdust_coupled, Tdust);
 #endif
-    double Tdust_guess = Tdust;
+    Tdust_guess = Tdust;
     if(T==0){return Tdust;} // if just calling for a rough estimate this is good enough
 #endif
     int n_iter=0;    
