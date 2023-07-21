@@ -1948,7 +1948,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     if(i >= 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS // treatment using direct dust temperature solver accounting for absorption and gas-dust coupling - want this when capturing the dynamics of dense collapsing cores
-	double absorption_rate=0, fac_abs = C_LIGHT_CODE * SphP[i].Density * SphP[i].Density * All.cf_a3inv * All.cf_a3inv;
+	double absorption_rate=0, fac_abs = C_LIGHT_CODE * SphP[i].Density * SphP[i].Density * All.cf_a3inv * All.cf_a3inv / P[i].Mass;
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // we have information about individual radiation bands and their opacities; use these to compute dust absorption rate
 	for(int k=0;k<N_RT_FREQ_BINS;k++){
 	    if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)){continue;} // skip ionizing bands where the dust cross section is not accounted for
