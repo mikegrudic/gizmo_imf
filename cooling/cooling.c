@@ -1948,11 +1948,11 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     if(i >= 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS // treatment using direct dust temperature solver accounting for absorption and gas-dust coupling - want this when capturing the dynamics of dense collapsing cores
-	double absorption_rate=0, fac_abs = C_LIGHT_CODE * SphP[i].Density * SphP[i].Density * All.cf_a3inv * All.cf_a3inv / P[i].Mass;
+	double absorption_rate=0, vol_inv = SphP[i].Density * All.cf_a3inv / P[i].Mass, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // we have information about individual radiation bands and their opacities; use these to compute dust absorption rate
 	for(int k=0;k<N_RT_FREQ_BINS;k++){
 	    if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)){continue;} // skip ionizing bands where the dust cross section is not accounted for
-	    absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k];
+	    absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
 	}
 #endif
 	absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_dust_IR(i,T_cmb, T_cmb, 0); // CMB absorption; assume cloud is optically-thin to the CMB 
@@ -1963,7 +1963,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 #ifdef METALS
 	Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
-	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS; //return_dust_to_metals_ratio_vs_solar(i);
+	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
 	double tau_opt = kappa_opt*column;
 	e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
 	absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
