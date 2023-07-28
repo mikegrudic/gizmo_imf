@@ -982,8 +982,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-            double column = evaluate_NH_from_GradRho(P[target].GradRho,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
+#if defined(COOL_METAL_LINES_BY_SPECIES) && ((defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION))
+            double column = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
             double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar and 1/2 factor for original assumed 0.5 depletion), critical density and column
 #if defined(GALSF_ISMDUSTCHEM_MODEL) && !defined(GALSF_ISMDUSTCHEM_PASSIVE)
             Z_C = DMAX(1.e-6, Z[2]/(0.5*All.SolarAbundances[2])); // gas-phase carbon abundance (relative to solar/2, usual assumption implicitly)

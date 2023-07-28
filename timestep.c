@@ -196,8 +196,8 @@ void find_timesteps(void)
                     P[i].do_gas_search_this_timestep = 1;
                 } else {P[i].do_gas_search_this_timestep = 0;}
             }
-#if defined(SINGLE_STAR_FB_SNE)
-	    if(P[i].ProtoStellarStage == 6){P[i].do_gas_search_this_timestep = 1;} // always do gas search if we're rapidly spawning in new gas shells
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+	    if(P[i].ProtoStellarStage == 6) {P[i].do_gas_search_this_timestep = 1;} // always do gas search if we're rapidly spawning in new gas shells
 #endif
         }
 #endif
