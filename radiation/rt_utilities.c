@@ -1366,8 +1366,8 @@ double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate)
 #endif    
     double kappa_emission = rt_kappa_dust_IR(i, Tdust, Tdust,1);
     double dust_emission = fac_emission * kappa_emission * pow(Tdust,4);
-#ifndef RT_INFRARED // if we aren't doing RT self-consistently, approximate outward radiative transport rate in optically-thick regime
-    double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,P[i].DensAroundStar,PPP[i].NumNgb,1,i);
+#if defined(COOLING) && !defined(RT_INFRARED) // if we aren't doing RT self-consistently, approximate outward radiative transport rate in optically-thick regime
+    double column = evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
     double tau = column * kappa_emission;
     dust_emission /= (1 + tau*tau); // e.g. Masunaha & Inutsuka 1999, Rafikov 2007
 #endif
