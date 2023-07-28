@@ -401,7 +401,7 @@ void GravAccel_StaticNFW()
 
 
 
-/* Paczysnky Wiita pseudo-Newtonian potential, G = M_sol = c = 1 */
+/* Paczysnki Wiita pseudo-Newtonian potential, G = M_sol = c = 1 */
 void GravAccel_PaczynskyWiita()
 {
     double PACZYNSKY_WIITA_MASS = 1.0; // Mass to use for the Paczynksy-Wiita analytic gravity pseudo-Newtonian potential (in solar masses)
