@@ -541,7 +541,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(pindex);
+                    *fp++ = (MyOutputFloat) P[pindex].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(pindex,0);
                     n++;
                 }
 #endif

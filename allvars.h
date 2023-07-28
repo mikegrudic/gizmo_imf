@@ -541,7 +541,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) /* options for hybrid/combined FIRE+STARFORGE simulations */
 #define SINGLE_STAR_STARFORGE_DEFAULTS   /* parent flag enabling the STARFORGE modules, which themselves enable the FIRE modules */
-#define SINGLE_STAR_AND_SSP_HYBRID_MODEL 0.01 /* do single-star routines below this mass resolution in solar, FIRE-like above */
+#define SINGLE_STAR_AND_SSP_HYBRID_MODEL (SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) /* do single-star routines below this mass resolution in solar, FIRE-like above */
 #define GALSF_SFR_IMF_SAMPLING           /* use discrete sampling of 'number of O-stars' so we can handle the intermediate-mass regime in at least a simple approximate manner */
 #define COOLING              /* only physical if include cooling for both sides, using same cooling functions */
 #define MAGNETIC             /* enable MHD, important for systems here */
@@ -555,7 +555,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
 #define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
 #define RT_SOURCES (16+32)   /* need to allow -both- ssp-particles and single-star particles to emit */
+#if !defined(RT_SPEEDOFLIGHT_REDUCTION)
 #define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
+#endif
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION

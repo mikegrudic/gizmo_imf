@@ -211,7 +211,6 @@ void do_the_cooling_for_particle(int i)
                         {
                             double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
                             temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-//                            double temp = SphP[i].Dust_Temperature; // assume radiation emerges at the dust temperature?
                             double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp;
                             SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
                             SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
@@ -883,17 +882,7 @@ double CoolingRateFromU(double u, double rho, double ne_guess, double *ne_eval, 
 
 extern FILE *fd;
 
-/* Calculates the coefficient for gas-dust collisional heat transfer, such that 
-LambdaDust = gas_dust_heating_coeff * (T-Tdust) in erg cm^3 s^-1.
-*/
-double gas_dust_heating_coeff(int i, double T, double Tdust){
-    double Z_sol=1;
-#ifdef METALS
-    Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
-#endif
-    double fdust = sigmoid_sqrt(-0.006*(Tdust - 1500)); // accounting for dust destruction; we avoid calling the function for this because it can create a circular dependency
-    return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
-}
+
 
 #ifndef CHIMES
 /*  Calculates (heating rate-cooling rate)/n_h^2 in cgs units
@@ -1140,7 +1129,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 
             if(photoelec > 0)
             {
-                LambdaPElec = -1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target); // negative sign for lambda b/c heating
+                LambdaPElec = -1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target,0); // negative sign for lambda b/c heating
                 double x_photoelec = photoelec * sqrt(T) / (0.5 * (1.0e-12+n_elec) * nHcgs);
                 LambdaPElec *= 0.049/(1+pow(x_photoelec/1925.,0.73)) + 0.037*pow(T/1.0e4,0.7)/(1+x_photoelec/5000.);
                 Heat -= LambdaPElec;
@@ -1217,7 +1206,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
 	
-	kappa_eff = rt_kappa_dust_IR(target,T,T,0); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
+	    kappa_eff = rt_kappa_dust_IR(target,T,T,0); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
         if(kappa_eff < 0.1) {kappa_eff=0.1;}
 	
         if(T>1500.){
@@ -1723,7 +1712,7 @@ void selfshield_local_incident_uv_flux(void)
                 double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // in CGS
                 double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
-                tau_nuv *= (1.0e-3 + (P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i)); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
+                tau_nuv *= (1.0e-3 + (P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i,0)); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
                 SphP[i].Rad_Flux_UV *= exp(-DMIN(tau_nuv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
@@ -1767,7 +1756,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     x_e = DMIN(DMAX(xn_e, 0.),2.); // get free electron ratio [number per H nucleon]
     double log_T=log10(T), ln_T=log(T), gamma_12=return_local_gammamultiplier(i)*gJH0/1.0e-12, shieldfac=return_uvb_shieldfac(i,gamma_12,nH_cgs,log_T), urad_from_uvb_in_G0=sqrt(shieldfac)*(gJH0/2.29e-10); // estimate UVB contribution if we have partial shielding, to full photo-dissociation rates //
 #ifdef METALS
-    f_dustgas_solar=(P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i); // this is only used for the dust-phase formation rates below, so just the dust term here
+    f_dustgas_solar=(P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i,0); // this is only used for the dust-phase formation rates below, so just the dust term here
 #endif
     /* get incident radiation field from whatever module we are using to track it */
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -1937,7 +1926,7 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 #if defined(RT_INFRARED)
     if(i >= 0) {return SphP[i].Dust_Temperature;} // this is pre-computed -- simply return it
 #endif
-/* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
+    /* simple three-component model [can do fancier] with cmb, dust, high-energy photons */
     double e_CMB=0.262*All.cf_a3inv/All.cf_atime, T_cmb=2.73/All.cf_atime; // CMB [energy in eV/cm^3, T in K]
     double e_IR=0.31, Tdust_ext=DMAX(30.,T_cmb); // Milky way ISRF from Draine (2011), assume peak of dust emission at ~100 microns
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
@@ -1948,37 +1937,35 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     if(i >= 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS // treatment using direct dust temperature solver accounting for absorption and gas-dust coupling - want this when capturing the dynamics of dense collapsing cores
-	double absorption_rate=0, vol_inv = SphP[i].Density * All.cf_a3inv / P[i].Mass, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
+	    double absorption_rate=0, vol_inv = SphP[i].Density * All.cf_a3inv / P[i].Mass, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // we have information about individual radiation bands and their opacities; use these to compute dust absorption rate
-	for(int k=0;k<N_RT_FREQ_BINS;k++){
-	    if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)){continue;} // skip ionizing bands where the dust cross section is not accounted for
-	    absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
-	}
+	    for(int k=0;k<N_RT_FREQ_BINS;k++){
+	        if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)) {continue;} // skip ionizing bands where the dust cross section is not accounted for
+	        absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
+	    }
 #endif
-	absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_dust_IR(i,T_cmb, T_cmb, 0); // CMB absorption; assume cloud is optically-thin to the CMB 
-#if defined(RT_ISRF_BACKGROUND) //account for additional optical + IR radiation field with extinction
-	double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
-	double kappa_IR = rt_kappa_dust_IR(i,20,20,0); // assume Trad=20 for IR dust opacity
-	double Zfac = 1.;
+	    absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_dust_IR(i,T_cmb, T_cmb, 0); // CMB absorption; assume cloud is optically-thin to the CMB 
+#if defined(RT_ISRF_BACKGROUND) // account for additional optical + IR radiation field with extinction
+	    double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
+	    double kappa_IR = rt_kappa_dust_IR(i,20.,20.,0); // assume Trad=20 for IR dust opacity
+	    double Zfac = 1.;
 #ifdef METALS
-	Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+	    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
-	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
-	double tau_opt = kappa_opt*column;
-	e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
-	absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
-	absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
+	    double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
+	    double tau_opt = kappa_opt*column;
+	    e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
+	    absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
+	    absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
 #endif
-	// OK now we have our dust absorption rate, let's call the solver
-	double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
-	return Tdust;
+	    // OK now we have our dust absorption rate, let's call the solver
+	    double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
+	    return Tdust;
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
         e_HiEgy=0; e_IR = 0; int k; double E_tot_to_evol_eVcgs = (SphP[i].Density*All.cf_a3inv/P[i].Mass) * UNIT_PRESSURE_IN_EV;
-        for(k=0;k<N_RT_FREQ_BINS;k++) {
-	    e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];	    
-	}
+        for(k=0;k<N_RT_FREQ_BINS;k++) {e_HiEgy+=SphP[i].Rad_E_gamma_Pred[k];}
 #if defined(GALSF_FB_FIRE_RT_LONGRANGE)
         e_IR += SphP[i].Rad_E_gamma_Pred[RT_FREQ_BIN_FIRE_IR]; // note IR
 #endif
@@ -2001,6 +1988,19 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 
 
 
+/* Calculates the coefficient for gas-dust collisional heat transfer, such that LambdaDust = gas_dust_heating_coeff * (T-Tdust) in erg cm^3 s^-1. */
+double gas_dust_heating_coeff(int i, double T, double Tdust) 
+{
+    double Z_sol=1;
+#ifdef METALS
+    Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
+#endif
+    double fdust = return_dust_to_metals_ratio_vs_solar(i,Tdust); // accounting for dust destruction; we avoid calling the function for this because it can create a circular dependency
+    return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
+}
+
+
+
 /* this function estimates the free electron fraction from heavy ions, assuming a simple mix of cold molecular gas, Mg, and dust, with the ions from singly-ionized Mg, to prevent artificially low free electron fractions */
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe)
 {
@@ -2008,7 +2008,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
     double zeta_cr=1.0e-17, f_dustgas=0.01, n_ion_max=4.1533e-5, XH=HYDROGEN_MASSFRAC; // cosmic ray ionization rate (fixed as constant for non-CR runs) and dust-to-gas ratio
     if(target >= 0) {zeta_cr = Get_CosmicRayIonizationRate_cgs(target);} // convert to ionization rate, using models as in Cummings et al. 2016
 #ifdef METALS
-    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target) + 1.e-15;} // constant dust-to-metals ratio [floor purely numerical here, needed to avoid a spurious divergence below]
+    if(target>=0) {f_dustgas=0.5*P[target].Metallicity[0]*return_dust_to_metals_ratio_vs_solar(target,0) + 1.e-15;} // constant dust-to-metals ratio [floor purely numerical here, needed to avoid a spurious divergence below]
 #ifdef COOL_METAL_LINES_BY_SPECIES
     if(target>=0) {n_ion_max = (All.SolarAbundances[6]/24.3)/XH;} // limit, to avoid over-ionization at low metallicities
 #endif
