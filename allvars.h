@@ -561,6 +561,18 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION
+#define OUTPUT_ACCELERATION
+#define OUTPUT_HYDROACCELERATION
+#define OUTPUT_GRADIENT_RHO
+#define OUTPUT_GRADIENT_VEL
+#define OUTPUT_MOLECULAR_FRACTION
+#define OUTPUT_TEMPERATURE
+#define OUTPUT_RT_RAD_FLUX
+#define RT_RAD_PRESSURE_OUTPUT
+#define OUTPUT_ADDITIONAL_RUNINFO
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
+#define GRAVITY_ANALYTIC
+#endif
 #endif
 #endif // closes hybrid FIRE+STARFORGE model settings
 

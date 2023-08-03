@@ -223,15 +223,28 @@ void GravAccel_SpecialCustomNuclearZoomBoundaryConditions()
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
     int i,k; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        double dp[3], r2=0, r, r_cut; for(k=0;k<3;k++) {dp[k]=All.cf_atime*P[i].Pos[k]; r2+=dp[k]*dp[k];}
-	    r = sqrt(r2); r_cut = 0.2 * All.HubbleParam;
-	    if(r > r_cut)
+        double dp[3], r2=0, r, r_cut; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k]); r2+=dp[k]*dp[k];}
+	    r = sqrt(r2);
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES <= 1)
+        r_cut = 0.2 * All.HubbleParam;
+        if(r > r_cut)
         {
-		    double x = r/r_cut, tau = pow(All.cf_atime / 0.18437477681344028, -3.);
-		    double m0 = 0.19*(pow(x,1.15)-1.)/(1.+pow(x/300.,0.8)) + (1.4e-8*tau)*(pow(x,3.)-1.);
-        	for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * (dp[k]/r) * (m0/(r*r)) * (1./All.cf_a2inv);}
-		    if(r > 2.*r_cut) {P[i].Mass = 0;} // clip it
-	    }
+            double x = r/r_cut, tau = pow(All.cf_atime / 0.18437477681344028, -3.);
+            double m0 = 0.19*(pow(x,1.15)-1.)/(1.+pow(x/300.,0.8)) + (1.4e-8*tau)*(pow(x,3.)-1.);
+            for(k=0;k<3;k++) {P[i].GravAccel[k] += -All.G * (dp[k]/r) * (m0/(r*r)) * (1./All.cf_a2inv);}
+            if(r > 2.*r_cut) {P[i].Mass = 0;} // clip it
+        }
+#else
+        r_cut = 0.1 / UNIT_LENGTH_IN_PC;
+        if(r > r_cut) {P[i].Mass = 0;} // clip it
+        if(P[i].Type != 3 && P[i].Mass > 0 && r > 0) // add additional Paczysnki Wiita potential corrections, if desired //
+        {
+            double rG = 2.*All.G*All.Mass_of_SpecialSMBHParticle/(C_LIGHT_CODE*C_LIGHT_CODE); // define gravitational radius
+            double fac_0 = -All.G*All.Mass_of_SpecialSMBHParticle / (r2*r * All.cf_a2inv); // define pre-factor (in appropriate code units) for gravitational acceleration
+            double x = r/rG - 1., fac = fac_0 * (1.+2.*x)/(x*x); // this is defined as the difference between the P.W. accel and the Keplerian accel, since the latter is already included
+            if(x > 0) {for(k=0;k<3;k++) {P[i].GravAccel[k] += fac * dp[k];}}
+        }
+#endif
     }
 #endif
 }

@@ -148,6 +148,11 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         r0=10.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
         if(dtau < 6.*dtdelay) {slope*=0;} else if(dtau < 7.*dtdelay) {slope*=(dtau-6.*dtdelay)/dtdelay;}
         r0=1.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES==2) /* simpler refinement for even smaller-scale simulations */
+        mcrit_0 = m_ref_mJ = 0.003; minimum_refinement_mass_in_solar = 4.e-8; f0 = 1; // 'baseline' resolution & maximum resolution target
+        r0 = 0.01; if(r_pc < r0) {f0 *= pow(r_pc/r0 , 2);} // simple additional refinement criterion vs radius interior to inner radius
+#endif
 
         double M_target = f0 * DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR;
         double M_min_absolute = minimum_refinement_mass_in_solar / UNIT_MASS_IN_SOLAR; // arbitrarily set minimum mass for refinement at any level
