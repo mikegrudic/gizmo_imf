@@ -157,7 +157,7 @@ void init(void)
 
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     All.SMBH_SpecialParticle_Position_ForRefinement[0]=All.SMBH_SpecialParticle_Position_ForRefinement[1]=All.SMBH_SpecialParticle_Position_ForRefinement[2]=0;
-    All.Mass_Accreted_By_SpecialSMBHParticle=0;
+    All.Mass_Accreted_By_SpecialSMBHParticle=0; All.Mass_of_SpecialSMBHParticle=0;
 #endif
 
 #ifdef BOX_PERIODIC

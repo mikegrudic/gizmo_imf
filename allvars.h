@@ -2729,6 +2729,7 @@ extern struct global_data_all_processes
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     double SMBH_SpecialParticle_Position_ForRefinement[3];
     double Mass_Accreted_By_SpecialSMBHParticle;
+    double Mass_of_SpecialSMBHParticle;
 #endif
 
 #ifdef NUCLEAR_NETWORK
