@@ -217,7 +217,7 @@ void find_timesteps(void)
         if(special_particle_active_with_this_index>=0) {P[special_particle_active_with_this_index].Mass += mass_to_sum_global; special_particle_mass_local += mass_to_sum_global;} // the special particle lives here with this id, so we can update it with this mass
         All.Mass_Accreted_By_SpecialSMBHParticle = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
     }
-    MPI_Allreduce(&special_particle_mass_local, &special_particle_mass_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the mass of the SMBH particle
+    MPI_Allreduce(&special_particle_mass_local, &special_particle_mass_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the mass of the SMBH particle
     All.Mass_of_SpecialSMBHParticle = special_particle_mass_global; // update the mass of the SMBH particle for everyone to use
 #endif
 
