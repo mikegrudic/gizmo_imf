@@ -917,7 +917,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
             SphP[i].CosmicRay_Number_in_Bin[k_CRegy] = n_new; // alright, updated CR number for evolution equations
         }
 #endif
-        
+    
 #if defined(COOLING_OPERATOR_SPLIT)
         /* now need to account for the adiabatic heating/cooling of the 'fluid', here, with gamma=GAMMA_COSMICRAY(k_CRegy) */
         double dCR_div = CR_calculate_adiabatic_gasCR_exchange_term(i, dt_entr, (GAMMA_COSMICRAY(k_CRegy)-1.)*eCR_tmp, mode); // this will handle the update below - separate subroutine b/c we want to allow it to appear in a couple different places
@@ -929,6 +929,28 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #endif
 
     } // loop over CR bins complete
+    
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+    if(SphP[i].DtCREgyNewInjectionFromShocks > 0) /* now perform the actual CR injection using the rates estimated in the hydro solver */
+    {
+        double dir[3]; int k; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
+        inject_cosmic_rays(SphP[i].DtCREgyNewInjectionFromShocks * dt_entr, 1000./UNIT_VEL_IN_KMS, 2, i, dir); /* inject the energy */
+        SphP[i].DtCREgyNewInjectionFromShocks = 0; // reset to nil, we've successfully injected the energy
+    }
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+    if(SphP[i].BH_CR_Energy_Available_For_Injection > 0) {
+        /* need to determine whether or not sufficient deceleration has occurred in order to inject CRs from our 'reservoir */
+        double vmag=0; int k; for(k=0;k<3;k++) {double v0=P[i].Vel/All.cf_atime; vmag+=v0*v0;} /* we will base this on a simple estimate of the velocity and how much things have decelerated */
+        if(vmag>0) {vmag=sqrt(vmag);}
+        if((P[i].ID != All.AGNWindID) || (vmag < ((double)(BH_CR_INJECTION_AT_TERMINATION))*All.BAL_v_outflow)) {
+            double dir[3]; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
+            inject_cosmic_rays(SphP[i].BH_CR_Energy_Available_For_Injection, All.BAL_v_outflow, 5, i, dir); /* inject the energy */
+            SphP[j].BH_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
+        }
+    }
+#endif
+    
     return 1;
 }
 #endif

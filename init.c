@@ -157,7 +157,7 @@ void init(void)
 
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     All.SMBH_SpecialParticle_Position_ForRefinement[0]=All.SMBH_SpecialParticle_Position_ForRefinement[1]=All.SMBH_SpecialParticle_Position_ForRefinement[2]=0;
-    All.Mass_Accreted_By_SpecialSMBHParticle=0;
+    All.Mass_Accreted_By_SpecialSMBHParticle=0; All.Mass_of_SpecialSMBHParticle=0;
 #endif
 
 #ifdef BOX_PERIODIC
@@ -647,6 +647,12 @@ void init(void)
 #endif
 #ifdef COSMIC_RAY_FLUID
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+        if(RestartFlag != 1) {SphP[i].DtCREgyNewInjectionFromShocks = 0;}
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+        if(RestartFlag != 1) {SphP[i].BH_CR_Energy_Available_For_Injection = 0;}
+#endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
         //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRay_Number_in_Bin[j] = 0; SphP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize the number in each bin

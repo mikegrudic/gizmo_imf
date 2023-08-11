@@ -561,6 +561,18 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
 #define PARTICLE_EXCISION
+#define OUTPUT_ACCELERATION
+#define OUTPUT_HYDROACCELERATION
+#define OUTPUT_GRADIENT_RHO
+#define OUTPUT_GRADIENT_VEL
+#define OUTPUT_MOLECULAR_FRACTION
+#define OUTPUT_TEMPERATURE
+#define OUTPUT_RT_RAD_FLUX
+#define RT_RAD_PRESSURE_OUTPUT
+#define OUTPUT_ADDITIONAL_RUNINFO
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
+#define GRAVITY_ANALYTIC
+#endif
 #endif
 #endif // closes hybrid FIRE+STARFORGE model settings
 
@@ -573,7 +585,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
-#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS
+#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
 #ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
@@ -624,7 +636,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_COMOVING
 #ifndef OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_FLUX
-#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR
 #endif
 #endif
@@ -643,7 +655,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_CHEM_PHOTOION 1
 #endif
 #define RT_INFRARED
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND
 #endif
 #if defined(RT_INFRARED)
@@ -665,7 +677,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define DIFFUSION_OPTIMIZERS
 #endif // MAGNETIC
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
 #endif // COOLING
@@ -2717,6 +2729,7 @@ extern struct global_data_all_processes
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     double SMBH_SpecialParticle_Position_ForRefinement[3];
     double Mass_Accreted_By_SpecialSMBHParticle;
+    double Mass_of_SpecialSMBHParticle;
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -3203,7 +3216,7 @@ extern struct gas_cell_data
     MyDouble ISMDustChem_C_in_CO;                      /*!< C metallicity locked in CO */
     MyDouble ISMDustChem_MassFractionInDenseMolecular; /*!< mass fraction of gas in dense MC phase */
 #endif
-
+    
 #ifdef MAGNETIC
     MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];              /*!< current magnetic field strength */
@@ -3237,7 +3250,13 @@ extern struct gas_cell_data
     MyFloat CosmicRayEnergyPred[N_CR_PARTICLE_BINS];    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy[N_CR_PARTICLE_BINS];      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];/*!< diffusion coefficient kappa for cosmic ray fluid */
-    MyFloat Face_DivVel_ForAdOps;                                 /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
+    MyFloat Face_DivVel_ForAdOps;                       /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+    MyFloat DtCREgyNewInjectionFromShocks;              /*!< scalar to record energy injection at shock interfaces for acceleration from resolved shocks */
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION) 
+    MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
+#endif
 #ifdef CRFLUID_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */

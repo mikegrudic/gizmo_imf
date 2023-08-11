@@ -34,7 +34,7 @@ void find_timesteps(void)
     integertime ti_step, ti_step_old, ti_min;
     double aphys;
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    double xyz_local[3]={-MAX_REAL_NUMBER,-MAX_REAL_NUMBER,-MAX_REAL_NUMBER}, xyz_global[3]; int special_particle_active_with_this_index=-1;
+    double xyz_local[3]={-MAX_REAL_NUMBER,-MAX_REAL_NUMBER,-MAX_REAL_NUMBER}, xyz_global[3]; int special_particle_active_with_this_index=-1; double special_particle_mass_local=0, special_particle_mass_global=0;
 #endif
 
     if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin || dt_displacement == 0)
@@ -203,7 +203,7 @@ void find_timesteps(void)
 #endif
         
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-        if(P[i].Type == 3 && P[i].Mass > 0) {xyz_local[0]=P[i].Pos[0]; xyz_local[1]=P[i].Pos[1]; xyz_local[2]=P[i].Pos[2]; special_particle_active_with_this_index=i;} // active on this processor, set
+        if(P[i].Type == 3 && P[i].Mass > 0) {xyz_local[0]=P[i].Pos[0]; xyz_local[1]=P[i].Pos[1]; xyz_local[2]=P[i].Pos[2]; special_particle_active_with_this_index=i; special_particle_mass_local=P[i].Mass;} // active on this processor, set
 #endif
         
     }
@@ -211,12 +211,14 @@ void find_timesteps(void)
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     MPI_Allreduce(xyz_local, xyz_global, 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
     double mass_to_sum_local=All.Mass_Accreted_By_SpecialSMBHParticle, mass_to_sum_global=0; // define mass variables for passing
-    MPI_Allreduce(&mass_to_sum_local, &mass_to_sum_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
+    MPI_Allreduce(&mass_to_sum_local, &mass_to_sum_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the mass update of the SMBH particle
     if(xyz_global[0] > -1.e10) { // this indicates that the special particle was active on one task
         All.SMBH_SpecialParticle_Position_ForRefinement[0] = xyz_global[0]; All.SMBH_SpecialParticle_Position_ForRefinement[1] = xyz_global[1]; All.SMBH_SpecialParticle_Position_ForRefinement[2] = xyz_global[2]; // variable was updated, update global variable as needed
-        if(special_particle_active_with_this_index>=0) {P[special_particle_active_with_this_index].Mass += mass_to_sum_global;} // the special particle lives here with this id, so we can update it with this mass
+        if(special_particle_active_with_this_index>=0) {P[special_particle_active_with_this_index].Mass += mass_to_sum_global; special_particle_mass_local += mass_to_sum_global;} // the special particle lives here with this id, so we can update it with this mass
         All.Mass_Accreted_By_SpecialSMBHParticle = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
     }
+    MPI_Allreduce(&special_particle_mass_local, &special_particle_mass_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the mass of the SMBH particle
+    All.Mass_of_SpecialSMBHParticle = special_particle_mass_global; // update the mass of the SMBH particle for everyone to use
 #endif
 
 

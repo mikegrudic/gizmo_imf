@@ -1206,9 +1206,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
 	
-	    kappa_eff = rt_kappa_dust_IR(target,T,T,0); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
+	    kappa_eff = rt_kappa_adaptive_IR_band(target,T,T,0,1); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
         if(kappa_eff < 0.1) {kappa_eff=0.1;}
-	
         if(T>1500.){
             /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
             double k_electron = 0.2 * (1. + HYDROGEN_MASSFRAC); //0.167 * n_elec; /* Thompson scattering (non-relativistic) */
@@ -1944,10 +1943,10 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 	        absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
 	    }
 #endif
-	    absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_dust_IR(i,T_cmb, T_cmb, 0); // CMB absorption; assume cloud is optically-thin to the CMB 
+	    absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_adaptive_IR_band(i,T_cmb,T_cmb,0,1); // CMB absorption; assume cloud is optically-thin to the CMB
 #if defined(RT_ISRF_BACKGROUND) // account for additional optical + IR radiation field with extinction
 	    double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
-	    double kappa_IR = rt_kappa_dust_IR(i,20.,20.,0); // assume Trad=20 for IR dust opacity
+	    double kappa_IR = rt_kappa_adaptive_IR_band(i,20.,20.,0,1); // assume Trad=20 for IR dust opacity
 	    double Zfac = 1.;
 #ifdef METALS
 	    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];

@@ -148,6 +148,11 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         r0=10.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
         if(dtau < 6.*dtdelay) {slope*=0;} else if(dtau < 7.*dtdelay) {slope*=(dtau-6.*dtdelay)/dtdelay;}
         r0=1.; if(r_pc<r0) {f0 *= pow(r_pc/r0,slope);}
+        
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES==2) /* simpler refinement for even smaller-scale simulations */
+        mcrit_0 = m_ref_mJ = 0.003; minimum_refinement_mass_in_solar = 4.e-8; f0 = 1; // 'baseline' resolution & maximum resolution target
+        r0 = 0.01; if(r_pc < r0) {f0 *= pow(r_pc/r0 , 2);} // simple additional refinement criterion vs radius interior to inner radius
+#endif
 
         double M_target = f0 * DMAX( mcrit_0, m_ref_mJ ) / UNIT_MASS_IN_SOLAR;
         double M_min_absolute = minimum_refinement_mass_in_solar / UNIT_MASS_IN_SOLAR; // arbitrarily set minimum mass for refinement at any level
@@ -516,9 +521,9 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
 /* // old method below, no longer used, because less stable
         for(k=0;k<3;k++) {SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k]; SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k]; SphP[i].BPred[k] -= SphP[j].BPred[k]; SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k]; SphP[i].DtB[k] -= SphP[j].DtB[k];}
         SphP[j].divB = mass_of_new_particle * SphP[i].divB; SphP[i].divB -= SphP[j].divB;
-        #ifdef DIVBCLEANING_DEDNER
+#ifdef DIVBCLEANING_DEDNER
         SphP[j].Phi = mass_of_new_particle * SphP[i].Phi; SphP[i].Phi -= SphP[j].Phi; SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi; SphP[i].DtPhi -= SphP[j].DtPhi; SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred; SphP[i].PhiPred -= SphP[j].PhiPred;
-        #endif
+#endif
 */
         for(k=0;k<3;k++) {
             double B_before_split = SphP[i].B[k] / volume_before_split; /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
@@ -578,6 +583,12 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+        SphP[j].DtCREgyNewInjectionFromShocks = mass_of_new_particle * SphP[i].DtCREgyNewInjectionFromShocks; SphP[i].DtCREgyNewInjectionFromShocks -= SphP[j].DtCREgyNewInjectionFromShocks;
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+        SphP[j].BH_CR_Energy_Available_For_Injection = mass_of_new_particle * SphP[i].BH_CR_Energy_Available_For_Injection; SphP[i].BH_CR_Energy_Available_For_Injection -= SphP[j].BH_CR_Energy_Available_For_Injection;
+#endif
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
             SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
             SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
@@ -833,9 +844,9 @@ int merge_particles_ij(int i, int j)
     // we evolve the conservative variables VB and Vpsi, these should simply add in particle-merge operations //
     /* // old method below, no longer used, because less stable
      for(k=0;k<3;k++) {SphP[j].B[k] += SphP[i].B[k]; SphP[j].BPred[k] += SphP[i].BPred[k]; SphP[j].DtB[k] += SphP[i].DtB[k];}
-     #ifdef DIVBCLEANING_DEDNER
+#ifdef DIVBCLEANING_DEDNER
      SphP[j].Phi += SphP[i].Phi; SphP[j].PhiPred += SphP[i].PhiPred; SphP[j].DtPhi += SphP[i].DtPhi;
-     #endif
+#endif
      */
     for(k=0;k<3;k++) {
         double B_before_split = (SphP[i].B[k] + SphP[j].B[k]) / (volume_before_merger_i + volume_before_merger_j); /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed. here since VB is the conserved variable explicitly integrated, that gets added with the pre-summation volumes (so we take a volume-weighted mean here) */
@@ -925,6 +936,12 @@ int merge_particles_ij(int i, int j)
 #endif
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+    SphP[j].DtCREgyNewInjectionFromShocks += SphP[i].DtCREgyNewInjectionFromShocks;
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+    SphP[j].BH_CR_Energy_Available_For_Injection += SphP[i].BH_CR_Energy_Available_For_Injection;
+#endif
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];
