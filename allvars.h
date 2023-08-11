@@ -3217,7 +3217,7 @@ extern struct gas_cell_data
     MyDouble ISMDustChem_MassFractionInDenseMolecular; /*!< mass fraction of gas in dense MC phase */
 #endif
     
-#if defined(BH_COSMIC_RAYS) && defined(BH_SPAWN) && defined(BH_CR_INJECTION_AT_TERMINATION) ????
+#if defined(BH_COSMIC_RAYS) && defined(BH_SPAWN) && defined(BH_CR_INJECTION_AT_TERMINATION) //????
     MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
 #endif
 

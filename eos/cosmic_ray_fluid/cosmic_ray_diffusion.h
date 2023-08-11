@@ -238,12 +238,8 @@ if(vdotr2_phys < 0 && vdotf2_phys < 0 && (DMAX(vdotf2_phys, vdotr2_phys)*UNIT_VE
                 double q = (1.-fabs(cos_t))/0.34; zeta_obliquity_fac = exp(-q*q*q);
 #endif
                 double DtCREgyNewInjection = saturation_fraction_for_craccel * zeta_obliquity_fac * dissipation_fac * 0.5 * upwind_density * velforflux*velforflux*velforflux * Face_Area_Norm;
-                double ?????; // need to record a new variable for the CR injection energy, which will be summed and then subtracted from the thermal energy change 
-            }
-        }
-    }
-    ????
-}
+                //double ?????; // need to record a new variable for the CR injection energy, which will be summed and then subtracted from the thermal energy change
+            }}}}
 #endif
 
 #endif // COSMIC_RAY_FLUID

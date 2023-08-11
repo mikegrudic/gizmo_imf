@@ -1525,6 +1525,10 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
 #if defined(RT_INFRARED) || defined(COOL_LOW_TEMPERATURES)
     T_dust = DMIN(T_dust , 1499.9); // limit to <1500 so always use opacities for 'capped' value at 1500 below, but don't ignore, because we're assuming the dust destruction above 1500K is accounted for in the self-consistent calculation of the dust-to-metals ratio, NOT in the opacities here //
 #endif
+    double Zfac = 1.0, dust_to_metals_vs_standard = return_dust_to_metals_ratio_vs_solar(i,T_dust); // avoid call to return_dust_to_metals_ratio_vs_solar to avert circular dependency
+#ifdef METALS
+    if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
+#endif
 
     if(dust_or_gas_opacity_only_flag >= 0) // dust opacities
     {
@@ -1560,10 +1564,6 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
 #endif
 #ifdef RADTRANSFER
         if(do_emission_opacity) {kappa *= rt_absorb_frac_albedo(i, RT_FREQ_BIN_INFRARED);} // multiply by (1-albedo) because emission cross section depends only on kappa_absorption
-#endif
-        double Zfac = 1.0, dust_to_metals_vs_standard = return_dust_to_metals_ratio_vs_solar(i,T_dust); // avoid call to return_dust_to_metals_ratio_vs_solar to avert circular dependency
-#ifdef METALS
-        if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #endif
         kappa *= Zfac*dust_to_metals_vs_standard; // the above are all dust opacities, so they scale with dust content per our usual expressions
     }
