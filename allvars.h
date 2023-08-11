@@ -3217,10 +3217,6 @@ extern struct gas_cell_data
     MyDouble ISMDustChem_MassFractionInDenseMolecular; /*!< mass fraction of gas in dense MC phase */
 #endif
     
-#if defined(BH_COSMIC_RAYS) && defined(BH_SPAWN) && defined(BH_CR_INJECTION_AT_TERMINATION) //????
-    MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
-#endif
-
 #ifdef MAGNETIC
     MyDouble Face_Area[3];          /*!< vector sum of effective areas of 'faces'; this is used to check closure for meshless methods */
     MyDouble BPred[3];              /*!< current magnetic field strength */
@@ -3254,7 +3250,13 @@ extern struct gas_cell_data
     MyFloat CosmicRayEnergyPred[N_CR_PARTICLE_BINS];    /*!< total energy of cosmic ray fluid (the conserved variable) */
     MyFloat DtCosmicRayEnergy[N_CR_PARTICLE_BINS];      /*!< time derivative of cosmic ray energy */
     MyFloat CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];/*!< diffusion coefficient kappa for cosmic ray fluid */
-    MyFloat Face_DivVel_ForAdOps;                                 /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
+    MyFloat Face_DivVel_ForAdOps;                       /*!< face-centered definition of the velocity divergence, needed to carefully handle adiabatic terms when Pcr >> Pgas */
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+    MyFloat DtCREgyNewInjectionFromShocks;              /*!< scalar to record energy injection at shock interfaces for acceleration from resolved shocks */
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION) 
+    MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
+#endif
 #ifdef CRFLUID_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */

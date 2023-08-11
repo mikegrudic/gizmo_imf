@@ -678,7 +678,10 @@
 #GALSF_FB_FIRE_AGE_TRACERS                  #- model for arbitrary tracers of different age-bins of stellar yields, which can be re-convolved in post-processing. developed by A. Emerick, paper in prep by A. Wetzel, meantime cite arXiv:2203.00040
 #SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM           #- module for special nuclear zoom-in simulations. currently entirely custom behavior, not designed for wide use.
 #CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
+#CRFLUID_INJECTION_AT_SHOCKS=(0.1)          #- inject CRs (using standard spectra) at resolved shocks throughout simulation. value=maximum fraction of shock energy flux to convert to accelerated CRs. currently using hard threshold of >Mach 5, >100 km/s shock velocity, along with spurious shock detection. coded by PFH, in testing
+#BH_CR_INJECTION_AT_TERMINATION=(0.25)      #- inject CRs (requires BH_WIND_SPAWN and BH_COSMIC_RAYS) approximately at spawned-cell termination shocks. developed by Kung-Yi Su, this version testing by PFH, currently uses very simple deceleration to fraction of launch velocity (=value set here) to determine when to inject
 ####################################################################################################-
+
 
 ############################################################################################################################-
 #------------------ ISM Dust Chemical Evolution Models (follow growth and destruction of different grain types)

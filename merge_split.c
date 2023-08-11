@@ -583,6 +583,12 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
         SphP[i].MassTrue -= SphP[j].MassTrue;
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+        SphP[j].DtCREgyNewInjectionFromShocks = mass_of_new_particle * SphP[i].DtCREgyNewInjectionFromShocks; SphP[i].DtCREgyNewInjectionFromShocks -= SphP[j].DtCREgyNewInjectionFromShocks;
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+        SphP[j].BH_CR_Energy_Available_For_Injection = mass_of_new_particle * SphP[i].BH_CR_Energy_Available_For_Injection; SphP[i].BH_CR_Energy_Available_For_Injection -= SphP[j].BH_CR_Energy_Available_For_Injection;
+#endif
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
             SphP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergy[k_CRegy]; SphP[i].CosmicRayEnergy[k_CRegy] -= SphP[j].CosmicRayEnergy[k_CRegy];
             SphP[j].CosmicRayEnergyPred[k_CRegy] = mass_of_new_particle * SphP[i].CosmicRayEnergyPred[k_CRegy]; SphP[i].CosmicRayEnergyPred[k_CRegy] -= SphP[j].CosmicRayEnergyPred[k_CRegy];
@@ -930,6 +936,12 @@ int merge_particles_ij(int i, int j)
 #endif
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+    SphP[j].DtCREgyNewInjectionFromShocks += SphP[i].DtCREgyNewInjectionFromShocks;
+#endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+    SphP[j].BH_CR_Energy_Available_For_Injection += SphP[i].BH_CR_Energy_Available_For_Injection;
+#endif
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
         SphP[j].CosmicRayEnergy[k_CRegy] += SphP[i].CosmicRayEnergy[k_CRegy];

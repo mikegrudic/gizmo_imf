@@ -1072,6 +1072,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         get_wind_spawn_magnetic_field(j, mode, jy, jz, dpdir, d_r);
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if defined(CRFLUID_INJECTION_AT_SHOCKS)
+        SphP[j].DtCREgyNewInjectionFromShocks=0;
+#endif
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) /* initialize CR energy and other related terms to nil */
         {
             SphP[j].CosmicRayEnergyPred[k_CRegy]=SphP[j].CosmicRayEnergy[k_CRegy]=SphP[j].DtCosmicRayEnergy[k_CRegy]=0;
@@ -1094,7 +1097,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
 #if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
         double dEcr = evaluate_blackhole_cosmicray_efficiency(BPP(i).BH_Mdot,BPP(i).BH_Mass,i) * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
-        inject_cosmic_rays(dEcr, v_magnitude_physical, 5, j, veldir);
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
+        SphP[j].BH_CR_Energy_Available_For_Injection = dEcr;     /* store energy for later injection */
+#else
+        inject_cosmic_rays(dEcr, v_magnitude_physical, 5, j, veldir); /* inject directly */
+#endif
 #endif
         /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
         force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
