@@ -585,7 +585,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
 #define OUTPUT_POTENTIAL
-#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS
+#ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART
 #endif
 #ifndef IO_SINKS_ONLY_SNAPSHOT_FREQUENCY
@@ -636,7 +636,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_COMOVING
 #ifndef OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_FLUX
-#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define IO_SUPPRESS_OUTPUT_EDDINGTON_TENSOR
 #endif
 #endif
@@ -655,7 +655,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_CHEM_PHOTOION 1
 #endif
 #define RT_INFRARED
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND
 #endif
 #if defined(RT_INFRARED)
@@ -677,7 +677,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define DIFFUSION_OPTIMIZERS
 #endif // MAGNETIC
-#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS)
+#if !defined(RT_ISRF_BACKGROUND) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
 #define RT_ISRF_BACKGROUND  // Draine 1978 ISRF for photoelectric heating (appropriate for solar circle, must be re-scaled for different environments)
 #endif
 #endif // COOLING
@@ -3215,6 +3215,10 @@ extern struct gas_cell_data
     MyDouble ISMDustChem_DelayTimeSNeSputtering;       /*!< delay time for thermal sputtering due to recent SNe, used to not double count dust destruction with thermal sputtering */
     MyDouble ISMDustChem_C_in_CO;                      /*!< C metallicity locked in CO */
     MyDouble ISMDustChem_MassFractionInDenseMolecular; /*!< mass fraction of gas in dense MC phase */
+#endif
+    
+#if defined(BH_COSMIC_RAYS) && defined(BH_SPAWN) && defined(BH_CR_INJECTION_AT_TERMINATION) ????
+    MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
 #endif
 
 #ifdef MAGNETIC

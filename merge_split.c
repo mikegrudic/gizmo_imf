@@ -521,9 +521,9 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
 /* // old method below, no longer used, because less stable
         for(k=0;k<3;k++) {SphP[j].B[k] = mass_of_new_particle * SphP[i].B[k]; SphP[i].B[k] -= SphP[j].B[k]; SphP[j].BPred[k] = mass_of_new_particle * SphP[i].BPred[k]; SphP[i].BPred[k] -= SphP[j].BPred[k]; SphP[j].DtB[k] = mass_of_new_particle * SphP[i].DtB[k]; SphP[i].DtB[k] -= SphP[j].DtB[k];}
         SphP[j].divB = mass_of_new_particle * SphP[i].divB; SphP[i].divB -= SphP[j].divB;
-        #ifdef DIVBCLEANING_DEDNER
+#ifdef DIVBCLEANING_DEDNER
         SphP[j].Phi = mass_of_new_particle * SphP[i].Phi; SphP[i].Phi -= SphP[j].Phi; SphP[j].DtPhi = mass_of_new_particle * SphP[i].DtPhi; SphP[i].DtPhi -= SphP[j].DtPhi; SphP[j].PhiPred = mass_of_new_particle * SphP[i].PhiPred; SphP[i].PhiPred -= SphP[j].PhiPred;
-        #endif
+#endif
 */
         for(k=0;k<3;k++) {
             double B_before_split = SphP[i].B[k] / volume_before_split; /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
@@ -838,9 +838,9 @@ int merge_particles_ij(int i, int j)
     // we evolve the conservative variables VB and Vpsi, these should simply add in particle-merge operations //
     /* // old method below, no longer used, because less stable
      for(k=0;k<3;k++) {SphP[j].B[k] += SphP[i].B[k]; SphP[j].BPred[k] += SphP[i].BPred[k]; SphP[j].DtB[k] += SphP[i].DtB[k];}
-     #ifdef DIVBCLEANING_DEDNER
+#ifdef DIVBCLEANING_DEDNER
      SphP[j].Phi += SphP[i].Phi; SphP[j].PhiPred += SphP[i].PhiPred; SphP[j].DtPhi += SphP[i].DtPhi;
-     #endif
+#endif
      */
     for(k=0;k<3;k++) {
         double B_before_split = (SphP[i].B[k] + SphP[j].B[k]) / (volume_before_merger_i + volume_before_merger_j); /* calculate the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed. here since VB is the conserved variable explicitly integrated, that gets added with the pre-summation volumes (so we take a volume-weighted mean here) */

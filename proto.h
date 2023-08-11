@@ -932,7 +932,7 @@ void rt_write_chemistry_stats(void);
 #endif
 
 #endif
-double rt_kappa_dust_IR(int i, double T_dust, double Trad, int do_emission_opacity);
+double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emission_opacity, int dust_or_gas_opacity_only_flag);
 
 
 void find_block(char *label,FILE *fd);
