@@ -941,12 +941,12 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #if defined(BH_CR_INJECTION_AT_TERMINATION)
     if(SphP[i].BH_CR_Energy_Available_For_Injection > 0) {
         /* need to determine whether or not sufficient deceleration has occurred in order to inject CRs from our 'reservoir */
-        double vmag=0; int k; for(k=0;k<3;k++) {double v0=P[i].Vel/All.cf_atime; vmag+=v0*v0;} /* we will base this on a simple estimate of the velocity and how much things have decelerated */
+        double vmag=0; int k; for(k=0;k<3;k++) {double v0=P[i].Vel[k]/All.cf_atime; vmag+=v0*v0;} /* we will base this on a simple estimate of the velocity and how much things have decelerated */
         if(vmag>0) {vmag=sqrt(vmag);}
         if((P[i].ID != All.AGNWindID) || (vmag < ((double)(BH_CR_INJECTION_AT_TERMINATION))*All.BAL_v_outflow)) {
             double dir[3]; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
             inject_cosmic_rays(SphP[i].BH_CR_Energy_Available_For_Injection, All.BAL_v_outflow, 5, i, dir); /* inject the energy */
-            SphP[j].BH_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
+            SphP[i].BH_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
         }
     }
 #endif
