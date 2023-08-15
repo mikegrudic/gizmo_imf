@@ -2063,7 +2063,7 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
             if(k==RT_FREQ_BIN_FIRE_UV) {Teff=15000.;}
 #endif
 #if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */
-            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[target].Dust_Temperature;}
+            if(k==RT_FREQ_BIN_INFRARED) {Teff=SphP[target].Radiation_Temperature;}
 #endif
 #if defined(RT_OPTICAL_NIR) /* Optical-NIR approximate spectra for stars as used in the FIRE (Hopkins et al.) models; from 0.41-3.4 eV */
             if(k==RT_FREQ_BIN_OPTICAL_NIR) {Teff=2800.;}
