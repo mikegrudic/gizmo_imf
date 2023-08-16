@@ -1149,12 +1149,20 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         Lambda = LambdaFF + DMAX(LambdaCompton,0);
     }
 
+#if 0 //defined(RT_INFRARED)
+    if(target >= 0) { /* attempt to account for gas-phase absorption self-opacity to cooling radiation here in limit where optically-thick regions are poorly resolved: only valid in some limits, so not really general here */
+        double gas_self_absorption_opacity = rt_kappa_adaptive_IR_band(i,T,T,-1,-1), surface_density_fromcenter = 0.5 * (SphP[target].Density*All.cf_a3inv) * (Get_Particle_Size(target)*All.cf_atime);
+        double tau_self = gas_self_absorption_opacity * surface_density_fromcenter, fcorr = 1./(1.+tau_self*tau_self);
+        Heat*=fcorr; Lambda*=fcorr; LambdaMetal*=fcorr; LambdaExc*=fcorr; LambdaRec*=fcorr; LambdaIon*=fcorr; LambdaPElec*=fcorr; LambdaFF*=fcorr; LambdaMol*=fcorr; LambdaDust*=fcorr; LambdaCompton*=fcorr;
+    }
+#endif
+
+    
     double Q = Heat - Lambda;
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0) {SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
 #endif
 
-    
 #if defined(RT_NUV)
     double Lambda_rad_NUV = LambdaMetal; // most of LambdaMetal coming out in the NUV, as we define it
     Lambda_rad_NUV += LambdaExc + LambdaIon; // this represents gas kinetic energy lost to collisional ionization and excitation. but each is assumed to produce a recombination or cascade back to the ground state, which should re-emit. we're usually assuming case B recombination (UV emitted photons re-absorbed), so we'll assume a cascade for these into NUV/optical and other bands [otherwise should be added to photo-ionizing band]. still ignore LambdaRec, because otherwise this will double-count the UV background
@@ -1164,7 +1172,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
     if(logT >= 5.) {Lambda_rad_NUV += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
 #endif
-    if(target>=0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV] = Lambda_rad_NUV;} // save this to be used later (include all misc terms that will appear in our NUV radiation umbrella)
+    if(target>=0) {
+        int which_bin_to_cool_to = RT_FREQ_BIN_NUV; // default to NUV bin
+#if defined(RT_INFRARED)
+        SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV] = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = 0; // set to nil before deciding if we will add radiation here, to avoid double-counting with previous-loop information
+        if(SphP[target].Radiation_Temperature > 1.e4) {which_bin_to_cool_to = RT_FREQ_BIN_INFRARED;} // our more-accurate effective/adaptive IR band is already covering these wavelengths, rather than do the noisy step of cooling to NUV, re-absorbing with less accurate opacities and down-grading to the grey-band, just dump directly to the grey-band
+#endif
+        SphP[target].Lambda_RadiativeCooling_toRHDBins[which_bin_to_cool_to] += Lambda_rad_NUV;} // save this to be used later (include all misc terms that will appear in our NUV radiation umbrella)
 #endif
     
 #if defined(RT_INFRARED)
@@ -1173,7 +1187,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
     if(logT < 5.) {Lambda_rad_IR += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
 #endif
-    if(target>=0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = Lambda_rad_IR;} // save this to be used later (include all misc terms that will appear in our IR radiation umbrella)
+    if(target>=0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] += Lambda_rad_IR;} // save this to be used later (include all misc terms that will appear in our IR radiation umbrella)
 #endif
     
     
@@ -1223,6 +1237,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         if(Q > 0) {if(Q > Lambda_Thick_BlackBody) {Q=Lambda_Thick_BlackBody;}} else {if(Q < -Lambda_Thick_BlackBody) {Q=-Lambda_Thick_BlackBody;}}
     }
 #endif
+    
 
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0) {SphP[target].NetHeatingRateQ = Q;}
