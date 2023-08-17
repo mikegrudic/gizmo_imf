@@ -680,6 +680,7 @@
 #CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
 #CRFLUID_INJECTION_AT_SHOCKS=(0.1)          #- inject CRs (using standard spectra) at resolved shocks throughout simulation. value=maximum fraction of shock energy flux to convert to accelerated CRs. currently using hard threshold of >Mach 5, >100 km/s shock velocity, along with spurious shock detection. coded by PFH, in testing
 #BH_CR_INJECTION_AT_TERMINATION=(0.25)      #- inject CRs (requires BH_WIND_SPAWN and BH_COSMIC_RAYS) approximately at spawned-cell termination shocks. developed by Kung-Yi Su, this version testing by PFH, currently uses very simple deceleration to fraction of launch velocity (=value set here) to determine when to inject
+#MHD_CONSERVE_B_ON_REFINEMENT               #- redefine B after density step after a refinement/de-refinement operation so as to exactly conserve "B" between the steps, as compared to conserving the code "VB" between the steps [the default conserved integrated quantity]
 ####################################################################################################-
 
 

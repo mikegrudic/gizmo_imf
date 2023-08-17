@@ -789,7 +789,6 @@ void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz, doub
     for(k=0;k<3;k++) {if(Bmag_0>0) {SphP[j].B[k]*=Bmag/sqrt(Bmag_0);} else {SphP[j].B[k]=Bmag;}} // assign if valid values
     for(k=0;k<3;k++) {SphP[j].BPred[k]=SphP[j].B[k]; SphP[j].DtB[k]=0;} // set predicted = actual, derivative to null
 #endif
-
     for(k=0;k<3;k++) {SphP[j].BField_prerefinement[k] = SphP[j].B[k] / volume_for_BtoVB;} /* record the real value of B pre-split to know what we need to correctly re-initialize to once the volume partition can be recomputed */
     for(k=0;k<3;k++) {SphP[j].BPred[k] = SphP[j].B[k];} /* set predicted/drifted equal to the value above */
     return;
