@@ -273,7 +273,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
     {
         double fA_tmp = (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature)))); // rough interpolation depending on the radiation temperature: high Trad, this is 1/2, low Trad, gets closer to unity */
 #ifdef COOLING
-		if (rt_kappa(i,k_freq)>0) {fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));} else {return 1.0;} // the value should not matter if rt_kappa=0
+		if(rt_kappa(i,k_freq)>0) {fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));} else {return 1.0;} // the value should not matter if rt_kappa=0
 #endif
         return fA_tmp;
     }
@@ -714,6 +714,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #endif
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(SphP[i].Dust_Temperature <= T_min) {SphP[i].Dust_Temperature = T_min;} // dust temperature shouldn't be below CMB
+    double IRBand_opacity_fraction_from_gas_absorption = 0; // needed below to know what fraction is immediately re-radiated or not
 #endif    
 
     for(k_tmp=0; k_tmp<N_RT_FREQ_BINS; k_tmp++)
@@ -761,8 +762,6 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                     a0_abs = -rt_absorption_rate(i,kf); // update absorption rate using the new radiation temperature //
                 }
                 double total_absorption_rate = E_abs_tot + fabs(a0_abs)*e0; // add the summed absorption and equate to dust emission //
-		        double total_emission_rate = total_absorption_rate + SphP[i].Rad_Je[kf]; // we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop
-                total_de_dt = E_abs_tot + SphP[i].Rad_Je[kf] + dt_e_gamma_band;                
 #ifdef COOLING  // we account for gas-dust coupling as an additional heat source to be radiated away
 		        double u_in=SphP[i].InternalEnergy, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, ne=1, nHI=0, nHII=0, nHeI=1, nHeII=0, nHeIII=0;
 		        double temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
@@ -771,12 +770,15 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #else
                 SphP[i].Dust_Temperature = rt_eqm_dust_temp(i, 0, total_absorption_rate * vol_inv_phys / RT_SPEEDOFLIGHT_REDUCTION); // Calling with T=0 will account for dust absorption only
 #endif
-                double Tdust_eff = SphP[i].Dust_Temperature;                
+                double Tdust_eff = SphP[i].Dust_Temperature, Trad_eff = SphP[i].Radiation_Temperature;
+                IRBand_opacity_fraction_from_gas_absorption = rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,-1,-1) / rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,0,0); /* gas absorption opacity only, relative to total opacity (all sources+scattering) */
+                double total_emission_rate = total_absorption_rate * (1.-IRBand_opacity_fraction_from_gas_absorption) + SphP[i].Rad_Je[kf]; /* we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop */
+                total_de_dt = E_abs_tot + SphP[i].Rad_Je[kf] + dt_e_gamma_band;
                 if(mode==0) // only update temperatures on kick operations //
                 {
-                    // dust absorption and re-emission brings T_rad towards T_dust: //
-                    double dE_abs = -e0 * (1. - exp(a0_abs*dt_entr)); // change in energy from absorption
-                    double T_max = DMAX(SphP[i].Radiation_Temperature , Tdust_eff); // should not exceed either initial temperature //
+                    /* dust absorption and re-emission brings T_rad towards T_dust: */
+                    double dE_abs = -e0 * (1. - exp(a0_abs*dt_entr)); /* change in energy from absorption */
+                    double T_max = DMAX(SphP[i].Radiation_Temperature , Tdust_eff); /* should not exceed either initial temperature */
                     SphP[i].Radiation_Temperature = (e0 + dE_abs + total_emission_rate*dt_entr) / (MIN_REAL_NUMBER + (e0 + dE_abs) / SphP[i].Radiation_Temperature + total_emission_rate*dt_entr / Tdust_eff);
                     SphP[i].Radiation_Temperature = DMIN(SphP[i].Radiation_Temperature, T_max);
                 }
@@ -848,8 +850,15 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
             
             int donation_target_bin = rt_get_donation_target_bin(kf); // frequency into which the photons will be deposited, if any //
 #ifdef RT_INFRARED
-            if(donation_target_bin==RT_FREQ_BIN_INFRARED) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
-            if(kf==RT_FREQ_BIN_INFRARED) {ef = e0 + total_de_dt * dt_entr;} /* donor bin is yourself in the IR - all self-absorption is re-emitted */
+            if((donation_target_bin == RT_FREQ_BIN_INFRARED) && (kf != RT_FREQ_BIN_INFRARED)) {E_abs_tot += de_abs/(MIN_REAL_NUMBER + dt_entr);} /* donor bin is yourself in the IR - some self-absorption is re-emitted, but this is handled explicitly below, so don't need to include it in sum here */
+            if(kf==RT_FREQ_BIN_INFRARED) {
+#ifdef COOLING
+                ef += de_abs*(1.-IRBand_opacity_fraction_from_gas_absorption); /* update: assume a fraction de_abs * IRBand_opacity_fraction_from_gas_absorption is absorbed by the gas, which will not be instantly re-emitted here, but later in the cooling subroutines */
+                if(mode==0) {SphP[i].DtInternalEnergy += (de_abs * IRBand_opacity_fraction_from_gas_absorption) / ((MIN_REAL_NUMBER + dt_entr) * P[i].Mass);} /* this fraction absorbed by gas goes into a heating rate which can be balanced implicitly in the cooling function later */
+#else
+                ef = e0 + total_de_dt * dt_entr; // previous version: assumes all self-absorption is re-emitted
+#endif
+            } /* donor bin is yourself in the IR - just need to decide what to do with the photons */
 #endif
             // isotropically re-emit the donated radiation into the target bin[s] //
 #if defined(RT_EVOLVE_INTENSITIES)
@@ -1511,14 +1520,18 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
 
 /***********************************************************************************************************/
 /* calculate the IR dust opacity [in physical code units = Length^2/Mass]. 
-/* NOTE: The flag do_emission_opacity toggles special behaviour.
-/* 0: returns the scattering+absorption opacity using the radiation temperature (usually want this)
-/* 1: returns the *emission* opacity, assuming the dust radiates as a blackbody (depends only on T_dust)
-/* likewise, dust_or_gas_opacity_only_flag toggles different behaviors: =0 -> total IR-band opacity, =1 -> opacity --only-- from dust, ==-1 -> opacity --only-- from non-dust */
+/* NOTE: The flag do_emission_absorption_scattering_opacity toggles special behaviour.
+/* -1: returns the absorption opacity only, using the radiation temperature
+/*  0: returns the scattering+absorption opacity using the radiation temperature (usually want this)
+/*  1: returns the *emission* opacity, assuming the dust+gas radiates as a blackbody (depends only on T_dust)
+/* likewise, dust_or_gas_opacity_only_flag toggles different behaviors:
+/*  0: total IR-band opacity,
+/*  1: opacity -only- from dust,
+/* -1: opacity -only- from non-dust */
 /***********************************************************************************************************/
-double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emission_opacity, int dust_or_gas_opacity_only_flag)
+double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emission_absorption_scattering_opacity, int dust_or_gas_opacity_only_flag)
 {
-    if(do_emission_opacity) {Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust
+    if(do_emission_absorption_scattering_opacity==1) {Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust
     double fac=UNIT_SURFDEN_IN_CGS, x = 4.*log10(Trad) - 8., kappa=0; // needed for fitting functions to opacities (may come up with cheaper function later)
     double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
     //if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
@@ -1563,7 +1576,9 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
         kappa = DMIN(1.e-3 * Trad * Trad, 5.); // beta=2 law capped at 5 cm^2/g, rough approximation of Semenov model neglecting jumps in composition
 #endif
 #ifdef RADTRANSFER
-        if(do_emission_opacity) {kappa *= rt_absorb_frac_albedo(i, RT_FREQ_BIN_INFRARED);} // multiply by (1-albedo) because emission cross section depends only on kappa_absorption
+        if((do_emission_absorption_scattering_opacity==1) || (do_emission_absorption_scattering_opacity==-1)) {
+            kappa *= (1.-0.5/(1.+((725.*725.)/(1.+Trad*Trad)))); /* rough interpolation for dust depending on the radiation temperature: high Trad, this is 1/2, low Trad, gets closer to unity */
+        } /* multiply by (1-albedo) because absorption depends only on albedo, and emission cross section depends only on kappa_absorption */
 #endif
         kappa *= Zfac*dust_to_metals_vs_standard; // the above are all dust opacities, so they scale with dust content per our usual expressions
     }
@@ -1601,6 +1616,7 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
         double k_Hminus = 1.1e-25 * sqrt((P[i].Metallicity[0] + 1.e-5) * rho_cgs) * pow(Tgas,7.7) * exp(-DMIN(8760./Trad,40.)); /* negative H- ion opacity (this is a fit for stellar atmospheres, which has a very strong temp dependence because of implicit free-electron and H- scaling with T, but that's not as useful for us since we're tracking the chemistry we need here) */
 #endif
         double k_radiative = k_molecular + k_Kramers + k_Hminus + k_electron + k_Rayleigh; /* we don't want a rosseland mean here given our band divisions (already kramers and H- and molecular are rosseleand-mean-ized in fact within themselves), but here different sources should add linearly for a flux-mean */
+        if((do_emission_absorption_scattering_opacity==1) || (do_emission_absorption_scattering_opacity==-1)) {k_radiative -= k_electron;} /* here we just want absorption/emission, not scattering opacity, so we do not include the free electron term */
         kappa += k_radiative; /* add this to the dust opacity we have already calculated above */
     }
     
