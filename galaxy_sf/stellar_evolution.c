@@ -967,11 +967,43 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
     // phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
+    double L = BPP(n).StarLuminosity_Solar, R = BPP(n).ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
     logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
+#if (SINGLE_STAR_FB_WINDS > 0)
+    double vinf_over_vesc = single_star_wind_velocity(n)/single_star_escape_speed(n);
+#endif 
+#if (SINGLE_STAR_FB_WINDS & 1) // least significant bit toggles Vink 2001 model
+    if(Teff > 2.25e4) { // hot side of the bistability jump
+	double logT40k = log10(Teff/4e4);
+	logmdot_wind = -6.697 + 2.194 * log10(L/1e5) 	    
+	    - 1.313 * log10(m_solar/30) 
+	    - 1.226 * log10(vinf_over_vesc/2)
+	    + 0.933 * logT40k 
+	    - 10.92 * logT40k * logT40k 
+	    + 0.85 * log10(ZZ); // Sahahit arXiv:2205.09125 Eq. 10
+    } else {
+	logmdot_wind = -6.688 + 2.21 * log10(L/1e5) 	    
+	    - 1.339 * log10(m_solar/30) 
+	    - 1.601 * log10(vinf_over_vesc/2)
+	    + 1.07 * log10(Teff/2e4)
+	    + 0.85 * log10(ZZ); // Vink 2001,  arXiv:astro-ph/0101509
+    }
+#else // default STARFORGE phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
+    logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ);
+#endif
     logmdot_wind = DMIN(-7.65 + 2.9*log10(BPP(n).StarLuminosity_Solar/ 1e5), logmdot_wind); // weak-wind problem
+
+    if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(n) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){logmdot_wind += 1.;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
+
+#if (SINGLE_STAR_FB_WINDS & 2) // next-to-least significant bit toggles Eddington factor-dependent mass loss recipe 
+    double logmdot_wind_high = -8.445 + 4.77* log10(L/1e5)
+	- 1.339 * log10(m_solar/30) 
+	- 1.601 * log10(vinf_over_vesc/2)
+	+ 0.85 * log10(ZZ);  // Sahahit arXiv:2205.09125 Eq. 13
+    logmdot_wind = DMAX(logmdot_wind, logmdot_wind_high);
+#endif
     wind_mass_loss_rate = pow(10.0,logmdot_wind) / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
 
-    if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(n) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){wind_mass_loss_rate*=10;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
     // let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
     if ( set_mode && (wind_mass_loss_rate>0) ) {
         // let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
@@ -1010,10 +1042,14 @@ double singlestar_WR_lifetime_Gyr(int n) { // calculate lifetime for star in Wol
 
 double single_star_wind_velocity(int n) { /* Let's get the wind velocity for MS stars */
     double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); // effective temperature in K
-    double v_esc = (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
+    double v_esc = single_star_escape_speed(n); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
     if(T_eff < 1.25e4){ return 0.7 * v_esc;}  // Lamers 1995
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}
     else {return 2.6 * v_esc;}
+}
+
+double single_star_escape_speed(int n){
+    return (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar);
 }
 #endif // SINGLE_STAR_FB_WINDS
 

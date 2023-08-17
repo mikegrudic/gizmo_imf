@@ -550,7 +550,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define VISCOSITY            /* enable viscosity */
 #define VISCOSITY_BRAGINSKII /* compute proper coefficients and anisotropy for viscosity */
 #define SINGLE_STAR_FB_JETS  /* enable jets from protostars */
-#define SINGLE_STAR_FB_WINDS /* enable continuous mass-loss feedback - will also enable ssp mass-loss */
+#define SINGLE_STAR_FB_WINDS 0 /* enable continuous mass-loss feedback - will also enable ssp mass-loss */
 #define SINGLE_STAR_FB_SNE   /* enable SNe feedback - will also enable ssp mechanical feedback */
 #define SINGLE_STAR_FB_RAD   /* enable RHD feedback */
 #define RT_COMOVING          /* significantly more stable and accurate formulation given the structure of the problem and method we use */
