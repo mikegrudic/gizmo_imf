@@ -1149,9 +1149,9 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         Lambda = LambdaFF + DMAX(LambdaCompton,0);
     }
 
-#if 0 //defined(RT_INFRARED)
+#if defined(RT_INFRARED)
     if(target >= 0) { /* attempt to account for gas-phase absorption self-opacity to cooling radiation here in limit where optically-thick regions are poorly resolved: only valid in some limits, so not really general here */
-        double gas_self_absorption_opacity = rt_kappa_adaptive_IR_band(i,T,T,-1,-1), surface_density_fromcenter = 0.5 * (SphP[target].Density*All.cf_a3inv) * (Get_Particle_Size(target)*All.cf_atime);
+        double gas_self_absorption_opacity = rt_kappa_adaptive_IR_band(target,T,T,-1,-1), surface_density_fromcenter = 0.5 * (SphP[target].Density*All.cf_a3inv) * (Get_Particle_Size(target)*All.cf_atime);
         double tau_self = gas_self_absorption_opacity * surface_density_fromcenter, fcorr = 1./(1.+tau_self*tau_self);
         Heat*=fcorr; Lambda*=fcorr; LambdaMetal*=fcorr; LambdaExc*=fcorr; LambdaRec*=fcorr; LambdaIon*=fcorr; LambdaPElec*=fcorr; LambdaFF*=fcorr; LambdaMol*=fcorr; LambdaDust*=fcorr; LambdaCompton*=fcorr;
     }
