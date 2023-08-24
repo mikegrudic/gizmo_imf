@@ -974,15 +974,15 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
 #endif 
 #if (SINGLE_STAR_FB_WINDS & 1) // least significant bit toggles Vink 2001 model
     if(Teff > 2.25e4) { // hot side of the bistability jump
-	double logT40k = log10(Teff/4e4);
-	logmdot_wind = -6.697 + 2.194 * log10(L/1e5) 	    
+	    double logT40k = log10(Teff/4e4);
+	    logmdot_wind = -6.697 + 2.194 * log10(L/1e5) 	    
 	    - 1.313 * log10(m_solar/30) 
 	    - 1.226 * log10(vinf_over_vesc/2)
 	    + 0.933 * logT40k 
 	    - 10.92 * logT40k * logT40k 
 	    + 0.85 * log10(ZZ); // Sahahit arXiv:2205.09125 Eq. 10
     } else {
-	logmdot_wind = -6.688 + 2.21 * log10(L/1e5) 	    
+	    logmdot_wind = -6.688 + 2.21 * log10(L/1e5) 	    
 	    - 1.339 * log10(m_solar/30) 
 	    - 1.601 * log10(vinf_over_vesc/2)
 	    + 1.07 * log10(Teff/2e4)
@@ -997,9 +997,9 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
 
 #if (SINGLE_STAR_FB_WINDS & 2) // next-to-least significant bit toggles Eddington factor-dependent mass loss recipe 
     double logmdot_wind_high = -8.445 + 4.77* log10(L/1e5)
-	- 1.339 * log10(m_solar/30) 
-	- 1.601 * log10(vinf_over_vesc/2)
-	+ 0.85 * log10(ZZ);  // Sahahit arXiv:2205.09125 Eq. 13
+	- 3.99 * log10(m_solar/30) 
+	- 1.226 * log10(vinf_over_vesc/2)
+	+ 0.761 * log10(ZZ);  // Sahahit arXiv:2205.09125 Eq. 13
     logmdot_wind = DMAX(logmdot_wind, logmdot_wind_high);
 #endif
     wind_mass_loss_rate = pow(10.0,logmdot_wind) / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); //reducing the rate to be more in line with observations, see Nathan Smith 2014, conversion to code units from Msun/yr
