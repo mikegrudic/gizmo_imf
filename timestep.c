@@ -540,7 +540,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 }
                 double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
                 double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
-                double diff_coeff = SphP[p].Eta_MHD_OhmicResistivity_Coeff + SphP[p].Eta_MHD_HallEffect_Coeff + SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff;
+                double diff_coeff = fabs(SphP[p].Eta_MHD_OhmicResistivity_Coeff) + fabs(SphP[p].Eta_MHD_HallEffect_Coeff) + fabs(SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff);
                 double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (1.0e-37 + diff_coeff);
 #ifdef SUPER_TIMESTEP_DIFFUSION
                 if(dt_conduction < dt_superstep_explicit) dt_superstep_explicit = dt_conduction; // explicit time-step
