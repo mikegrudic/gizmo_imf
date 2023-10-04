@@ -410,14 +410,6 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     SphP[target].HeI = nHeI; SphP[target].HeII = nHeII; SphP[target].HeIII = nHeIII;
 #endif
 #endif
-#ifdef RT_INFRARED // similarly, update the dust temp with the converged solution
-#if !defined(RT_CHEM_PHOTOION)
-    double u_in=specific_energy_codeunits_toreturn, rho_in=SphP[target].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
-    temp = ThermalProperties(u_in, rho_in, target, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-#endif
-    get_rt_ir_lambdadust_effective(temp, rho, &nHI, &ne_guess, target, 0);
-#endif 
-
 
     /* safe return */
     return specific_energy_codeunits_toreturn;
