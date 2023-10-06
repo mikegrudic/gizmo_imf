@@ -770,6 +770,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #else
                 SphP[i].Dust_Temperature = rt_eqm_dust_temp(i, 0, total_absorption_rate * vol_inv_phys / RT_SPEEDOFLIGHT_REDUCTION); // Calling with T=0 will account for dust absorption only
 #endif
+		if(SphP[i].Dust_Temperature < T_min){SphP[i].Dust_Temperature = T_min;}
                 double Tdust_eff = SphP[i].Dust_Temperature, Trad_eff = SphP[i].Radiation_Temperature;
                 IRBand_opacity_fraction_from_gas_absorption = rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,-1,-1) / rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,0,0); /* gas absorption opacity only, relative to total opacity (all sources+scattering) */
                 double total_emission_rate = total_absorption_rate * (1.-IRBand_opacity_fraction_from_gas_absorption) + SphP[i].Rad_Je[kf]; /* we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop */
