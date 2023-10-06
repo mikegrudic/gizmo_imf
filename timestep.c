@@ -1002,7 +1002,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // SINGLE_STAR_TIMESTEPPING
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {double dt_spawn = target_mass_for_wind_spawning(p) / single_star_wind_mdot(p,1); if(dt > dt_spawn) dt = 1.01 * dt_spawn;}
+        if(P[p].ProtoStellarStage == 5) {double dt_spawn = target_mass_for_wind_spawning(p) / single_star_wind_mdot(p,1); if(dt > dt_spawn && dt_spawn > 0) {dt = 1.01 * dt_spawn;}}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
@@ -1010,13 +1010,15 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[p].SinkRadius);
 #endif
-            double t_clear=eps/single_star_SN_velocity(p);  dt=DMIN(dt, DMAX(0.5*t_clear, 1.01*All.MinSizeTimestep)); } // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+            double t_clear=eps/single_star_SN_velocity(p);
+            if(t_clear > 0 && dt > 0) {dt=DMIN(dt, DMAX(0.5*t_clear, 1.01*All.MinSizeTimestep))}; // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+        }
 #endif
 #endif
     } // if(P[p].Type == 5)
 
 #if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
-    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && SphP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
+    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && SphP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow && All.BH_spawn_rinj>0 && All.BAL_v_outflow>0) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
 #endif
 #endif // BLACK_HOLES
     
