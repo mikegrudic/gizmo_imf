@@ -1424,7 +1424,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 
     	n_iter++;
 	    if(n_iter > MAXITER-10) {
-	        PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
+	        PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",(long long)P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
 	        if(n_iter > MAXITER){break;}
 	    }
     } while(fabs(dT_dustgas - (T-Tdust)) > 1.e-3 * fabs(T-Tdust)); // sufficient to converge dust cooling to 10^-3 tolerance, at this point uncertainties in dust properties will dominate the error budget    
@@ -1519,17 +1519,17 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
 
 
 
-/***********************************************************************************************************/
-/* calculate the IR dust opacity [in physical code units = Length^2/Mass]. 
-/* NOTE: The flag do_emission_absorption_scattering_opacity toggles special behaviour.
-/* -1: returns the absorption opacity only, using the radiation temperature
-/*  0: returns the scattering+absorption opacity using the radiation temperature (usually want this)
-/*  1: returns the *emission* opacity, assuming the dust+gas radiates as a blackbody (depends only on T_dust)
-/* likewise, dust_or_gas_opacity_only_flag toggles different behaviors:
-/*  0: total IR-band opacity,
-/*  1: opacity -only- from dust,
-/* -1: opacity -only- from non-dust */
-/***********************************************************************************************************/
+/*--------------------------------------------------------------------
+  calculate the IR dust opacity [in physical code units = Length^2/Mass].
+   NOTE: The flag do_emission_absorption_scattering_opacity toggles special behaviour.
+   -1: returns the absorption opacity only, using the radiation temperature
+    0: returns the scattering+absorption opacity using the radiation temperature (usually want this)
+    1: returns the *emission* opacity, assuming the dust+gas radiates as a blackbody (depends only on T_dust)
+   likewise, dust_or_gas_opacity_only_flag toggles different behaviors:
+    0: total IR-band opacity,
+    1: opacity -only- from dust,
+   -1: opacity -only- from non-dust 
+--------------------------------------------------------------------*/
 double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emission_absorption_scattering_opacity, int dust_or_gas_opacity_only_flag)
 {
     if(do_emission_absorption_scattering_opacity==1) {Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust

@@ -398,7 +398,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     }
     while(iter_condition); /* iteration condition */
     /* crash condition */
-    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, P[target].ID); endrun(10);}
+    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
@@ -485,7 +485,7 @@ double DoInstabilityCooling(double m_old, double u, double rho, double dt, doubl
         if(iter >= (MAXITER - 10)) {printf("->m= %g\n", m);}
     }
     while(fabs(dm / m) > 1.0e-6 && iter < MAXITER);
-    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d ID=%ld\n",m_old,u,rho,dt,fac,ne_guess,target,P[target].ID); endrun(11);}
+    if(iter >= MAXITER) {printf("failed to converge in DoInstabilityCooling(): m_in=%g u_in=%g rho=%g dt=%g fac=%g ne_in=%g target=%d ID=%ld\n",m_old,u,rho,dt,fac,ne_guess,target,(long)P[target].ID); endrun(11);}
     return m;
 }
 
@@ -582,7 +582,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne_guess, dou
            ((fabs(temp - temp_old) > 0.01 * temp) && (temp > 200.) && (iter<100)) ||
            ((fabs(temp - temp_old) > 1.0e-3 * temp) && (temp > 200.) && (iter<10))) && iter < MAXITER);
 #endif
-    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d ID=%ld\n", u_input, rho_input, *ne_guess, target, P[target].ID); endrun(12);}
+    if(iter >= MAXITER) {printf("failed to converge in convert_u_to_temp(): u_input= %g rho_input=%g n_elec_input=%g target=%d ID=%ld\n", u_input, rho_input, *ne_guess, target, (long)P[target].ID); endrun(12);}
 
     if(temp<=0) temp=pow(10.0,Tmin);
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
@@ -780,7 +780,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #endif
         if(!isfinite(n_elec)) {printf("target=%d niter=%d logT=%g n_elec/old=%g/%g nHp/nHep/nHepp=%g/%g/%g nHcgs=%g yHe=%g dt=%g shieldfac/local_gammamult=%g/%g aHp/aHep/aHepp=%g/%g/%g geH0/geHe0/geHep=%g/%g/%g gJH0ne/gJHe0ne/gJHepne=%g/%g/%g \n",target,niter,logT,n_elec,neold,nHp,nHep,nHepp,nHcgs,yhelium(target),dt,shieldfac,local_gammamultiplier,aHp,aHep,aHepp,geH0,geHe0,geHep,gJH0ne,gJHe0ne,gJHepne);}
 
-	double error_old = fabs(n_elec - neold); // save the old error to compare with the new one, so we can check if we're converging
+        double error_old = fabs(n_elec - neold); // save the old error to compare with the new one, so we can check if we're converging
         neold = n_elec;
         n_elec = nHp + nHep + 2 * nHepp;	/* eqn (38) */
 #ifdef COOL_LOW_TEMPERATURES
@@ -793,27 +793,28 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 	    if(n_elec > neold) {ne_lower = DMAX(neold, ne_lower);}
 	    if(n_elec < neold) {ne_upper = DMIN(neold, ne_upper);}
 
+        double nenew_tolmin = DMIN(1.0e-14, 0.01 * 1.e-3/nHcgs); // make tolerance 1e-14 (normally more than sufficient), unless super-dense where smaller tolerance needed owing to expectation [-guessed- here for physics] of even smaller ne needed
 	    if(bisection_mode) { // if fixed-point mode is not converging fast enough and we switched to bisection mode
 	        if(n_elec < neold) {nenew = 0.5*(ne_lower + neold); ne_upper=neold;} // go to left midpoint and update the upper bound
 	        else {nenew = 0.5*(ne_upper + neold); ne_lower = neold;} // go to right midpoint and update the lower bound
 	    } else { // otherwise we do the usual fixed-point iteration
 	        nenew = 0.5 * (n_elec + neold);
-	        if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > 1e-14)) { // if we're converging slower than bisection, just switch to bisection
+	        if(niter>30 && (fabs(n_elec - neold) > 0.6 * error_old) && (nenew > nenew_tolmin)) { // if we're converging slower than bisection, just switch to bisection
 		        bisection_mode = 1;}
-	    }
+	    } 
 
         n_elec = nenew;
         if(!isfinite(n_elec)) {n_elec=1;}
         necgs = n_elec * nHcgs;
 
-        double dneTHhold = DMAX(n_elec*0.01 , 1.0e-14); // desired absolute tolerance for n_elec
+        double dneTHhold = DMAX(n_elec*0.01 , nenew_tolmin); // desired absolute tolerance for n_elec
         if(fabs(n_elec - neold) < dneTHhold) break;
 
         if(niter > (MAXITER - 10)) {printf("n_elec= %g/%g/%g yh=%g nHcgs=%g niter=%d\n", n_elec,neold,nenew, yhelium(target), nHcgs, niter);}
     }
     while(niter < MAXITER);
 
-    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d ID=%ld shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, P[target].ID, shieldfac, return_cooling_mode); endrun(13);}
+    if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d ID=%ld shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, (long)P[target].ID, shieldfac, return_cooling_mode); endrun(13);}
 
     bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
     bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
@@ -1212,7 +1213,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         double effective_area = 2.3 * PROTONMASS_CGS / surface_density; // since cooling rate is ultimately per-particle, need a particle-weight here
         double kappa_eff; // effective kappa, accounting for metal abundance, temperature, and density //
 	
-	    kappa_eff = rt_kappa_adaptive_IR_band(target,T,T,0,1); // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g
+	    kappa_eff = rt_kappa_adaptive_IR_band(target,T,T,0,1) / UNIT_SURFDEN_IN_CGS; // will return simple opacity law kappa = 0.1cm^2/g (T/10K)^2, capped at 5 cm^2/g, in code units [convert to physical here]
         if(kappa_eff < 0.1) {kappa_eff=0.1;}
         if(T>1500.){
             /* this is an approximate result for high-temperature opacities, but provides a pretty good fit from 1.5e3 - 1.0e9 K */
