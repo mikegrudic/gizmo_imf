@@ -70,9 +70,9 @@ if((local.Mass > 0) && (P[j].Mass > 0))
         // ok now construct the numerical fluxes based on the numerical diffusion coefficients and the direct-difference values between elements
         double eta_0 = v_hll * kernel.r * All.cf_atime; // standard numerical diffusivity needed for stabilizing fluxes
         double eta_ohmic_0=0,eta_ad_0=0,eta_hall_0=0,q=0; // now limit the numerical diffusivity to avoid unphysically fast diffusion
-        if(fabs(eta_ohmic)>0) {q=eta_0/eta_ohmic; eta_ohmic_0=eta_0*(0.2 + q)/(0.2 + q + q*q);}
-        if(fabs(eta_ad)>0) {q=eta_0/eta_ad; eta_ad_0=eta_0*(0.2 + q)/(0.2 + q + q*q);}
-        if(fabs(eta_hall)>0) {q=eta_0/eta_hall; eta_hall_0=eta_0*(0.2 + q)/(0.2 + q + q*q);}
+        if(fabs(eta_ohmic)>0) {q=eta_0/fabs(eta_ohmic); eta_ohmic_0=eta_0*(0.2 + q)/(0.2 + q + q*q);}
+        if(fabs(eta_ad)>0) {q=eta_0/fabs(eta_ad); eta_ad_0=eta_0*(0.2 + q)/(0.2 + q + q*q);}
+        if(fabs(eta_hall)>0) {q=eta_0/fabs(eta_hall); eta_hall_0=eta_0*(0.2 + q)/(0.2 + q + q*q); if(eta_hall<0) {eta_hall_0*=-1;}} // since signed, less clear if numerical term should be signed also, or mono-sign here ??? //
         double b_flux_direct[3]={0}, JcrossB_direct[3], JcrossBcrossB_direct[3], db_direct[3];
         JcrossB_direct[0] = (bhat[2]*J_direct[1]-bhat[1]*J_direct[2]);
         JcrossB_direct[1] = (bhat[0]*J_direct[2]-bhat[2]*J_direct[0]);

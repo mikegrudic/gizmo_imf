@@ -1369,7 +1369,8 @@ void hydro_gradient_calc(void)
                 double nu_g = 7.90e-6 * ag01*ag01 * sqrt(temperature/m_neutral) / (m_neutral+m_grain); // Pinto & Galli 2008
                 double nu_ei = 51.*xe*pow(temperature,-1.5); // Pandey & Wardle 2008 (e-ion)
                 double nu_e = nu_ei + 6.21e-9*pow(temperature/100.,0.65)/m_neutral; // Pinto & Galli 2008 for latter (e-neutral)
-                double nu_i = (xe/xi)*nu_ei + 1.57e-9/(m_neutral+m_ion); // // Pandey & Wardle 2008 for former (e-ion), Pinto & Galli 2008 for latter (i-neutral)
+                double nu_ie = ((ELECTRONMASS_CGS*xe)/(m_ion*PROTONMASS_CGS*xi))*nu_ei; // Pandey & Wardle 2008 for former (e-ion)
+                double nu_i = nu_ie + 1.57e-9/(m_neutral+m_ion); // Pandey & Wardle 2008 for former (e-ion), Pinto & Galli 2008 for latter (i-neutral)
                 // use the cross sections to determine the hall parameters and conductivities //
                 double beta_prefac = ELECTRONCHARGE_CGS * B_Gauss / (PROTONMASS_CGS * C_LIGHT_CGS * n_eff);
                 double beta_i = beta_prefac / (m_ion * nu_i); // standard beta factors (Hall parameters)
@@ -1379,12 +1380,18 @@ void hydro_gradient_calc(void)
                 double sigma_O = xe*beta_e + xi*beta_i + xg*fabs(Z_grain)*beta_g; // ohmic conductivity
                 double sigma_H = -xe*be_inv + xi*bi_inv + xg*Z_grain*bg_inv; // hall conductivity
                 double sigma_P = xe*beta_e*be_inv + xi*beta_i*bi_inv + xg*fabs(Z_grain)*beta_g*bg_inv; // pedersen conductivity
+                double sign_Zgrain = Z_grain/fabs(Z_grain); if(Z_grain==0) {sign_Zgrain=0;}
+                double sigma_A2 = (xe*beta_e*be_inv)*(xi*beta_i*bi_inv)*pow(-beta_e+beta_i,2) +
+                                  (xe*beta_e*be_inv)*(xg*fabs(Z_grain)*beta_g*bg_inv)*pow(-beta_e+sign_Zgrain*beta_g,2) +
+                                  (xi*beta_i*bi_inv)*(xg*fabs(Z_grain)*beta_g*bg_inv)*pow(-beta_e+sign_Zgrain*beta_g,2); // alternative formulation which is automatically positive-definite
+
                 // now we can finally calculate the diffusivities //
                 double eta_prefac = B_Gauss * C_LIGHT_CGS / (4 * M_PI * ELECTRONCHARGE_CGS * n_eff );
                 double eta_O = eta_prefac / sigma_O;
                 double sigma_perp2 = sigma_H*sigma_H + sigma_P*sigma_P;
                 double eta_H = eta_prefac * sigma_H / sigma_perp2;
-                double eta_A = eta_prefac * (sigma_P/sigma_perp2 - 1/sigma_O);
+                //double eta_A = eta_prefac * (sigma_P/sigma_perp2 - 1/sigma_O); // replace with positive-definite rewriting below
+                double eta_A = eta_prefac * (sigma_A2)/(sigma_O*sigma_perp2);
                 eta_O = fabs(eta_O); eta_A = fabs(eta_A); // these depend on the absolute values and should be written as such, so eta is always positive [not true for eta_h]
                 //eta_O = DMAX(0,eta_O); eta_H = DMAX(0,eta_H); eta_A = DMAX(0,eta_A); // check against unphysical negative diffusivities
                 // convert units to code units
