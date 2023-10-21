@@ -672,6 +672,7 @@
 
 ####################################################################################################-
 #-------------------------------- misc dev flags needing to be incorporated here (in testing)
+#GALSF_USE_SNE_FIRE3LEGACY_SCHEME           #- use the FIRE-3 methods paper version of the sne coupling, as opposed to the experimental ("3.1") newer module
 #GALSF_FB_FIRE_PROTOSTELLARJETS             #- simple model for prompt recycling of protostellar jet material based on scalings in Grudic et al., arXiv:2201.00882. developed by PFH
 #GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF=(2.0) #- star particle formation of O-stars is spread over this multiple of the free-fall time; requires GALSF_SFR_IMF_SAMPLING. developed by PFH
 #GALSF_MERGER_STARCLUSTER_PARTICLES         #- module which merges star particles together meeting certain core-collapse conditions, so they can be cosmologically evolved. developed by PFH

@@ -2935,7 +2935,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #ifdef GALSF_FB_MECHANICAL
-#define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
+#define AREA_WEIGHTED_SUM_ELEMENTS 12 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_FIRE_PROTOSTELLARJETS
