@@ -599,7 +599,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess,
                                  double *mu_guess, double *LambdaExc_return, double *LambdaIon_return, double *LambdaRec_return, double *LambdaFF_return)
 {
-    int j, niter;
+    int j, jp, niter;
     double Tlow, Thi, flow, fhi, t, gJH0ne, gJHe0ne, gJHepne, logT_input, rho_input, ne_input, neold, nenew;
     double bH0, bHep, bff, aHp, aHep, aHepp, ad, geH0, geHe0, geHep, EPSILON_SMALL=1.e-40;
     double n_elec, nH0, nHe0, nHp, nHep, nHepp; /* ionization states */
@@ -625,11 +625,13 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     /* initialize quantities needed for iteration below */
     t = (logT - Tmin) / deltaT;
     j = (int) t;
-    if(j<0){j=0;}
+    if(j<0) {j=0;}
     if(j>NCOOLTAB){
-        PRINT_WARNING("j>NCOOLTAB : j=%d t %g Tlow %g Thi %g logT %g Tmin %g deltaT %g \n",j,t,Tmin+deltaT*j,Tmin+deltaT*(j+1),logT,Tmin,deltaT);fflush(stdout);
+        PRINT_WARNING("j>=NCOOLTAB : j=%d t %g Tlow %g Thi %g logT %g Tmin %g deltaT %g \n",j,t,Tmin+deltaT*j,Tmin+deltaT*(j+1),logT,Tmin,deltaT);fflush(stdout);
         j=NCOOLTAB;
     }
+    jp = j + 1;
+    if(jp > NCOOLTAB) {jp=NCOOLTAB;}
     Tlow = Tmin + deltaT * j;
     Thi = Tlow + deltaT;
     fhi = t - j;
@@ -666,16 +668,16 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     do
     {
         niter++;
-
-        aHp = flow * AlphaHp[j] + fhi * AlphaHp[j + 1];
-        aHep = flow * AlphaHep[j] + fhi * AlphaHep[j + 1];
-        aHepp = flow * AlphaHepp[j] + fhi * AlphaHepp[j + 1];
-        ad = flow * Alphad[j] + fhi * Alphad[j + 1];
-        geH0 = flow * GammaeH0[j] + fhi * GammaeH0[j + 1];
+        
+        aHp = flow * AlphaHp[j] + fhi * AlphaHp[jp];
+        aHep = flow * AlphaHep[j] + fhi * AlphaHep[jp];
+        aHepp = flow * AlphaHepp[j] + fhi * AlphaHepp[jp];
+        ad = flow * Alphad[j] + fhi * Alphad[jp];
+        geH0 = flow * GammaeH0[j] + fhi * GammaeH0[jp];
         geH0 = DMAX(geH0, EPSILON_SMALL);
-        geHe0 = flow * GammaeHe0[j] + fhi * GammaeHe0[j + 1];
+        geHe0 = flow * GammaeHe0[j] + fhi * GammaeHe0[jp];
         geHe0 = DMAX(geHe0, EPSILON_SMALL);
-        geHep = flow * GammaeHep[j] + fhi * GammaeHep[j + 1];
+        geHep = flow * GammaeHep[j] + fhi * GammaeHep[jp];
         geHep = DMAX(geHep, EPSILON_SMALL);
         fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
@@ -816,9 +818,9 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 
     if(niter >= MAXITER) {printf("failed to converge in find_abundances_and_rates(): logT_input=%g  rho_input=%g  ne_input=%g target=%d ID=%ld shieldfac=%g cooling_return=%d", logT_input, rho_input, ne_input, target, (long)P[target].ID, shieldfac, return_cooling_mode); endrun(13);}
 
-    bH0 = flow * BetaH0[j] + fhi * BetaH0[j + 1];
-    bHep = flow * BetaHep[j] + fhi * BetaHep[j + 1];
-    bff = flow * Betaff[j] + fhi * Betaff[j + 1];
+    bH0 = flow * BetaH0[j] + fhi * BetaH0[jp];
+    bHep = flow * BetaHep[j] + fhi * BetaHep[jp];
+    bff = flow * Betaff[j] + fhi * Betaff[jp];
     *nH0_guess=nH0; *nHe0_guess=nHe0; *nHp_guess=nHp; *nHep_guess=nHep; *nHepp_guess=nHepp; *ne_guess=n_elec; /* write to send back */
     *mu_guess=Get_Gas_Mean_Molecular_Weight_mu(pow(10.,logT), rho, nH0_guess, ne_guess, sqrt(shieldfac)*(gJH0/2.29e-10), target);
     if(target >= 0) /* if this is a cell, update some of its thermodynamic stored quantities */
@@ -1406,7 +1408,7 @@ char *GetMultiSpeciesFilename(int i, int hk)
 
 /* table input (from file TREECOOL) for ionizing parameters */
 #define JAMPL	1.0		/* amplitude factor relative to input table */
-#define TABLESIZE 250		/* Max # of lines in TREECOOL */
+#define TABLESIZE 250		/* Max # of lines in TREECOOL -- needs to be at least one larger than number of non-zero lines */
 static float inlogz[TABLESIZE];
 static double gH0[TABLESIZE], gHe[TABLESIZE], gHep[TABLESIZE]; // upgrade from float to double, should read fine
 static double eH0[TABLESIZE], eHe[TABLESIZE], eHep[TABLESIZE]; // upgrade from float to double, should read fine
@@ -1417,7 +1419,7 @@ void ReadIonizeParams(char *fname)
 {
     int i; FILE *fdcool;
     if(!(fdcool = fopen(fname, "r"))) {printf(" Cannot read ionization table in file `%s'. Make sure the correct TREECOOL file is placed in the code run-time directory, and that any leading comments (e.g. lines preceded by ##) are deleted from the file.\n", fname); endrun(456);}
-    for(i=0; i<TABLESIZE; i++) {gH0[i]=0;}
+    for(i=0; i<TABLESIZE; i++) {inlogz[i]=100; gH0[i]=0; gHe[i]=0; gHep[i]=0; eH0[i]=0; eHe[i]=0; eHep[i]=0;}
     for(i=0; i<TABLESIZE; i++) {if(fscanf(fdcool, "%g %lg %lg %lg %lg %lg %lg", &inlogz[i], &gH0[i], &gHe[i], &gHep[i], &eH0[i], &eHe[i], &eHep[i]) == EOF) {break;}}
     fclose(fdcool);
     for(i=0, nheattab=0; i<TABLESIZE; i++) {if(gH0[i] != 0.0) {nheattab++;} else {break;}} /*  nheattab is the number of entries in the table */
@@ -1434,7 +1436,7 @@ void IonizeParams(void)
 
 void IonizeParamsTable(void)
 {
-    int i, ilow;
+    int i, ilow, ihi;
     double logz, dzlow, dzhi;
     double redshift;
 
@@ -1452,23 +1454,25 @@ void IonizeParamsTable(void)
 
     logz = log10(redshift + 1.0);
     ilow = 0;
+    if(nheattab <= 0) {gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0; return;}
     for(i=0; i<nheattab; i++) {if(inlogz[i] < logz) {ilow = i;} else {break;}}
+    ihi = i + 1;
+    if(ilow >= nheattab) {ihi = i;}
     dzlow = logz - inlogz[ilow];
-    dzhi = inlogz[ilow + 1] - logz;
-
-    if(logz > inlogz[nheattab - 1] || gH0[ilow] == 0 || gH0[ilow + 1] == 0 || nheattab == 0)
+    dzhi = inlogz[ihi] - logz;
+    if((logz > inlogz[nheattab - 1]) || (gH0[ilow] == 0) || (gH0[ihi] == 0) || (ilow > nheattab))
     {
-        gJHe0 = gJHep = gJH0 = 0; epsHe0 = epsHep = epsH0 = 0; J_UV = 0;
+        gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0;
         return;
     }
     else {J_UV = 1.e-21;}		/* irrelevant as long as it's not 0 */
 
-    gJH0 = JAMPL * pow(10., (dzhi * log10(gH0[ilow]) + dzlow * log10(gH0[ilow + 1])) / (dzlow + dzhi));
-    gJHe0 = JAMPL * pow(10., (dzhi * log10(gHe[ilow]) + dzlow * log10(gHe[ilow + 1])) / (dzlow + dzhi));
-    gJHep = JAMPL * pow(10., (dzhi * log10(gHep[ilow]) + dzlow * log10(gHep[ilow + 1])) / (dzlow + dzhi));
-    epsH0 = JAMPL * pow(10., (dzhi * log10(eH0[ilow]) + dzlow * log10(eH0[ilow + 1])) / (dzlow + dzhi));
-    epsHe0 = JAMPL * pow(10., (dzhi * log10(eHe[ilow]) + dzlow * log10(eHe[ilow + 1])) / (dzlow + dzhi));
-    epsHep = JAMPL * pow(10., (dzhi * log10(eHep[ilow]) + dzlow * log10(eHep[ilow + 1])) / (dzlow + dzhi));
+    gJH0 = JAMPL * pow(10., (dzhi * log10(gH0[ilow]) + dzlow * log10(gH0[ihi])) / (dzlow + dzhi));
+    gJHe0 = JAMPL * pow(10., (dzhi * log10(gHe[ilow]) + dzlow * log10(gHe[ihi])) / (dzlow + dzhi));
+    gJHep = JAMPL * pow(10., (dzhi * log10(gHep[ilow]) + dzlow * log10(gHep[ihi])) / (dzlow + dzhi));
+    epsH0 = JAMPL * pow(10., (dzhi * log10(eH0[ilow]) + dzlow * log10(eH0[ihi])) / (dzlow + dzhi));
+    epsHe0 = JAMPL * pow(10., (dzhi * log10(eHe[ilow]) + dzlow * log10(eHe[ihi])) / (dzlow + dzhi));
+    epsHep = JAMPL * pow(10., (dzhi * log10(eHep[ilow]) + dzlow * log10(eHep[ihi])) / (dzlow + dzhi));
 
     return;
 }
@@ -2000,7 +2004,7 @@ double gas_dust_heating_coeff(int i, double T, double Tdust)
 {
     double Z_sol=1;
 #ifdef METALS
-    Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];
+    if(i>=0) {Z_sol = P[i].Metallicity[0]/All.SolarAbundances[0];}
 #endif
     double fdust = return_dust_to_metals_ratio_vs_solar(i,Tdust); // accounting for dust destruction; we avoid calling the function for this because it can create a circular dependency
     return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.

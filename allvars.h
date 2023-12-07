@@ -328,7 +328,7 @@
 
 #if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
 #define GALSF_SFR_IMF_SAMPLING
-#define GALSF_MERGER_STARCLUSTER_PARTICLES
+//#define GALSF_MERGER_STARCLUSTER_PARTICLES
 #define GALSF_FB_FIRE_PROTOSTELLARJETS
 #define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0)
 #if defined(FIRE_BHS)
@@ -2935,7 +2935,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #ifdef GALSF_FB_MECHANICAL
-#define AREA_WEIGHTED_SUM_ELEMENTS 11 /* number of weights needed for full momentum-and-energy conserving system */
+#define AREA_WEIGHTED_SUM_ELEMENTS 12 /* number of weights needed for full momentum-and-energy conserving system */
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS]; /* normalized weights for particles in kernel weighted by area, not mass */
 #endif
 #ifdef GALSF_FB_FIRE_PROTOSTELLARJETS
