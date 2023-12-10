@@ -918,6 +918,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
     /* create the  new particles to be added to the end of the particle list :
         i is the BH particle tag, j is the new "spawed" particle's location, dummy_cell_i_to_clone is a dummy gas cell's tag to be used to init the wind particle */
+    double v_magnitude_physical_prev = 0; int mode_default = mode, mode_prev = mode;
     for(j = NumPart + num_already_spawned; j < NumPart + num_already_spawned + n_particles_split; j++)
     {   /* first, clone the 'dummy' particle so various fields are set appropriately */
         P[j] = P[dummy_cell_i_to_clone]; SphP[j] = SphP[dummy_cell_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
@@ -1027,6 +1028,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
         double v_magnitude_physical = get_spawned_cell_launch_speed(i); /* call subroutine for this velocity */
+#if defined(BH_TEST_WIND_MIXED_FASTSLOW)
+        mode = mode_default; if((j - (NumPart + num_already_spawned)) % 2) {mode = mode_prev; v_magnitude_physical = v_magnitude_physical_prev; /* for every-other particle, need to match previous for conservation */
+        } else {if(get_random_number(j)<0.001) {mode=1; v_magnitude_physical=3.e4/UNIT_VEL_IN_KMS;}} /* collimated jet */
+#endif
+        v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode;
 
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type

@@ -1793,7 +1793,7 @@ double Get_Gas_ion_Alfven_speed_i(int i)
 #endif
     double vA = Get_Gas_Alfven_speed_i(i); // normal ideal-MHD Alfven speed
 #ifdef CRFLUID_ION_ALFVEN_SPEED
-    vA /= sqrt(1.e-10 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+    vA /= sqrt(1.e-10 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed ???? [correct for weight] //
 #endif
     return vA;
 }
