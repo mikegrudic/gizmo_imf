@@ -1011,7 +1011,7 @@ integertime get_timestep(int p,		/*!< particle index */
             eps = DMAX(eps, P[p].SinkRadius);
 #endif
             double t_clear=eps/single_star_SN_velocity(p);
-            if(t_clear > 0 && dt > 0) {dt=DMIN(dt, DMAX(0.5*t_clear, 1.01*All.MinSizeTimestep))}; // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
+            if(t_clear > 0 && dt > 0) {dt=DMIN(dt, DMAX(0.5*t_clear, 1.01*All.MinSizeTimestep));}; // time needed spawned wind particles to clear the sink so that we don't spawn on top of them (leading to progressively smaller timesteps from each spawn until crashing the code)
         }
 #endif
 #endif

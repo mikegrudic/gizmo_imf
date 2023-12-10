@@ -1323,7 +1323,7 @@ void hydro_gradient_calc(void)
                 double temperature = mean_molecular_weight * (GAMMA(i)-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; // will use appropriate EOS to estimate temperature
                 double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef RT_ISRF_BACKGROUND
-		        zeta_cr = Get_CosmicRayIonizationRate_cgs(i);
+			zeta_cr = Get_CosmicRayIonizationRate_cgs(i);
 #endif		
 #ifdef COSMIC_RAY_FLUID
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
@@ -1332,9 +1332,9 @@ void hydro_gradient_calc(void)
                 double a_grain_micron = 0.1, f_dustgas = 0.01; // effective size of grains that matter at these densities
                 double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
 #ifdef METALS
-		        f_dustgas = 0.5 * P[i].Metallicity[0] * return_dust_to_metals_ratio_vs_solar(i,0); // appropriate dust-to-metals ratio
+			f_dustgas = 0.5 * P[i].Metallicity[0] * return_dust_to_metals_ratio_vs_solar(i,0); // appropriate dust-to-metals ratio
 #endif
-		        // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
+		// now everything should be fully-determined (given the inputs above and the known properties of the gas) //
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
                 double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
                 double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
@@ -1383,7 +1383,7 @@ void hydro_gradient_calc(void)
                 double sign_Zgrain = Z_grain/fabs(Z_grain); if(Z_grain==0) {sign_Zgrain=0;}
                 double sigma_A2 = (xe*beta_e*be_inv)*(xi*beta_i*bi_inv)*pow(-beta_e+beta_i,2) +
                                   (xe*beta_e*be_inv)*(xg*fabs(Z_grain)*beta_g*bg_inv)*pow(-beta_e+sign_Zgrain*beta_g,2) +
-                                  (xi*beta_i*bi_inv)*(xg*fabs(Z_grain)*beta_g*bg_inv)*pow(-beta_e+sign_Zgrain*beta_g,2); // alternative formulation which is automatically positive-definite
+                                  (xi*beta_i*bi_inv)*(xg*fabs(Z_grain)*beta_g*bg_inv)*pow(-beta_i+sign_Zgrain*beta_g,2); // alternative formulation which is automatically positive-definite
 
                 // now we can finally calculate the diffusivities //
                 double eta_prefac = B_Gauss * C_LIGHT_CGS / (4 * M_PI * ELECTRONCHARGE_CGS * n_eff );
