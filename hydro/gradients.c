@@ -1323,7 +1323,7 @@ void hydro_gradient_calc(void)
                 double temperature = mean_molecular_weight * (GAMMA(i)-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred; // will use appropriate EOS to estimate temperature
                 double zeta_cr = 1.0e-17; // cosmic ray ionization rate (fixed as constant for non-CR runs)
 #ifdef RT_ISRF_BACKGROUND
-			zeta_cr = Get_CosmicRayIonizationRate_cgs(i);
+                zeta_cr = Get_CosmicRayIonizationRate_cgs(i);
 #endif		
 #ifdef COSMIC_RAY_FLUID
                 double u_cr=0; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
@@ -1332,9 +1332,9 @@ void hydro_gradient_calc(void)
                 double a_grain_micron = 0.1, f_dustgas = 0.01; // effective size of grains that matter at these densities
                 double m_ion = 24.3; // Mg dominates ions in dense gas [where this is relevant]; this is ion mass in units of proton mass
 #ifdef METALS
-			f_dustgas = 0.5 * P[i].Metallicity[0] * return_dust_to_metals_ratio_vs_solar(i,0); // appropriate dust-to-metals ratio
+                f_dustgas = 0.5 * P[i].Metallicity[0] * return_dust_to_metals_ratio_vs_solar(i,0); // appropriate dust-to-metals ratio
 #endif
-		// now everything should be fully-determined (given the inputs above and the known properties of the gas) //
+                // now everything should be fully-determined (given the inputs above and the known properties of the gas) //
                 double m_neutral = mean_molecular_weight; // in units of the proton mass
                 double ag01 = a_grain_micron/0.1, m_grain = 7.51e9 * ag01*ag01*ag01; // grain mass [internal density =3 g/cm^3]
                 double rho = SphP[i].Density*All.cf_a3inv * UNIT_DENSITY_IN_CGS, n_eff = rho / PROTONMASS_CGS; // density in cgs
@@ -1354,7 +1354,7 @@ void hydro_gradient_calc(void)
                 double n_ion = zeta_cr / (ngr_ngas * k_i); // ion number density
                 double Z_grain = psi / psi_prefac; // mean grain charge (note this is signed, will be negative)
 #ifdef COOLING
-                double mu_eff=2.38, x_elec=DMAX(MIN_REAL_NUMBER, SphP[i].Ne*HYDROGEN_MASSFRAC*mu_eff), R=x_elec*psi_prefac/ngr_ngas; psi_0=-3.787124454911839; n_elec=x_elec*n_eff/mu_eff; // R is essentially the ratio of negative charge in e- to dust: determines which regime we're in to set quantities below
+                double mu_eff=2.38, x_elec=DMAX(1.e-18, SphP[i].Ne*HYDROGEN_MASSFRAC*mu_eff), R=x_elec*psi_prefac/ngr_ngas; psi_0=-3.787124454911839; n_elec=x_elec*n_eff/mu_eff; // R is essentially the ratio of negative charge in e- to dust: determines which regime we're in to set quantities below
                 if(R > 100.) {psi=psi_0;} else if(R < 0.002) {psi=R*(1.-y)/(1.+2.*y*R);} else {psi=psi_0/(1.+pow(R/0.18967,-0.5646));} // simple set of functions to solve for psi, given R above, using the same equations used to determine low-temp ion fractions
                 n_ion = n_elec * y * exp(psi)/(1.-psi); Z_grain = psi / psi_prefac; // we can immediately now calculate these from the above
 #endif

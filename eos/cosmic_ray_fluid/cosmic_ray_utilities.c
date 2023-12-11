@@ -1793,7 +1793,9 @@ double Get_Gas_ion_Alfven_speed_i(int i)
 #endif
     double vA = Get_Gas_Alfven_speed_i(i); // normal ideal-MHD Alfven speed
 #ifdef CRFLUID_ION_ALFVEN_SPEED
-    vA /= sqrt(1.e-10 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed ???? [correct for weight] //
+    double f_ion = Get_Gas_Ionized_Fraction(i);
+    double mu_eff_ion = 1. + (24.305 - 1.)/(1. + pow(f_ion/1.e-3,2)); // -very- crude approximation to transition to heavy-ion dominance at very low ion fractions
+    vA /= sqrt(1.e-15 + mu_eff_ion * f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed [corrected for weight with crude approximation above - note that in grain-charge dominated regime, this becomes deeply ambiguous] //
 #endif
     return vA;
 }
