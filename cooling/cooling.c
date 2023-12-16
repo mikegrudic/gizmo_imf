@@ -651,7 +651,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
     double dt = 0, fac_noneq_cgs = 0, necgs = n_elec * nHcgs, ne_lower=0, ne_upper=1.; /* more initialized quantities */
     int bisection_mode=0; // 0 if doing the usual fixed-point iteration; 1 if switched to bisection method
     if(target >= 0) {dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target);} // dtime [code units]
-    fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
+    fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * (necgs + 1.e-30*nHcgs); // factor needed below to asses whether timestep is larger/smaller than recombination time
 
 #if defined(RT_CHEM_PHOTOION)
     double c_light_ne=0;
@@ -679,7 +679,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
         geHe0 = DMAX(geHe0, EPSILON_SMALL);
         geHep = flow * GammaeHep[j] + fhi * GammaeHep[jp];
         geHep = DMAX(geHep, EPSILON_SMALL);
-        fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * necgs; // factor needed below to asses whether timestep is larger/smaller than recombination time
+        fac_noneq_cgs = (dt * UNIT_TIME_IN_CGS) * (necgs + 1.e-30*nHcgs); // factor needed below to asses whether timestep is larger/smaller than recombination time
         if(necgs <= 1.e-25 || J_UV == 0)
         {
             gJH0ne = gJHe0ne = gJHepne = 0;
@@ -714,7 +714,11 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
             {
                 if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2))
                 {
-                    double c_ne_time_n_photons_vol = c_light_ne * rt_return_photon_number_density(target,k); // gives photon flux
+                    double n_gamma_tot = rt_return_photon_number_density(target,k);
+#ifdef RT_INFRARED
+                    double n_gamma_tot += rt_irband_egydensity_in_band(target,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]) / (DMAX(rt_nu_eff_eV[RT_FREQ_BIN_H0],SphP[target].Radiation_Temperature/2959.81)*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
+#endif
+                    double c_nH_time_n_photons_vol = c_light_ne * n_gamma_tot; // gives photon flux
                     double cross_section_ion, dummy, thold=1.0e20;
 #ifdef GALSF
                     if(All.ComovingIntegrationOn) {thold=1.0e10;}
@@ -723,22 +727,22 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
                     {
                         cross_section_ion = nH0 * rt_ion_sigma_HI[k];
                         dummy = rt_ion_sigma_HI[k] * c_ne_time_n_photons_vol;// egy per photon x cross section x photon flux (w attenuation factors already included in flux/energy update:) * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt); // commented-out terms not appropriate here based on how we treat RSOL terms
-                        if(dummy > thold*gJH0ne_0) {dummy = thold*gJH0ne_0;}
+                        //if(dummy > thold*gJH0ne_0) {dummy = thold*gJH0ne_0;}
                         gJH0ne += dummy;
                     }
-#ifdef RT_CHEM_PHOTOION_HE
+#if 1 //def RT_CHEM_PHOTOION_HE
                     if(rt_ion_G_HeI[k] > 0)
                     {
                         cross_section_ion = nHe0 * rt_ion_sigma_HeI[k];
                         dummy = rt_ion_sigma_HeI[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt); // commented-out terms not appropriate here based on how we treat RSOL terms
-                        if(dummy > thold*gJHe0ne_0) {dummy = thold*gJHe0ne_0;}
+                        //if(dummy > thold*gJHe0ne_0) {dummy = thold*gJHe0ne_0;}
                         gJHe0ne += dummy;
                     }
                     if(rt_ion_G_HeII[k] > 0)
                     {
                         cross_section_ion = nHep * rt_ion_sigma_HeII[k];
                         dummy = rt_ion_sigma_HeII[k] * c_ne_time_n_photons_vol;// * slab_averaging_function(cross_section_ion * Sigma_particle); // * slab_averaging_function(cross_section_ion * abs_per_kappa_dt); // commented-out terms not appropriate here based on how we treat RSOL terms
-                        if(dummy > thold*gJHepne_0) {dummy = thold*gJHepne_0;}
+                        //if(dummy > thold*gJHepne_0) {dummy = thold*gJHepne_0;}
                         gJHepne += dummy;
                     }
 #endif
@@ -886,13 +890,13 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExc, LambdaExcH0, LambdaExcHep, LambdaIon, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust;
+    double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb_radeff, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     Lambda=0; Heat=0; LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; /* make sure these are all initialized to zero */
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
-    T_cmb = 2.73 / All.cf_atime; /* CMB temperature, used below */
+    T_cmb_radeff = get_background_radiation_temperature_for_emission_corrections(target); /* CMB temperature, used below */
 
     /* some blocks below to define useful variables before calculation of cooling rates: */
 
@@ -918,7 +922,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
     Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac, T);
 #endif
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
-    Tdust = DMIN(DMAX(10., T_cmb),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
+    Tdust = DMIN(DMAX(10., T_cmb_radeff),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
 
@@ -950,7 +954,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
-            if(LambdaMetal > 0) {Lambda += ((T-T_cmb)/(T+T_cmb)) * LambdaMetal;}
+            if(LambdaMetal > 0) {LambdaMetal *= ((T-T_cmb_radeff)/(T+T_cmb_radeff));}
+            if(LambdaMetal > 0) {Lambda += LambdaMetal;}
 #else
             Lambda += LambdaMetal;
 #endif
@@ -1024,8 +1029,8 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
 #endif
             LambdaMol *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
-            LambdaMol *= ((T-T_cmb)/(T+T_cmb)); // account (approximately) for the CMB temperature 'bath' (could more accurately subtract Lambda(T[cmb]), but that's an approximation as well that can give some odd results owing to not treating the solve for molecules indepedently there, so we use this form instead, which is generally good)
-            Lambda += LambdaMol;
+            LambdaMol *= ((T-T_cmb_radeff)/(T+T_cmb_radeff)); // account (approximately) for the CMB temperature 'bath' (could more accurately subtract Lambda(T[cmb]), but that's an approximation as well that can give some odd results owing to not treating the solve for molecules indepedently there, so we use this form instead, which is generally good)
+            if(LambdaMol > 0) {Lambda += LambdaMol;}
 
             /* now add the dust cooling/heating terms */
             LambdaDust = gas_dust_heating_coeff(target,T,Tdust) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
@@ -1065,7 +1070,11 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             {
                 if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2))
                 {
-                    double c_nH_time_n_photons_vol = c_light_nH * rt_return_photon_number_density(target,k); // gives photon flux
+                    double n_gamma_tot = rt_return_photon_number_density(target,k);
+#ifdef RT_INFRARED
+                    double n_gamma_tot += rt_irband_egydensity_in_band(target,All.RHD_bins_nu_min_ev[k],All.RHD_bins_nu_max_ev[k]) / (DMAX(rt_nu_eff_eV[RT_FREQ_BIN_H0],SphP[target].Radiation_Temperature/2959.81)*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
+#endif
+                    double c_nH_time_n_photons_vol = c_light_nH * n_gamma_tot; // gives photon flux
                     double cross_section_ion, kappa_ion, dummy;
                     if(rt_ion_G_HI[k] > 0)
                     {
@@ -1096,6 +1105,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         Heat += CR_gas_heating(target, n_elec, nH0, nHcgs); // CR hadronic+Coulomb+ionization heating //
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaDust<0) {Heat -= LambdaDust;} // Dust collisional heating (Tdust > Tgas) //
+        if(LambdaMol<0) {Heat -= LambdaMol;} // Molecular line heating (Trad_mol_cooling_batch > Tgas) //
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
@@ -1782,6 +1792,9 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #endif
     urad_G0 += urad_from_uvb_in_G0; // include whatever is contributed from the meta-galactic background, fed into this routine
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
+#ifdef RT_INFRARED
+    urad_G0 += rt_irband_egydensity_in_band(i,11.2,500.) * UNIT_PRESSURE_IN_CGS / 3.9e-14; // add contribution from the adaptive band
+#endif
     // define a number of variables needed in the shielding module
     double dx_cell = Get_Particle_Size(i) * All.cf_atime; // cell size
     double surface_density_H2_0 = 5.e14 * PROTONMASS_CGS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
@@ -2125,8 +2138,8 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 #ifdef MAGNETIC /* include sychrotron losses as well as long as we're here, since these scale more or less identically just using the magnetic instead of radiation energy */
     if(target >= 0)
     {
-        double b_muG = get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG;
-        Lambda += compton_prefac_eV * U_mag_ev * T; // synchrotron losses proportional to temperature (non-relativistic here), as inverse compton, just here without needing to worry about "T-T_eff", as if T_eff->0
+        double b_muG = get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, T_rad_background_at_emission = get_background_radiation_temperature_for_emission_corrections(target);
+        Lambda += compton_prefac_eV * U_mag_ev * (T-T_rad_background_at_emission); // synchrotron losses proportional to temperature (non-relativistic here), as inverse compton, just here without needing to worry about "T-T_eff", as if T_eff->0
     }
 #endif
 
@@ -2142,8 +2155,20 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 }
 
 
-
-
+/* this function defines an effective background radiation temperature for purposes of computing the emission corrections above */
+double get_background_radiation_temperature_for_emission_corrections(int target)
+{
+    double T_cmb = 2.73/All.cf_atime;
+#if defined(RT_INFRARED)
+    if(target >= 0)
+    {
+        double e_tmp_CMB = 0.262*All.cf_a3inv/All.cf_atime, e_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
+        double e_tmp_IR = SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] * E_tot_to_evol_eVcgs, T_tmp_IR = SphP[target].Radiation_Temperature;
+        return (e_tmp_IR * T_tmp_IR + e_CMB_eV * T_cmb) / (e_tmp_IR + e_CMB_eV); // if evolving IR band, use sum of it plus cmb for background
+    }
+#endif
+    return T_cmb; // default to assume total radiation temperature is cmb-dominated
+}
 
 
 
