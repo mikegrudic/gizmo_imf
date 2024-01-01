@@ -17,7 +17,8 @@
         it is more accurate to use a centered wt (centered face area), which we get by linear interpolation, in extreme discontinuities of particle separation */
 #define TEST_ALIM 1
 #if TEST_ALIM
-    if(((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) || (kernel.wk_i<=0) || (kernel.wk_j<=0) || (fabs(log((kernel.wk_i+MIN_REAL_NUMBER)/(kernel.wk_j+MIN_REAL_NUMBER)))>2.3)) {wt_i=wt_j=V_i*V_j*(kernel.wk_i+kernel.wk_j)/(V_i*kernel.wk_i+V_j*kernel.wk_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
+    //if(((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) || (kernel.wk_i<=0) || (kernel.wk_j<=0) || (fabs(log((kernel.wk_i+MIN_REAL_NUMBER)/(kernel.wk_j+MIN_REAL_NUMBER)))>2.3)) {wt_i=wt_j=V_i*V_j*(kernel.wk_i+kernel.wk_j)/(V_i*kernel.wk_i+V_j*kernel.wk_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
+    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=V_i*V_j*(kernel.wk_i+kernel.wk_j)/(V_i*kernel.wk_i+V_j*kernel.wk_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
 #if (SLOPE_LIMITER_TOLERANCE != 2) && !((defined(HYDRO_FACE_AREA_LIMITER) || !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)) // unless using the most aggressive reconstruction, we will limit face-area disparity here //
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
