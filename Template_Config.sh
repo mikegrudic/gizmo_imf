@@ -493,6 +493,7 @@
 #OUTPUT_SINK_FORMATION_PROPS    # save at-formation properties of sink particles
 #OUTPUT_BH_DISTANCES            # saves the distance to the nearest sink, if BH_CALC_DISTANCES is enabled, to snapshots
 #OUTPUT_RT_RAD_FLUX             # save flux vector for radiation methods that explictly evolve the flux (e.g. M1)
+#OUTPUT_RT_RAD_OPACITY          # save opacities for the different bands for explicit radiation-hydro methods
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #INPUT_READ_SINKPROPS           # force reading sink properties including sink radius, zams mass, luminosity, age, etc, from ICs file if it includes sink particles and the IC is designed for use with the single-star modules
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5

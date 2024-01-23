@@ -135,6 +135,7 @@ static inline double ForceSoftening_KernelRadius(int p)
     if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return PPP[p].AGS_Hsml;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(SELFGRAVITY_OFF) /* softening scale still appears in timestep criterion for problems without self-gravity, so set it adaptively */
+    if(P[p].Type == 0) {if(All.Time == All.TimeBegin) {return All.ForceSoftening[P[p].Type];}}
 #ifdef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
     if(P[p].Type == 0) {return DMIN(PPP[p].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
 #else
@@ -914,6 +915,7 @@ void get_background_isrf_urad(int i, double *urad);
 double slab_averaging_function(double x);
 double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
 double stellar_lum_in_band(int i, double E_lower, double E_upper);
+double rt_irband_egydensity_in_band(int i, double E_lower, double E_upper);
 
 #ifdef RT_DIFFUSION_CG
 void rt_diffusion_cg_solve(void);
