@@ -374,9 +374,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                 }
             }
 #endif
-#ifndef SUBCYCLING_TEST	    
-            P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
+#if (defined(SUBCYCLING_TEST) || defined(FREEZE_HYDRO))
+	    dp[j] = 0;
 #endif	    
+            P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
  
