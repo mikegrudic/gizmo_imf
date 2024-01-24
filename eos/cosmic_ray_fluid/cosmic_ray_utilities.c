@@ -1788,7 +1788,7 @@ int return_CRbin_CR_species_ID(int k_CRegy)
 /* calculate the -ion- Alfven speed in a given element, relevant for very short-wavelength modes with frequency larger than the ion-neutral collision timescale (relevant for CRs in particular) */
 double Get_Gas_ion_Alfven_speed_i(int i)
 {
-#if defined(MAGNETIC)
+#if !defined(MAGNETIC)
     return Get_Gas_thermal_soundspeed_i(i); // if no B-fields, just assume Alfven speed equal to thermal sound speed
 #endif
     double vA = Get_Gas_Alfven_speed_i(i); // normal ideal-MHD Alfven speed
