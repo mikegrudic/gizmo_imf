@@ -373,8 +373,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
                     P[i].Hermite_OldAcc[j] = P[i].GravAccel[j]; // this is the value from the first Hermite tree pass for this timestep
                 }
             }
-#endif	    
+#endif
+#ifndef SUBCYCLING_TEST	    
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
+#endif	    
         }
 
  
@@ -475,6 +477,9 @@ void set_predicted_quantities_for_extra_physics(int i)
 void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
     int j; j=0;
+#ifndef SUBCYCLING_TEST
+    if(All.Ti_current == 0){
+#endif      
 #ifdef MAGNETIC
 #ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
@@ -536,6 +541,9 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
 #endif
 #endif
 #endif
+#ifdef SUBCYCLING_TEST
+    } // close if(All.Ti_current == 0) check    
+#endif //SUBCYCLING_TEST
     
 #ifdef NUCLEAR_NETWORK
     for(j = 0; j < EOS_NSPECIES; j++) {SphP[i].xnuc[j] += SphP[i].dxnuc[j] * dt_entr * UNIT_TIME_IN_CGS;}    
