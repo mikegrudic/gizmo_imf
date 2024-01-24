@@ -1872,7 +1872,7 @@ double cr_get_source_shieldfac(int i)
 /* return total CR energy density associated with a cell */
 double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i)
 {
-    if(i<=0) {return 0;}
+    if(i<0) {return 0;}
 #ifdef COSMIC_RAY_FLUID
     double u_cr=0; int k; for(k=0;k<N_CR_PARTICLE_BINS;k++) {u_cr += SphP[i].CosmicRayEnergyPred[k];}
     return u_cr * (SphP[i].Density*All.cf_a3inv / P[i].Mass) * UNIT_PRESSURE_IN_CGS;
