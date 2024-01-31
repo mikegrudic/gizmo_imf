@@ -623,7 +623,7 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
 #endif
     // now define more variables we will need below //
     double gizmo2gauss = UNIT_B_IN_GAUSS; // convert to B-field to gauss (units)
-    double B_Gauss = 0; for(k=0;k<3;k++) {B_Gauss += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);} // get magnitude of B //
+    double B_Gauss = 0; int k; for(k=0;k<3;k++) {B_Gauss += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);} // get magnitude of B //
     if(B_Gauss<=0) {B_Gauss=0;} else {B_Gauss = sqrt(B_Gauss) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
     double xe = n_elec / n_eff;
     double xi = n_ion / n_eff;
