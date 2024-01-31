@@ -685,7 +685,7 @@ void calculate_and_assign_conduction_and_viscosity_coefficients(int i)
 #if defined(CONDUCTION) || defined(VISCOSITY)
     
 #if (defined(CONDUCTION_SPITZER) || defined(VISCOSITY_BRAGINSKII))
-    double ion_frac, beta_i; ion_frac=1; beta_i=1.e20; double rho=SphP[i].Density*All.cf_a3inv, u_int=SphP[i].InternalEnergyPred;
+    double ion_frac, beta_i; int k; k=0; ion_frac=1; beta_i=1.e20; double rho=SphP[i].Density*All.cf_a3inv, u_int=SphP[i].InternalEnergyPred;
 #if defined(COOLING) /* get the ionized fraction. NOTE we CANNOT call 'ThermalProperties' or functions like 'Get_Ionized_Fraction' here in gradients.c, as we have not done self-shielding steps yet and most modules will yield unphysical answers! */
     ion_frac = SphP[i].Ne / (1. + 2.*yhelium(i)); /* quick estimator. this is actually what we need for conduction since its the free electrons conducting, and we want number relative to fully-ionized gas */
 #endif
@@ -723,7 +723,7 @@ void calculate_and_assign_conduction_and_viscosity_coefficients(int i)
     /* again need to account for possible saturation (when the mean free path of ions is large): estimate whether we're in that limit with the gradients */
     double ion_free_path = All.ElectronFreePathFactor * u_int * u_int / rho; double dv_magnitude=0, v_magnitude=0;
     /* need an estimate of the internal energy gradient scale length, which we get by d(P/rho) = P/rho * (dP/P - drho/rho) */
-    for(k=0;k<3;k++) {
+    for(k=0;k<3;k++) {int k1;
         for(k1=0;k1<3;k1++) {
             dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];
 #ifdef MAGNETIC
