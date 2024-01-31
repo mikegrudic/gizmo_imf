@@ -77,6 +77,11 @@ double get_disk_mass(double time);
 void growing_disk_init(void);
 
 double get_turb_pot(double x, double y, double z);
+void calculate_and_assign_nonideal_mhd_coefficients(int i);
+void calculate_and_assign_conduction_and_viscosity_coefficients(int i);
+#ifdef TURB_DIFFUSION
+void calculate_and_assign_turbulent_diffusion_coefficients(int i)
+#endif
 
 void   sub_turb_move_perturbers(double t0, double t1);
 void   sub_turb_add_forces(void);
