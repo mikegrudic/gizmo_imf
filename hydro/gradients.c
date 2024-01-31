@@ -1305,6 +1305,9 @@ void hydro_gradient_calc(void)
 
 
 #ifdef TURB_DIFFUSION
+#ifdef TURB_DIFF_DYNAMIC
+            {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {SphP[i].VelShear_bar[k1][k2] = 0.5 * (GasGradDataPasser[i].GradVelocity_bar[k1][k2] + GasGradDataPasser[i].GradVelocity_bar[k2][k1]);}}} // need to initialize this before sending to routine below
+#endif
             calculate_and_assign_turbulent_diffusion_coefficients(i);
 #endif
 

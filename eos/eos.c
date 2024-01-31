@@ -623,7 +623,7 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
 #endif
     // now define more variables we will need below //
     double gizmo2gauss = UNIT_B_IN_GAUSS; // convert to B-field to gauss (units)
-    double B_Gauss = 0; for(k=0;k<3;k++) {B_Gauss += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);} // get magnitude of B //
+    double B_Gauss = 0; int k; for(k=0;k<3;k++) {B_Gauss += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);} // get magnitude of B //
     if(B_Gauss<=0) {B_Gauss=0;} else {B_Gauss = sqrt(B_Gauss) * All.cf_a2inv * gizmo2gauss;} // B-field magnitude in Gauss
     double xe = n_elec / n_eff;
     double xi = n_ion / n_eff;
@@ -788,7 +788,6 @@ void calculate_and_assign_turbulent_diffusion_coefficients(int i)
         shearfac_max = 0.5 * sqrt(SphP[i].Velocity_bar[0] * SphP[i].Velocity_bar[0] + SphP[i].Velocity_bar[1] * SphP[i].Velocity_bar[1]+SphP[i].Velocity_bar[2] * SphP[i].Velocity_bar[2]) * All.cf_atime / h_turb;
         for (u = 0; u < 3; u++) {
             for (v = 0; v < 3; v++) {
-                SphP[i].VelShear_bar[u][v] = 0.5 * (GasGradDataPasser[i].GradVelocity_bar[u][v] + GasGradDataPasser[i].GradVelocity_bar[v][u]);
                 if (SphP[i].VelShear_bar[u][v] < 0) {SphP[i].VelShear_bar[u][v] = DMAX(SphP[i].VelShear_bar[u][v], -shearfac_max);}
                 else {SphP[i].VelShear_bar[u][v] = DMIN(SphP[i].VelShear_bar[u][v], shearfac_max);}
                 if (u == v) {trace += SphP[i].VelShear_bar[u][u];}}}
