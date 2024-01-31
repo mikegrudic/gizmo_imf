@@ -657,7 +657,7 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     // convert units to code units
     double units_cgs_to_code = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_LENGTH_IN_CGS); // convert coefficients (L^2/t) to code units [physical]
     double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = eta_A*units_cgs_to_code;
-#define MHD_NON_IDEAL_CORRECTIONTERMS 1
+//#define MHD_NON_IDEAL_CORRECTIONTERMS 1
 #ifdef MHD_NON_IDEAL_CORRECTIONTERMS /* account for unphysical or not internally self-consistent drift/slip speeds (PFH+Squire 24) */
     double gradbmag2=0,gradbmag=0,btmp=0,L_B=MAX_REAL_NUMBER;
     int j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {btmp=SphP[i].Gradients.B[k][j]; gradbmag2+=btmp*btmp;}} // need to get magnitude of B gradient for below
