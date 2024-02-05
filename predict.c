@@ -259,7 +259,7 @@ void move_particles(integertime time1)
 void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
 #ifdef SUBCYCLING_TEST
-    if(All.Ti_current == 0){
+    if(All.Ti_Current == 0){
 #endif
 #ifdef MAGNETIC
     int kB;
@@ -283,7 +283,7 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
 #endif
 #endif
 #ifdef SUBCYCLING_TEST
-    } // close if(All.Ti_current == 0){
+    } // close if(All.Ti_Current == 0){
 #endif
 #ifdef COSMIC_RAY_FLUID
     CosmicRay_Update_DriftKick(i,dt_entr,1);

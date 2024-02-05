@@ -120,7 +120,7 @@ void run(void)
         determine_where_addthermalFB_events_occur(); // (same, but for simple thermal feedback models)
 #endif
 #ifdef SUBCYCLING_TEST
-	if(All.Ti_current == 0) // skip density+MHD except on the very first timestep
+	if(All.Ti_Current == 0) // skip density+MHD except on the very first timestep
 #endif	  
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
         

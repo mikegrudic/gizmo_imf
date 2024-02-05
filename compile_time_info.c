@@ -23,6 +23,5 @@ printf(
 "        CRFLUID_ALT_RSOL_FORM\n"
 "        OPENMP=2\n"
 "        ADAPTIVE_TREEFORCE_UPDATE=0.0625\n"
-"        SUBCYCLING_TEST\n"
 "\n");
 }

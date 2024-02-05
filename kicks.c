@@ -478,8 +478,8 @@ void set_predicted_quantities_for_extra_physics(int i)
 void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
     int j; j=0;
-#ifndef SUBCYCLING_TEST
-    if(All.Ti_current == 0){
+#ifdef SUBCYCLING_TEST
+    if(All.Ti_Current == 0){
 #endif      
 #ifdef MAGNETIC
 #ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
@@ -543,7 +543,7 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
 #endif
 #endif
 #ifdef SUBCYCLING_TEST
-    } // close if(All.Ti_current == 0) check    
+    } // close if(All.Ti_Current == 0) check    
 #endif //SUBCYCLING_TEST
     
 #ifdef NUCLEAR_NETWORK

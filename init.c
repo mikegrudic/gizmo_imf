@@ -646,7 +646,9 @@ void init(void)
 #endif
 #endif
 #ifdef COSMIC_RAY_FLUID
+#if !defined(INPUT_COSMIC_RAY_ENERGY)
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
+#endif
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
         if(RestartFlag != 1) {SphP[i].DtCREgyNewInjectionFromShocks = 0;}
 #endif

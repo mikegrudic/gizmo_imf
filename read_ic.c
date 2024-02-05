@@ -883,6 +883,9 @@ void read_file(char *fname, int readTask, int lastTask)
                 /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U
                    && blocknr != IO_BFLD
+#ifdef INPUT_COSMIC_RAY_ENERGY
+		   && blocknr != IO_COSMICRAY_ENERGY
+#endif
 #ifdef INPUT_READ_HSML
                    && blocknr != IO_HSML
 #endif
