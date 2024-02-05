@@ -1,0 +1,124 @@
+250a251
+>   //if (target == 0 && k_CRegy == 0) printf("In diffusion self confinement model with energy and ID  %d \t %d \n", k_CRegy, target);
+256a258
+>     //if (target == 0 && k_CRegy == 0) printf("Rigidity, charge, and MCr = %.2e \t %.2e \t %.2e \n ", R_CR_GV, Z_charge_CR, M_cr_mp);
+278a281
+>     //if (target == 0 && k_CRegy == 0) printf("Kappa_0, gyroradius, beta = %.2e \t %.2e \t %.2e \n", kappa_0, r_L, beta);
+280c283
+< 
+---
+>     if(mode==0) {f_QLT = 1.0e-4;}
+293,295c296,297
+<     double RGV_dust_crit = 0.01 * (vA_code*UNIT_VEL_IN_KMS) / (1. + pow(cs_thermal*UNIT_VEL_IN_KMS/8.1,2)); // critical rigidity below which there are no gyro-resonant dust grains expected with >10 nm sizes
+<     if(R_CR_GV < RGV_dust_crit) {G_dust *= pow(R_CR_GV/RGV_dust_crit, 2);} // suppression factor for the dust-damping term when outside of this relevant rigidity range (thanks to Margot Fitz Axen for helping identify regimes where this would kick in which we were simulating in GMCs)
+<     if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term
+---
+>     if(mode<0) {G_dust = 0;} // for this choice, neglect the dust-damping term 
+>     //if (target == 0 && k_CRegy == 0) printf("Going into G ion neutral: n_cgs, nh0, nHe0, temperature = %.2e \t %.2e \t %.2e \t %.2e \n", n_cgs, nh0, nHe0, temperature);
+314a317,318
+>     //double Gamma_LIN = -G_ion_neutral;
+>     //if (target == 0 && k_CRegy == 0) printf("Damping Rate: Ion neutral, linear landau, dust, adiabatic = %.2e \t %.2e \t %.2e \t %.2e \n", G_ion_neutral, G_turb_plus_linear_landau, G_dust, G_adiabatic);
+315a320,321
+>     //double S_ext = S_ext_turb;
+>     //if (target == 0 && k_CRegy == 0) printf("S_ext_turb, S_ext_gri = %.2e \t %.2e \n", S_ext_turb, S_ext_gri);
+324,325c330,332
+<     double gyro_avg_factor = 3./4.; // weighting factor from pitch-angle averaging over nu, gives ~3/4 for nu~|mu-vA/c|^2, etc.
+<     return (kappa_0 / fac) * (4./(3.*M_PI*gyro_avg_factor)) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS);
+---
+>     double gyro_avg_factor = 3./4.; // weighting factor from pitch-angle averaging over nu, gives  ~3/4 for nu~|mu-vA/c|^2, etc.
+>     //if (target == 0 && k_CRegy == 0) printf("Quantity being returned: kappa_0, fac, f0, f1, S_ext, Gamma_LIN = %.2e \t %.2e \t %.2e \t %.2e \t %.2e \t %.2e \n", kappa_0, fac, f0, f1, S_ext, Gamma_LIN);
+>     return (f_QLT*kappa_0 / fac) * (4./(3.*M_PI*gyro_avg_factor)) * (UNIT_VEL_IN_CGS*UNIT_LENGTH_IN_CGS);
+500c507
+< #if !defined(CRFLUID_ALT_DISABLE_STREAMING) && (!defined(CRFLUID_M1) || defined(CRFLUID_ALT_FLUX_FORM_JOCH)) /* estimate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011. note if default m1 formalism is used, this should remain nil, because streaming speeds will be handled more self-consistently down below (relevant if streaming speed >> diffusion speed, which could happen in some extremes) */
+---
+> #ifndef CRFLUID_ALT_DISABLE_STREAMING /* self-consistently calculate the diffusion coefficients for cosmic ray fluids; first the streaming part of this (kappa~v_stream*L_CR_grad) following e.g. Wentzel 1968, Skilling 1971, 1975, Holman 1979, as updated in Kulsrud 2005, Yan & Lazarian 2008, Ensslin 2011 */
+539a547
+> 	//printf("Kappa Streaming 1: %.2e \n", CR_kappa_streaming);
+541c549,551
+<         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*CRFLUID_REDUCED_C_CODE(k_CRegy)) , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
+---
+> 	//printf("Kappa Streaming 2: %.2e \n", CR_kappa_streaming);
+>         CR_kappa_streaming = DMIN( DMAX( DMIN(DMAX(CR_kappa_streaming,kappa_0) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*CRFLUID_REDUCED_C_CODE(k_CRegy)) , 1.e24/unit_kappa_code ) , 1.e34/unit_kappa_code );
+> 	//printf("Kappa Streaming 3: %.2e \n", CR_kappa_streaming);
+548c558
+<         CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*CRFLUID_REDUCED_C_CODE(k_CRegy) ); CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e25/unit_kappa_code ) , 1.e34/unit_kappa_code );
+---
+>         CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , kappa_0 ) , 1.0e10*GAMMA_COSMICRAY(k_CRegy) * CRPressureGradScaleLength*CRFLUID_REDUCED_C_CODE(k_CRegy) ); CR_kappa_streaming = DMIN( DMAX( CR_kappa_streaming , 1.e24/unit_kappa_code ) , 1.e34/unit_kappa_code );
+550a561
+> 	//printf("Kappa Streaming 4: %.2e \n", CR_kappa_streaming);
+563a575
+> 	//if (i == 0) printf("Final Diffusion Coefficient and unit kappa: %.2e \t %.2e \n \n", DiffusionCoeff, unit_kappa_code);
+570c582
+< /* utility routine which handles the numerically-necessary parts of the CR 'injection' for you; here 'injection_velocity' should be in physical (not comoving) units */
+---
+> /* utility routine which handles the numerically-necessary parts of the CR 'injection' for you */
+920c932
+<     
+---
+>         
+932,953d943
+<     
+< #if defined(CRFLUID_INJECTION_AT_SHOCKS)
+<     if(SphP[i].DtCREgyNewInjectionFromShocks > 0) /* now perform the actual CR injection using the rates estimated in the hydro solver */
+<     {
+<         double dir[3]; int k; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
+<         inject_cosmic_rays(SphP[i].DtCREgyNewInjectionFromShocks * dt_entr, 1000./UNIT_VEL_IN_KMS, 2, i, dir); /* inject the energy */
+<         SphP[i].DtCREgyNewInjectionFromShocks = 0; // reset to nil, we've successfully injected the energy
+<     }
+< #endif
+< #if defined(BH_CR_INJECTION_AT_TERMINATION)
+<     if(SphP[i].BH_CR_Energy_Available_For_Injection > 0) {
+<         /* need to determine whether or not sufficient deceleration has occurred in order to inject CRs from our 'reservoir */
+<         double vmag=0; int k; for(k=0;k<3;k++) {double v0=P[i].Vel[k]/All.cf_atime; vmag+=v0*v0;} /* we will base this on a simple estimate of the velocity and how much things have decelerated */
+<         if(vmag>0) {vmag=sqrt(vmag);}
+<         if((P[i].ID != All.AGNWindID) || (vmag < ((double)(BH_CR_INJECTION_AT_TERMINATION))*All.BAL_v_outflow)) {
+<             double dir[3]; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
+<             inject_cosmic_rays(SphP[i].BH_CR_Energy_Available_For_Injection, All.BAL_v_outflow, 5, i, dir); /* inject the energy */
+<             SphP[i].BH_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
+<         }
+<     }
+< #endif
+<     
+982c972
+<     double t=0, dt=0, bbGv=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
+---
+>     double t=0, dt=0, E_rest_e_GeV=0.000511, f_ion=DMAX(DMIN(Get_Gas_Ionized_Fraction(target),1.),0.), b_muG=get_cell_Bfield_in_microGauss(target), U_mag_ev=0.0248342*b_muG*b_muG, U_rad_ev=get_cell_Urad_in_eVcm3(target);
+997c987
+<     double Bmag2=0, bhat[3]={0}; for(k=0;k<3;k++) {double B00=Get_Gas_BField(target,k)*All.cf_a2inv; bhat[k]=B00; Bmag2+=B00*B00;}
+---
+>     double bbGv=0, Bmag2=0, bhat[3]={0}; for(k=0;k<3;k++) {double B00=Get_Gas_BField(target,k)*All.cf_a2inv; bhat[k]=B00; Bmag2+=B00*B00;}
+1000d989
+<     bbGv = DMAX(-0.9/dtime_cgs, DMIN(0.9/dtime_cgs , bbGv)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
+1003a993
+>     bbGv = DMAX(-0.9/dtime_cgs, DMIN(0.9/dtime_cgs , bbGv)); // our timestep limiter should ensure this, but problem is it responds to the -previous- timestep, so we need to impose an additional check here to prevent a numerical divergence when/if the gradients are inaccurate
+1791,1793c1781,1783
+< #if !defined(MAGNETIC)
+<     return Get_Gas_thermal_soundspeed_i(i); // if no B-fields, just assume Alfven speed equal to thermal sound speed
+< #endif
+---
+>   //  #if defined(MAGNETIC)
+>   //  return Get_Gas_thermal_soundspeed_i(i); // if no B-fields, just assume Alfven speed equal to thermal sound speed
+>   //#endif
+1796,1798c1786
+<     double f_ion = Get_Gas_Ionized_Fraction(i);
+<     double mu_eff_ion = 1. + (24.305 - 1.)/(1. + pow(f_ion/1.e-3,2)); // -very- crude approximation to transition to heavy-ion dominance at very low ion fractions
+<     vA /= sqrt(1.e-15 + mu_eff_ion * f_ion); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed [corrected for weight with crude approximation above - note that in grain-charge dominated regime, this becomes deeply ambiguous] //
+---
+>     vA /= sqrt(1.e-10 + Get_Gas_Ionized_Fraction(i)); // Alfven speed of interest is that of the ions alone, not the ideal MHD Alfven speed //
+1875c1863
+<     if(i<0) {return 0;}
+---
+>     if(i<=0) {return 0;}
+1883,1890d1870
+< #ifdef RT_ISRF_BACKGROUND
+<     double column = evaluate_NH_from_GradRho(P[i].GradRho,P[i].Hsml,SphP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS, sigma_0=2.23e-3; // sigma_0 is N_H = 1e21 cm^-2 in g cm^-2
+<     double u_cr_0 = sqrt(All.InterstellarRadiationFieldStrength) * 1.6e-12; // unattenuated energy density; prescription for scaling here assumes ISRF ~ sigma_SFR but zeta_CR ~ t_depletion^-1 ~ sigma_SFR^0.5 assuming the Kennicutt 1998 relation
+<     if(column < sigma_0) {return u_cr_0;} else {
+<         double atten_fac = exp(DMAX(-column/100.,-90)) * (sigma_0/(column+MIN_REAL_NUMBER)); // attenuates as N_H^{-1} above column of 1e21 cm^-2, with an exponential truncation above 100 g cm^-2; fairly uncertain, closer to predictions of diffusive transport models
+< 	    return atten_fac * u_cr_0;
+<     }
+< #endif    
+1943,1945d1922
+< #ifdef RT_ISRF_BACKGROUND
+<     prefac_CR *= Get_CosmicRayEnergyDensity_cgs(target)/1.6e-12; // prescription for scaling here assumes ISRF ~ sigma_SFR but zeta_CR ~ t_depletion^-1 ~ sigma_SFR^0.5 assuming the Kennicutt 1998 relation
+< #endif
