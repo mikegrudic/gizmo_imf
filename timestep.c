@@ -185,6 +185,25 @@ void find_timesteps(void)
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
+#ifdef VARIABLE_TIMESTEP_TEST
+	if(P[i].Type == 0 && i==0){
+	  if(All.Ti_Current == 0 || SphP[i].timesteps_since_last_dens_mhd == 9){
+	    SphP[i].do_dens_mhd_this_timestep = 1;
+	    SphP[i].timesteps_since_last_dens_mhd=0;
+	    SphP[i].dt_since_last_dens_mhd=0;
+	  }
+	  else{
+	    SphP[i].do_dens_mhd_this_timestep = 0;
+	    SphP[i].timesteps_since_last_dens_mhd+=1;
+	    SphP[i].dt_since_last_dens_mhd+= GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+	  }
+	  if (ThisTask == 0)
+	    {
+	      fprintf(FdTest, "%.16g %d %d %g \n", All.Ti_Current*All.Timebase_interval, SphP[i].do_dens_mhd_this_timestep, SphP[i].timesteps_since_last_dens_mhd, SphP[i].dt_since_last_dens_mhd);
+	      fflush(FdTest);
+	    }
+	}
+#endif 
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
         if(P[i].Type == 5){
             if(All.Ti_Current == 0) { // first timestep

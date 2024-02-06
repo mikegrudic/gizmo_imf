@@ -224,7 +224,9 @@ FILE
 #endif
 #endif
 *FdCPU;        /*!< file handle for cpu.txt log-file. */
-
+#ifdef VARIABLE_TIMESTEP_TEST
+FILE *FdTest;
+#endif
 #ifdef GALSF
 FILE *FdSfr;			/*!< file handle for sfr.txt log-file. */
 #endif

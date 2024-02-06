@@ -2162,11 +2162,11 @@ extern FILE
 #ifdef GR_TABULATED_COSMOLOGY
  *FdDE,         /*!< file handle for darkenergy.txt log-file. */
 #endif
-#ifdef VARIABLE_TIMESTEP_TEST
-extern FILE *FdTest;
-#endif
 #endif
  *FdCPU;        /*!< file handle for cpu.txt log-file. */
+#ifdef VARIABLE_TIMESTEP_TEST
+extern FILE *FdTest; /*!< file handle for timestep_test.txt log-file */
+#endif
 #ifdef GALSF
 extern FILE *FdSfr;		/*!< file handle for sfr.txt log-file. */
 #endif
@@ -3252,9 +3252,9 @@ extern struct gas_cell_data
     MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
-  MyFloat dt_since_last_dens_mhd;
-  short int do_dens_mhd_this_timestep;
-  int timesteps_since_last_dens_mhd;
+  MyFloat dt_since_last_dens_mhd; /*!< time elapsed since last dens/MHD computation */
+  short int do_dens_mhd_this_timestep; /*!< flag to do dens/MHD calculation this timestep */
+  int timesteps_since_last_dens_mhd; /*!< number of timesteps since last dens/MHD computation */
 #endif
 #ifdef COSMIC_RAY_FLUID
     MyFloat CosmicRayEnergy[N_CR_PARTICLE_BINS];        /*!< total energy of cosmic ray fluid (the conserved variable) */

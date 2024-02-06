@@ -645,6 +645,11 @@ void init(void)
         SphP[i].AlphaVirial_SF_TimeSmoothed = 0;
 #endif
 #endif
+#ifdef VARIABLE_TIMESTEP_TEST
+	SphP[i].do_dens_mhd_this_timestep=1;
+	SphP[i].timesteps_since_last_dens_mhd=0;
+	SphP[i].dt_since_last_dens_mhd=0;
+#endif
 #ifdef COSMIC_RAY_FLUID
 #if !defined(INPUT_COSMIC_RAY_ENERGY)
         if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {SphP[i].CosmicRayEnergy[j] = 0;}}
