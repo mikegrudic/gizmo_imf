@@ -34,6 +34,7 @@ void find_timesteps(void)
     integertime ti_step, ti_step_old, ti_min;
     #ifdef VARIABLE_TIMESTEP_TEST
     integertime ti_step_long;
+    int bin_long;
     #endif
     double aphys;
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
@@ -109,24 +110,35 @@ void find_timesteps(void)
 #endif
 	#ifdef VARIABLE_TIMESTEP_TEST
 	ti_step_long = get_timestep(i, &aphys, -1);
-	if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Timestep short = %g, Timestep long = %g ", ti_step*All.Timebase_interval, ti_step_long*All.Timebase_interval);}
 	#endif
 
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
-	//if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Just called get timestep, ti_step = %g, ti_min = %g,  \n", ti_step*All.Timebase_interval, ti_min*All.Timebase_interval);}
+	if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Just called get timestep, ti_step = %g, and the bin is %d, ti_step_long = %g, and the bin is %d  \n", ti_step*All.Timebase_interval,get_timestep_bin(ti_step), ti_step_long*All.Timebase_interval, get_timestep_bin(ti_step_long));}
         while(ti_min > ti_step) {ti_min >>= 1;}
         ti_step = ti_min;
-	//if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Reset timestep to power of 2, ti_step = %g, ti_min = %g,  \n", ti_step*All.Timebase_interval, ti_min*All.Timebase_interval);}
+	if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Reset timestep to power of 2, ti_step = %g, and the bin is %d \n", ti_step*All.Timebase_interval, get_timestep_bin(ti_step));}
         bin = get_timestep_bin(ti_step);
+	#ifdef VARIABLE_TIMESTEP_TEST
+	bin_long = get_timestep_bin(ti_step_long);
+	#endif
         binold = P[i].TimeBin;
         if(bin > binold)		/* timestep wants to increase */
         {
-            while(TimeBinActive[bin] == 0 && bin > binold) {bin--;}	/* make sure the new step is synchronized */
+	  //while(TimeBinActive[bin] == 0 && bin > binold) {bin--;}	/* make sure the new step is synchronized */
+	  while(TimeBinActive[bin] == 0 && bin >binold){   bin--;
+	 #ifdef VARIABLE_TIMESTEP_TEST
+	    bin_long--;
+	 #endif
+	  }
             ti_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
+	  #ifdef VARIABLE_TIMESTEP_TEST
+	    ti_step_long=GET_INTEGERTIME_FROM_TIMEBIN(bin_long);
+	  #endif
         }
-	if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Just made sure timestep is only increasing by a factor of 2 (one bin), ti_step = %g, ti_min = %g,  \n", ti_step*All.Timebase_interval, ti_min*All.Timebase_interval);}
-        if(All.Ti_Current >= TIMEBASE) {ti_step = 0; bin = 0;} /* we here finish the last timestep. */
+	if (ThisTask == 0 && i == 0) {fprintf(FdTest, "Just made sure timestep is only increasing by a factor of 2 (one bin), ti_step = %g, and the bin is %d, ti_step_long = %g, and the bin is %d \n", ti_step*All.Timebase_interval, bin, ti_step_long*All.Timebase_interval, bin_long);}
+        
+	if(All.Ti_Current >= TIMEBASE) {ti_step = 0; bin = 0;} /* we here finish the last timestep. */
 
         if((TIMEBASE - All.Ti_Current) < ti_step)	/* check that we don't run beyond the end */
         {
@@ -196,19 +208,20 @@ void find_timesteps(void)
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
+
 #ifdef VARIABLE_TIMESTEP_TEST
 	if(P[i].Type == 0){
-	  if(All.Ti_Current == 0 || SphP[i].timesteps_since_last_dens_mhd == 9){
-	  //if(All.Ti_Current == 0 || SphP[i].dt_since_last_dens_mhd > ti_step_long*All.Timebase_interval){ 
+	  if(All.Ti_Current == 0){
 	    SphP[i].do_dens_mhd_this_timestep = 1;
-	    SphP[i].timesteps_since_last_dens_mhd=0;
-	    SphP[i].dt_since_last_dens_mhd=0;
-	  }
-	  else{
-	    SphP[i].do_dens_mhd_this_timestep = 0;
-	    SphP[i].timesteps_since_last_dens_mhd+=1;
-	    SphP[i].dt_since_last_dens_mhd+= GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
-	  }
+	    SphP[i].timesteps_since_last_dens_mhd=1;
+	    SphP[i].dt_since_last_dens_mhd = GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+	  } // end if(All.Ti_Current == 0)
+	    else {
+	      SphP[i].timesteps_since_last_dens_mhd+=1;
+	      SphP[i].dt_since_last_dens_mhd+= GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin);
+	      if (SphP[i].dt_since_last_dens_mhd > 0.49*GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin_long) || SphP[i].timesteps_since_last_dens_mhd > 9){SphP[i].do_dens_mhd_this_timestep = 1;}
+	      else{SphP[i].do_dens_mhd_this_timestep = 0;}
+	    } //end else
 	  if (ThisTask == 0 && i==0){ fprintf(FdTest, "Finish up in find_timestep(), Time Current = %.16g do_dens_flag =  %d timesteps_since_last = %d dt_since_last = %g \n \n", All.Ti_Current*All.Timebase_interval, SphP[i].do_dens_mhd_this_timestep, SphP[i].timesteps_since_last_dens_mhd, SphP[i].dt_since_last_dens_mhd);}
 	} // end if(P[i].Type == 0)
 #endif 
@@ -290,7 +303,7 @@ integertime get_timestep(int p,		/*!< particle index */
 {
   double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;  /*DT_FLAG*/
   if (ThisTask == 0 && p == 0) {
-    fprintf(FdTest, "INSIDE GET TIMESTEP \n");
+    fprintf(FdTest, "\n INSIDE GET TIMESTEP \n");
     fprintf(FdTest, " Beginning of get_timestep, dt = MaxTimestep =  %g \n", dt);
     fflush(FdTest);
   }
@@ -1156,7 +1169,7 @@ integertime get_timestep(int p,		/*!< particle index */
     }
     if (ThisTask == 0 && p == 0) {
       fprintf(FdTest, "Setting the returned timestep, dt =  %g \n", dt);
-      fprintf(FdTest, "DONE WITH GET TIMESTEP \n");
+      fprintf(FdTest, "DONE WITH GET TIMESTEP \n \n");
       fflush(FdTest);
     }
     ti_step = (integertime) (dt / All.Timebase_interval);

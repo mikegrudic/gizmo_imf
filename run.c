@@ -311,6 +311,15 @@ void calculate_non_standard_physics(void)
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
 #endif
 
+#ifdef VARIABLE_TIMESTEP_TEST
+   for(i = FirstActiveParticle; i >= 0; i= NextActiveParticle[i]){ 
+     if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep){ 
+       SphP[i].dt_since_last_dens_mhd = 0;
+       SphP[i].timesteps_since_last_dens_mhd=0;
+     }
+   }
+#endif
+
 }
 
 
