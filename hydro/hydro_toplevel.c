@@ -669,7 +669,11 @@ void hydro_final_operations_and_cleanup(void)
     int i,k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].Type == 0 && P[i].Mass > 0)
+      #if defined(VARIABLE_TIMESTEP_TEST)
+      if(P[i].Type == 0 && P[i].Mass > 0 && SphP[i].do_dens_mhd_this_timestep)
+      #else
+      if(P[i].Type == 0 && P[i].Mass > 0)
+      #endif
         {
             double dt; dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
 
@@ -984,7 +988,11 @@ void hydro_force_initial_operations_preloop(void)
     /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, or by one of the neighbors we will get sent */
     int i, k;
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        if(P[i].Type==0)
+      #if defined(VARIABLE_TIMESTEP_TEST)
+      if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep)
+      #else
+       if(P[i].Type==0)
+      #endif
         {
             SphP[i].MaxSignalVel = MIN_REAL_NUMBER;
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
@@ -1047,6 +1055,7 @@ void hydro_force_initial_operations_preloop(void)
             PPPZ[i].wakeup = 0;
 #endif
         }
+  
 }
 
 

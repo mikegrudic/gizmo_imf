@@ -363,6 +363,8 @@ void force_update_hmax(void)
   {
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
     if(P[i].Mass > 0)
+#elif defined(VARIABLE_TIMESTEP_TEST)
+    if(P[i].Type == 0 && P[i].Mass > 0 && SphP[i].do_dens_mhd_this_timestep)
 #else
     if(P[i].Type == 0 && P[i].Mass > 0)
 #endif

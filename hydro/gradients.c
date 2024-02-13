@@ -601,7 +601,11 @@ void hydro_gradient_calc(void)
 
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        if(P[i].Type==0)
+     #if defined(VARIABLE_TIMESTEP_TEST)
+      if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep)
+      #else
+      if(P[i].Type==0)
+      #endif
         {
             int k2;
             memset(&GasGradDataPasser[i], 0, sizeof(struct temporary_data_topass));
@@ -669,7 +673,11 @@ void hydro_gradient_calc(void)
     {
         // need to zero things used in the iteration (anything appearing in out2particle_GasGrad_iter)
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
+         #if defined(VARIABLE_TIMESTEP_TEST)
+	 if(P[i].Type==0 && SphP[i].do_dens_mhd_this_timestep)
+	 #else
             if(P[i].Type==0)
+	 #endif
             {
 #ifdef MHD_CONSTRAINED_GRADIENT
                 GasGradDataPasser[i].FaceDotB = 0;
@@ -913,7 +921,11 @@ void hydro_gradient_calc(void)
         /* here, we insert intermediate operations on the results, from the iterations we have completed */
 #ifdef MHD_CONSTRAINED_GRADIENT
         for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-            if(P[i].Type == 0)
+         #if defined(VARIABLE_TIMESTEP_TEST)
+	  if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep)
+	  #else
+          if(P[i].Type == 0)
+	  #endif
             {
                 SphP[i].FlagForConstrainedGradients = 1;
                 /* copy everything from the structure holding B-gradients (needed so they dont change mid-loop) */
@@ -1050,7 +1062,11 @@ void hydro_gradient_calc(void)
 
     /* do final operations on results: these are operations that can be done after the complete set of iterations */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        if(P[i].Type == 0)
+      #if defined(VARIABLE_TIMESTEP_TEST)
+      if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep)
+      #else
+       if(P[i].Type == 0)
+      #endif
         {
             /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
             construct_gradient(SphP[i].Gradients.Density,i);
