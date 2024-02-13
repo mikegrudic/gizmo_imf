@@ -709,6 +709,7 @@ void open_outputfiles(void)
     sprintf(buf, "%s%s", All.OutputDir, "timestep_test.txt");
     if(!(FdTest = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
+
 #ifdef GALSF
   sprintf(buf, "%s%s", All.OutputDir, "sfr.txt");
   if(!(FdSfr = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}

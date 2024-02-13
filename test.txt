@@ -1,20 +1,99 @@
-./hydro/density.c:#if defined(BH_INTERACT_ON_GAS_TIMESTEP)
-./run.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./init.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./Template_Config.sh:#BH_INTERACT_ON_GAS_TIMESTEP      # force sink particles to be active in the timestep hierarchy on a timestep no larger than the minimum timestep of any gas cell inside the sink particle interaction/accretion/neighbor kernel
-./allvars.h:#define BH_INTERACT_ON_GAS_TIMESTEP // BH-gas interactions (feedback and accretion) occur with frequency set by the gas timestep
-./allvars.h:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/sfr_eff.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/radfb_local.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/mechanical_fb.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/mechanical_fb.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole_swallow_and_kick.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole_feed.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./galaxy_sf/blackholes/blackhole_util.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./radiation/rt_source_injection.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./radiation/rt_source_injection.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./timestep.c:#ifdef BH_INTERACT_ON_GAS_TIMESTEP
-./scripts/gizmo_documentation.md:#BH_INTERACT_ON_GAS_TIMESTEP      # force sink particles to be active in the timestep hierarchy on a timestep no larger than the minimum timestep of any gas cell inside the sink particle interaction/accretion/neighbor kernel
+Binary file ./system/parallel_sort.o matches
+Binary file ./system/allocate.o matches
+Binary file ./system/parallel_sort_special.o matches
+Binary file ./system/mpi_util.o matches
+Binary file ./system/system.o matches
+Binary file ./system/mymalloc.o matches
+Binary file ./system/peano.o matches
+Binary file ./solids/ism_dust_chemistry.o matches
+Binary file ./solids/grain_physics.o matches
+Binary file ./solids/elastic_physics.o matches
+Binary file ./eos/eos.o matches
+Binary file ./eos/cosmic_ray_fluid/cosmic_ray_alfven.o matches
+Binary file ./eos/cosmic_ray_fluid/cosmic_ray_utilities.o matches
+Binary file ./timestep.o matches
+Binary file ./sidm/cbe_integrator.o matches
+Binary file ./sidm/dm_fuzzy.o matches
+Binary file ./sidm/sidm_core.o matches
+Binary file ./hydro/gradients.o matches
+Binary file ./hydro/density.o matches
+./hydro/density.c:    if(P[n].Type == 5){if(!P[n].do_gas_search_this_timestep && All.Ti_Current > 0) return 0;} /* not enough time has elapsed since the last gas interaction */
+Binary file ./hydro/hydro_toplevel.o matches
+./run.c:    int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
+./init.c:            P[i].do_gas_search_this_timestep = 1;
+Binary file ./read_ic.o matches
+./allvars.h:    short int do_gas_search_this_timestep; /* flag for deciding whether to do gas stuff for a given timestep */
+Binary file ./galaxy_sf/mechanical_fb.o matches
+Binary file ./galaxy_sf/dm_dispersion_hsml.o matches
+./galaxy_sf/sfr_eff.c:                                P[i].do_gas_search_this_timestep = 1;
+Binary file ./galaxy_sf/sfr_eff.o matches
+Binary file ./galaxy_sf/radfb_local.o matches
+./galaxy_sf/mechanical_fb.c:    if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) {return 0;}
+Binary file ./galaxy_sf/stellar_evolution.o matches
+Binary file ./galaxy_sf/thermal_fb.o matches
+Binary file ./galaxy_sf/blackholes/blackhole_swallow_and_kick.o matches
+Binary file ./galaxy_sf/blackholes/blackhole_environment.o matches
+./galaxy_sf/blackholes/blackhole.c:    if(!P[i].do_gas_search_this_timestep) {return 0;} // only do loops if we have actually done the density pass
+Binary file ./galaxy_sf/blackholes/blackhole_feed.o matches
+Binary file ./galaxy_sf/blackholes/blackhole.o matches
+Binary file ./galaxy_sf/blackholes/blackhole_util.o matches
+Binary file ./gravity/pm_periodic.o matches
+Binary file ./gravity/gravtree.o matches
+Binary file ./gravity/binary.o matches
+Binary file ./gravity/forcetree_update.o matches
+Binary file ./gravity/cosmology.o matches
+Binary file ./gravity/forcetree.o matches
+Binary file ./gravity/pm_nonperiodic.o matches
+Binary file ./gravity/longrange.o matches
+Binary file ./gravity/potential.o matches
+Binary file ./gravity/ags_hsml.o matches
+Binary file ./radiation/rt_chem.o matches
+./radiation/rt_source_injection.c:    if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) return 0;
+Binary file ./radiation/rt_source_injection.o matches
+Binary file ./radiation/rt_utilities.o matches
+Binary file ./radiation/rt_CGmethod.o matches
+Binary file ./radiation/rt_cooling.o matches
+Binary file ./driftfac.o matches
+Binary file ./domain.o matches
+Binary file ./merge_split.o matches
+Binary file ./init.o matches
+Binary file ./run.o matches
+Binary file ./global.o matches
+Binary file ./restart.o matches
+Binary file ./main.o matches
+./timestep.c:                P[i].do_gas_search_this_timestep = 1;
+./timestep.c:                    P[i].do_gas_search_this_timestep = 1;
+./timestep.c:                } else {P[i].do_gas_search_this_timestep = 0;}
+./timestep.c:	    if(P[i].ProtoStellarStage == 6) {P[i].do_gas_search_this_timestep = 1;} // always do gas search if we're rapidly spawning in new gas shells
+Binary file ./structure/subfind/subfind_potential.o matches
+Binary file ./structure/subfind/subfind_vars.o matches
+Binary file ./structure/subfind/subfind_findlinkngb.o matches
+Binary file ./structure/subfind/subfind_loctree.o matches
+Binary file ./structure/subfind/subfind_so.o matches
+Binary file ./structure/subfind/subfind_collective.o matches
+Binary file ./structure/subfind/subfind_nearesttwo.o matches
+Binary file ./structure/subfind/subfind_cont.o matches
+Binary file ./structure/subfind/subfind_serial.o matches
+Binary file ./structure/subfind/subfind.o matches
+Binary file ./structure/subfind/subfind_distribute.o matches
+Binary file ./structure/subfind/subfind_density.o matches
+Binary file ./structure/lineofsight.o matches
+Binary file ./structure/fof.o matches
+Binary file ./structure/twopoint.o matches
+Binary file ./io.o matches
+Binary file ./allvars.o matches
+Binary file ./turb/dynamic_diffusion_velocities.o matches
+Binary file ./turb/turb_driving.o matches
+Binary file ./turb/turb_powerspectra.o matches
+Binary file ./turb/dynamic_diffusion.o matches
+Binary file ./cooling/grackle.o matches
+Binary file ./cooling/cooling.o matches
+Binary file ./nuclear/nuclear_network.o matches
+Binary file ./nuclear/nuclear_network_solver.o matches
+Binary file ./kicks.o matches
+Binary file ./accel.o matches
+Binary file ./predict.o matches
+./test.txt~:./hydro/density.c:    if(P[n].Type == 5){if(!P[n].do_gas_search_this_timestep && All.Ti_Current > 0) return 0;} /* not enough time has elapsed since the last gas interaction */
+Binary file ./GIZMO matches
+Binary file ./ngb.o matches
+Binary file ./begrun.o matches
