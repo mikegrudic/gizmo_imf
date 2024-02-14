@@ -114,18 +114,20 @@ void find_timesteps(void)
 
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
+	#ifdef VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0 && i == 0) {
-	  //fprintf(FdTest, "Just called get timestep, ti_step = %g, and the bin is %d, ti_step_long = %g, and the bin is %d  \n", ti_step*All.Timebase_interval,get_timestep_bin(ti_step), ti_step_long*All.Timebase_interval, get_timestep_bin(ti_step_long));
 	  fprintf(FdTest, "Timesteps \t %g \t %d \t %g \t %g \n", All.Ti_Current*All.Timebase_interval, 0, ti_step*All.Timebase_interval, ti_step_long*All.Timebase_interval);
 	  fflush(FdTest);
 	}
+        #endif 
         while(ti_min > ti_step) {ti_min >>= 1;}
         ti_step = ti_min;
+	#ifdef VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0 && i == 0) {
-	  //fprintf(FdTest, "Reset timestep to power of 2, ti_step = %g, and the bin is %d \n", ti_step*All.Timebase_interval, get_timestep_bin(ti_step));
 	  fprintf(FdTest, "Timesteps \t %g \t %d \t %g \t %g \n", All.Ti_Current*All.Timebase_interval, 1, ti_step*All.Timebase_interval, ti_step_long*All.Timebase_interval);
 	  fflush(FdTest);
 	}
+	#endif
         bin = get_timestep_bin(ti_step);
 	#ifdef VARIABLE_TIMESTEP_TEST
 	bin_long = get_timestep_bin(ti_step_long);
@@ -145,11 +147,12 @@ void find_timesteps(void)
 	    ti_step_long=GET_INTEGERTIME_FROM_TIMEBIN(bin_long);
 	  #endif
         }
+	#ifdef VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0 && i == 0) {
-	  //fprintf(FdTest, "Just made sure timestep is only increasing by a factor of 2 (one bin), ti_step = %g, and the bin is %d, ti_step_long = %g, and the bin is %d \n", ti_step*All.Timebase_interval, bin, ti_step_long*All.Timebase_interval, bin_long);
 	  fprintf(FdTest, "Timesteps \t %g \t %d \t %g  \t %g \n", All.Ti_Current*All.Timebase_interval, 2, ti_step*All.Timebase_interval, ti_step_long*All.Timebase_interval);
 	  fflush(FdTest);
 	}
+	#endif
         
 	if(All.Ti_Current >= TIMEBASE) {ti_step = 0; bin = 0;} /* we here finish the last timestep. */
 
@@ -236,7 +239,6 @@ void find_timesteps(void)
 	      else{SphP[i].do_dens_mhd_this_timestep = 0;}
 	    } //end else
 	  if (ThisTask == 0 && i==0){ 
-	    //fprintf(FdTest, "Finish up in find_timestep(), Time Current = %.16g do_dens_flag =  %d timesteps_since_last = %d dt_since_last = %g \n \n", All.Ti_Current*All.Timebase_interval, SphP[i].do_dens_mhd_this_timestep, SphP[i].timesteps_since_last_dens_mhd, SphP[i].dt_since_last_dens_mhd);
 	    fprintf(FdTest, "Set \t %g \t %d \t %d \t %g \n", All.Ti_Current*All.Timebase_interval, SphP[i].do_dens_mhd_this_timestep, SphP[i].timesteps_since_last_dens_mhd, SphP[i].dt_since_last_dens_mhd);
 	    fflush(FdTest);
 	  }
@@ -318,14 +320,8 @@ integertime get_timestep(int p,		/*!< particle index */
                          double *aphys,	/*!< acceleration (physical units) */
                          int flag	/*!< either 0 for normal operation, or finite timestep to get corresponding aphys */)
 {
-  double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0;  /*DT_FLAG*/
-  /*if (ThisTask == 0 && p == 0) {
-    if (flag >= 0) fprintf(FdTest, "\n INSIDE GET TIMESTEP \n");
-    if (flag < 0) fprintf(FdTest, "\n INSIDE GET TIMESTEP (LONG) \n");
-  fprintf(FdTest, " Beginning of get_timestep, dt = MaxTimestep =  %g \n", dt);
-  fflush(FdTest);
-  }*/
-    integertime ti_step; int k; k=0;
+  double ax, ay, az, ac, csnd = 0, dt = All.MaxSizeTimestep, dt_courant = 0, dt_divv = 0; 
+  integertime ti_step; int k; k=0;
 
 #ifdef IO_GRADUAL_SNAPSHOT_RESTART // if on the first timestep of a snapshot restart, start at the lowest allowed timestep to minimize any transient effects
     if(RestartFlag == 2 && All.Ti_Current == 0) {return 2;}
@@ -398,10 +394,6 @@ integertime get_timestep(int p,		/*!< particle index */
         return flag;
     }
     dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p) / ac); 
-    /*if (ThisTask == 0 && p == 0) {
-      fprintf(FdTest2, "Setting initial timestep, dt =  %g \n", dt);
-      fflush(FdTest2);
-      }*/
 
 #if (defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
@@ -448,11 +440,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     if(P[p].SuperTimestepFlag>=2) {dt_tidal = sqrt(2*All.ErrTolIntAccuracy) * P[p].COM_dt_tidal;}
 #endif
-    dt=DMIN(dt,dt_tidal); /*DT_FLAG*/
-    /*if (ThisTask == 0 && p == 0) {
-      fprintf(FdTest2, "Inside gravity timestep (tidal), dt_tidal = %g,  dt =  %g \n", dt_tidal, dt);
-      fflush(FdTest2);
-      }*/
+    dt=DMIN(dt,dt_tidal); 
 #endif
 
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
@@ -487,10 +475,6 @@ integertime get_timestep(int p,		/*!< particle index */
     }
 #if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(SELFGRAVITY_OFF)
     if(P[p].Type == 0) {dt = DMIN(dt, All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));} /*DT_FLAG*/
-    /*if (ThisTask == 0 && p == 0) {
-      fprintf(FdTest2, "Inside feedback timestep, dt =  %g \n", dt);
-      fflush(FdTest2);
-      }*/
 #endif    
 #endif // SINGLE_STAR_TIMESTEPPING
 
@@ -702,11 +686,6 @@ integertime get_timestep(int p,		/*!< particle index */
                             cr_speed = DMAX( DMIN(cr_m1_speed , All.cf_afac3*SphP[p].MaxSignalVel) , DMIN(cr_m1_speed , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
                             dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
-			    /*if (ThisTask == 0 && p == 0) {
-			      fprintf(FdTest2, "Inside CR timestep, cr_m1_speed = %g, cr_diffusion_speed = %g, free_streaming_speed = %g \n", cr_m1_speed, kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime), All.cf_afac3*SphP[p].MaxSignalVel);
-			      fprintf(FdTest2, "Inside CR timestep, L_particle = %g, All.cf_atime = %g, cr_speed = %g, dt_conduction = dt_courant_CR = %g, \n", L_particle, All.cf_atime, cr_speed, dt_courant_CR);
-			      fflush(FdTest2);
-			      }*/
                         } else {dt_conduction=10.*dt;}
                     } else {
                         double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_m1_speed;
@@ -718,10 +697,6 @@ integertime get_timestep(int p,		/*!< particle index */
                     #else
 		    if (flag >= 0) {if(dt_conduction < dt) dt = dt_conduction;} //if flag=-1, skip this step
 		    #endif
-		    /*if (ThisTask == 0 && p == 0) {
-		      fprintf(FdTest2, "Inside CR timestep, dt_conduction = %g, dt =  %g \n", dt_conduction, dt);
-		      fflush(FdTest2);
-		      }*/
 #endif
                 }
             }
@@ -778,10 +753,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* courant-type criterion, using the reduced speed of light */
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)                           
                 dt_courant = 0.4 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED; /* hacked here for starforge, where mike's experimentation suggests we can get away with a slightly larger courant factor. remains experimental. courant-type criterion, using the reduced speed of light - here we hardcode the most aggressive possible Courant factor as an optimization */
-		/*if (ThisTask==0 && p==0){
-		  fprintf(FdTest2, "Inside radiation timestep, L_particle = %g, All.cf_atime = %g, CLIGHT_CODE_REDUCED = %g, dt_courant_rad = %g \n", L_particle, All.cf_atime, C_LIGHT_CODE_REDUCED, dt_courant);
-		  fflush(FdTest2);
-		  }*/
+
 #ifdef BH_WIND_SPAWN
                 if((SphP[p].MaxSignalVel > 0.5*C_LIGHT_CODE_REDUCED) || (P[p].ID == All.AGNWindID && P[p].Type == 0)) dt_courant *= 0.5; // be more careful if this is a jet cell or there are transluminal velocities
 #endif		
@@ -812,10 +784,6 @@ integertime get_timestep(int p,		/*!< particle index */
 		#else
 		if (flag >= 0) {if(dt_rad < dt) dt = dt_rad;}
 		#endif
-		/*if (ThisTask == 0 && p == 0) {
-		  fprintf(FdTest2, "Inside radiation timestep, dt_rad = %g, dt =  %g \n", dt_rad, dt);
-		  fflush(FdTest2);
-		  }*/
             }
 #endif // RADTRANSFER
             
@@ -861,10 +829,6 @@ integertime get_timestep(int p,		/*!< particle index */
                     double dt_tdiff = L_tdiff*L_tdiff / (1.0e-33 + SphP[p].TD_DiffCoeff); // here, we use DIFFUSIVITIES, so there is no extra density power in the equation //
                     if(dt_tdiff < dt) dt = dt_tdiff; // normal explicit time-step /*DT_FLAG*/
                 }
-		/*if (ThisTask == 0 && p == 0) {
-		  fprintf(FdTest2, "Inside turb diff metals timestep, dt =  %g \n", dt);
-		  fflush(FdTest2);
-		  }*/
 #endif
             }
 #endif
@@ -880,11 +844,7 @@ integertime get_timestep(int p,		/*!< particle index */
                                              phi_b_units*phi_b_units) / SphP[p].Density );
 
             dt_courant = 0.8 * All.CourantFac * (All.cf_atime*L_particle) / vsig1; // 2.0 factor may be added (PFH) //
-            if(dt_courant < dt) {dt = dt_courant;} /*DT_FLAG*/
-	    /*if (ThisTask == 0 && p == 0) {
-	      fprintf(FdTest2, "Inside div B cleaner timestep, dt_courant = %g, dt =  %g \n", dt_courant, dt);
-	      fflush(FdTest2);
-	      }*/
+            if(dt_courant < dt) {dt = dt_courant;} 
 #endif
 
             /* make sure that the velocity divergence does not imply a too large change of density or kernel length in the step */
@@ -892,11 +852,7 @@ integertime get_timestep(int p,		/*!< particle index */
             if(divVel != 0)
             {
                 dt_divv = 1.5 / fabs(All.cf_a2inv * divVel);
-                if(dt_divv < dt) {dt = dt_divv;} /*DT_FLAG*/
-		/*if (ThisTask == 0 && p == 0) {
-		  fprintf(FdTest2, "Inside divVel timestep, dt_divv = %g, dt =  %g \n", dt_divv, dt);
-		  fflush(FdTest2);
-		  }*/
+                if(dt_divv < dt) {dt = dt_divv;} 
             }
 
 
@@ -1185,12 +1141,6 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         dt = All.MinSizeTimestep;
     }
-    /*if (ThisTask == 0 && p == 0) {
-      fprintf(FdTest, "Setting the returned timestep, dt =  %g \n", dt);
-      if (flag >=  0) fprintf(FdTest, "DONE WITH GET TIMESTEP \n \n");
-      if (flag < 0) fprintf(FdTest, "DONE WITH GET TIMESTEP (LONG) \n \n"); 
-      fflush(FdTest);
-      }*/
     ti_step = (integertime) (dt / All.Timebase_interval);
 #ifndef STOP_WHEN_BELOW_MINTIMESTEP
     if(ti_step<=1) ti_step=2;

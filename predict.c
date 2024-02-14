@@ -109,6 +109,9 @@ void drift_particle(int i, integertime time1)
     
     
 #if !(defined(FREEZE_HYDRO) || defined(SUBCYCLING_TEST))
+#if defined VARIABLE_TIMESTEP_TEST
+    if (SphP[i].do_dens_mhd_this_timestep){
+#endif
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
 #elif (SINGLE_STAR_TIMESTEPPING > 0)
@@ -134,7 +137,10 @@ void drift_particle(int i, integertime time1)
 #else
     for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
 #endif
-#endif // FREEZE_HYDRO clause
+#if defined(VARIABLE_TIMESTEP_TEST)
+    }
+#endif
+#endif // FREEZE_HYDRO and SUBCYCLING_TEST clause
 #if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0; // force zero-ing
 #endif
@@ -261,6 +267,9 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
 #ifdef SUBCYCLING_TEST
     if(All.Ti_Current == 0){
 #endif
+#ifdef VARIABLE_TIMESTEP_TEST
+    if(SphP[i].do_dens_mhd_this_timestep){
+#endif
 #ifdef MAGNETIC
     int kB;
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
@@ -284,6 +293,9 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
 #endif
 #ifdef SUBCYCLING_TEST
     } // close if(All.Ti_Current == 0){
+#endif
+#ifdef VARIABLE_TIMESTEP_TEST
+    }
 #endif
 #ifdef COSMIC_RAY_FLUID
     CosmicRay_Update_DriftKick(i,dt_entr,1);
