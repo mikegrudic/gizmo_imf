@@ -1120,7 +1120,7 @@ void read_file(char *fname, int readTask, int lastTask)
                                                 break;
 
                                             case 3:
-#if defined(INPUT_POSITIONS_IN_DOUBLE)
+#if defined(INPUT_POSITIONS_IN_DOUBLE) || defined(INPUT_IN_DOUBLEPRECISION)
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_DOUBLE);
 #else
                                                 hdf5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
