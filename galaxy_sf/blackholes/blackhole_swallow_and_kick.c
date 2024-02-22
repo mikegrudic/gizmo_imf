@@ -830,7 +830,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
     /* here is where the details of the split are coded, the rest is bookkeeping */
     //double mass_of_new_particle = total_mass_in_winds / n_particles_split; /* don't do this, as can produce particles with extremely large masses; instead wait to spawn */
-    double mass_of_new_particle = target_mass_for_wind_spawning(i);
+    double mass_of_new_particle = target_mass_for_wind_spawning(i); double mass_of_new_particle_default,mass_of_new_particle_prev; mass_of_new_particle_default=mass_of_new_particle; mass_of_new_particle_prev=mass_of_new_particle;
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].ProtoStellarStage == 6) {mass_of_new_particle = total_mass_in_winds/(double) n_particles_split;} // ejecta will have the gas mass resolution except the last batch which will lower masses
 #endif
@@ -1029,10 +1029,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
         double v_magnitude_physical = get_spawned_cell_launch_speed(i); /* call subroutine for this velocity */
 #if defined(BH_TEST_WIND_MIXED_FASTSLOW)
-        mode = mode_default; if((j - (NumPart + num_already_spawned)) % 2) {mode = mode_prev; v_magnitude_physical = v_magnitude_physical_prev; /* for every-other particle, need to match previous for conservation */
-        } else {if(get_random_number(j)<0.001) {mode=1; v_magnitude_physical=3.e4/UNIT_VEL_IN_KMS;}} /* collimated jet */
+        double masscorrfac_fast = 50.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default;
+        if((j - (NumPart + num_already_spawned)) % 2) {mode = mode_prev; v_magnitude_physical = v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
+        } else {if(get_random_number(j)<0.002*masscorrfac_fast) {mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=6.e4/UNIT_VEL_IN_KMS;}} /* collimated jet */
 #endif
-        v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode;
+        v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode; mass_of_new_particle_prev=mass_of_new_particle;
 
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
