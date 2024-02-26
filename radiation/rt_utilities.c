@@ -233,7 +233,6 @@ double rt_kappa(int i, int k_freq)
         double T_dust_em = SphP[i].Dust_Temperature; // dust temperature in K //
         double Trad = SphP[i].Radiation_Temperature; // radiation temperature in K //
         if((Trad <= 0) || (T_dust_em<=0)) {PRINT_WARNING("\n Cell-ID=%llu  has T_rad=%g and T_dust=%g\n", (unsigned long long) P[i].ID, Trad, T_dust_em);}
-        if(Trad <= 0) {Trad = 5600.;}
         return rt_kappa_adaptive_IR_band(i,T_dust_em,Trad,0,0); // < 1500 K, dust is present; here first flag 0 uses the radiation temperature because we want to know the Planck-mean *absorption* opacity. Second flag 0 says to include both dust and gas opacities. In the subroutine, divide by fac because the function outputs in code units but we're working in CGS here
     }
 #endif
@@ -770,7 +769,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
 #else
                 SphP[i].Dust_Temperature = rt_eqm_dust_temp(i, 0, total_absorption_rate * vol_inv_phys / RT_SPEEDOFLIGHT_REDUCTION); // Calling with T=0 will account for dust absorption only
 #endif
-		if(SphP[i].Dust_Temperature < T_min){SphP[i].Dust_Temperature = T_min;}
+                if(SphP[i].Dust_Temperature < T_min){SphP[i].Dust_Temperature = T_min;}
                 double Tdust_eff = SphP[i].Dust_Temperature, Trad_eff = SphP[i].Radiation_Temperature;
                 IRBand_opacity_fraction_from_gas_absorption = rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,-1,-1) / rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,0,0); /* gas absorption opacity only, relative to total opacity (all sources+scattering) */
                 double total_emission_rate = total_absorption_rate * (1.-IRBand_opacity_fraction_from_gas_absorption) + SphP[i].Rad_Je[kf]; /* we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop */
@@ -1547,12 +1546,9 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
 double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emission_absorption_scattering_opacity, int dust_or_gas_opacity_only_flag)
 {
     if(do_emission_absorption_scattering_opacity==1) {Trad = T_dust;} // if we want the emissivity then we assume radiation emitted at T_dust
-    double fac=UNIT_SURFDEN_IN_CGS, x = 4.*log10(Trad) - 8., kappa=0; // needed for fitting functions to opacities (may come up with cheaper function later)
+    double fac=UNIT_SURFDEN_IN_CGS, x = 4.*log10(Trad) - 8., kappa=0, T_dust_opacitytable = T_dust; // needed for fitting functions to opacities (may come up with cheaper function later)
     double dx_excess=0; if(x > 7.) {dx_excess=x-7.; x=7.;} // cap for maximum temperatures at which fit-functions should be used //
     //if(x < -4.) {x=-4.;} // cap for minimum temperatures at which fit functions below should be used //
-#if defined(RT_INFRARED) || defined(COOL_LOW_TEMPERATURES)
-    T_dust = DMIN(T_dust , 1499.9); // limit to <1500 so always use opacities for 'capped' value at 1500 below, but don't ignore, because we're assuming the dust destruction above 1500K is accounted for in the self-consistent calculation of the dust-to-metals ratio, NOT in the opacities here //
-#endif
     double Zfac = 1.0, dust_to_metals_vs_standard = return_dust_to_metals_ratio_vs_solar(i,T_dust); // avoid call to return_dust_to_metals_ratio_vs_solar to avert circular dependency
 #ifdef METALS
     if(i>=0) {Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];}
@@ -1573,14 +1569,17 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
          to different grain composition choices (porous/non, composite/non, 5-layer/aggregated/etc)
          in Semenov et al's paper */
         
-        if(T_dust < 160.) // Tdust < 160 K (all dust constituents present)
+#if defined(RT_INFRARED) || defined(COOL_LOW_TEMPERATURES)
+        T_dust_opacitytable = DMIN(T_dust , 1499.9); // limit to <1500 so always use opacities for 'capped' value at 1500 below, but don't ignore, because we're assuming the dust destruction above 1500K is accounted for in the self-consistent calculation of the dust-to-metals ratio, NOT in the opacities here //
+#endif
+        if(T_dust_opacitytable < 160.) // Tdust < 160 K (all dust constituents present)
         {
             kappa = exp(0.72819004 + 0.75142468*x - 0.07225763*x*x - 0.01159257*x*x*x + 0.00249064*x*x*x*x);
-        } else if(T_dust < 275.) { // 160 < Tdust < 275 (no ice present)
+        } else if(T_dust_opacitytable < 275.) { // 160 < Tdust < 275 (no ice present)
             kappa = exp(0.16658241 + 0.70072926*x - 0.04230367*x*x - 0.01133852*x*x*x + 0.0021335*x*x*x*x);
-        } else if(T_dust < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
+        } else if(T_dust_opacitytable < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
             kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);
-        } else if(T_dust < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
+        } else if(T_dust_opacitytable < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
             kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
         } else { // 680 < Tdust < 1500 (silicates & iron present)
             kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
