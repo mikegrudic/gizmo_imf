@@ -646,6 +646,8 @@ void init(void)
 #endif
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
+	for(int j = 0; j < TIMEBINS; j++){TimeBinCountLong[j] = 0;}
+	SphP[i].TimeBinLong=0;
 	SphP[i].do_dens_mhd_this_timestep=1;
 	SphP[i].timesteps_since_last_dens_mhd=0;
 	SphP[i].dt_since_last_dens_mhd=0;

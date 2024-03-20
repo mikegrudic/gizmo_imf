@@ -1,4 +1,3 @@
-
 /*! \file allvars.h
  *  \brief declares global variables.
  *
@@ -1983,6 +1982,10 @@ extern int *PrevInTimeBin;
 extern double TimeBinSfr[TIMEBINS];
 #endif
 
+#ifdef VARIABLE_TIMESTEP_TEST
+extern int TimeBinCountLong[TIMEBINS];
+#endif
+
 #ifdef BLACK_HOLES
 #define BH_COUNTPROGS
 /* carries a counter for each BH that gives the total number of seeds that merged into it */
@@ -2356,6 +2359,12 @@ extern struct global_data_all_processes
   integertime Ti_nextoutput;		/*!< next output time on integer timeline */
   integertime Ti_lastoutput;
 
+#ifdef VARIABLE_TIMESTEP_TEST
+  int Min_Long_Time_Bin;
+  int Do_Long_Timestep;
+  integertime Previous_Ti_Current_Long;
+#endif
+  
 #ifdef PMGRID
   integertime PM_Ti_endstep, PM_Ti_begstep;
   double Asmth[2], Rcut[2];
@@ -3252,6 +3261,7 @@ extern struct gas_cell_data
     MyFloat Tensor_MFM_Face_Corrections[9]; /*!< alternative tensor face corrections for linear consistency */
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
+  short int TimeBinLong;
   MyFloat dt_since_last_dens_mhd; /*!< time elapsed since last dens/MHD computation */
   short int do_dens_mhd_this_timestep; /*!< flag to do dens/MHD calculation this timestep */
   int timesteps_since_last_dens_mhd; /*!< number of timesteps since last dens/MHD computation */

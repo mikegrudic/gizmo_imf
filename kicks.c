@@ -196,7 +196,20 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     int j;
     double dp[3], dt_entr, dt_gravkick, dt_hydrokick;
     double mass_old, mass_pred, mass_new;
-    mass_old = mass_pred = mass_new = P[i].Mass;    
+    mass_old = mass_pred = mass_new = P[i].Mass;
+
+    #if defined VARIABLE_TIMESTEP_TEST
+    int pt=50000;
+    int pt2=150000;
+    if (i == pt){
+      fprintf(FdTest, "Kick_pt1 \t %g \t %g \t %g \n", tstart*All.Timebase_interval, tend*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+      fflush(FdTest);
+    }
+    if (i == pt2){
+      fprintf(FdTest, "Kick_pt2 \t %g \t %g \t %g \n", tstart*All.Timebase_interval, tend*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+      fflush(FdTest);
+   }
+   #endif
     
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     /* need to do the slightly more complicated update scheme to maintain exact mass conservation */
@@ -377,9 +390,9 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #if (defined(SUBCYCLING_TEST) || defined(FREEZE_HYDRO))
 	    dp[j] = 0;
 #elif (defined(VARIABLE_TIMESTEP_TEST)) 
-	    if (!SphP[i].do_dens_mhd_this_timestep) {dp[j] = 0;}
+	    if (!SphP[i].do_dens_mhd_this_timestep) { dp[j] = 0;}
 #endif	    
-            P[i].Vel[j] = 0;// dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
+            P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 
  

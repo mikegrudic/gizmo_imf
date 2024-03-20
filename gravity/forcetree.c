@@ -1844,6 +1844,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef _OPENMP
 #pragma omp critical(_particledriftforce_)
 #endif
+
                     drift_particle(no, ti_Current);
                     UNLOCK_PARTNODEDRIFT;
                 }
@@ -3237,7 +3238,8 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             {
                 /* the index of the node is the index of the particle */
                 /* observe the sign  */
-                if(P[no].Ti_current != All.Ti_Current) {drift_particle(no, All.Ti_Current);}
+                if(P[no].Ti_current != All.Ti_Current) {
+		drift_particle(no, All.Ti_Current);}
                 dx = P[no].Pos[0] - pos_x;
                 dy = P[no].Pos[1] - pos_y;
                 dz = P[no].Pos[2] - pos_z;

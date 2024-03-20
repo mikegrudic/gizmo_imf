@@ -108,6 +108,10 @@ size_t HighMark_turbpower;
 double TimeBinSfr[TIMEBINS];
 #endif
 
+#ifdef VARIABLE_TIMESTEP_TEST
+int TimeBinCountLong[TIMEBINS];
+#endif
+
 #ifdef BLACK_HOLES
 double TimeBin_BH_mass[TIMEBINS];
 double TimeBin_BH_dynamicalmass[TIMEBINS];

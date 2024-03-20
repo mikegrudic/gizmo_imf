@@ -97,12 +97,37 @@ void reconstruct_timebins(void)
 void drift_particle(int i, integertime time1)
 {
     int j; double dt_drift; integertime time0 = P[i].Ti_current;
+
+    #if defined VARIABLE_TIMESTEP_TEST
+    int pt=50000;
+    int pt2=150000;
+    if (i == pt && time1 == time0){
+      fprintf(FdTest, "Enter_Drift_pt1 \t %g \t %g \t %g \n",time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+      fflush(FdTest);
+    }
+    if (i == pt2 && time1 == time0){
+      fprintf(FdTest, "Enter_Drift_pt2 \t %g \t %g \t%g \n",time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+      fflush(FdTest);
+    }
+    #endif
+
     if(time1 < time0)
     {
         printf("i=%d time0=%lld time1=%lld\n", i, (long long)time0, (long long)time1);
         terminate("no prediction into past allowed");
     }
     if(time1 == time0) {return;}
+
+    #if defined VARIABLE_TIMESTEP_TEST
+    if (i == pt){
+    fprintf(FdTest, "Drift_pt1 \t %g \t %g \t %g \n", time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+    fflush(FdTest);
+    }
+    if (i == pt2){
+      fprintf(FdTest, "Drift_pt2 \t %g \t %g \t %g \n", time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+      fflush(FdTest);
+    }
+    #endif
     
     if(All.ComovingIntegrationOn) {dt_drift = get_drift_factor(time0, time1);}
         else {dt_drift = (time1 - time0) * All.Timebase_interval;}

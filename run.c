@@ -48,6 +48,19 @@ void run(void)
 
     while(1)			/* main timestep iteration loop */
     {
+      //test particle numbers
+      int pt=50000;
+      int pt2=150000;
+      
+       #if defined VARIABLE_TIMESTEP_TEST
+       if (ThisTask == 0){
+	fprintf(FdTest, "Begin_Main_Loop \n");
+	fprintf(FdTest, "Step_0_Begin_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+        fprintf(FdTest,"Step_0_Begin_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval,P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	fprintf(FdTest,"Step_0_Begin_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+        fflush(FdTest);}
+       #endif
+      
         compute_statistics();	/* regular statistics outputs (like total energy) */
 
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
@@ -61,6 +74,15 @@ void run(void)
         }
 
         find_timesteps();		/* find-timesteps */
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest,"Step_1_Compute_Timesteps_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_1_Compute_Timesteps_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_1_Compute_Timesteps_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
         int TreeReconstructFlag_local = TreeReconstructFlag;
 #ifdef HERMITE_INTEGRATION
         HermiteOnlyFlag = 1;
@@ -68,11 +90,43 @@ void run(void)
         HermiteOnlyFlag = 0;
 #endif
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_2_First_Kick_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_2_First_Kick_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_2_First_Kick_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
 
-        find_next_sync_point_and_drift();	/* find next synchronization point and drift particles to this time.
+	#ifdef VARIABLE_TIMESTEP_TEST
+	if (All.Do_Long_Timestep == 1 || All.Ti_Current == 0){All.Previous_Ti_Current_Long=All.Ti_Current;}
+	#endif
+	
+        find_next_sync_point_and_drift();	/* find next synchronization point and drift particles to this time.			
                                              * If needed, this function will also write an output file
                                              * at the desired time.
                                              */
+	#ifdef VARIABLE_TIMESTEP_TEST
+	for (int n = TIMEBINS; n> 0; n--){ if (TimeBinCountLong[n]) {All.Min_Long_Time_Bin=n;}}
+	if (GET_INTEGERTIME_FROM_TIMEBIN(All.Min_Long_Time_Bin) == (All.Ti_Current - All.Previous_Ti_Current_Long)){All.Do_Long_Timestep=1;}
+	else {All.Do_Long_Timestep=0;}
+	#endif
+
+	#ifdef VARIABLE_TIMESTEP_TEST
+	fprintf(FdTest, "TIMEBIN_START %d  %d  %d  %d  %g  %g  %g \n", All.HighestActiveTimeBin, All.Min_Long_Time_Bin, All.Do_Long_Timestep, All.HighestOccupiedTimeBin, (All.Ti_Current-All.Previous_Ti_Current)*All.Timebase_interval, (All.Ti_Current-All.Previous_Ti_Current_Long)*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+	for (int n=0; n< TIMEBINS;n++){if (n>=35) fprintf(FdTest, "TIMEBIN  %d  %d  %d  %d  %g %g  %d \n", n, TimeBinActive[n], TimeBinCount[n], TimeBinCountLong[n], GET_INTEGERTIME_FROM_TIMEBIN(n)*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n))*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n) == 0));}
+	fflush(FdTest);
+	#endif
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_3_Drift_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_3_Drift_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_3_Drift_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+
 
         output_log_messages();	/* write some info to log-files */
 
@@ -88,14 +142,34 @@ void run(void)
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
             reconstructed_tree = 1;
         }
-        else if(TreeReconstructFlag) {domain_Decomposition(0, 0, 1); reconstructed_tree = 1;}
+        else if(TreeReconstructFlag) {  domain_Decomposition(0, 0, 1); reconstructed_tree = 1;}
         else
         {
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
             make_list_of_active_particles();	/* now we can set the new chain list of active particles */
         }
 
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_4_Update_Domain_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_4_Update_Domain_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_4_Update_Domain_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
+
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
+
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_5_Gravity_Forces_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_5_Gravity_Forces_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_5_Gravity_Forces_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
 
 #ifdef GALSF_SUBGRID_WINDS
 #if (GALSF_SUBGRID_WIND_SCALING==2)
@@ -123,6 +197,13 @@ void run(void)
 	if(All.Ti_Current == 0) // skip density+MHD except on the very first timestep
 #endif	  
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_6_Hydro_Forces_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_6_Hydro_Forces_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_6_Hydro_Forces_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
         
 #ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
         if(!reconstructed_tree)
@@ -133,8 +214,26 @@ void run(void)
 #endif
         
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_7_Second_Kick_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_7_Second_Kick_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_7_Second_Kick_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
 
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_8_NonStandard_Physics_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_8_NonStandard_Physics_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_8_NonStandard_Physics_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
 
 #ifdef HERMITE_INTEGRATION // we do a prediction step using the saved "old" pos, accel and jerk from the beginning of the timestep. Then we recompute accel and jerk and do the correction
         do_hermite_prediction();
@@ -209,6 +308,23 @@ void run(void)
         set_random_numbers();	/* draw a new list of random numbers */
 
         report_memory_usage(&HighMark_run, "RUN");
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "Step_9_End_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
+	  fprintf(FdTest,"Step_9_End_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval,P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+	  fprintf(FdTest,"Step_9_End_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
+	  fflush(FdTest);}
+	#endif
+	
+	
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (ThisTask == 0){
+	  fprintf(FdTest, "End_Main_Loop \n");
+	  fflush(FdTest);}
+	#endif
+	
+
     }
 
 }
@@ -401,7 +517,6 @@ void find_next_sync_point_and_drift(void)
             else {All.Time = All.TimeBegin + All.Ti_Current * All.Timebase_interval;}
 
         set_cosmo_factors_for_current_time();
-
         move_particles(All.Ti_nextoutput);
         MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_DRIFT] += measure_time();
 
@@ -463,10 +578,7 @@ void find_next_sync_point_and_drift(void)
     }
   else
     Flag_FullStep = 0;
-
-
-
-
+  
   /* move the new set of active/synchronized particles. Note: We do not yet call make_list_of_active_particles(), since we
    * may still need to old list in the dynamic tree update */
   for(n = 0, prev = -1; n < TIMEBINS; n++)

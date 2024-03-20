@@ -202,7 +202,7 @@ ifeq ($(SYSTYPE),"Frontera")
 CC       =  mpicc
 CXX      =  mpic++
 FC       =  mpif90 -nofor_main
-OPTIMIZE = -O2 -xCORE-AVX2 -Wno-unknown-pragmas
+OPTIMIZE = -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon
 #OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
 #OPTIMIZE = -O3 -xCORE-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2
 ## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes, but gives tiny performance hit
