@@ -1651,7 +1651,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 
                     /* now use the gradients to construct the B_L,R states */
-                    double Bjk = Get_Gas_BField(j,k);
+                    double Bjk = Get_Gas_BField(j,k); //
+                    NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,P[j].Pos,Bjk,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
                     double db_c=0, db_cR=0;
                     for(k2=0;k2<3;k2++)
                     {
@@ -1870,6 +1871,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     for(k=0;k<3;k++)
                     {
                         Bj[k] = Get_Gas_BField(j,k);
+                        NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,P[j].Pos,Bj,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
                         dB[k] = Bj[k] - local.GQuant.B[k];
                         MINMAX_CHECK(dB[k],out.Minima.B[k],out.Maxima.B[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dB[k],GasGradDataPasser[j].Minima.B[k],GasGradDataPasser[j].Maxima.B[k]);}

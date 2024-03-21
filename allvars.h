@@ -176,6 +176,9 @@
 #ifdef SHEARING_BOX_Q
 #define BOX_SHEARING_Q SHEARING_BOX_Q
 #endif
+#ifdef SHEARING_BOX_QB
+#define BOX_SHEARING_QB SHEARING_BOX_QB
+#endif
 #ifdef ANALYTIC_GRAVITY
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(ANALYTIC_GRAVITY)
 #define GRAVITY_ANALYTIC ANALYTIC_GRAVITY
@@ -1808,6 +1811,9 @@ extern MyDouble boxSize_Z, boxHalf_Z;
 #ifdef BOX_SHEARING
 extern MyDouble Shearing_Box_Vel_Offset;
 extern MyDouble Shearing_Box_Pos_Offset;
+#ifdef BOX_SHEARING_QB
+extern Shearing_Box_B_Offset;
+#endif
 #endif
 
 #if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
@@ -1938,6 +1944,13 @@ z=((z)>boxHalf_Z)?((z)-boxSize_Z):(((z)<-boxHalf_Z)?((z)+boxSize_Z):(z)))
 #define NGB_SHEARBOX_BOUNDARY_VELCORR_(pos_i,pos_j,dv_ij,dv_sign_flipped) (dv_ij[BOX_SHEARING_PHI_COORDINATE] += dv_sign_flipped*Shearing_Box_Vel_Offset * ((pos_i[0]-pos_j[0]>boxHalf_X)?(1):((pos_i[0]-pos_j[0]<-boxHalf_X)?(-1):(0))))
 #else
 #define NGB_SHEARBOX_BOUNDARY_VELCORR_(pos_i,pos_j,dv_ij,dv_sign_flipped)
+#endif
+
+/* equivalent for shear-periodic magnetic fields */
+#ifdef BOX_SHEARING_QB
+#define NGB_SHEARBOX_BOUNDARY_BCORR_(pos_i,pos_j,db_ij,db_sign_flipped) (db_ij[BOX_SHEARING_PHI_COORDINATE] += db_sign_flipped*Shearing_Box_B_Offset * ((pos_i[0]-pos_j[0]>boxHalf_X)?(1):((pos_i[0]-pos_j[0]<-boxHalf_X)?(-1):(0))))
+#else
+#define NGB_SHEARBOX_BOUNDARY_BCORR_(pos_i,pos_j,db_ij,db_sign_flipped)
 #endif
 
 
