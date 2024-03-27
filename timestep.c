@@ -110,7 +110,8 @@ void find_timesteps(void)
         if(P[i].Type == 3) {while(ti_step > ti_min_glob) {ti_step >>= 1;}} // set this per the above loop to minimum threshold relative to previous steps
 #endif
 	#ifdef VARIABLE_TIMESTEP_TEST
-           ti_step_long = get_timestep(i, &aphys, -1);
+	if (P[i].Type == 0){ti_step_long = get_timestep(i, &aphys, -1);}
+	else {ti_step_long = get_timestep(i, &aphys, 0);}
 	#endif
 
         /* make it a power 2 subdivision */
@@ -150,13 +151,9 @@ void find_timesteps(void)
 	  //while(TimeBinActive[bin] == 0 && bin > binold) {bin--;}	/* make sure the new step is synchronized */
 	  while(TimeBinActive[bin] == 0 && bin >binold){   bin--;
 	 #ifdef VARIABLE_TIMESTEP_TEST
-	    //bin_long--;
+	    //subtract at same rate as short timestep, but not if they started out the same
 	    if (bin_long > bin_short_start) {bin_long--;}
 	    else {bin_long=bin;}
-	    if (i==ptest){
-	      fprintf(FdTest, "Bins \t %d \t %d \n", bin, bin_long);
-	    fflush(FdTest);
-	    }
 	 #endif
 	  }
             ti_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
@@ -234,6 +231,7 @@ void find_timesteps(void)
 
         }
 
+	//only reset if the long timestep comp was just done
 	#ifdef VARIABLE_TIMESTEP_TEST
 	if (All.Do_Long_Timestep == 1 || All.Ti_Current == 0){
 	SphP[i].TimeBinLong = bin_long;

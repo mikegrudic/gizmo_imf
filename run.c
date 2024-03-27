@@ -108,7 +108,9 @@ void run(void)
                                              * at the desired time.
                                              */
 	#ifdef VARIABLE_TIMESTEP_TEST
+	//find the minimum occupied long time bin
 	for (int n = TIMEBINS; n> 0; n--){ if (TimeBinCountLong[n]) {All.Min_Long_Time_Bin=n;}}
+	//has minimum long time bin passed?
 	if (GET_INTEGERTIME_FROM_TIMEBIN(All.Min_Long_Time_Bin) == (All.Ti_Current - All.Previous_Ti_Current_Long)){All.Do_Long_Timestep=1;}
 	else {All.Do_Long_Timestep=0;}
 	#endif
@@ -137,6 +139,8 @@ void run(void)
         if(All.NumForcesSinceLastDomainDecomp > All.TreeDomainUpdateFrequency * All.TotNumPart) {TreeReconstructFlag_local = 1;}
 #endif
         MPI_Allreduce(&TreeReconstructFlag_local, &TreeReconstructFlag, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD); // if one process reconstructs the tree then everbody has to
+
+	#if !defined VARIABLE_TIMESTEP_TEST
         if(GlobNumForceUpdate > All.TreeDomainUpdateFrequency * All.TotNumPart)	/* check whether we have a big step */
         {
             domain_Decomposition(0, 0, 1);      /* do domain decomposition if step is big enough, and set new list of active particles  */
@@ -148,7 +152,16 @@ void run(void)
             force_update_tree();	/* update tree dynamically with kicks of last step so that it can be reused */
             make_list_of_active_particles();	/* now we can set the new chain list of active particles */
         }
+	#endif
 
+        #if defined VARIABLE_TIMESTEP_TEST
+	if (All.Do_Long_Timestep) {domain_Decomposition(0, 0, 1); reconstructed_tree = 1;}
+	else
+	  {
+	    force_update_tree(); // need to take ind particle flag out here
+	    make_list_of_active_particles();
+	  }
+	#endif
 	
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
@@ -158,9 +171,12 @@ void run(void)
 	  fflush(FdTest);}
 	#endif
 	
-
+	#if !defined VARIABLE_TIMESTEP_TEST 
         compute_grav_accelerations();	/* compute gravitational accelerations for synchronous particles */
-
+        #endif
+        #if defined VARIABLE_TIMESTEP_TEST
+	if (All.Do_Long_Timestep){compute_grav_accelerations();}
+        #endif
 	
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
@@ -316,7 +332,16 @@ void run(void)
 	  fprintf(FdTest,"Step_9_End_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
 	  fflush(FdTest);}
 	#endif
-	
+
+	//reset
+	#ifdef VARIABLE_TIMESTEP_TEST
+	for(int i = FirstActiveParticle; i >= 0; i= NextActiveParticle[i]){
+	  if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep){
+	    SphP[i].dt_since_last_dens_mhd = 0;
+	    SphP[i].timesteps_since_last_dens_mhd=0;
+	  }
+	}
+	#endif
 	
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
@@ -425,15 +450,6 @@ void calculate_non_standard_physics(void)
 
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
-#endif
-
-#ifdef VARIABLE_TIMESTEP_TEST
-   for(i = FirstActiveParticle; i >= 0; i= NextActiveParticle[i]){ 
-     if(P[i].Type == 0 && SphP[i].do_dens_mhd_this_timestep){ 
-       SphP[i].dt_since_last_dens_mhd = 0;
-       SphP[i].timesteps_since_last_dens_mhd=0;
-     }
-   }
 #endif
 
 }

@@ -390,7 +390,8 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #if (defined(SUBCYCLING_TEST) || defined(FREEZE_HYDRO))
 	    dp[j] = 0;
 #elif (defined(VARIABLE_TIMESTEP_TEST)) 
-	    if (!SphP[i].do_dens_mhd_this_timestep) { dp[j] = 0;}
+	    //if (!SphP[i].do_dens_mhd_this_timestep) { dp[j] = 0;}
+	    if (!All.Do_Long_Timestep){dp[j] = 0;}
 #endif	    
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
@@ -496,7 +497,8 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
 #ifdef SUBCYCLING_TEST
     if(All.Ti_Current == 0){
 #elif defined VARIABLE_TIMESTEP_TEST
-    if (SphP[i].do_dens_mhd_this_timestep){
+      //if (SphP[i].do_dens_mhd_this_timestep){
+      if (All.Do_Long_Timestep){
 #endif      
 #ifdef MAGNETIC
 #ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
