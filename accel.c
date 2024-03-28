@@ -59,11 +59,23 @@ void compute_hydro_densities_and_forces(void)
   if(All.TotN_gas > 0)
     {
         PRINT_STATUS("Start hydrodynamics computation...");
+
+        #if !defined VARIABLE_TIMESTEP_TEST
         density();		/* computes density, and pressure */
+	#endif
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (All.Do_Long_Timestep) {density();}
+	#endif
+
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
         ags_density();
 #endif
+	#if !defined VARIABLE_TIMESTEP_TEST
         force_update_hmax();	/* update kernel lengths in tree */
+	#endif
+	#if defined VARIABLE_TIMESTEP_TEST
+	if (All.Do_Long_Timestep) {force_update_hmax();}
+	#endif
         /*! This function updates the hmax-values in tree nodes that hold gas. These values are needed to find all neighbors in the hydro-force computation.  Since the Hsml-values are potentially changed in the gas-denity computation, force_update_hmax() should be carried out before the hydrodynamical forces are computed, i.e. after density(). */
 
         PRINT_STATUS(" ..density & tree-update computation done...");
