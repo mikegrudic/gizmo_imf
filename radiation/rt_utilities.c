@@ -1053,21 +1053,28 @@ void rt_set_simple_inits(int RestartFlag)
         {
             int k;
 #ifdef RT_INFRARED
-            SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.); //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
-            SphP[i].Radiation_Temperature = DMIN(All.InitGasTemp,100.); //SphP[i].Dust_Temperature;
+            if(flag_to_reset_values_on_startup) {SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);} //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
+            if(flag_to_reset_values_on_startup) {SphP[i].Radiation_Temperature = DMIN(All.InitGasTemp,100.);} //SphP[i].Dust_Temperature;
             SphP[i].Dt_Rad_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_CHEM_PHOTOION
-            SphP[i].HII = MIN_REAL_NUMBER;
-            SphP[i].HI = 1.0 - SphP[i].HII;
-            SphP[i].Ne = SphP[i].HII;
+            if(flag_to_reset_values_on_startup)
+            {
+                SphP[i].HII = MIN_REAL_NUMBER;
+                SphP[i].HI = 1.0 - SphP[i].HII;
+                SphP[i].Ne = SphP[i].HII;
 #ifdef RT_CHEM_PHOTOION_HE
-            double fac = (1-HYDROGEN_MASSFRAC) / (4.0 * HYDROGEN_MASSFRAC);
-            SphP[i].HeIII = MIN_REAL_NUMBER * fac;
-            SphP[i].HeII = MIN_REAL_NUMBER * fac;
-            SphP[i].HeI = (1.0 - SphP[i].HeII - SphP[i].HeIII) * fac;
-            SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
+                double fac = (1-HYDROGEN_MASSFRAC) / (4.0 * HYDROGEN_MASSFRAC);
+                SphP[i].HeIII = MIN_REAL_NUMBER * fac;
+                SphP[i].HeII = MIN_REAL_NUMBER * fac;
+                SphP[i].HeI = (1.0 - SphP[i].HeII - SphP[i].HeIII) * fac;
+                SphP[i].Ne += SphP[i].HeII + 2.0 * SphP[i].HeIII;
 #endif
+            } else {
+#ifdef RT_CHEM_PHOTOION_HE
+                SphP[i].HeIII = DMIN(1.0, DMAX(MIN_REAL_NUMBER, 1.0 - SphP[i].HeII - SphP[i].HeI * (4.0 * HYDROGEN_MASSFRAC)/(1-HYDROGEN_MASSFRAC))); // not read in since for this subroutine follows from others
+#endif
+            }
 #endif
 #ifdef RT_ISRF_BACKGROUND
             double urad[N_RT_FREQ_BINS];
@@ -1076,14 +1083,18 @@ void rt_set_simple_inits(int RestartFlag)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
                 if(flag_to_reset_values_on_startup) {SphP[i].Rad_E_gamma[k] = MIN_REAL_NUMBER;}
-                SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;
-                SphP[i].Rad_Je[k] = 0; SphP[i].Rad_Kappa[k] = rt_kappa(i,k);
+                int flag_to_reset_values_on_startup_et = flag_to_reset_values_on_startup;
+#if !defined(OUTPUT_EDDINGTON_TENSOR)
+                flag_to_reset_values_on_startup_et = 1;
+#endif
+                if(flag_to_reset_values_on_startup_et) {SphP[i].ET[k][0]=SphP[i].ET[k][1]=SphP[i].ET[k][2]=1./3.; SphP[i].ET[k][3]=SphP[i].ET[k][4]=SphP[i].ET[k][5]=0;}
+                SphP[i].Rad_Je[k] = 0;
 #ifdef RT_FLUXLIMITER
                 SphP[i].Rad_Flux_Limiter[k] = 1;
 #endif
 
 #ifdef RT_INFRARED
-                if(flag_to_reset_values_on_startup && k==RT_FREQ_BIN_INFRARED){ // only initialize the IR energy if starting a new run, otherwise use what's in the snapshot
+                if(flag_to_reset_values_on_startup && k==RT_FREQ_BIN_INFRARED) { // only initialize the IR energy if starting a new run, otherwise use what's in the snapshot
                     SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED] = (4.*5.67e-5 / C_LIGHT_CGS) * pow(DMIN(All.InitGasTemp,100.),4.) / UNIT_PRESSURE_IN_CGS * P[i].Mass / (SphP[i].Density*All.cf_a3inv);
                 }
 #endif
@@ -1091,10 +1102,21 @@ void rt_set_simple_inits(int RestartFlag)
                 if(flag_to_reset_values_on_startup) {SphP[i].Rad_E_gamma[k] = urad[k] * P[i].Mass / (SphP[i].Density*All.cf_a3inv);}
 #endif
 #ifdef RT_EVOLVE_ENERGY
-                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; SphP[i].Dt_Rad_E_gamma[k] = 0;
+                SphP[i].Rad_E_gamma_Pred[k] = SphP[i].Rad_E_gamma[k]; 
+                SphP[i].Dt_Rad_E_gamma[k] = 0;
 #endif
 #ifdef RT_EVOLVE_FLUX
-                int k_dir; for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = SphP[i].Rad_Flux[k][k_dir] = SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}
+                int k_dir, flag_to_reset_values_on_startup_flux = flag_to_reset_values_on_startup;
+#if !defined(OUTPUT_RT_RAD_FLUX)
+                flag_to_reset_values_on_startup_flux = 1;
+#endif
+                if(flag_to_reset_values_on_startup_flux) {
+                    for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = 0;}
+                } else {
+                    for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] *= P[pindex].Mass/(SphP[pindex].Density*All.cf_a3inv);} // need to correct the units here before using
+                }
+                for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = SphP[i].Rad_Flux[k][k_dir];}
+                for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
                 int k_dir; for(k_dir=0;k_dir<N_RT_INTENSITY_BINS;k_dir++) {SphP[i].Rad_Intensity_Pred[k][k_dir] = SphP[i].Rad_Intensity[k][k_dir] = MIN_REAL_NUMBER; SphP[i].Dt_Rad_Intensity[k][k_dir] = 0;}
@@ -1114,7 +1136,7 @@ void rt_set_simple_inits(int RestartFlag)
                 SphP[i].Rad_Flux[k][0]=SphP[i].Rad_Flux[k][1]=SphP[i].Rad_Flux_Pred[k][0]=SphP[i].Rad_Flux_Pred[k][1]=0;
 #endif
 #endif
-                
+                SphP[i].Rad_Kappa[k] = rt_kappa(i,k); // let everything else get reset first before calling this //
             }
         }
     }
