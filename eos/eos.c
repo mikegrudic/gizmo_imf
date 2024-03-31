@@ -656,22 +656,24 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     double eta_A = eta_prefac * (sigma_A2)/(sigma_O*sigma_perp2);
     eta_O = fabs(eta_O); eta_A = fabs(eta_A); // these depend on the absolute values and should be written as such, so eta is always positive [not true for eta_h]
     // convert units to code units
+    double x_neutral = DMAX(0., 1-m_ion*xi); // neutral fraction of mass
     double units_cgs_to_code = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_LENGTH_IN_CGS); // convert coefficients (L^2/t) to code units [physical]
-    double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = eta_A*units_cgs_to_code;
+    double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = x_neutral * eta_A*units_cgs_to_code;
 //#define MHD_NON_IDEAL_CORRECTIONTERMS 1
 #ifdef MHD_NON_IDEAL_CORRECTIONTERMS /* account for unphysical or not internally self-consistent drift/slip speeds (PFH+Squire 24) */
     double gradbmag2=0,gradbmag=0,btmp=0,L_B=MAX_REAL_NUMBER;
     int j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {btmp=SphP[i].Gradients.B[k][j]; gradbmag2+=btmp*btmp;}} // need to get magnitude of B gradient for below
     if(gradbmag2>0) {gradbmag=sqrt(gradbmag2)*(All.cf_a2inv/All.cf_atime)*gizmo2gauss; L_B=(B_Gauss/gradbmag)*UNIT_LENGTH_IN_CGS;} // L_B is gradient length in cgs
-    double m_heavy_carrier_eff = m_ion*PROTONMASS_CGS; // for our simple chemistry, this is what we get if we exclude the grains from the calculation
-    m_heavy_carrier_eff = (xe*ELECTRONMASS_CGS + xi*m_ion*PROTONMASS_CGS + xg*fabs(Z_grain)*m_grain*PROTONMASS_CGS) / (xe+xi+xg*fabs(Z_grain)); // weighted average (with dust)
-    double vT_i_critical = sqrt((BOLTZMANN_CGS*temperature) / (2.*m_heavy_carrier_eff)); // critical thermal heavy-ion velocity above which the relevant expressions change
-    double xi_AbsZi_eff = (xe*xe + xi*xi + xg*xg*Z_grain*Z_grain) / (xe+xi+xg*fabs(Z_grain)); // weighted average number times Abs[charge] of the carriers
-    double L_crit = B_Gauss * C_LIGHT_CGS / (4.*M_PI*ELECTRONCHARGE_CGS * n_eff*xi_AbsZi_eff * vT_i_critical); // critical gradient length above which the derivation is internally consistent and drifts will be sub-thermal
-    if(L_B < 40.*L_crit) {eta_ohmic += (C_LIGHT_CGS*L_crit*units_cgs_to_code) * exp(-L_B/L_crit);} // factor to represent boosted ohmic to diffuse when exceed critical limit
-    double vslip = eta_ad/L_B, oneplus_vslip_vTi = 1. + vslip/vT_i_critical; // slip velocity of neutrals relative to charged flow. only relevant when the AD term dominates
-    if(oneplus_vslip_vTi > 1.) {eta_ohmic*=oneplus_vslip_vTi; eta_hall/=oneplus_vslip_vTi*oneplus_vslip_vTi; eta_ad/=oneplus_vslip_vTi;} // minimal correction based on superthermal slip velocity
-    // to check: weighting of m_heavy_carrier_eff [include dust or not], and whether vT_i_critical in the vslip term should be in terms of the ion or neutral sound speed.
+    double xi_AbsZi_eff = (xe*beta_e + xi*beta_i + xg*fabs(Z_grain)*beta_g) / (beta_e + beta_i + beta_g); // weighted mean xi_qi to use
+    double psi_n = (xe/(1.+beta_e) + xi/(1.+beta_i) + xg*fabs(Z_grain)/(1.+beta_g)) / (xe+xi+xg*fabs(Z_grain)); // coupling parameter for weight of neutrals in effective speed
+    double m_carrier_weighted = PROTONMASS_CGS * (xe*ELECTRONMASS_CGS/PROTONMASS_CGS + xi*m_ion + xg*fabs(Z_grain)*m_grain + psi_n*m_neutral); // effective weight of the dragged carriers for speeds below
+    double vT_crit = sqrt( BOLTZMANN_CGS*temperature * (xe + xi + xg*fabs(Z_grain) + psi_n) / m_carrier_weighted ); // salient thermal speed for superthermal drift
+    double vA_crit = B_Gauss / sqrt(4.*M_PI*m_carrier_weighted*n_eff); // effective Alfven speed to compare as well
+    double vT_an = DMIN(vT_crit, vA_crit); // speed for anomalous term to kick on
+    double vdrift_mag = ((B_Gauss / L_B) * C_LIGHT_CGS) / (4.*M_PI*ELECTRONCHARGE_CGS * n_eff * xi_AbsZi_eff), vslip_mag = eta_A/L_B, epstein_corr = sqrt(1. + (vdrift_mag*vdrift_mag + vslip_mag*vslip_mag)/(vT_crit*vT_crit));
+    double eta_an = (eta_prefac * units_cgs_to_code / xi_AbsZi_eff) * sqrt(1. + 4.*M_PI*C_LIGHT_CGS*C_LIGHT_CGS*ELECTRONMASS_CGS*n_eff*xe/(B_Gauss*B_Gauss)); // anomalous resistivity, set to max of either gyro frequency or electron plasma frequency (dust plasma frequency should be lower unless in dusty plasma regime, where behavior is much more complicated
+    if(vdrift_mag > vT_an/40.) {eta_ohmic += eta_an * exp(-vT_an/vdrift_mag);} // factor to represent boosted ohmic to diffuse when exceed critical limit
+    eta_ohmic*=epstein_corr; eta_ad/=epstein_corr; // epstein-type correction for superthermal drift or slip
 #endif
     SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
     SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */
