@@ -1,333 +1,45 @@
-./solids/grain_physics.c:                            for(k=0;k<3;k++) {flux_i[k] = -SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k]; flux_mag+=flux_i[k]*flux_i[k];}
-./solids/elastic_physics.c:        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {dv0[j][k] = SphP[i].Gradients.Velocity[j][k];}}
-./eos/eos.c:        double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    for(k=0;k<3;k++) {b0[k]=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; B2+=b0[k]*b0[k];} // just assume equilibrium here, convert to physical units, pick arbitrary direction here //
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            int mk; for(mk=0;mk<3;mk++) {p0[mk] += SphP[target].Gradients.CosmicRayPressure[k][mk] * fac_dXdlnR * All.cf_a3inv/All.cf_atime;} // convert to appropriate physical units
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    e_CR=SphP[target].CosmicRayEnergyPred[k_CRegy]*vol_inv; for(k=0;k<3;k++) {p0[k]=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]*All.cf_a3inv/All.cf_atime;}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        for(i2=0;i2<3;i2++) {dv2_t += SphP[i].Gradients.Velocity[i1][i2]*SphP[i].Gradients.Velocity[i1][i2];}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        for(i2=0;i2<3;i2++) {db2_t += SphP[i].Gradients.B[i1][i2]*SphP[i].Gradients.B[i1][i2];}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        dv2_t = sqrt((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) *
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) *
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) + (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2]) * (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) - (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv;
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        db2_t = sqrt((1./2.)*((SphP[i].Gradients.B[1][0]+SphP[i].Gradients.B[0][1]) * (SphP[i].Gradients.B[1][0]+SphP[i].Gradients.B[0][1]) +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (SphP[i].Gradients.B[2][0]+SphP[i].Gradients.B[0][2]) * (SphP[i].Gradients.B[2][0]+SphP[i].Gradients.B[0][2]) +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (SphP[i].Gradients.B[2][1]+SphP[i].Gradients.B[1][2]) * (SphP[i].Gradients.B[2][1]+SphP[i].Gradients.B[1][2])) +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            (2./3.)*((SphP[i].Gradients.B[0][0]*SphP[i].Gradients.B[0][0] + SphP[i].Gradients.B[1][1]*SphP[i].Gradients.B[1][1] +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            SphP[i].Gradients.B[2][2]*SphP[i].Gradients.B[2][2]) - (SphP[i].Gradients.B[1][1]*SphP[i].Gradients.B[2][2] +
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            SphP[i].Gradients.B[0][0]*SphP[i].Gradients.B[1][1] + SphP[i].Gradients.B[0][0]*SphP[i].Gradients.B[2][2]))) * All.cf_a3inv;
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        double ni_m3=f_ion*(rho_cgs/PROTONMASS_CGS)/1.e-3, T6=temperature/1.e6, Lturbkpc=L_scale*UNIT_LENGTH_IN_KPC, Lgradkpc=CRPressureGradScaleLength*UNIT_LENGTH_IN_KPC, h0_fac=0.1*Get_Particle_Size(i)*All.cf_atime*All.cf_a2inv*UNIT_VEL_IN_KMS, dv2_10=0; for(k=0;k<3;k++) {int j; for(j=0;j<3;j++) {dv2_10 += SphP[i].Gradients.Velocity[j][k]*SphP[i].Gradients.Velocity[j][k]*h0_fac*h0_fac;}}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    int k; for(k=0;k<3;k++) {CRPressureGradMag += SphP[i].Gradients.CosmicRayPressure[k_CRegy][k]*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    double B2_tot=0.0, b=0; CRPressureGradMag=0; for(k=0;k<3;k++) {b=Get_Gas_BField(i,k); B2_tot+=b*b; CRPressureGradMag+=b*SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // note, this is signed!
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        for(k=0;k<3;k++) {DtCosmicRayFlux[k] = SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        for(k=0;k<3;k++) {int k2; for(k2=0;k2<3;k2++) {bbGB += -bhat[k]*bhat[k2]*SphP[i].Gradients.B[k][k2]/Bmag;}}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        //double fac_bv=0; for(k=0;k<3;k++) {fac_bv += All.cf_a2inv * bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        double dir[3]; int k; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:            double dir[3]; for(k=0;k<3;k++) {dir[k] = -SphP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    for(k=0;k<3;k++) {int k2; for(k2=0;k2<3;k2++) {bbGv += bhat[k]*bhat[k2]*SphP[target].Gradients.Velocity[k][k2] * All.cf_a2inv / UNIT_TIME_IN_CGS;}} // bhat bhat : grad u -> needed to obtain double-dot-product appropriately
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:        double f_0=SphP[target].CosmicRayFluxPred[k_CRegy][m], g_0=SphP[target].Gradients.CosmicRayPressure[k_CRegy][m], B_0=f_0;
-./eos/cosmic_ray_fluid/cosmic_ray_utilities.c:    double kappa=SphP[target].CosmicRayDiffusionCoeff[k_CRegy], Lgrad_inv=0, P=0; for(k=0;k<3;k++) {P=SphP[target].Gradients.CosmicRayPressure[k_CRegy][k]; Lgrad_inv+=P*P;}
-./eos/cosmic_ray_fluid/cosmic_ray_diffusion.h:        double *grad_i = local.Gradients.CosmicRayPressure[k_CRegy]; // units = E/[L_comoving^4]
-./eos/cosmic_ray_fluid/cosmic_ray_diffusion.h:        double *grad_j = SphP[j].Gradients.CosmicRayPressure[k_CRegy];
-./eos/cosmic_ray_fluid/cosmic_ray_alfven.c:    r_turb_driving = 0; for(k=0;k<3;k++) {r_turb_driving += SphP[i].Gradients.Pressure[k]*SphP[i].Gradients.Pressure[k];} // compute gradient magnitude
-./eos/cosmic_ray_fluid/cosmic_ray_alfven.c:    fac=0; for(k=0;k<3;k++) {fac += All.cf_a2inv * bhat[k] * (bhat[0]*SphP[i].Gradients.Velocity[k][0] + bhat[1]*SphP[i].Gradients.Velocity[k][1] + bhat[2]*SphP[i].Gradients.Velocity[k][2]);}
-./eos/cosmic_ray_fluid/cosmic_ray_alfven.c:        double h=Get_Particle_Size(i)*All.cf_atime; int k2; for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {Min_Egy+=SphP[i].Gradients.B[k][k2]*SphP[i].Gradients.B[k][k2];}}
-./eos/cosmic_ray_fluid/cosmic_ray_alfven.c:    flux_G=0; for(k=0;k<3;k++) {flux_G += bhat[k] * SphP[i].Gradients.CosmicRayPressure[k_CRegy][k];} // b.gradient[P] -- flux source term
-./eos/cosmic_ray_fluid/cosmic_ray_alfven.c:        for(i2=0;i2<3;i2++) {dv2_t += SphP[i].Gradients.Velocity[i1][i2]*SphP[i].Gradients.Velocity[i1][i2]; db2_t += SphP[i].Gradients.B[i1][i2]*SphP[i].Gradients.B[i1][i2];}
-./kicks.c:            if(SphP[i].FaceClosureError > 0) {double drho2=0; int k; for(k=0;k<3;k++) {drho2+=SphP[i].Gradients.Density[k]*SphP[i].Gradients.Density[k];} /* the evolved density evolves back to the explicit density on a relaxation time of order the sound-crossing or tension wave-crossing time across the density gradient length */
-./sidm/dm_fuzzy_flux_computation.h:        igrad[k] = fac_g * local.AGS_Gradients_Density[k];
-./sidm/dm_fuzzy_flux_computation.h:        jgrad[k] = fac_g * P[j].AGS_Gradients_Density[k];
-./sidm/dm_fuzzy_flux_computation.h:            i2grad[k][m] = fac_g2 * local.AGS_Gradients2_Density[k][m];
-./sidm/dm_fuzzy_flux_computation.h:            j2grad[k][m] = fac_g2 * P[j].AGS_Gradients2_Density[k][m];
-./sidm/dm_fuzzy_flux_computation.h:                                        local.AGS_Psi_Re, local.AGS_Gradients_Psi_Re, local.AGS_Gradients2_Psi_Re,
-./sidm/dm_fuzzy_flux_computation.h:                                        P[j].AGS_Gradients_Psi_Re, P[j].AGS_Gradients2_Psi_Re, dp);
-./sidm/dm_fuzzy_flux_computation.h:                                        local.AGS_Psi_Im, local.AGS_Gradients_Psi_Im, local.AGS_Gradients2_Psi_Im,
-./sidm/dm_fuzzy_flux_computation.h:                                        P[j].AGS_Gradients_Psi_Im, P[j].AGS_Gradients2_Psi_Im, dp);
-./sidm/dm_fuzzy.c:        double d2rho = P[i].AGS_Gradients2_Density[0][0] + P[i].AGS_Gradients2_Density[1][1] + P[i].AGS_Gradients2_Density[2][2]; // laplacian
-./sidm/dm_fuzzy.c:        double drho2 = P[i].AGS_Gradients_Density[0]*P[i].AGS_Gradients_Density[0] + P[i].AGS_Gradients_Density[1]*P[i].AGS_Gradients_Density[1] + P[i].AGS_Gradients_Density[2]*P[i].AGS_Gradients_Density[2];
-./sidm/dm_fuzzy.c: AGS_Gradients_Density needed to actually compute the quantum pressure tensor
-./sidm/dm_fuzzy.c:struct Quantities_for_Gradients_DM
-./sidm/dm_fuzzy.c:    MyDouble AGS_Density, AGS_Gradients_Density[3];
-./sidm/dm_fuzzy.c:    MyDouble AGS_Psi_Re, AGS_Gradients_Psi_Re[3], AGS_Psi_Im, AGS_Gradients_Psi_Im[3];
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM Maxima;
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM Minima;
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM GQuant;
-./sidm/dm_fuzzy.c:    for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
-./sidm/dm_fuzzy.c:    for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Re[k] = P[i].AGS_Gradients_Psi_Re[k];}
-./sidm/dm_fuzzy.c:    for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Psi_Im[k] = P[i].AGS_Gradients_Psi_Im[k];}
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM Gradients[3];
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM Maxima;
-./sidm/dm_fuzzy.c:    struct Quantities_for_Gradients_DM Minima;
-./sidm/dm_fuzzy.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
-./sidm/dm_fuzzy.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Re[k],out->Gradients[k].AGS_Psi_Re,mode);}
-./sidm/dm_fuzzy.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Im[k],out->Gradients[k].AGS_Psi_Im,mode);}
-./sidm/dm_fuzzy.c:            MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],out->Maxima.AGS_Gradients_Density[k],mode);
-./sidm/dm_fuzzy.c:            MIN_ADD(DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],out->Minima.AGS_Gradients_Density[k],mode);
-./sidm/dm_fuzzy.c:            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Density[k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
-./sidm/dm_fuzzy.c:            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Re[k2][k],out->Gradients[k].AGS_Gradients_Psi_Re[k2],mode);}
-./sidm/dm_fuzzy.c:            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Im[k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
-./sidm/dm_fuzzy.c:                    for(k=0;k<3;k++) {out.Gradients[k].AGS_Density += -kernel.wk_i * kernel.dp[k] * d_rho;} /* sign is important here! */
-./sidm/dm_fuzzy.c:                    for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Re += -kernel.wk_i * kernel.dp[k] * d_rho;}
-./sidm/dm_fuzzy.c:                    for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Im += -kernel.wk_i * kernel.dp[k] * d_rho;}
-./sidm/dm_fuzzy.c:                        d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
-./sidm/dm_fuzzy.c:                        MINMAX_CHECK(d_grad_rho,out.Minima.AGS_Gradients_Density[k],out.Maxima.AGS_Gradients_Density[k]);
-./sidm/dm_fuzzy.c:                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-./sidm/dm_fuzzy.c:                        d_grad_rho = P[j].AGS_Gradients_Psi_Re[k] - local.GQuant.AGS_Gradients_Psi_Re[k];
-./sidm/dm_fuzzy.c:                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Re[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-./sidm/dm_fuzzy.c:                        d_grad_rho = P[j].AGS_Gradients_Psi_Im[k] - local.GQuant.AGS_Gradients_Psi_Im[k];
-./sidm/dm_fuzzy.c:                        for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Im[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-./sidm/dm_fuzzy.c:                construct_gradient_DMGrad(P[i].AGS_Gradients_Density,i);
-./sidm/dm_fuzzy.c:                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Re,i);
-./sidm/dm_fuzzy.c:                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Im,i);
-./sidm/dm_fuzzy.c:                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Density[k],i);
-./sidm/dm_fuzzy.c:                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Re[k],i);
-./sidm/dm_fuzzy.c:                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Im[k],i);
-./sidm/dm_fuzzy.c:                    tmp = 0.5 * (P[i].AGS_Gradients2_Density[k0[k]][k1[k]] + P[i].AGS_Gradients2_Density[k1[k]][k0[k]]);
-./sidm/dm_fuzzy.c:                    P[i].AGS_Gradients2_Density[k0[k]][k1[k]] = P[i].AGS_Gradients2_Density[k1[k]][k0[k]] = tmp;
-./sidm/dm_fuzzy.c:                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]]);
-./sidm/dm_fuzzy.c:                    P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]] = tmp;
-./sidm/dm_fuzzy.c:                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]]);
-./sidm/dm_fuzzy.c:                    P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]] = tmp;
-./hydro/nonideal_mhd.h:            double tmp_grad_A = 0.5*(local.Gradients.B[k_xyz_A][k_xyz_B] + SphP[j].Gradients.B[k_xyz_A][k_xyz_B]); // construct averaged slopes //
-./hydro/nonideal_mhd.h:            double tmp_grad_B = 0.5*(local.Gradients.B[k_xyz_B][k_xyz_A] + SphP[j].Gradients.B[k_xyz_B][k_xyz_A]);
-./hydro/nonideal_mhd.h:            for(k2=0;k2<3;k2++) {grad_dot_x_ij[k] += 0.5*(local.Gradients.B[k][k2]+SphP[j].Gradients.B[k][k2]) * kernel.dp[k2];}
-./hydro/conduction.h:        double *grad_i = local.Gradients.InternalEnergy;  // physical u / code length
-./hydro/conduction.h:        double *grad_j = SphP[j].Gradients.InternalEnergy;
-./hydro/gradients.c:struct Quantities_for_Gradients
-./hydro/gradients.c:    struct Quantities_for_Gradients GQuant;
-./hydro/gradients.c:    struct Quantities_for_Gradients Gradients[3];
-./hydro/gradients.c:    struct Quantities_for_Gradients Maxima;
-./hydro/gradients.c:    struct Quantities_for_Gradients Minima;
-./hydro/gradients.c:    struct Quantities_for_Gradients Maxima;
-./hydro/gradients.c:    struct Quantities_for_Gradients Minima;
-./hydro/gradients.c:    MyFloat Gradients_Rad_E_gamma[N_RT_FREQ_BINS][3];
-./hydro/gradients.c:    if(gradient_iteration > 0) {if(SphP[i].FlagForConstrainedGradients <= 0) {in->Mass = 0;}}
-./hydro/gradients.c:            in->BGrad[j][k] = SphP[i].Gradients.B[j][k];
-./hydro/gradients.c:        in->PhiGrad[j] = SphP[i].Gradients.Phi[j];
-./hydro/gradients.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].PhiGrad[k],out->Gradients[k].Phi,mode);}
-./hydro/gradients.c:                ASSIGN_ADD_PRESET(GasGradDataPasser[i].GradVelocity_bar[j][k], out->Gradients[k].Velocity_bar[j], mode);
-./hydro/gradients.c:            ASSIGN_ADD_PRESET(SphP[i].Gradients.Density[k],out->Gradients[k].Density,mode);
-./hydro/gradients.c:            ASSIGN_ADD_PRESET(SphP[i].Gradients.Pressure[k],out->Gradients[k].Pressure,mode);
-./hydro/gradients.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.InternalEnergy[k],out->Gradients[k].InternalEnergy,mode);}
-./hydro/gradients.c:            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.CosmicRayPressure[j][k],out->Gradients[k].CosmicRayPressure[j],mode);}
-./hydro/gradients.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.SoundSpeed[k],out->Gradients[k].SoundSpeed,mode);}
-./hydro/gradients.c:            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Velocity[j][k],out->Gradients[k].Velocity[j],mode);}
-./hydro/gradients.c:                ASSIGN_ADD_PRESET(GasGradDataPasser[i].BGrad[j][k],out->Gradients[k].B[j],mode);
-./hydro/gradients.c:                ASSIGN_ADD_PRESET(SphP[i].Gradients.B[j][k],out->Gradients[k].B[j],mode);
-./hydro/gradients.c:        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Phi[k],out->Gradients[k].Phi,mode);}
-./hydro/gradients.c:            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SphP[i].Gradients.Metallicity[j][k],out->Gradients[k].Metallicity[j],mode);}
-./hydro/gradients.c:            for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].Gradients_Rad_E_gamma[j][k],out->Gradients[k].Rad_E_gamma[j],mode);}
-./hydro/gradients.c:        					SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k_xyz] += SphP[i].NV_T[j_xyz][i_xyz] * out->Gradients[i_xyz].Rad_E_gamma_ET[k_freq][k_et_loop[j_xyz]];
-./hydro/gradients.c:                SphP[i].Gradients.Density[k] = 0;
-./hydro/gradients.c:                SphP[i].Gradients.Pressure[k] = 0;
-./hydro/gradients.c:                for(k2=0;k2<3;k2++) {SphP[i].Gradients.Velocity[k2][k] = 0;}
-./hydro/gradients.c:                SphP[i].Gradients.InternalEnergy[k] = 0;
-./hydro/gradients.c:                for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[i].Gradients.CosmicRayPressure[k2][k] = 0;}
-./hydro/gradients.c:                SphP[i].Gradients.SoundSpeed[k] = 0;
-./hydro/gradients.c:                for(k2=0;k2<3;k2++) {SphP[i].Gradients.B[k2][k] = 0;}
-./hydro/gradients.c:                SphP[i].Gradients.Phi[k] = 0;
-./hydro/gradients.c:                for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[i].Gradients.Metallicity[k2][k] = 0;}
-./hydro/gradients.c:                for(k2=0;k2<N_RT_FREQ_BINS;k2++) {SphP[i].Gradients.Rad_E_gamma_ET[k2][k] = 0;}
-./hydro/gradients.c:                SphP[i].FlagForConstrainedGradients = 1;
-./hydro/gradients.c:                        SphP[i].Gradients.B[k][k1] = GasGradDataPasser[i].BGrad[k][k1];
-./hydro/gradients.c:                for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
-./hydro/gradients.c:                    for(k1=0;k1<3;k1++) {dbgrad += 2.*dh * fabs(b0*SphP[i].Gradients.B[k][k1]);}
-./hydro/gradients.c:                    double d_abs=0; for(k=0;k<3;k++) {d_abs += SphP[i].Gradients.B[k1][k]*SphP[i].Gradients.B[k1][k];}
-./hydro/gradients.c:                        if(c_eff < 1) {for(k=0;k<3;k++) {SphP[i].Gradients.B[k1][k] *= c_eff;}}
-./hydro/gradients.c:                        for(k=0;k<3;k++) {SphP[i].Gradients.B[k1][k]=0;}
-./hydro/gradients.c:                if(area > 0.5) {SphP[i].FlagForConstrainedGradients = 0;}
-./hydro/gradients.c:                if(SphP[i].ConditionNumber > 1000.) {SphP[i].FlagForConstrainedGradients = 0;}
-./hydro/gradients.c:                if(SHOULD_I_USE_SPH_GRADIENTS(SphP[i].ConditionNumber)) {SphP[i].FlagForConstrainedGradients = 0;} /* this must be here, since in this case the SPH gradients are used, which will not work with this method */
-./hydro/gradients.c:                if(SphP[i].FlagForConstrainedGradients == 1)
-./hydro/gradients.c:                            GB0[k][k1] = SphP[i].Gradients.B[k][k1];
-./hydro/gradients.c:                        SphP[i].FlagForConstrainedGradients = 0;
-./hydro/gradients.c:                                    asum += SphP[i].Gradients.B[k][k1] * GasGradDataPasser[i].FaceCrossX[k][k1];
-./hydro/gradients.c:                                    double grad_limiter_mag = (SphP[i].Gradients.B[k][k1] + ecorr[k][k1]) - GB0[k][k1];
-./hydro/gradients.c:                                    SphP[i].Gradients.B[k][k1] = GB0[k][k1] + nnorm*(SphP[i].Gradients.B[k][k1]+ecorr[k][k1] - GB0[k][k1]);
-./hydro/gradients.c:                                local_slopelimiter(SphP[i].Gradients.B[k],GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],0.25, PPP[i].Hsml, 0.25, 0, 0, 0);
-./hydro/gradients.c:                } // closes FlagForConstrainedGradients check
-./hydro/gradients.c:                for(k=0;k<3;k++) {SphP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
-./hydro/gradients.c:                construct_gradient(SphP[i].Gradients.Phi,i);
-./hydro/gradients.c:                local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,PPP[i].Hsml,0.0, 0, 0, 0);
-./hydro/gradients.c:            construct_gradient(SphP[i].Gradients.Density,i);
-./hydro/gradients.c:            construct_gradient(SphP[i].Gradients.Pressure,i);
-./hydro/gradients.c:            for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.Velocity[k],i);}
-./hydro/gradients.c:            construct_gradient(SphP[i].Gradients.InternalEnergy,i);
-./hydro/gradients.c:            for(k=0;k<N_CR_PARTICLE_BINS;k++) {construct_gradient(SphP[i].Gradients.CosmicRayPressure[k],i);}
-./hydro/gradients.c:            construct_gradient(SphP[i].Gradients.SoundSpeed,i);
-./hydro/gradients.c:            for(k=0;k<3;k++) {construct_gradient(SphP[i].Gradients.B[k],i);}
-./hydro/gradients.c:            construct_gradient(SphP[i].Gradients.Phi,i);
-./hydro/gradients.c:            for(k=0;k<NUM_METAL_SPECIES;k++) {construct_gradient(SphP[i].Gradients.Metallicity[k],i);}
-./hydro/gradients.c:            for(k=0;k<N_RT_FREQ_BINS;k++) {construct_gradient(GasGradDataPasser[i].Gradients_Rad_E_gamma[k],i);}
-./hydro/gradients.c:            for(k=0;k<3;k++) {P[i].GradRho[k] = SphP[i].Gradients.Density[k];}
-./hydro/gradients.c:            SphP[i].Vorticity[0] = SphP[i].Gradients.Velocity[1][2] - SphP[i].Gradients.Velocity[2][1];
-./hydro/gradients.c:            SphP[i].Vorticity[1] = SphP[i].Gradients.Velocity[2][0] - SphP[i].Gradients.Velocity[0][2];
-./hydro/gradients.c:            SphP[i].Vorticity[2] = SphP[i].Gradients.Velocity[0][1] - SphP[i].Gradients.Velocity[1][0];
-./hydro/gradients.c:                    GradBMag += SphP[i].Gradients.B[k][j]*SphP[i].Gradients.B[k][j];
-./hydro/gradients.c:            double divVel = All.cf_a2inv * fabs(SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[2][2]);
-./hydro/gradients.c:            CurlVel[0] = SphP[i].Gradients.Velocity[1][2] - SphP[i].Gradients.Velocity[2][1];
-./hydro/gradients.c:            CurlVel[1] = SphP[i].Gradients.Velocity[2][0] - SphP[i].Gradients.Velocity[0][2];
-./hydro/gradients.c:            CurlVel[2] = SphP[i].Gradients.Velocity[0][1] - SphP[i].Gradients.Velocity[1][0];
-./hydro/gradients.c:                for(k=0;k<3;k++) {du_conduction += SphP[i].Gradients.InternalEnergy[k] * SphP[i].Gradients.InternalEnergy[k];}
-./hydro/gradients.c:                        dv_magnitude += SphP[i].Gradients.Velocity[k][k1]*SphP[i].Gradients.Velocity[k][k1];
-./hydro/gradients.c:                        double_dot_dv += SphP[i].Gradients.Velocity[k][k1] * bhat[k]*bhat[k1] * All.cf_a2inv; // physical units
-./hydro/gradients.c:                        double R_ET = sqrt(SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][0] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][1] + SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2] * SphP[i].Gradients.Rad_E_gamma_ET[k_freq][2]) / (MIN_REAL_NUMBER + SphP[i].Rad_E_gamma_Pred[k_freq] * SphP[i].Density/(MIN_REAL_NUMBER+P[i].Mass));
-./hydro/gradients.c:                        for(k=0;k<3;k++) {SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k] = chifac_ot*SphP[i].Gradients.Rad_E_gamma_ET[k_freq][k] + chifac_iso/3.*GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq][k];}
-./hydro/gradients.c:                    eddington_tensor_dot_vector(SphP[i].ET[k_freq],GasGradDataPasser[i].Gradients_Rad_E_gamma[k_freq],SphP[i].Gradients.Rad_E_gamma_ET[k_freq]);
-./hydro/gradients.c:            local_slopelimiter(SphP[i].Gradients.Density,GasGradDataPasser[i].Maxima.Density,GasGradDataPasser[i].Minima.Density,a_limiter,h_lim,0, 1,d_max,SphP[i].Density);
-./hydro/gradients.c:            local_slopelimiter(SphP[i].Gradients.Pressure,GasGradDataPasser[i].Maxima.Pressure,GasGradDataPasser[i].Minima.Pressure,a_limiter,h_lim,stol, pressure_is_positive_definite,d_max,SphP[i].Pressure);
-./hydro/gradients.c:            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.Velocity[k1],GasGradDataPasser[i].Maxima.Velocity[k1],GasGradDataPasser[i].Minima.Velocity[k1],a_limiter,h_lim,stol_tmp, 0,0,0);}
-./hydro/gradients.c:            local_slopelimiter(SphP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp, 1,d_max,SphP[i].InternalEnergyPred);
-./hydro/gradients.c:                local_slopelimiter(SphP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Gas_CosmicRayPressure(i,k1));
-./hydro/gradients.c:            local_slopelimiter(SphP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol, 1,d_max,Get_Gas_effective_soundspeed_i(i));
-./hydro/gradients.c:            for(k1=0;k1<NUM_METAL_SPECIES;k1++) {local_slopelimiter(SphP[i].Gradients.Metallicity[k1],GasGradDataPasser[i].Maxima.Metallicity[k1],GasGradDataPasser[i].Minima.Metallicity[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,P[i].Metallicity[k1]);}
-./hydro/gradients.c:                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
-./hydro/gradients.c:                local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],DMAX(1.,a_limiter),DMAX(h_lim,d_max),0, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
-./hydro/gradients.c:                local_slopelimiter(SphP[i].Gradients.Rad_E_gamma_ET[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,stol, 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
-./hydro/gradients.c:                local_slopelimiter(GasGradDataPasser[i].Gradients_Rad_E_gamma[k1],GasGradDataPasser[i].Maxima.Rad_E_gamma[k1],GasGradDataPasser[i].Minima.Rad_E_gamma[k1],a_limiter,h_lim,DMAX(stol,stol_diffusion), 1,d_max,SphP[i].Rad_E_gamma_Pred[k1]*SphP[i].Density/P[i].Mass);
-./hydro/gradients.c:            for(k1=0;k1<3;k1++) {local_slopelimiter(SphP[i].Gradients.B[k1],GasGradDataPasser[i].Maxima.B[k1],GasGradDataPasser[i].Minima.B[k1],alim2,h_lim,stol_tmp, 0,0,0);}
-./hydro/gradients.c:            local_slopelimiter(SphP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,h_lim,stol, 0,0,0);
-./hydro/gradients.c:                    double shear_factor = sqrt((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) *
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) *
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2]) *
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-./hydro/gradients.c:                                               (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
-./hydro/gradients.c:                                                         SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
-./hydro/gradients.c:                                                         SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
-./hydro/gradients.c:                                                        (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
-./hydro/gradients.c:                                                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
-./hydro/gradients.c:                                                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2])));
-./hydro/gradients.c:                        db_c += 0.5 * SphP[j].Gradients.B[k][k2] * kernel.dp[k2];
-./hydro/gradients.c:                    dphi_grad_j += 0.5 * kernel.dp[k] * SphP[j].Gradients.Phi[k];
-./hydro/gradients.c:                if(gradient_iteration == 0) {for(k=0;k<3;k++) {out.Gradients[k].Phi += dphi_j * kernel.dp[k];}} else {for(k=0;k<3;k++) {out_iter.PhiGrad[k] += dphi_j * kernel.dp[k];}}
-./hydro/gradients.c:                            out.Gradients[k].Density += wk_xyz_i * d_rho;
-./hydro/gradients.c:                            out.Gradients[k].Pressure += wk_xyz_i * dp;
-./hydro/gradients.c:                            for(k2=0;k2<3;k2++) {out.Gradients[k].Velocity[k2] += wk_xyz_i * dv[k2];}
-./hydro/gradients.c:                            for (k2 = 0; k2 < 3; k2++) {out.Gradients[k].Velocity_bar[k2] += wk_xyz_i * dv_bar[k2];}
-./hydro/gradients.c:                            out.Gradients[k].InternalEnergy += wk_xyz_i * du;
-./hydro/gradients.c:                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {out.Gradients[k].CosmicRayPressure[k2] += wk_xyz_i * dpCR[k2];}
-./hydro/gradients.c:                            out.Gradients[k].SoundSpeed += wk_xyz_i * dc;
-./hydro/gradients.c:                            for(k2=0;k2<3;k2++) {out.Gradients[k].B[k2] += wk_xyz_i * dB[k2];}
-./hydro/gradients.c:                            out.Gradients[k].Phi += wk_xyz_i * dphi;
-./hydro/gradients.c:                            for(k2=0;k2<NUM_METAL_SPECIES;k2++) {out.Gradients[k].Metallicity[k2] += wk_xyz_i * dmetal[k2];}
-./hydro/gradients.c:                            	out.Gradients[k].Rad_E_gamma[k2] += wk_xyz_i * dn[k2];
-./hydro/gradients.c:                            	int k_et; for(k_et=0;k_et<6;k_et++) out.Gradients[k].Rad_E_gamma_ET[k2][k_et] += wk_xyz_i * dnET[k2][k_et];
-./hydro/gradients.c:                            SphP[j].Gradients.Density[k] += wk_xyz_j * d_rho;
-./hydro/gradients.c:                            SphP[j].Gradients.Pressure[k] += wk_xyz_j * dp;
-./hydro/gradients.c:                            for(k2=0;k2<3;k2++) {SphP[j].Gradients.Velocity[k2][k] += wk_xyz_j * dv[k2];}
-./hydro/gradients.c:                            SphP[j].Gradients.InternalEnergy[k] += wk_xyz_j * du;
-./hydro/gradients.c:                            for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {SphP[j].Gradients.CosmicRayPressure[k2][k] += wk_xyz_j * dpCR[k2];}
-./hydro/gradients.c:                            SphP[j].Gradients.SoundSpeed[k] += wk_xyz_j * dc;
-./hydro/gradients.c:                            for(k2=0;k2<3;k2++) {SphP[j].Gradients.B[k2][k] += wk_xyz_j * dB[k2];}
-./hydro/gradients.c:                            SphP[j].Gradients.Phi[k] += wk_xyz_j * dphi;
-./hydro/gradients.c:                            for(k2=0;k2<NUM_METAL_SPECIES;k2++) {SphP[j].Gradients.Metallicity[k2][k] += wk_xyz_j * dmetal[k2];}
-./hydro/gradients.c:                            	GasGradDataPasser[j].Gradients_Rad_E_gamma[k2][k] += wk_xyz_j * dn[k2];
-./hydro/gradients.c:										SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k_xyz] += SphP[j].NV_T[j_xyz][i_xyz] * wk_xyz_j * dnET[k_freq][k_et_loop[j_xyz]];
-./hydro/hydro_core_meshless.h:        reconstruct_face_states(rho_i, local.Gradients.Density, rho_j, SphP[j].Gradients.Density,
-./hydro/hydro_core_meshless.h:        reconstruct_face_states(P_i, local.Gradients.Pressure, P_j, SphP[j].Gradients.Pressure,
-./hydro/hydro_core_meshless.h:        reconstruct_face_states(local.InternalEnergyPred, local.Gradients.InternalEnergy, SphP[j].InternalEnergyPred, SphP[j].Gradients.InternalEnergy,
-./hydro/hydro_core_meshless.h:        reconstruct_face_states(kernel.sound_i, local.Gradients.SoundSpeed, kernel.sound_j, SphP[j].Gradients.SoundSpeed,
-./hydro/hydro_core_meshless.h:            reconstruct_face_states(local.Vel[k], local.Gradients.Velocity[k], VelPred_j[k], SphP[j].Gradients.Velocity[k],
-./hydro/hydro_core_meshless.h:        if((local.ConditionNumber < 0) || (SphP[j].FlagForConstrainedGradients == 0)) {slim_mode = 1;} else {slim_mode = -1;}
-./hydro/hydro_core_meshless.h:            reconstruct_face_states(local.BPred[k], local.Gradients.B[k], BPred_j[k], SphP[j].Gradients.B[k],
-./hydro/hydro_core_meshless.h:        reconstruct_face_states(local.PhiPred, local.Gradients.Phi, PhiPred_j, SphP[j].Gradients.Phi,
-./hydro/hydro_core_meshless.h:            Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];
-./hydro/hydro_core_meshless.h:            Riemann_vec.L.rho -= dt_half * SphP[j].Density * SphP[j].Gradients.Velocity[k][k];
-./hydro/hydro_core_meshless.h:            Riemann_vec.R.p -= dt_half * GAMMA(j) * Pressure_i * local.Gradients.Velocity[k][k];
-./hydro/hydro_core_meshless.h:            Riemann_vec.L.p -= dt_half * GAMMA(j) * Pressure_j * SphP[j].Gradients.Velocity[k][k];
-./hydro/hydro_core_meshless.h:            double dv_l_half = -dt_half * local.Gradients.Pressure[k] / local.Density;
-./hydro/hydro_core_meshless.h:            double dv_r_half = -dt_half * SphP[j].Gradients.Pressure[k] / SphP[j].Density;
-./hydro/viscosity.h:                    double grad_v = wt_i*local.Gradients.Velocity[k_v][k]+wt_j*SphP[j].Gradients.Velocity[k_v][k];
-./hydro/viscosity.h:                divv_i += local.Gradients.Velocity[k][k];
-./hydro/viscosity.h:                divv_j += SphP[j].Gradients.Velocity[k][k];
-./hydro/viscosity.h:            double Pxx = 2*(wt_i*local.Gradients.Velocity[0][0]+wt_j*SphP[j].Gradients.Velocity[0][0]) + divv;
-./hydro/viscosity.h:            double Pyy = 2*(wt_i*local.Gradients.Velocity[1][1]+wt_j*SphP[j].Gradients.Velocity[1][1]) + divv;
-./hydro/viscosity.h:            double Pzz = 2*(wt_i*local.Gradients.Velocity[2][2]+wt_j*SphP[j].Gradients.Velocity[2][2]) + divv;
-./hydro/viscosity.h:            double Pxy = wt_i*(local.Gradients.Velocity[0][1]+local.Gradients.Velocity[1][0]) +
-./hydro/viscosity.h:                         wt_j*(SphP[j].Gradients.Velocity[0][1]+SphP[j].Gradients.Velocity[1][0]);
-./hydro/viscosity.h:            double Pxz = wt_i*(local.Gradients.Velocity[0][2]+local.Gradients.Velocity[2][0]) +
-./hydro/viscosity.h:                         wt_j*(SphP[j].Gradients.Velocity[0][2]+SphP[j].Gradients.Velocity[2][0]);
-./hydro/viscosity.h:            double Pyz = wt_i*(local.Gradients.Velocity[1][2]+local.Gradients.Velocity[2][1]) +
-./hydro/viscosity.h:                         wt_j*(SphP[j].Gradients.Velocity[1][2]+SphP[j].Gradients.Velocity[2][1]);
-./hydro/hydro_toplevel.c:    } Gradients;
-./hydro/hydro_toplevel.c:    if(SphP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
-./hydro/hydro_toplevel.c:        in->Gradients.Density[k] = SphP[i].Gradients.Density[k];
-./hydro/hydro_toplevel.c:        in->Gradients.Pressure[k] = SphP[i].Gradients.Pressure[k];
-./hydro/hydro_toplevel.c:        for(j=0;j<3;j++) {in->Gradients.Velocity[j][k] = SphP[i].Gradients.Velocity[j][k];}
-./hydro/hydro_toplevel.c:        for(j=0;j<3;j++) {in->Gradients.B[j][k] = SphP[i].Gradients.B[j][k];}
-./hydro/hydro_toplevel.c:        in->Gradients.Phi[k] = SphP[i].Gradients.Phi[k];
-./hydro/hydro_toplevel.c:        for(j=0;j<N_CR_PARTICLE_BINS;j++) {in->Gradients.CosmicRayPressure[j][k] = SphP[i].Gradients.CosmicRayPressure[j][k];}
-./hydro/hydro_toplevel.c:        for(j=0;j<NUM_METAL_SPECIES;j++) {in->Gradients.Metallicity[j][k] = SphP[i].Gradients.Metallicity[j][k];}
-./hydro/hydro_toplevel.c:        in->Gradients.InternalEnergy[k] = SphP[i].Gradients.InternalEnergy[k];
-./hydro/hydro_toplevel.c:        in->Gradients.SoundSpeed[k] = SphP[i].Gradients.SoundSpeed[k];
-./hydro/hydro_toplevel.c:        for(j=0;j<N_RT_FREQ_BINS;j++) {in->Gradients.Rad_E_gamma_ET[j][k] = SphP[i].Gradients.Rad_E_gamma_ET[j][k];}
-./hydro/hydro_toplevel.c:                for(m=0;m<3;m++) {gradpcr[m] = SphP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime);}
-./allvars.h:    MyFloat AGS_Gradients_Density[3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-./allvars.h:    MyFloat AGS_Gradients2_Density[3][3];   /*!< density gradient calculated corresponding to AGS routine (over interacting DM neighbors) */
-./allvars.h:    MyFloat AGS_Gradients_Psi_Re[3];
-./allvars.h:    MyFloat AGS_Gradients2_Psi_Re[3][3];
-./allvars.h:    MyFloat AGS_Gradients_Psi_Im[3];
-./allvars.h:    MyFloat AGS_Gradients2_Psi_Im[3][3];
-./allvars.h:    CBE_basis_moments_Gradients[CBE_INTEGRATOR_NBASIS][3]; /* gradients of the scalar weight of each basis function */
-./allvars.h:    int FlagForConstrainedGradients;/*!< flag indicating whether the B-field gradient is a 'standard' one or the constrained-divB version */
-./allvars.h:    } Gradients;
-./galaxy_sf/sfr_eff.c:    dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) +
-./galaxy_sf/sfr_eff.c:                        (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) +
-./galaxy_sf/sfr_eff.c:                        (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-./galaxy_sf/sfr_eff.c:               (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] +
-./galaxy_sf/sfr_eff.c:                         SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] +
-./galaxy_sf/sfr_eff.c:                         SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) -
-./galaxy_sf/sfr_eff.c:                        (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] +
-./galaxy_sf/sfr_eff.c:                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] +
-./galaxy_sf/sfr_eff.c:                         SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-./galaxy_sf/sfr_eff.c:            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-./galaxy_sf/sfr_eff.c:            double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-./galaxy_sf/sfr_eff.c:                                dv2_abs = ((1./2.)*((SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1])*(SphP[i].Gradients.Velocity[1][0]+SphP[i].Gradients.Velocity[0][1]) // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
-./galaxy_sf/sfr_eff.c:                                                    + (SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2])*(SphP[i].Gradients.Velocity[2][0]+SphP[i].Gradients.Velocity[0][2]) + (SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2])) +
-./galaxy_sf/sfr_eff.c:                                           (2./3.)*((SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[2][2]*SphP[i].Gradients.Velocity[2][2]) - (SphP[i].Gradients.Velocity[1][1]*SphP[i].Gradients.Velocity[2][2] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[1][1] + SphP[i].Gradients.Velocity[0][0]*SphP[i].Gradients.Velocity[2][2]))) * All.cf_a2inv*All.cf_a2inv;
-./gravity/ags_hsml.c:    double AGS_Gradients_Density[3], AGS_Gradients2_Density[3][3], AGS_Numerical_QuantumPotential;
-./gravity/ags_hsml.c:    double AGS_Psi_Re, AGS_Gradients_Psi_Re[3], AGS_Gradients2_Psi_Re[3][3];
-./gravity/ags_hsml.c:    double AGS_Psi_Im, AGS_Gradients_Psi_Im[3], AGS_Gradients2_Psi_Im[3][3];
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {in->AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Density[k][k2] = P[i].AGS_Gradients2_Density[k][k2];}}
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Re[k] = P[i].AGS_Gradients_Psi_Re[k];}
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Re[k][k2] = P[i].AGS_Gradients2_Psi_Re[k][k2];}}
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Im[k] = P[i].AGS_Gradients_Psi_Im[k];}
-./gravity/ags_hsml.c:    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Im[k][k2] = P[i].AGS_Gradients2_Psi_Im[k][k2];}}
-./predict.c:        for(j=0;j<3;j++) for(k=0;k<3;k++) {vsig2 += SphP[i_particle_id].Gradients.Velocity[j][k]*SphP[i_particle_id].Gradients.Velocity[j][k];}
-./predict.c:        if(SphP[i_particle_id].FlagForConstrainedGradients <= 0) prefac_tinv *= 30;
-./radiation/rt_utilities.c:            double ET_dotdot_GradVcom = SphP[i].ET[kf][0]*SphP[i].Gradients.Velocity[0][0] + SphP[i].ET[kf][1]*SphP[i].Gradients.Velocity[1][1] + SphP[i].ET[kf][2]*SphP[i].Gradients.Velocity[2][2]
-./radiation/rt_utilities.c:                + SphP[i].ET[kf][3]*(SphP[i].Gradients.Velocity[0][1]+SphP[i].Gradients.Velocity[1][0]) + SphP[i].ET[kf][4]*(SphP[i].Gradients.Velocity[2][1]+SphP[i].Gradients.Velocity[1][2]) + SphP[i].ET[kf][5]*(SphP[i].Gradients.Velocity[0][2]+SphP[i].Gradients.Velocity[2][0]);
-./radiation/rt_utilities.c:                    radacc[kx] = -dt_entr * slabfac_rp * return_flux_limiter(i,kf) * (SphP[i].Gradients.Rad_E_gamma_ET[kf][kx] / SphP[i].Density) / All.cf_atime; // naive radiation-pressure calc for FLD methods [physical units]
-./radiation/rt_utilities.c:            for(k_dir=0;k_dir<3;k_dir++) {DeltaFluxEff[k_dir] -= (P[i].Mass/rho) * (C_LIGHT_CODE_REDUCED*C_LIGHT_CODE_REDUCED/teqm_inv) * SphP[i].Gradients.Rad_E_gamma_ET[kf][k_dir];} // here we compute the nabla.pressure_gradient_tensor term from gradients directly, and use this in the next step after multiplying the flux equation by (tilde[c]^2/dt_eqm_inv) and working in dimensionless time units
-./radiation/rt_utilities.c:    double column = evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
-./radiation/rt_diffusion_explicit.h:                double grad = 0.5 * (local.Gradients.Rad_E_gamma_ET[k_freq][k] + SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k]); // (1/(code volume*code length))
-./radiation/rt_diffusion_explicit.h:            for(k=0;k<3;k++) {scalar_jr+=0.5*kernel.dp[k]*local.Gradients.Rad_E_gamma_ET[k_freq][k]; scalar_ir-=0.5*kernel.dp[k]*SphP[j].Gradients.Rad_E_gamma_ET[k_freq][k];}
-./timestep.c:                double L_cond_inv = sqrt(SphP[p].Gradients.InternalEnergy[0]*SphP[p].Gradients.InternalEnergy[0] +
-./timestep.c:                                         SphP[p].Gradients.InternalEnergy[1]*SphP[p].Gradients.InternalEnergy[1] +
-./timestep.c:                                         SphP[p].Gradients.InternalEnergy[2]*SphP[p].Gradients.InternalEnergy[2]) / SphP[p].InternalEnergy;
-./timestep.c:                        double tmp_grad = SphP[p].Gradients.B[k][k2];
-./timestep.c:                    double gradETmag=0; for(k=0;k<3;k++) {gradETmag += SphP[p].Gradients.Rad_E_gamma_ET[kf][k]*SphP[p].Gradients.Rad_E_gamma_ET[kf][k];}
-./timestep.c:                    double gradErad=0; for(k=0;k<3;k++) {gradErad+=SphP[p].Gradients.Rad_E_gamma_ET[kf][k]*SphP[p].Gradients.Rad_E_gamma_ET[kf][k];}
-./timestep.c:                    for(kv2=0;kv2<3;kv2++) {dvmag_tmp+=SphP[p].Gradients.Velocity[kv1][kv2]*SphP[p].Gradients.Velocity[kv1][kv2];}
-./turb/turbulent_diffusion.h:                if(k_species < NUM_METAL_SPECIES) {grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*SphP[j].Gradients.Metallicity[k_species][k];} // 1/code length
-./turb/dynamic_diffusion.c:struct Quantities_for_Smooth_Gradients {
-./turb/dynamic_diffusion.c:    struct Quantities_for_Smooth_Gradients Gradients[3];
-./turb/dynamic_diffusion.c:    struct Quantities_for_Smooth_Gradients Maxima;
-./turb/dynamic_diffusion.c:    struct Quantities_for_Smooth_Gradients Minima;
-./turb/dynamic_diffusion.c:    struct Quantities_for_Smooth_Gradients Maxima;
-./turb/dynamic_diffusion.c:    struct Quantities_for_Smooth_Gradients Minima;
-./turb/dynamic_diffusion.c:                ASSIGN_ADD_PRESET(DynamicDiffDataPasser[i].GradVelocity_hat[j][k], out->Gradients[k].Velocity_hat[j], mode);
-./turb/dynamic_diffusion.c:                            for (v = 0; v < 3; v++) {out.Gradients[k].Velocity_hat[v] += grad_prefactor_i * dv_hat[v];}
-./cooling/cooling.c:            double column = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
-./cooling/cooling.c:        double surface_density = evaluate_NH_from_GradRho(SphP[target].Gradients.Density,PPP[target].Hsml,SphP[target].Density,PPP[target].NumNgb,1,target);
-./cooling/cooling.c:    double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-./io.c:                    for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Gradients.Phi[k] * All.cf_a2inv*All.cf_a2inv * gizmo2gauss);}
-./io.c:                    for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (SphP[pindex].Gradients.Density[k] * All.cf_a2inv*All.cf_a2inv);} // output in physical units
-./io.c:                    for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {fp[k1*3 + k2] = (MyOutputFloat) (SphP[pindex].Gradients.Velocity[k1][k2] * All.cf_a2inv);}} // output in physical units
-./io.c:                    double d2rho = P[pindex].AGS_Gradients2_Density[0][0] + P[pindex].AGS_Gradients2_Density[1][1] + P[pindex].AGS_Gradients2_Density[2][2]; // laplacian
-./io.c:                    double drho2 = P[pindex].AGS_Gradients_Density[0]*P[pindex].AGS_Gradients_Density[0] + P[pindex].AGS_Gradients_Density[1]*P[pindex].AGS_Gradients_Density[1] + P[pindex].AGS_Gradients_Density[2]*P[pindex].AGS_Gradients_Density[2];
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o main.o main.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o accel.o accel.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o timestep.o timestep.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o init.o init.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o restart.o restart.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o io.o io.c
+mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o predict.o predict.c
+predict.c:162:1: error: function definition is not allowed here
+  162 | {
+      | ^
+predict.c:351:1: error: function definition is not allowed here
+  351 | {
+      | ^
+predict.c:360:1: error: function definition is not allowed here
+  360 | {
+      | ^
+predict.c:417:1: error: function definition is not allowed here
+  417 | {
+      | ^
+predict.c:487:1: error: function definition is not allowed here
+  487 | {
+      | ^
+predict.c:506:1: error: function definition is not allowed here
+  506 | {
+      | ^
+predict.c:521:1: error: function definition is not allowed here
+  521 | {
+      | ^
+predict.c:547:1: error: function definition is not allowed here
+  547 | {
+      | ^
+predict.c:592:1: error: function definition is not allowed here
+  592 | {
+      | ^
+predict.c:598:1: error: function definition is not allowed here
+  598 | {
+      | ^
+predict.c:746:7: error: expected '}'
+  746 | #endif
+      |       ^
+predict.c:104:1: note: to match this '{'
+  104 | {
+      | ^
+11 errors generated.
+make: *** [<builtin>: predict.o] Error 1

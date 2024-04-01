@@ -276,6 +276,11 @@ void add_along_lines_of_sight(void);
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
 void x86_fix(void) ;
 
+#ifdef VARIABLE_TIMESTEP_TEST
+void do_the_kick_vtt(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
+void drift_particle_vtt(int i, integertime time1);
+#endif
+
 void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const char *file, int linenr);
 void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const char *func, const char *file, int line);
 

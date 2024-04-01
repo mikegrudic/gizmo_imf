@@ -48,7 +48,13 @@ void do_first_halfstep_kick(void)
                 ti_step = GET_PARTICLE_INTEGERTIME(i);
                 tstart = P[i].Ti_begstep;	/* beginning of step */
                 tend = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
+		#if !defined VARIABLE_TIMESTEP_TEST
                 do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+		#else
+		//do_the_kick_vtt(i, tstart, tend, P[i].Ti_current, 0);// always do this
+		//if All.Do_Long_Timestep, call this function with tstart = All.Previous_Ti_Current_Long, and dont do the short physics
+		do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+		#endif
             }
         }
     } // for(i = 0; i < NumPart; i++) //
@@ -81,7 +87,12 @@ void do_second_halfstep_kick(void)
                 ti_step = GET_PARTICLE_INTEGERTIME(i);
                 tstart = P[i].Ti_begstep + ti_step / 2;	/* midpoint of step */
                 tend = P[i].Ti_begstep + ti_step;	/* end of step */
+		#if !defined VARIABLE_TIMESTEP_TEST
                 do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+		#else
+		//do_the_kick_vtt(i, tstart, tend, P[i].Ti_current, 1);
+		do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+		#endif
                 set_predicted_quantities_for_extra_physics(i);
             }
         }
@@ -190,6 +201,76 @@ void apply_long_range_kick(integertime tstart, integertime tend)
 }
 #endif
 
+#ifdef VARIABLE_TIMESTEP_TEST
+void print_times(int pt, integertime tstart, integertime tend)
+{
+  fprintf(FdTest, "Kick \t %d \t %g \t %g \t %g \n", pt, tstart*All.Timebase_interval, tend*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+  fflush(FdTest);
+}
+#endif
+
+#ifdef VARIABLE_TIMESTEP_TEST
+void do_the_kick_vtt(int i, integertime tstart, integertime tend, integertime tcurrent, int mode)
+{
+  int j;
+  double dp[3], dt_entr, dt_gravkick, dt_hydrokick;
+  double mass_old, mass_pred, mass_new;
+  mass_old = mass_pred = mass_new = P[i].Mass;
+
+  int pt=50000;
+  int pt2=150000;
+  if (i==pt || i == pt2) {print_times(i, tstart, tend);}
+  
+  if (All.Do_Long_Timestep || All.Ti_Current == 0){
+    //need to set this to be starting at All.Previous_Ti_Current_Long, and then not update the short physics on the long timestep
+    do_the_kick(i, tstart, tend, tcurrent, mode);
+    return;
+  }
+
+  if(TimeBinActive[P[i].TimeBin])
+    {
+     dt_entr = dt_hydrokick = (tend - tstart)* UNIT_INTEGERTIME_IN_PHYSICAL;
+     if(P[i].Type==0)
+      {
+	double grav_acc[3], dEnt_Gravity = 0;
+	double du_tot = SphP[i].DtInternalEnergy * dt_hydrokick + dEnt_Gravity;
+	//#if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
+	//#endif
+	double dEnt = SphP[i].InternalEnergy+ du_tot;
+#ifdef RADTRANSFER /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal, re-distribute the energy that would have taken us negative in gas back into radiation */
+	int kfreq; double erad_tot=0,emin=0,enew=0,demin=0,dErad=0,rsol_fac=C_LIGHT_CODE_REDUCED/C_LIGHT_CODE;  for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma[kfreq];}
+	if(erad_tot > 0) // do some checks if this helps or hurts (identical setup in predict) - seems relatively ok for now, in new form
+	  {
+	    demin=0.025*SphP[i].InternalEnergy; emin=0.025*(erad_tot/rsol_fac + SphP[i].InternalEnergy*P[i].Mass); enew=DMAX(erad_tot/rsol_fac + dEnt*P[i].Mass, emin);
+	    dEnt=(enew - erad_tot/rsol_fac) / P[i].Mass; if(dEnt < demin) {dErad=rsol_fac*(dEnt-demin); dEnt=demin;}
+	    if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;} SphP[i].InternalEnergy = dEnt; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma[kfreq] *= 1 + dErad/erad_tot;}
+	  } else {
+	  if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
+	}
+#else
+	if(dEnt < 0.5*SphP[i].InternalEnergy) {SphP[i].InternalEnergy *= 0.5;} else {SphP[i].InternalEnergy = dEnt;}
+#endif //RAD_TRANSFER
+	
+	check_particle_for_temperature_minimum(i);
+      } // P[i].Type==0
+     if(P[i].Type==0)
+       {
+	 #ifdef COSMIC_RAY_FLUID
+	 CosmicRay_Update_DriftKick(i,dt_entr,0);
+	 #endif
+	 #ifdef RADTRANSFER
+	 rt_update_driftkick(i,dt_entr,0);
+	 #endif
+       } //if(P[i].Type==0)
+     // reset predicted variables for velocity and internal energy
+     if(mode==1)
+       {
+	 for(j=0; j<3; j++) {SphP[i].VelPred[j] = P[i].Vel[j];} //may not need to do this one
+	 SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
+       } //mode == 1
+   } // TimeBinActive[P[i].TimeBin]
+} // do_the_kick_vtt()
+#endif
 
 void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurrent, int mode)
 {
@@ -201,14 +282,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
     #if defined VARIABLE_TIMESTEP_TEST
     int pt=50000;
     int pt2=150000;
-    if (i == pt){
-      fprintf(FdTest, "Kick_pt1 \t %g \t %g \t %g \n", tstart*All.Timebase_interval, tend*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-      fflush(FdTest);
-    }
-    if (i == pt2){
-      fprintf(FdTest, "Kick_pt2 \t %g \t %g \t %g \n", tstart*All.Timebase_interval, tend*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-      fflush(FdTest);
-   }
+    if (i==pt || i == pt2) {print_times(i, tstart, tend);}
    #endif
     
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -389,7 +463,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 #endif
 #if (defined(SUBCYCLING_TEST) || defined(FREEZE_HYDRO))
 	    dp[j] = 0;
-#elif (defined(VARIABLE_TIMESTEP_TEST)) 
+	    #elif (defined(VARIABLE_TIMESTEP_TEST)) 
 	    //if (!SphP[i].do_dens_mhd_this_timestep) { dp[j] = 0;}
 	    if (!All.Do_Long_Timestep){dp[j] = 0;}
 #endif	    

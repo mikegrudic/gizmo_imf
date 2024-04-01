@@ -60,7 +60,7 @@ void run(void)
 	fprintf(FdTest,"Step_0_Begin_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
         fflush(FdTest);}
        #endif
-      
+
         compute_statistics();	/* regular statistics outputs (like total energy) */
 
         write_cpu_log();		/* output some CPU usage log-info (accounts for everything needed up to the current sync-point) */
@@ -74,6 +74,7 @@ void run(void)
         }
 
         find_timesteps();		/* find-timesteps */
+
 	
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
@@ -90,7 +91,7 @@ void run(void)
         HermiteOnlyFlag = 0;
 #endif
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
-	
+
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
 	  fprintf(FdTest, "Step_2_First_Kick_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
@@ -120,6 +121,7 @@ void run(void)
 	for (int n=0; n< TIMEBINS;n++){if (n>=35) fprintf(FdTest, "TIMEBIN  %d  %d  %d  %d  %g %g  %d \n", n, TimeBinActive[n], TimeBinCount[n], TimeBinCountLong[n], GET_INTEGERTIME_FROM_TIMEBIN(n)*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n))*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n) == 0));}
 	fflush(FdTest);
 	#endif
+
 	
 	#if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
@@ -162,8 +164,8 @@ void run(void)
 	    make_list_of_active_particles();
 	  }
 	#endif
-	
-	#if defined VARIABLE_TIMESTEP_TEST
+
+    #if defined VARIABLE_TIMESTEP_TEST
 	if (ThisTask == 0){
 	  fprintf(FdTest, "Step_4_Update_Domain_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
 	  fprintf(FdTest,"Step_4_Update_Domain_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
@@ -542,11 +544,9 @@ void find_next_sync_point_and_drift(void)
         compute_potential();
 #endif
 #endif
-
         savepositions(All.SnapshotFileCount++);	/* write snapshot file */
         All.Ti_nextoutput = find_next_outputtime(All.Ti_nextoutput + 1);
     }
-
 
   All.Previous_Ti_Current = All.Ti_Current;
   All.Ti_Current = ti_next_kick_global;

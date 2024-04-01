@@ -4401,7 +4401,6 @@ void write_file(char *fname, int writeTask, int lastTask)
                         SKIP;
                     }
                 }
-
                 for(type = 0; type < 6; type++)
                 {
 #if IO_SINKS_ONLY_SNAPSHOT_FREQUENCY > 0
@@ -4463,7 +4462,6 @@ void write_file(char *fname, int writeTask, int lastTask)
                             pcsum = 0;
                         }
 #endif
-
                         for(task = writeTask, offset = 0; task <= lastTask; task++)
                         {
                             if(task == ThisTask)
@@ -4511,6 +4509,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                                         hdf5_status = H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer);
 
                                         H5Sclose(hdf5_dataspace_memory);
+				
 #endif
                                     }
                                     else
@@ -4536,7 +4535,6 @@ void write_file(char *fname, int writeTask, int lastTask)
 #endif
                     }
                 }
-
                 if(ThisTask == writeTask)
                 {
                     if(All.SnapFormat == 1 || All.SnapFormat == 2)
@@ -4545,9 +4543,11 @@ void write_file(char *fname, int writeTask, int lastTask)
                     }
                 }
             }
+	    //here is only looping to ~ 10
         }
+	//right after this is the end of the bnr loop, it is geting to ~ 81 and then failing
+	//printf("HERE3 \t %d \n", bnr);
     }
-
     if((All.SnapFormat == 1 || All.SnapFormat == 2) && ThisTask == writeTask)
     {
         myfree(InfoBlock);
