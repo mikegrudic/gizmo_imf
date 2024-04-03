@@ -170,7 +170,7 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, 
 
 void do_distortion_tensor_kick(int i, double dt_gravkick);
 void set_predicted_quantities_for_extra_physics(int i);
-void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr);
+void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, double dt_entr, int mode);
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt);
 #endif
@@ -277,8 +277,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 void x86_fix(void) ;
 
 #ifdef VARIABLE_TIMESTEP_TEST
-void do_the_kick_vtt(int i, integertime tstart, integertime tend, integertime tcurrent, int mode);
-void drift_particle_vtt(int i, integertime time1);
+void print_main_loop_info(int stepnum, int pt, int pt2);
 #endif
 
 void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const char *file, int linenr);

@@ -94,118 +94,42 @@ void reconstruct_timebins(void)
 #ifdef VARIABLE_TIMESTEP_TEST
 void print_times_drift(int pt, integertime time0, integertime time1)
 {
-  fprintf(FdTest, "Drift \t %d \t %g \t %g \t %g \n",pt, time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
+  fprintf(FdTest, "Drift  %d  %g  %g  %g \n",pt, time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
   fflush(FdTest);
 }
 #endif
-
-#ifdef VARIABLE_TIMESTEP_TEST
-void drift_particle_vtt(int i, integertime time1)
-{
-  int j; double dt_drift; integertime time0 =P[i].Ti_current;
-  
-  int pt=50000;
-  int pt2=150000;
-  if (i==pt || i == pt2) {print_times_drift(i,time0, time1);}
-
-  if (All.Do_Long_Timestep || All.Ti_Current ==0){
-    drift_particle(i, time1);
-    return;
-  }
-
-  dt_drift = (time1 - time0) * All.Timebase_interval;
-
-  double divv_fac = P[i].Particle_DivVel * dt_drift;
-  double divv_fac_max = 0.3;
-  if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
-  if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
-
-  if((P[i].Type == 0) && (P[i].Mass > 0))
-    {
-      double dt_gravkick, dt_hydrokick, dt_entr;
-      dt_entr = dt_hydrokick = (time1 - time0) * UNIT_INTEGERTIME_IN_PHYSICAL;
-      dt_gravkick = dt_hydrokick;
-      for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;}
-
-	SphP[i].Density *= exp(-divv_fac);
-	double etmp = SphP[i].InternalEnergyPred + SphP[i].DtInternalEnergy * dt_entr;
-
-	#if defined(RADTRANSFER) && defined(RT_EVOLVE_ENERGY) /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */
-	int kfreq; double erad_tot=0,tot_e_min=0,enew=0,int_e_min=0,dErad=0,rsol_fac=C_LIGHT_CODE_REDUCED/C_LIGHT_CODE; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=SphP[i].Rad_E_gamma_Pred[kfreq];}
-	if(erad_tot > 0)
-	  {
-	    int_e_min=0.025*SphP[i].InternalEnergyPred; tot_e_min=0.025*(erad_tot/rsol_fac+SphP[i].InternalEnergyPred*P[i].Mass);
-	    enew=DMAX(erad_tot/rsol_fac+etmp*P[i].Mass,tot_e_min); etmp=(enew-erad_tot/rsol_fac)/P[i].Mass; if(etmp<int_e_min) {dErad=rsol_fac*(etmp-int_e_min); etmp=int_e_min;}
-	    if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;} SphP[i].InternalEnergyPred = etmp; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {SphP[i].Rad_E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
-	  } else {
-	  if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
-	}
-	#else
-	if(etmp<0.5*SphP[i].InternalEnergyPred) {SphP[i].InternalEnergyPred *= 0.5;} else {SphP[i].InternalEnergyPred=etmp;}
-	#endif
-	
-	if(SphP[i].InternalEnergyPred<All.MinEgySpec) SphP[i].InternalEnergyPred=All.MinEgySpec;
-#ifdef COSMIC_RAY_FLUID
-	CosmicRay_Update_DriftKick(i,dt_entr,1);
-#endif
-#ifdef RADTRANSFER
-	rt_update_driftkick(i,dt_entr,1);
-#endif
-	SphP[i].Pressure = get_pressure(i);
-      } //((P[i].Type == 0) && (P[i].Mass > 0))
-      P[i].Ti_current = time1;
-} //void drift_particle_vtt
-#endif
-
 
 void drift_particle(int i, integertime time1)
 {
     int j; double dt_drift; integertime time0 = P[i].Ti_current;
 
-    /*
-    #if defined VARIABLE_TIMESTEP_TEST
+#if defined VARIABLE_TIMESTEP_TEST
     int pt=50000;
     int pt2=150000;
-    if (i == pt && time1 == time0){
-      fprintf(FdTest, "Enter_Drift_pt1 \t %g \t %g \t %g \n",time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-      fflush(FdTest);
-    }
-    if (i == pt2 && time1 == time0){
-      fprintf(FdTest, "Enter_Drift_pt2 \t %g \t %g \t%g \n",time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-      fflush(FdTest);
-    }
-    #endif
-    */
-
+    if (i==pt || i == pt2) {print_times_drift(i,time0,time1);}
+#endif
+    
+#if ! defined VARIABLE_TIMESTEP_TEST
     if(time1 < time0)
     {
         printf("i=%d time0=%lld time1=%lld\n", i, (long long)time0, (long long)time1);
         terminate("no prediction into past allowed");
     }
     if(time1 == time0) {return;}
+#endif //cant have it exiting automatically because still need to drift particle positions
 
-    /*
-    #if defined VARIABLE_TIMESTEP_TEST
-    if (i == pt){
-    fprintf(FdTest, "Drift_pt1 \t %g \t %g \t %g \n", time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-    fflush(FdTest);
-    }
-    if (i == pt2){
-      fprintf(FdTest, "Drift_pt2 \t %g \t %g \t %g \n", time0*All.Timebase_interval, time1*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
-      fflush(FdTest);
-    }
-    #endif
-    */
-    
     if(All.ComovingIntegrationOn) {dt_drift = get_drift_factor(time0, time1);}
         else {dt_drift = (time1 - time0) * All.Timebase_interval;}
     
     
 #if !(defined(FREEZE_HYDRO) || defined(SUBCYCLING_TEST))
 #if defined VARIABLE_TIMESTEP_TEST
-    //if (SphP[i].do_dens_mhd_this_timestep){
     if (All.Do_Long_Timestep){
-#endif
+      //reset dt_drift to be the long timestep value
+      double time0_long=All.Previous_Ti_Current_Long;
+      double dt_drift_short=dt_drift;
+      dt_drift = (time1 - time0_long) * All.Timebase_interval;
+#endif //VARIABLE_TIMESTEP_TEST
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
 #elif (SINGLE_STAR_TIMESTEPPING > 0)
@@ -232,8 +156,10 @@ void drift_particle(int i, integertime time1)
     for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
 #endif
 #if defined(VARIABLE_TIMESTEP_TEST)
+    //reset dt_drift
+    dt_drift=dt_drift_short;
     }
-#endif
+#endif //VARIABLE_TIMESTEP_TEST
 #endif // FREEZE_HYDRO and SUBCYCLING_TEST clause
 #if (NUMDIMS==1)
     P[i].Pos[1]=P[i].Pos[2]=0; // force zero-ing
@@ -358,13 +284,16 @@ void move_particles(integertime time1)
 
 void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_entr)
 {
+  
 #ifdef SUBCYCLING_TEST
     if(All.Ti_Current == 0){
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
-      //if(SphP[i].do_dens_mhd_this_timestep){
       if (All.Do_Long_Timestep){
-#endif
+	double tstart_long=All.Previous_Ti_Current_Long;
+	double dt_entr_short=dt_entr;
+	dt_entr=(tend-tstart_long)*UNIT_INTEGERTIME_IN_PHYSICAL;
+#endif //VARIABLE_TIMESTEP_TEST
 #ifdef MAGNETIC
     int kB;
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
@@ -390,14 +319,16 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
     } // close if(All.Ti_Current == 0){
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
+      dt_entr=dt_entr_short;
     }
-#endif
+#endif //VARIABLE_TIMESTEP_TEST
+
 #ifdef COSMIC_RAY_FLUID
     CosmicRay_Update_DriftKick(i,dt_entr,1);
 #endif
 #ifdef RADTRANSFER
     rt_update_driftkick(i,dt_entr,1);
-#endif
+#endif    
 #ifdef EOS_ELASTIC
     elastic_body_update_driftkick(i,dt_entr,1);
 #endif

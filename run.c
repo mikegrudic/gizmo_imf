@@ -53,12 +53,7 @@ void run(void)
       int pt2=150000;
       
        #if defined VARIABLE_TIMESTEP_TEST
-       if (ThisTask == 0){
-	fprintf(FdTest, "Begin_Main_Loop \n");
-	fprintf(FdTest, "Step_0_Begin_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-        fprintf(FdTest,"Step_0_Begin_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval,P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	fprintf(FdTest,"Step_0_Begin_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-        fflush(FdTest);}
+       print_main_loop_info(0, pt, pt2);
        #endif
 
         compute_statistics();	/* regular statistics outputs (like total energy) */
@@ -75,13 +70,8 @@ void run(void)
 
         find_timesteps();		/* find-timesteps */
 
-	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest,"Step_1_Compute_Timesteps_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_1_Compute_Timesteps_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_1_Compute_Timesteps_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(1, pt, pt2);
 	#endif
 	
         int TreeReconstructFlag_local = TreeReconstructFlag;
@@ -93,11 +83,7 @@ void run(void)
         do_first_halfstep_kick();	/* half-step kick at beginning of timestep for synchronous particles */
 
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_2_First_Kick_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_2_First_Kick_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_2_First_Kick_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(2, pt, pt2);
 	#endif
 
 	#ifdef VARIABLE_TIMESTEP_TEST
@@ -124,13 +110,8 @@ void run(void)
 
 	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_3_Drift_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_3_Drift_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_3_Drift_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(3, pt, pt2);
 	#endif
-
 
         output_log_messages();	/* write some info to log-files */
 
@@ -165,12 +146,8 @@ void run(void)
 	  }
 	#endif
 
-    #if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_4_Update_Domain_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_4_Update_Domain_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_4_Update_Domain_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+        #if defined VARIABLE_TIMESTEP_TEST
+	print_main_loop_info(4, pt, pt2);
 	#endif
 	
 	#if !defined VARIABLE_TIMESTEP_TEST 
@@ -181,11 +158,7 @@ void run(void)
         #endif
 	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_5_Gravity_Forces_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_5_Gravity_Forces_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_5_Gravity_Forces_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(5, pt, pt2);
 	#endif
 	
 
@@ -216,11 +189,7 @@ void run(void)
 #endif	  
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_6_Hydro_Forces_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_6_Hydro_Forces_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_6_Hydro_Forces_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(6, pt, pt2);
 	#endif
         
 #ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
@@ -234,22 +203,14 @@ void run(void)
         do_second_halfstep_kick();	/* this does the half-step kick at the end of the timestep */
 	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_7_Second_Kick_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_7_Second_Kick_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_7_Second_Kick_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(7, pt, pt2);
 	#endif
 	
 
         calculate_non_standard_physics();	/* source terms are here treated in a strang-split fashion */
 	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_8_NonStandard_Physics_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_8_NonStandard_Physics_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_8_NonStandard_Physics_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(8, pt, pt2);
 	#endif
 	
 
@@ -328,11 +289,7 @@ void run(void)
         report_memory_usage(&HighMark_run, "RUN");
 	
 	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "Step_9_End_Time \t %g \n", All.Ti_Current*All.Timebase_interval);
-	  fprintf(FdTest,"Step_9_End_pt1 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt].Ti_current*All.Timebase_interval,P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
-	  fprintf(FdTest,"Step_9_End_pt2 \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval,P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt2].CosmicRayFlux[0]);
-	  fflush(FdTest);}
+	print_main_loop_info(9, pt, pt2);
 	#endif
 
 	//reset
@@ -345,18 +302,19 @@ void run(void)
 	}
 	#endif
 	
-	#if defined VARIABLE_TIMESTEP_TEST
-	if (ThisTask == 0){
-	  fprintf(FdTest, "End_Main_Loop \n");
-	  fflush(FdTest);}
-	#endif
-	
-
     }
 
 }
 
-
+#ifdef VARIABLE_TIMESTEP_TEST
+void print_main_loop_info(int stepnum, int pt, int pt2)
+{
+  fprintf(FdTest, "Step_%d_Time \t %g \n", stepnum, All.Ti_Current*All.Timebase_interval);
+  fprintf(FdTest, "Step_%d_Values \t %d \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", stepnum, pt, P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+  fprintf(FdTest, "Step_%d_Values \t %d \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", stepnum, pt2, P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+  fflush(FdTest);
+}
+#endif
 
 void set_non_standard_physics_for_current_time(void)
 {

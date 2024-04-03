@@ -1,45 +1,44 @@
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o main.o main.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o accel.o accel.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o timestep.o timestep.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o init.o init.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o restart.o restart.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o io.o io.c
-mpicc -O2 -xCORE-AVX2 -Wno-unknown-pragmas -fcommon -qopenmp -DBUILDINFO='"Build on login2.stampede3.tacc.utexas.edu by margotfa from margot_test:11415c44 at https://margotfitzaxen@bitbucket.org/guszejnov/gizmo_imf.git"' -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_CHECK -DUSE_FFTW3 -I/opt/apps/intel24/gsl/2.7.1/include -I/opt/apps/intel24/impi21/fftw3/3.3.10/include -I/opt/apps/intel24/hdf5/1.14.3/x86_64/include -DH5_USE_16_API      -c -o predict.o predict.c
-predict.c:162:1: error: function definition is not allowed here
-  162 | {
-      | ^
-predict.c:351:1: error: function definition is not allowed here
-  351 | {
-      | ^
-predict.c:360:1: error: function definition is not allowed here
-  360 | {
-      | ^
-predict.c:417:1: error: function definition is not allowed here
-  417 | {
-      | ^
-predict.c:487:1: error: function definition is not allowed here
-  487 | {
-      | ^
-predict.c:506:1: error: function definition is not allowed here
-  506 | {
-      | ^
-predict.c:521:1: error: function definition is not allowed here
-  521 | {
-      | ^
-predict.c:547:1: error: function definition is not allowed here
-  547 | {
-      | ^
-predict.c:592:1: error: function definition is not allowed here
-  592 | {
-      | ^
-predict.c:598:1: error: function definition is not allowed here
-  598 | {
-      | ^
-predict.c:746:7: error: expected '}'
-  746 | #endif
-      |       ^
-predict.c:104:1: note: to match this '{'
-  104 | {
-      | ^
-11 errors generated.
-make: *** [<builtin>: predict.o] Error 1
+./system/ngb_codeblock_after_condition_threaded.h:if(P[p].Ti_current != ti_Current)
+./system/ngb_codeblock_after_condition_threaded.h:    if(current->Ti_current != ti_Current)
+./system/ngb_codeblock_after_condition_unthreaded.h:if(P[p].Ti_current != ti_Current)
+./system/ngb_codeblock_after_condition_unthreaded.h:    if(current->Ti_current != ti_Current) {force_drift_node(no, ti_Current);}
+./kicks.c:                do_the_kick(i, tstart, tend, P[i].Ti_current, 0);
+./kicks.c:                do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+./run.c:  fprintf(FdTest, "Step_%d_Values \t %d \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", stepnum, pt, P[pt].Ti_current*All.Timebase_interval, P[pt].Ti_begstep*All.Timebase_interval, P[pt].dt_step*All.Timebase_interval, P[pt].Pos[0], P[pt].Pos[1], P[pt].Pos[2], P[pt].Vel[0], P[pt].Vel[1], P[pt].Vel[2], *SphP[pt].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+./run.c:  fprintf(FdTest, "Step_%d_Values \t %d \t %g \t %g \t %g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \t %.10g \n", stepnum, pt2, P[pt2].Ti_current*All.Timebase_interval, P[pt2].Ti_begstep*All.Timebase_interval, P[pt2].dt_step*All.Timebase_interval, P[pt2].Pos[0], P[pt2].Pos[1], P[pt2].Pos[2], P[pt2].Vel[0], P[pt2].Vel[1], P[pt2].Vel[2], *SphP[pt2].CosmicRayEnergy, *SphP[pt].CosmicRayFlux[0]);
+./init.c:        P[i].Ti_current = (integertime)0;
+./allvars.h:    integertime Ti_current;         /*!< current time of the particle */
+./allvars.h:  integertime Ti_current;
+./galaxy_sf/blackholes/blackhole_swallow_and_kick.c:        P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
+./gravity/forcetree.c:        Nodes[no].Ti_current = All.Ti_Current;
+./gravity/forcetree.c:                if(P[no].Ti_current != ti_Current)
+./gravity/forcetree.c:                if(nop->Ti_current != ti_Current)
+./gravity/forcetree.c:                if(P[no].Ti_current != All.Ti_Current)
+./gravity/forcetree.c:                if(nop->Ti_current != All.Ti_Current)
+./gravity/forcetree.c:                if(P[no].Ti_current != All.Ti_Current) {
+./gravity/forcetree.c:                if(nop->Ti_current != All.Ti_Current) {force_drift_node(no, All.Ti_Current);}
+./gravity/potential.c:    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+./gravity/forcetree_update.c:  if(time1 == Nodes[no].Ti_current)
+./gravity/forcetree_update.c:      if(Extnodes[no].Ti_lastkicked != Nodes[no].Ti_current)
+./gravity/forcetree_update.c:	  printf("Task=%d Extnodes[no].Ti_lastkicked=%lld  Nodes[no].Ti_current=%lld\n",ThisTask, (long long)Extnodes[no].Ti_lastkicked, (long long)Nodes[no].Ti_current);
+./gravity/forcetree_update.c:      dt_drift_hmax = get_drift_factor(Nodes[no].Ti_current, time1);
+./gravity/forcetree_update.c:      dt_drift_hmax = (time1 - Nodes[no].Ti_current) * All.Timebase_interval;
+./gravity/forcetree_update.c:    Nodes[no].Ti_current = time1;
+./predict.c:  int j; double dt_drift; integertime time0 =P[i].Ti_current;
+./predict.c:    int j; double dt_drift; integertime time0 = P[i].Ti_current;
+./predict.c:    if (! All.Do_Long_Timestep) {P[i].Ti_current=time1; return;}
+./predict.c:    P[i].Ti_current = time1;
+./domain.c:    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+./timestep.c:		integertime t_2 = P[i].Ti_current;
+./timestep.c:		    do_the_kick(i, tstart, tend, P[i].Ti_current, 1);
+./timestep.c:		if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
+./test.txt~:./galaxy_sf/blackholes/blackhole_swallow_and_kick.c:        P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
+./test.txt~:./gravity/forcetree.c:        Nodes[no].Ti_current = All.Ti_Current;
+./test.txt~:./gravity/forcetree.c:                if(P[no].Ti_current != All.Ti_Current)
+./test.txt~:./gravity/forcetree.c:                if(nop->Ti_current != All.Ti_Current)
+./test.txt~:./gravity/forcetree.c:                if(P[no].Ti_current != All.Ti_Current) {drift_particle(no, All.Ti_Current);}
+./test.txt~:./gravity/forcetree.c:                if(nop->Ti_current != All.Ti_Current) {force_drift_node(no, All.Ti_Current);}
+./test.txt~:./gravity/potential.c:    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+./test.txt~:./domain.c:    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+./test.txt~:./timestep.c:		if(P[i].Ti_current < All.Ti_Current) {P[i].Ti_current=All.Ti_Current;}
+./begrun.c:        P[i].Ti_current /= 2;

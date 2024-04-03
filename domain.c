@@ -118,7 +118,6 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     rearrange_particle_sequence(); /* must be called after merge_and_split_particles, and should always be called before new domains are built */
 
     UseAllParticles = UseAllTimeBins;
-    
     for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
     
     force_treefree();
