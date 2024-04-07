@@ -1113,7 +1113,7 @@ void rt_set_simple_inits(int RestartFlag)
                 if(flag_to_reset_values_on_startup_flux) {
                     for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = 0;}
                 } else {
-                    for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] *= P[pindex].Mass/(SphP[pindex].Density*All.cf_a3inv);} // need to correct the units here before using
+                    for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);} // need to correct the units here before using
                 }
                 for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = SphP[i].Rad_Flux[k][k_dir];}
                 for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}
