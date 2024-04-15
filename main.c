@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 
   CPUThisRun = 0;
   WallclockTime = my_second();
-
+  
   begrun();			/* set-up run  */
 
   run();			/* main simulation loop */

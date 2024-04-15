@@ -1047,6 +1047,9 @@ void rt_set_simple_inits(int RestartFlag)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(SINGLE_STAR_RESTART_FROM_FIRESIM)
     if(RestartFlag==2) {flag_to_reset_values_on_startup = 1;}
 #endif
+#if defined(RAD_TEST_PROBLEM)
+    flag_to_reset_values_on_startup = 0;
+#endif
     
     int i; for(i = 0; i < NumPart; i++)
     {

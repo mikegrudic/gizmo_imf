@@ -362,6 +362,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
         /* now, kick for non-gas/fluid quantities (accounting for momentum conservation if masses are changing) */
 #if defined VARIABLE_TIMESTEP_TEST
     if (All.Do_Long_Timestep){
+      if (P[i].Type == 0){
       double dt_gravkick_short=dt_gravkick, dt_hydrokick_short=dt_hydrokick;
       double tstart_long, tend_long;
       integertime ti_step_long=GET_INTEGERTIME_FROM_TIMEBIN(All.Min_Long_Time_Bin);
@@ -377,6 +378,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
 	}
       dt_gravkick =(tend_long-tstart_long)*UNIT_INTEGERTIME_IN_PHYSICAL;
       dt_hydrokick =dt_gravkick;
+      }
 #endif //VARIABLE_TIMESTEP_TEST
         for(j = 0; j < 3; j++)
         {
@@ -414,9 +416,10 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             P[i].Vel[j] += dp[j] / mass_new; /* correctly accounts for mass change if its allowed */
         }
 #if defined(VARIABLE_TIMESTEP_TEST)
-	//reset timesteps
+	if (P[i].Type == 0){
 	dt_gravkick=dt_gravkick_short;
 	dt_hydrokick=dt_hydrokick_short;
+	}
     }
 #endif
  
@@ -526,6 +529,7 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
     if(All.Ti_Current == 0){
 #elif defined VARIABLE_TIMESTEP_TEST
       if (All.Do_Long_Timestep){
+	if (P[i].Type == 0){
 	double dt_entr_short=dt_entr;
 	double tstart_long, tend_long;
 	integertime ti_step_long=GET_INTEGERTIME_FROM_TIMEBIN(All.Min_Long_Time_Bin);
@@ -540,6 +544,7 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
 	    tend_long = All.Previous_Ti_Current_Long + ti_step_long;
 	  }
 	dt_entr= (tend_long-tstart_long)*UNIT_INTEGERTIME_IN_PHYSICAL;
+	}
 #endif  //VARIABLE_TIMESTEP_TEST    
 #ifdef MAGNETIC
 #ifndef MHD_ALTERNATIVE_LEAPFROG_SCHEME
@@ -605,7 +610,7 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
 #ifdef SUBCYCLING_TEST
     } // close if(All.Ti_Current == 0) check    
 #elif defined VARIABLE_TIMESTEP_TEST
-      dt_entr=dt_entr_short;
+      if (P[i].Type == 0){dt_entr=dt_entr_short;}
     } //VARIABLE_TIMESTEP_TEST
 #endif //SUBCYCLING_TEST
     

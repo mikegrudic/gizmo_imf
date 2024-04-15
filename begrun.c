@@ -472,6 +472,7 @@ void begrun(void)
 #ifdef RT_RAD_PRESSURE_OUTPUT
     {int i; for(i=0;i<NumPart;i++) {int k; for(k=0;k<3;k++) {SphP[i].Rad_Accel[k]=0;}}}
 #endif
+
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
     rt_init_intensity_directions();
@@ -487,10 +488,10 @@ void begrun(void)
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE)
     rt_define_effective_frequencies_in_bands();
 #endif
+
 #ifdef RADTRANSFER
     rt_set_simple_inits(RestartFlag);
 #endif
-
 
   if(All.ComovingIntegrationOn) {init_drift_table();}
 

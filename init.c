@@ -28,6 +28,7 @@ void init(void)
 {
     int i, j; double a3, atime, a2_fac;
 
+
 #ifdef MAGNETIC
     double gauss2gizmo = All.UnitMagneticField_in_gauss / UNIT_B_IN_GAUSS;
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here; [much simpler, but be sure of your conversions!] */

@@ -3518,7 +3518,11 @@ extern struct gas_cell_data
     MyDouble Interpolated_Opacity[N_RT_FREQ_BINS]; /* opacity values interpolated to gas positions */
     MyDouble InterpolatedGeometricDustCrossSection; /* geometric opacity (frequency independent) */
 #endif
-#ifdef RT_INFRARED
+#ifdef RAD_TEST_PROBLEM
+  MyFloat Radiation_Temperature;
+  MyFloat Dt_Rad_E_gamma_T_weighted_IR;
+#endif
+#ifdef RT_INFRARED 
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
     MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */

@@ -459,6 +459,11 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
+        case IO_RAD_TEMP:
+#ifdef RAD_TEST_PROBLEM
+	  for(n = 0; n < pc; n++) {SphP[offset + n].Radiation_Temperature = *fp++;}
+#endif
+	    break;
 
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
@@ -592,7 +597,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_HYDROACCEL:
         case IO_DTENTR:
         case IO_RAD_ACCEL:
-        case IO_RAD_TEMP:
+	  //case IO_RAD_TEMP:
         case IO_RAD_OPACITY:
         case IO_DUST_TEMP:
         case IO_GDE_DISTORTIONTENSOR:
@@ -883,6 +888,12 @@ void read_file(char *fname, int readTask, int lastTask)
                 /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U
                    && blocknr != IO_BFLD
+#ifdef RAD_TEST_PROBLEM
+		   && blocknr != IO_RADGAMMA
+#endif
+#ifdef RAD_TEST_PROBLEM
+		   && blocknr != IO_RAD_TEMP
+#endif
 #ifdef INPUT_COSMIC_RAY_ENERGY
 		   && blocknr != IO_COSMICRAY_ENERGY
 #endif

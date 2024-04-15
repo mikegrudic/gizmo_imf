@@ -1554,7 +1554,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_RAD_TEMP:
-#if defined(RADTRANSFER) && defined(RT_INFRARED)
+#if defined(RADTRANSFER) && (defined(RT_INFRARED) || defined(RAD_TEST_PROBLEM))
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -2718,7 +2718,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_RAD_TEMP:
-#if defined(RADTRANSFER) && defined(RT_INFRARED)
+#if defined(RADTRANSFER) && (defined(RT_INFRARED) || defined(RAD_TEST_PROBLEM))
             return 1;
 #endif
             break;
@@ -4543,10 +4543,7 @@ void write_file(char *fname, int writeTask, int lastTask)
                     }
                 }
             }
-	    //here is only looping to ~ 10
         }
-	//right after this is the end of the bnr loop, it is geting to ~ 81 and then failing
-	//printf("HERE3 \t %d \n", bnr);
     }
     if((All.SnapFormat == 1 || All.SnapFormat == 2) && ThisTask == writeTask)
     {

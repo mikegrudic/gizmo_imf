@@ -125,10 +125,7 @@ void drift_particle(int i, integertime time1)
 #if !(defined(FREEZE_HYDRO) || defined(SUBCYCLING_TEST))
 #if defined VARIABLE_TIMESTEP_TEST
     if (All.Do_Long_Timestep){
-      //reset dt_drift to be the long timestep value
-      double time0_long=All.Previous_Ti_Current_Long;
-      double dt_drift_short=dt_drift;
-      dt_drift = (time1 - time0_long) * All.Timebase_interval;
+      if (P[i].Type == 0){ double time0_long=All.Previous_Ti_Current_Long; double dt_drift_short=dt_drift; dt_drift = (time1 - time0_long) * All.Timebase_interval;}
 #endif //VARIABLE_TIMESTEP_TEST
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
@@ -156,8 +153,7 @@ void drift_particle(int i, integertime time1)
     for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}
 #endif
 #if defined(VARIABLE_TIMESTEP_TEST)
-    //reset dt_drift
-    dt_drift=dt_drift_short;
+    if (P[i].Type == 0){dt_drift=dt_drift_short;}
     }
 #endif //VARIABLE_TIMESTEP_TEST
 #endif // FREEZE_HYDRO and SUBCYCLING_TEST clause
@@ -290,9 +286,7 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
       if (All.Do_Long_Timestep){
-	double tstart_long=All.Previous_Ti_Current_Long;
-	double dt_entr_short=dt_entr;
-	dt_entr=(tend-tstart_long)*UNIT_INTEGERTIME_IN_PHYSICAL;
+	if (P[i].Type == 0) {double tstart_long=All.Previous_Ti_Current_Long; double dt_entr_short=dt_entr;dt_entr=(tend-tstart_long)*UNIT_INTEGERTIME_IN_PHYSICAL;}
 #endif //VARIABLE_TIMESTEP_TEST
 #ifdef MAGNETIC
     int kB;
@@ -319,7 +313,7 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
     } // close if(All.Ti_Current == 0){
 #endif
 #ifdef VARIABLE_TIMESTEP_TEST
-      dt_entr=dt_entr_short;
+      if (P[i].Type == 0) {dt_entr=dt_entr_short;}
     }
 #endif //VARIABLE_TIMESTEP_TEST
 

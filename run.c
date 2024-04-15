@@ -33,6 +33,7 @@ void run(void)
 
     if(RestartFlag != 1)		/* need to compute forces at initial synchronization time, unless we restarted from restart files */
     {
+      
         output_log_messages();
 
         domain_Decomposition(0, 0, 0);
@@ -51,7 +52,7 @@ void run(void)
       //test particle numbers
       int pt=50000;
       int pt2=150000;
-      
+     
        #if defined VARIABLE_TIMESTEP_TEST
        print_main_loop_info(0, pt, pt2);
        #endif
@@ -94,7 +95,12 @@ void run(void)
                                              * If needed, this function will also write an output file
                                              * at the desired time.
                                              */
-	#ifdef VARIABLE_TIMESTEP_TEST
+
+        #ifdef VARIABLE_TIMESTEP_TEST
+	print_main_loop_info(3, pt, pt2);
+	#endif
+	
+        #ifdef VARIABLE_TIMESTEP_TEST
 	//find the minimum occupied long time bin
 	for (int n = TIMEBINS; n> 0; n--){ if (TimeBinCountLong[n]) {All.Min_Long_Time_Bin=n;}}
 	//has minimum long time bin passed?
@@ -106,11 +112,6 @@ void run(void)
 	fprintf(FdTest, "TIMEBIN_START %d  %d  %d  %d  %g  %g  %g \n", All.HighestActiveTimeBin, All.Min_Long_Time_Bin, All.Do_Long_Timestep, All.HighestOccupiedTimeBin, (All.Ti_Current-All.Previous_Ti_Current)*All.Timebase_interval, (All.Ti_Current-All.Previous_Ti_Current_Long)*All.Timebase_interval, All.Ti_Current*All.Timebase_interval);
 	for (int n=0; n< TIMEBINS;n++){if (n>=35) fprintf(FdTest, "TIMEBIN  %d  %d  %d  %d  %g %g  %d \n", n, TimeBinActive[n], TimeBinCount[n], TimeBinCountLong[n], GET_INTEGERTIME_FROM_TIMEBIN(n)*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n))*All.Timebase_interval, (All.Ti_Current % GET_INTEGERTIME_FROM_TIMEBIN(n) == 0));}
 	fflush(FdTest);
-	#endif
-
-	
-	#if defined VARIABLE_TIMESTEP_TEST
-	print_main_loop_info(3, pt, pt2);
 	#endif
 
         output_log_messages();	/* write some info to log-files */
