@@ -1767,6 +1767,9 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &xn_e, &nh0, &nhp, &nHe0, &nHep, &nHepp); // get thermodynamic properties [will assume fixed value of fH2 at previous update value]
     double T=1, f_dustgas_solar=1, urad_G0=1, xH0=1, x_e=0, nH_cgs=rho*UNIT_DENSITY_IN_NHCGS; // initialize definitions of some variables used below to prevent compiler warnings
     f_dustgas_solar=1; urad_G0=1; // initialize metal/dust and radiation fields. will assume solar-Z and spatially-uniform Habing field for incident FUV radiation unless reset below.
+#ifdef RT_ISRF_BACKGROUND
+    urad_G0 = All.InterstellarRadiationFieldStrength;
+#endif
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING)
     if(SphP[i].DelayTimeHII > 0) {SphP[i].MolecularMassFraction_perNeutralH=SphP[i].MolecularMassFraction=0; return;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
@@ -1883,64 +1886,107 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     {
         double order_2_corr = 2.*fH2_tmp*x_a_00 - x_b_0;
         if(fabs(order_2_corr) < 1.) {fH2 = fH2_tmp + dfH2_linear * (1. + order_2_corr);} else {fH2 = fH2_tmp + dfH2_linear;}
-    } else {
+    } else { // we do a nonlinear solve
+	double rel_fH2_error = 1e100, rel_fH2_tol=1e-2;
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
-        Q_initial = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the previous value of fH2
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-        
-        /* now comes the tricky bit -- need to account for non-linear part of the solution for the molecular line self-shielding [depends on fH2, not just the dust external shielding already accounted for */
-        if((fH2 > 1.e-10) && (fH2 < 1) && (G_LW_dt_unshielded > 0.1*x_b_0)) // fH2 is non-trivial, and the radiation term is significant, so to get an accurate update we need to invoke a non-linear solver here
-        {
-            // set updated guess values
-            fH2_tmp=fH2; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
-            fH2_1 = fH2; Q_1 = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
-            
-            // set lower values for bracketing
-            x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
-            fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
-            fH2_tmp=fH2_min; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
-            Q_min = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
-            
-            // set upper values for bracketing
-            fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
-            z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-            fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2
-            fH2_tmp=fH2_max; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
-            Q_max = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
-            
-            if(fH2_1 < fH2_min) {fH2 = fH2_min;} // hitting lower bound already, set to that value and exit
-            else if(fH2_1 > fH2_max) {fH2 = fH2_max;} // hitting upper bound already, set to that value and exit
-            else if(Q_min*Q_max >= 0) // bracketing indicates that in this timestep, we will move fully to one or the other limit -- so do that, and don't need to iterate!
-            {if(fabs(Q_min) < fabs(Q_max)) {if(fabs(Q_min) < fabs(Q_1)) {fH2 = fH2_min;}} else {if(fabs(Q_max) < fabs(Q_1)) {fH2 = fH2_max;}}} // decide if Qmin/max corresponds more closely to desired zero, so move to fH2 matching that value
-            else if(fH2_max > 1.01*fH2_min) // worth attempting to iterate
-            {
-                Q_0 = Q_initial; fH2_0 = fH2_initial; // first iteration step is already done in all the above
-                fH2 = exp( (log(fH2_0)*Q_1 - log(fH2_1)*Q_0) / (Q_1-Q_0) ); // do a Newton-Raphson step in log[f_H2] space now that we have good initial brackets
-                if(fH2 > fH2_max) // ok we overshot the upper limit, test if bracketing works between fH2 and fH2_max, otherwise just use fH2_max
-                {if(Q_1*Q_max < 0) {fH2 = exp( (log(fH2_max)*Q_1 - log(fH2_1)*Q_max) / (Q_1-Q_max) );} else {fH2=fH2_max;}}
-                else if(fH2 < fH2_min)
-                {if(Q_1*Q_min < 0) {fH2 = exp( (log(fH2_min)*Q_1 - log(fH2_1)*Q_min) / (Q_1-Q_min) );} else {fH2=fH2_min;}}
-                else while(1)
-                {
-                    fH2_tmp=fH2_1; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
-                    Q_1 = 1 + y_a*fH2_tmp*fH2_tmp - y_b*fH2_tmp; // value of the function we are trying to zero, with the updated value of fH2
-                    //if(Q_1*Q_0 >= 0) {break;} // no longer bracketing, end while loop
-                    fH2_new = exp( (log(fH2_0)*Q_1 - log(fH2_1)*Q_0) / (Q_1-Q_0) ); fH2_0=fH2_1; Q_0=Q_1; fH2_1=fH2_new; fH2=fH2_new; // update guess and previous values //
-                    iter++; // count iterations
-                    if(fabs(fH2_1-fH2_0) < 0.01*(0.5*(fH2_1+fH2_0))) {break;} // converged well enough for our purposes!
-                    if((y_ss > 0.95) || (y_ss*G_LW_dt_unshielded < 0.1*x_b)) {break;} // negligible shielding, or converged to point where external LW is not dominant dissociator so no further iteration needed
-                    if((fH2 > 0.95*fH2_max) || (fH2 > 0.99) || (fH2 < 1.e-10) || (fH2 < 1.05*fH2_min) || (iter > 10)) {break;} // approached physical limits or bounds of validity, or end of iteration cycle
-                } // end of convergence iteration to find solution for fmol
-            } // opened plausible iteration clause
-        } // opened self-shielding clause [attempting to bracket]
-    } // check if change is sufficiently small that should just use linear-explicit scheme
+	double fH2_mid = fH2;
+
+	// lower bound
+	x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
+	double fH2_lower = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+	double Q_lower = molecfrac_rootfind_function(fH2_lower, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	// upper bound
+	fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
+	z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
+	double fH2_upper = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
+	double Q_upper = molecfrac_rootfind_function(fH2_upper, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+
+	if(Q_upper * Q_lower > 0){ // check rare case where we're not bracketed for some reason
+	    if(fabs(Q_upper) < fabs(Q_lower)){ // if upper is the better bound, keep it and set lower to its default looser bound
+		fH2_lower = MIN_REAL_NUMBER; Q_lower = molecfrac_rootfind_function(fH2_lower, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);	
+	    } else { // otherwise set upper to its default looser bound
+		fH2_upper = 1.; Q_upper = molecfrac_rootfind_function(fH2_upper, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);	
+	    }
+	}
+
+	double fH2_a, fH2_b, fH2_c, Q_a, Q_b, Q_c; 
+	if(fabs(Q_lower) < fabs(Q_upper)){ // by convention here 'a' will be the value with the larger residual
+	    Q_a = Q_upper, Q_b = Q_lower, fH2_a = fH2_upper, fH2_b = fH2_lower;
+	} else {
+	    Q_b = Q_upper, Q_a = Q_lower, fH2_b = fH2_upper, fH2_a = fH2_lower;
+	}
+	fH2_c = DMAX(fH2_mid, DMIN(fH2_a,fH2_b)); // make sure mid guess is actually between
+	fH2_c = DMIN(fH2_mid, DMAX(fH2_a,fH2_b));
+	Q_c = molecfrac_rootfind_function(fH2_c, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+
+	int used_bisection = 1;
+	double fH2_c_old = fH2_c, fH2_new, Q_new=Q_c;
+	int method=0, do_bisection=0;
+	/* now we do a Brent 1973 method root-find */
+	while(rel_fH2_error > rel_fH2_tol){
+	    fH2_new=0;
+	    method =0;
+	    if((Q_a != Q_c) && (Q_b != Q_c)){ // inverse quadratic interpolation
+		fH2_new += log(fH2_a) * Q_c * Q_b / (Q_a - Q_b) / (Q_a - Q_c);
+		fH2_new += log(fH2_b) * Q_c * Q_a / (Q_b - Q_a) / (Q_b - Q_c);
+		fH2_new += log(fH2_c) * Q_a * Q_b / (Q_c - Q_a) / (Q_c - Q_b);
+		fH2_new = exp(fH2_new);
+		method = 2;
+	    } else { // secant method
+		fH2_new = exp( (log(fH2_a)*Q_b - log(fH2_b)*Q_a) / (Q_b-Q_a) ); 
+		method = 1;
+	    }
+	    do_bisection = 0;
+	    double fH2_midpoint_a = 0.25 * (3*fH2_a + fH2_b);
+	    if((fH2_new < DMIN(fH2_midpoint_a, fH2_b)) || (fH2_new > DMAX(fH2_midpoint_a, fH2_b))) {do_bisection=1;}
+	    if(used_bisection){
+		if(fabs(fH2_new - fH2_b) >= 0.5 * fabs(fH2_c - fH2_b)){do_bisection = 1;}
+		if(fH2_b != fH2_c){
+		    if(fabs(fH2_b - fH2_c) < 1e-6 * (fH2_b + fH2_c)){do_bisection = 1;}
+		}
+	    } else {
+		if(fabs(fH2_new - fH2_b) >= 0.5 * fabs(fH2_c_old - fH2_c)){do_bisection = 1;}
+		if(fH2_c_old != fH2_c){
+		    if(fabs(fH2_c_old - fH2_c) < 1e-6 * (fH2_c_old + fH2_c)){do_bisection = 1;}
+		}
+	    }
+	    if(do_bisection){fH2_new = sqrt((fH2_b + MIN_REAL_NUMBER)*(fH2_a + MIN_REAL_NUMBER)); used_bisection = 1; method=0;} // bisection in log space
+	    else {used_bisection = 0;}
+		
+	    Q_new = molecfrac_rootfind_function(fH2_new, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	    if(fabs(Q_new) < 1e-10){break;} // small residual; we're done
+	    fH2_c_old = fH2_c; fH2_c = fH2_b; Q_c = Q_b;
+	    if(Q_a * Q_new < 0){fH2_b = fH2_new; Q_b = Q_new;} else {fH2_a = fH2_new; Q_a = Q_new;}
+
+	    if(fabs(Q_a) < fabs(Q_b)){
+		double tmp = Q_a; Q_a = Q_b; Q_b = tmp;
+		tmp = fH2_a; fH2_a = fH2_b; fH2_b = tmp;
+	    }
+	    rel_fH2_error = fabs(fH2_b-fH2_a)/(fH2_b + fH2_a);
+	    iter++;
+	    if(iter>30){break;}
+	}
+	fH2 = fH2_new;
+    } // end nonlienar solve part
     if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
     SphP[i].MolecularMassFraction_perNeutralH = fH2; // record variable -- this will be used for the next update, meanwhile the total fraction will be used in various routines through the code
     SphP[i].MolecularMassFraction = xH0 * SphP[i].MolecularMassFraction_perNeutralH; // record variable -- this is largely what is needed below
 #endif
 }
+
+double molecfrac_rootfind_function(double fH2, double x00, double x01, double x_b_0, double x_c, double y_a, double G_LW_dt_unshielded){
+    const double x_exp_fac=0.00085, w0 = 0.035, EXPmax=90.;
+    double x_ss_1=1.+fH2*x01,
+	x_ss_sqrt=sqrt(1.+fH2*x00),
+	y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)), 
+	x_b=x_b_0+y_ss*G_LW_dt_unshielded, 
+	y_b=x_b/(x_c + MIN_REAL_NUMBER); // calculate all the terms we need to solve for the zeros of this function
+    return 1 + y_a*fH2*fH2 - y_b*fH2; // value of the function we are trying to zero, with the updated value of fH2
+}
+
 
 
 /* simple subroutine to estimate the dust temperatures in our runs without detailed tracking of these individually [more detailed chemistry models do this] */
