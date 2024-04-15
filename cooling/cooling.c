@@ -1889,37 +1889,44 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     } else { // we do a nonlinear solve
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
+	Q_initial = molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
 	double fH2_mid = fH2;
+	double Q_mid = molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 
-	// lower bound
-	x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
-	double fH2_lower = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
-	double Q_lower = molecfrac_rootfind_function(fH2_lower, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-	// upper bound
-	fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
-	z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-	double fH2_upper = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
-	double Q_upper = molecfrac_rootfind_function(fH2_upper, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-
-	if(Q_upper * Q_lower > 0){ // check rare case where we're not bracketed for some reason
-	    if(fabs(Q_upper) < fabs(Q_lower)){ // if upper is the better bound, keep it and set lower to its default looser bound
-		fH2_lower = MIN_REAL_NUMBER; Q_lower = molecfrac_rootfind_function(fH2_lower, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);	
-	    } else { // otherwise set upper to its default looser bound
-		fH2_upper = 1.; Q_upper = molecfrac_rootfind_function(fH2_upper, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);	
-	    }
-	}
-
+	// OK now let's let the initial and previous-shielding values by the candidate bracket, and if that fails then find another value to bracket the other end
 	double fH2_a, fH2_b, fH2_c, Q_a, Q_b, Q_c; 
-	if(fabs(Q_lower) < fabs(Q_upper)){ // by convention here 'a' will be the value with the larger residual
-	    Q_a = Q_upper, Q_b = Q_lower, fH2_a = fH2_upper, fH2_b = fH2_lower;
+	fH2_a = fH2_mid; Q_a = Q_mid; 
+	if(Q_mid * Q_initial < 0){
+	    fH2_b = fH2_initial; Q_b = fH2_initial;	    
 	} else {
-	    Q_b = Q_upper, Q_a = Q_lower, fH2_b = fH2_upper, fH2_a = fH2_lower;
+	    // lower bound
+	    x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
+	    fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+	    Q_min = molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	    if(Q_min * Q_mid < 0){
+		fH2_b = fH2_min;  Q_b = fH2_min;
+	    } else {
+		// upper bound
+		fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding    	
+		z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
+		fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
+		Q_max = molecfrac_rootfind_function(fH2_max, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+		if(Q_max * Q_mid < 0){
+		    fH2_b = fH2_max;  Q_b = fH2_max;
+		} else {
+		    fH2_a = fH2_min; fH2_b = fH2_max; Q_a = Q_min; Q_b = Q_max;
+		}
+	    }
+	}	
+
+	if(fabs(Q_a) < fabs(Q_b)){ // in our convention 'a' represents the bracket with the larger residual
+	    double tmp = Q_a; Q_a = Q_b; Q_b = tmp;
+	    tmp = fH2_a; fH2_a = fH2_b; fH2_b = tmp;
 	}
-	fH2_c = DMAX(fH2_mid, DMIN(fH2_a,fH2_b)); // make sure mid guess is actually between
-	fH2_c = DMIN(fH2_mid, DMAX(fH2_a,fH2_b));
-	Q_c = molecfrac_rootfind_function(fH2_c, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	fH2_c = fH2_a, Q_c = Q_a;
 
 	int used_bisection = 1;
 	double fH2_c_old = fH2_c, fH2_new, Q_new=Q_c;
@@ -1928,16 +1935,13 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	/* now we do a Brent 1973 method root-find */
 	while(rel_fH2_error > rel_fH2_tol){
 	    fH2_new=0;
-	    method =0;
 	    if((Q_a != Q_c) && (Q_b != Q_c)){ // inverse quadratic interpolation
 		fH2_new += log(fH2_a) * Q_c * Q_b / (Q_a - Q_b) / (Q_a - Q_c);
 		fH2_new += log(fH2_b) * Q_c * Q_a / (Q_b - Q_a) / (Q_b - Q_c);
 		fH2_new += log(fH2_c) * Q_a * Q_b / (Q_c - Q_a) / (Q_c - Q_b);
 		fH2_new = exp(fH2_new);
-		method = 2;
 	    } else { // secant method
 		fH2_new = exp( (log(fH2_a)*Q_b - log(fH2_b)*Q_a) / (Q_b-Q_a) ); 
-		method = 1;
 	    }
 	    do_bisection = 0;
 	    double fH2_midpoint_a = 0.25 * (3*fH2_a + fH2_b);
@@ -1970,7 +1974,9 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	    if(iter>30){break;}
 	}
 	fH2 = fH2_new;
-    } // end nonlienar solve part
+	if(iter > 30){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+    } // end nonlinear solve part
+
     if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
     SphP[i].MolecularMassFraction_perNeutralH = fH2; // record variable -- this will be used for the next update, meanwhile the total fraction will be used in various routines through the code
     SphP[i].MolecularMassFraction = xH0 * SphP[i].MolecularMassFraction_perNeutralH; // record variable -- this is largely what is needed below
