@@ -939,6 +939,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
+//	if(P[target].ID==1){printf("J_UV=%g\n",J_UV);}
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(J_UV != 0)
 #else
@@ -1030,7 +1031,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             LambdaMol *= ((T-T_cmb_radeff)/(T+T_cmb_radeff)); // account (approximately) for the CMB temperature 'bath' (could more accurately subtract Lambda(T[cmb]), but that's an approximation as well that can give some odd results owing to not treating the solve for molecules indepedently there, so we use this form instead, which is generally good)
             if(LambdaMol > 0) {Lambda += LambdaMol;}
-
+//	    if(P[target].ID==1){printf("f_molec=%g LambdaMol=%g\n", f_molec,LambdaMol);}
             /* now add the dust cooling/heating terms */
             LambdaDust = gas_dust_heating_coeff(target,T,Tdust) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
 #ifdef RT_INFRARED
@@ -1042,6 +1043,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(LambdaDust>0) {Lambda += LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
+//	    if(P[target].ID==1){printf("Tdust=%g LambdaDust=%g T_cmb=%g\n", Tdust, LambdaDust, T_cmb_radeff);}
         }
 #endif
 
@@ -1454,7 +1456,11 @@ void IonizeParamsTable(void)
     else
     {
         /* in non-cosmological mode, still use, but adopt z=0 background */
+#ifdef RT_ISRF_BACKGROUND
+	redshift = All.RadiationBackgroundRedshift;
+#else
         redshift = 0;
+#endif
         /*
          gJHe0 = gJHep = gJH0 = epsHe0 = epsHep = epsH0 = J_UV = 0;
          return;
@@ -1859,6 +1865,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
                      +2.4555012e-6*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV -8.0683825e-8*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV*lnTeV));}
     if(T<=8000.) {k17=6.9e-9 * pow(T,-0.35);} else {k17=9.6e-7 * pow(T,-0.90);}
     double x_Hminus = k1 * xH0 * x_e / ((k2+k16)*xH0 + (k5+k17)*x_p + k15*x_e + R51_n); // assuming equilibrium H-, using full set of terms from Glover & Jappsen 2007 // use for H- opacity
+
     double a_GP = k2 * x_Hminus * nH0 * clumping_factor; // actual rate for 2-body gas-phase formation, given x_Hminus calculated above from local equilibrium
     
     double b_3B = (6.0e-32/sqrt(sqrt_T) + 2.0e-31/sqrt_T) * nH0 * nH0 * xH0 * clumping_factor_3; // 3-body collisional formation
@@ -1867,7 +1874,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON) || defined(RT_ISRF_BACKGROUND) // scale ionization+dissociation rates with local CR energy density
     xi_cr_H2 = Get_CosmicRayIonizationRate_cgs(i) * (1./2.); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
 #endif
-
+    //if(P[i].ID==1){printf("x_Hminus=%g xe=%g a_GP=%g b_3B=%g a_Z=%g\n",x_Hminus, x_e, a_GP,b_3B, a_Z);}
     // want to solve the implicit equation: f_f = f_0 + g[f_f]*dt, where g[f_f] = df_dt evaluated at f=f_f, so root-find: dt*g[f_f] + f_0-f_f = 0
     // can write this as a quadtratic: x_a*f^2 - x_b_0*f - xb_LW*f + x_c = 0, where xb_LW is a non-linear function of f accounting for the H2 self-shielding terms
     double G_LW_dt_unshielded = G_LW * dtime_cgs; // LW term without shielding, multiplied by timestep for dimensions needed below
@@ -1974,6 +1981,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	    if(iter>30){break;}
 	}
 	fH2 = fH2_new;
+	//if(P[i].ID==1){printf("fH2=%g Q=%g rel_error=%g\n",fH2,fH2_new,rel_fH2_error);}
 	if(iter > 30){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
     } // end nonlinear solve part
 
@@ -2007,6 +2015,10 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     double e_HiEgy=0.66, T_hiegy=5800.; // Milky way ISRF from Draine (2011), assume peak of stellar emission at ~0.6 microns [can still have hot dust, this effect is pretty weak]
 #ifdef RT_ISRF_BACKGROUND
     e_IR *= All.InterstellarRadiationFieldStrength; e_HiEgy *= All.InterstellarRadiationFieldStrength; // need to re-scale the assumed ISRF components
+    if(!All.ComovingIntegrationOn){
+	e_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);
+ 	T_cmb *= (1.+All.RadiationBackgroundRedshift);
+    }
 #endif
 
     if(i >= 0)
@@ -2210,10 +2222,21 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
 double get_background_radiation_temperature_for_emission_corrections(int target)
 {
     double T_cmb = 2.73/All.cf_atime;
+#ifdef RT_ISRF_BACKGROUND
+    if(!All.ComovingIntegrationOn){
+	T_cmb *= 1.+All.RadiationBackgroundRedshift;
+    }
+#endif	
 #if defined(RT_INFRARED)
     if(target >= 0)
     {
-        double e_tmp_CMB = 0.262*All.cf_a3inv/All.cf_atime, e_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
+        double e_tmp_CMB = 0.262*All.cf_a3inv/All.cf_atime;
+#ifdef RT_ISRF_BACKGROUND
+	if(!All.ComovingIntegrationOn){
+	    e_tmp_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);
+	}
+#endif
+	double e_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
         double e_tmp_IR = SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] * e_tot_to_evol_eVcgs, T_tmp_IR = SphP[target].Radiation_Temperature;
         return (e_tmp_IR * T_tmp_IR + e_tmp_CMB * T_cmb) / (e_tmp_IR + e_tmp_CMB); // if evolving IR band, use sum of it plus cmb for background
     }

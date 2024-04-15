@@ -1002,7 +1002,10 @@ void rt_apply_boundary_conditions(int i)
             for(k_dir = 0; k_dir < 3; k_dir++){SphP[i].Rad_Flux[k][k_dir] = 0;}
 #endif
 #ifdef RT_INFRARED
-            if(k==RT_FREQ_BIN_INFRARED) {SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);}
+            if(k==RT_FREQ_BIN_INFRARED) {
+		SphP[i].Radiation_Temperature = background_isrf_cmb_Teff();
+		SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);
+	    }
 #endif
         }
     } else {
@@ -1017,7 +1020,9 @@ void get_background_isrf_urad(int i, double *urad){
     {
         urad[k] = MIN_REAL_NUMBER;
 #ifdef RT_INFRARED
-        if(k==RT_FREQ_BIN_INFRARED){urad[k] = (All.InterstellarRadiationFieldStrength * 0.39 + 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
+	double fac_uCMB = 1.;
+	fac_uCMB = pow(1+All.RadiationBackgroundRedshift, 4);
+        if(k==RT_FREQ_BIN_INFRARED){urad[k] = (All.InterstellarRadiationFieldStrength * 0.39 + fac_uCMB * 0.26) * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // 0.33 eV/cm^3 is dust emission peak, 0.26 is CMB - note how this bin actually lumps the two together
 #endif
 #ifdef RT_OPTICAL_NIR
         if(k==RT_FREQ_BIN_OPTICAL_NIR){urad[k] = All.InterstellarRadiationFieldStrength * 0.54 * ELECTRONVOLT_IN_ERGS / UNIT_PRESSURE_IN_CGS;} // stellar emission
@@ -1030,6 +1035,16 @@ void get_background_isrf_urad(int i, double *urad){
 #endif
     }
 }
+
+double background_isrf_cmb_Teff(){
+    // Returns the energy-weighted effective temperature of the background ISRF that has equivalent average photon energy to the sum of the ISRF and CMB
+    // Necessary because current IR band treatment lumps both radiation fields together
+    double urad_ISRF_CGS_eV = All.InterstellarRadiationFieldStrength * 0.39, Trad_ISRF = DMIN(All.InitGasTemp,100.), fac_uCMB = fac_TCMB = 1.;
+    double fac_TCMB= 1.+All.RadiationBackgroundRedshift, fac_uCMB = pow(fac_TCMB,4);
+    double urad_CMB_CGS_eV = fac_uCMB * 0.262, Trad_CMB = 2.73 * fac_TCMB;
+    return (urad_ISRF_CGS_eV * Trad_ISRF + urad_CMB_CGS_eV * Trad_CMB) / (urad_ISRF_CGS_eV + urad_CMB_CGS_eV); // weighting by SED energy
+}
+
 #endif
 
 
@@ -1054,7 +1069,7 @@ void rt_set_simple_inits(int RestartFlag)
             int k;
 #ifdef RT_INFRARED
             if(flag_to_reset_values_on_startup) {SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);} //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
-            if(flag_to_reset_values_on_startup) {SphP[i].Radiation_Temperature = DMIN(All.InitGasTemp,100.);} //SphP[i].Dust_Temperature;
+            if(flag_to_reset_values_on_startup) {SphP[i].Radiation_Temperature = background_isrf_cmb_Teff();} //SphP[i].Dust_Temperature;
             SphP[i].Dt_Rad_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_CHEM_PHOTOION
