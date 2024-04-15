@@ -1887,7 +1887,6 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
         double order_2_corr = 2.*fH2_tmp*x_a_00 - x_b_0;
         if(fabs(order_2_corr) < 1.) {fH2 = fH2_tmp + dfH2_linear * (1. + order_2_corr);} else {fH2 = fH2_tmp + dfH2_linear;}
     } else { // we do a nonlinear solve
-	double rel_fH2_error = 1e100, rel_fH2_tol=1e-2;
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
@@ -1925,6 +1924,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	int used_bisection = 1;
 	double fH2_c_old = fH2_c, fH2_new, Q_new=Q_c;
 	int method=0, do_bisection=0;
+	double rel_fH2_error = 1e100, rel_fH2_tol=1e-3;
 	/* now we do a Brent 1973 method root-find */
 	while(rel_fH2_error > rel_fH2_tol){
 	    fH2_new=0;
@@ -1965,7 +1965,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 		double tmp = Q_a; Q_a = Q_b; Q_b = tmp;
 		tmp = fH2_a; fH2_a = fH2_b; fH2_b = tmp;
 	    }
-	    rel_fH2_error = fabs(fH2_b-fH2_a)/(fH2_b + fH2_a);
+	    rel_fH2_error = fabs(fH2_b-fH2_a)/fH2_new;
 	    iter++;
 	    if(iter>30){break;}
 	}
