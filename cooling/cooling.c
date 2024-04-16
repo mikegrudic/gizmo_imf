@@ -374,33 +374,13 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
             if(du_net_lower > 0) {u_upper=u_lower=u_min;}}}
 
     /* core iteration to convergence */
-    do
-    {
-        u = 0.5 * (u_lower + u_upper);
-	if(u <= u_min) {u = u_min; break;}
-#ifdef RT_INFRARED
-        Lambda_IRBand = SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
-#endif          
-        LambdaNet = CoolingRateFromU(u, rho, ne_guess, ne_eval, target);
-        if(u - u_old - ratefact * LambdaNet * dt > 0) {u_upper = u;} else {u_lower = u;}
-        du = u_upper - u_lower;
-        iter++;
-        if(iter >= (MAXITER - 10)) {printf("u=%g u_old=%g u_upper=%g u_lower=%g ne_guess=%g dt=%g iter=%d \n", u,u_old,u_upper,u_lower,ne_guess,dt,iter);}
+    #define ROOTFIND_FUNCTION(du) du - ratefact * CoolingRateFromU(u_old+du, rho, ne_guess, ne_eval, target) * dt // control the *relative* error on the *change* in u
+    double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
+    #include "../system/bracketed_rootfind.h"
+    u = ROOTFIND_X_new + u_old;
 
-        iter_condition = ((fabs(du/u) > 3.0e-2) || ((fabs(du/u) > 3.0e-4) && (iter < 10)));
-#if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
-        // Additional, stronger convergence criteria for problems where you have stiff matter-radiation terms. these are useful when you have very specific conditions, namely when dust and gas temperatures are strongly coupled, dust is abundant (not sublimated or destroyed), the metallicities are relatively high, and you are in neutral gas. but in other situations may prevent convergence artificially.
-	    if(iter < MAXITER-11) { // iterate the cooling rate to tolerance when possible to get the cooling rates right, but don't stop the run if not because we have additional checks for the matter-radiation bookkeeping below
-	        iter_condition = iter_condition || ((fabs(u - u_old - ratefact * LambdaNet * dt) > 1e-2*fabs(u-u_old)));
-//	        iter_condition = iter_condition || ((fabs(Lambda_IRBand - SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED]) > 1e-2*fabs(Lambda_IRBand)));
-	     }
-#endif
-        iter_condition = iter_condition &&  (iter < MAXITER); // make sure we don't iterate more than MAXITER times
-        
-    }
-    while(iter_condition); /* iteration condition */
     /* crash condition */
-    if(iter >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
+    if(ROOTFIND_ITER >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION

@@ -917,6 +917,7 @@ void rt_get_lum_gas(int target, double *je);
 #ifdef RT_ISRF_BACKGROUND
 void rt_apply_boundary_conditions(int i);
 void get_background_isrf_urad(int i, double *urad);
+double background_isrf_cmb_Teff(void);
 #endif
 double slab_averaging_function(double x);
 double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
