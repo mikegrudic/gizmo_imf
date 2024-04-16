@@ -1370,7 +1370,7 @@ double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate)
 #ifdef COOLING
     if(T>0) {LambdaDust_fac = gas_dust_heating_coeff(i,T,Tdust) * nHcgs * nHcgs /(UNIT_PRESSURE_IN_CGS/UNIT_TIME_IN_CGS);}
 #endif    
-    double kappa_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1, 0);
+    double kappa_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1, 1);
     double dust_emission = fac_emission * kappa_emission * pow(Tdust,4);
 #if defined(COOLING) && !defined(RT_INFRARED) // if we aren't doing RT self-consistently, approximate outward radiative transport rate in optically-thick regime
     double column = evaluate_NH_from_GradRho(SphP[i].Gradients.Density,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i);
@@ -1388,7 +1388,7 @@ and we only solve for equilibrium between emission and absorption.
 ************************************************************************************************************/
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 {
-    double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant, Tdust_guess, Tdust, dEdt, dEdt_old, dT_dustgas, fac, dEdt_guess, scalefac;
+    double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant, Tdust_guess, Tdust, dEdt, dEdt_upper, dEdt_lower, fac, dEdt_guess, scalefac;
 
     /* First we come up with a reasonable guess for the dust temp based on available info */
 #ifdef RT_INFRARED
@@ -1418,52 +1418,32 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     /* bracketing the dust temperature */
     if(dEdt < 0) 
     {
-	    scalefac = 0.9;
-	    T_upper = Tdust; 
-	    while(dEdt<0) {
-	        Tdust *= scalefac; 
-	        dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
-	        scalefac *= scalefac; 
-	        n_iter++;
-	    }
-	    T_lower = Tdust;
+	scalefac = 0.9;
+	T_upper = Tdust, dEdt_upper = dEdt_guess; 
+	while(dEdt<0) {
+	    Tdust *= scalefac; 
+	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
+	    scalefac *= scalefac; 
+	    n_iter++;
+	}
+	T_lower = Tdust, dEdt_lower = dEdt;
     } else {
-	    T_lower = Tdust;
-	    scalefac = 1.1;
-	    while(dEdt>0) {
-	        Tdust *= scalefac; 
-	        dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
-	        scalefac *= scalefac; 
-	        n_iter++;
-	    }
-	    T_upper = Tdust;
+	T_lower = Tdust, dEdt_lower = dEdt_guess;
+	scalefac = 1.1;
+	while(dEdt>0) {
+	    Tdust *= scalefac; 
+	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
+	    scalefac *= scalefac; 
+	    n_iter++;
+	}
+	T_upper = Tdust, dEdt_upper = dEdt;
     }
-    T_old = Tdust; dEdt_old = dEdt; Tdust = Tdust_guess; dEdt = dEdt_guess; // For our second guess we take the backeting value opposite of the initial guess.
-    do  // secant method iterations with bisection as a backup; usually converges to machine epsilon in 4-5 iterations
-    {
-        dT_dustgas = T - Tdust;
-        T_secant = Tdust - dEdt * (Tdust - T_old) / (dEdt - dEdt_old);
-	    T_secant = DMAX(DMIN(T_secant,T_upper),T_lower);
-	    dEdt_old = dEdt;
-	    dEdt = dust_dEdt(i,T,T_secant,dust_absorption_rate);
-	    fac = fabs(T_secant - Tdust)/(MIN_REAL_NUMBER+fabs(Tdust-T_old)); //fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
-	    if(fac < 0.5) { // accept the secant iteration if it is converging more rapidly
-	        T_old=Tdust; 
-	        Tdust=T_secant;  	        
-	    } else { // if secant isn't working do bisection iteration instead; guaranteed to reduce the error	    
-	        T_old = Tdust;
-	        Tdust = sqrt(T_lower*T_upper);
-	        dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate);
-	        fac = 0.5;
-	    }
-	    if(dEdt>0) {T_lower=Tdust;} else {T_upper=Tdust;} // either way, update upper and lower bounds
 
-    	n_iter++;
-	    if(n_iter > MAXITER-10) {
-	        PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",(long long)P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
-	        if(n_iter > MAXITER){break;}
-	    }
-    } while(fabs(dT_dustgas - (T-Tdust)) > 1.e-3 * fabs(T-Tdust)); // sufficient to converge dust cooling to 10^-3 tolerance, at this point uncertainties in dust properties will dominate the error budget    
+    #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
+    double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3;
+    #include "../system/bracketed_rootfind.h"
+    Tdust = ROOTFIND_X_new + T;
+    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance\n",P[i].ID);}
     return Tdust;
 }
 

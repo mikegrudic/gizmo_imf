@@ -1930,7 +1930,6 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	double ROOTFIND_REL_X_tol=1e-3; 
         #include "../system/bracketed_rootfind.h"
 	fH2 = ROOTFIND_X_new;
-//	if(!(P[i].ID%1000)){printf("iter=%d Q=%g error=%g\n", ROOTFIND_ITER, ROOTFUNC_new, ROOTFIND_REL_X_error);}
 	if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
     } // end nonlinear solve part
 
@@ -1973,30 +1972,31 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
     if(i >= 0)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS // treatment using direct dust temperature solver accounting for absorption and gas-dust coupling - want this when capturing the dynamics of dense collapsing cores
-	    double absorption_rate=0, vol_inv = SphP[i].Density * All.cf_a3inv / P[i].Mass, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
+	double absorption_rate=0, vol_inv = SphP[i].Density * All.cf_a3inv / P[i].Mass, fac_abs = C_LIGHT_CODE * SphP[i].Density * All.cf_a3inv;
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // we have information about individual radiation bands and their opacities; use these to compute dust absorption rate
-	    for(int k=0;k<N_RT_FREQ_BINS;k++){
-	        if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)) {continue;} // skip ionizing bands where the dust cross section is not accounted for
-	        absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
-	    }
+	for(int k=0;k<N_RT_FREQ_BINS;k++){
+	    if((k==RT_FREQ_BIN_H0)||(k==RT_FREQ_BIN_He0)||(k==RT_FREQ_BIN_He1)||(k==RT_FREQ_BIN_He2)) {continue;} // skip ionizing bands where the dust cross section is not accounted for
+	    absorption_rate += fac_abs * rt_kappa(i,k) * SphP[i].Rad_E_gamma_Pred[k] * vol_inv;
+	}
 #endif
-	    absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_adaptive_IR_band(i,T_cmb,T_cmb,0,1); // CMB absorption; assume cloud is optically-thin to the CMB
+	absorption_rate += (e_CMB/UNIT_PRESSURE_IN_EV) * fac_abs * rt_kappa_adaptive_IR_band(i,T_cmb,T_cmb,0,1); // CMB absorption; assume cloud is optically-thin to the CMB
 #if defined(RT_ISRF_BACKGROUND) // account for additional optical + IR radiation field with extinction
-	    double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
-	    double kappa_IR = rt_kappa_adaptive_IR_band(i,20.,20.,0,1); // assume Trad=20 for IR dust opacity
-	    double Zfac = 1.;
+	double column = evaluate_NH_from_GradRho(P[i].GradRho,PPP[i].Hsml,SphP[i].Density,PPP[i].NumNgb,1,i); // column density in code units
+	double kappa_IR = rt_kappa_adaptive_IR_band(i,20.,20.,0,1); // assume Trad=20 for IR dust opacity
+	double Zfac = 1.;
 #ifdef METALS
-	    Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
+	Zfac = P[i].Metallicity[0]/All.SolarAbundances[0];
 #endif
-	    double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
-	    double tau_opt = kappa_opt*column;
-	    e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
-	    absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
-	    absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
+	double kappa_opt = 180. * Zfac * UNIT_SURFDEN_IN_CGS;
+	double tau_opt = kappa_opt*column;
+	e_HiEgy += 7.8e-3 * pow(All.cf_atime,3.9)/(1.+pow(DMAX(-1.+1./All.cf_atime,0.001)/1.7,4.4)); // extragalactic UV/optical background
+	absorption_rate += fac_abs * kappa_opt * (e_HiEgy/UNIT_PRESSURE_IN_EV) * exp(DMAX(-tau_opt,-100));
+	absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
 #endif
-	    // OK now we have our dust absorption rate, let's call the solver
-	    double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
-	    return Tdust;
+	// OK now we have our dust absorption rate, let's call the solver
+	if(!(P[i].ID%1000)) printf("e_CMB=%g T_cmb=%g absorption_rate=%g\n", e_CMB, T_cmb,absorption_rate);
+	double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
+	return Tdust;
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 #if defined(RADTRANSFER) || defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) // use actual explicitly-evolved radiation field, if possible
