@@ -1994,7 +1994,6 @@ double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_
 	absorption_rate += fac_abs * kappa_IR * ((-0.5*expm1(DMAX(-tau_opt,-100)) * e_HiEgy + e_IR)/UNIT_PRESSURE_IN_EV); // this assumes absorbed ONIR photons are reradiated into IR, factor of 0.5 assumes 1/2 of reradiated IR photons do not go deeper into the cloud
 #endif
 	// OK now we have our dust absorption rate, let's call the solver
-	if(!(P[i].ID%1000)) printf("e_CMB=%g T_cmb=%g absorption_rate=%g\n", e_CMB, T_cmb,absorption_rate);
 	double Tdust = rt_eqm_dust_temp(i, T, absorption_rate);
 	return Tdust;
 #endif // SINGLE_STAR_SINK_DYNAMICS
