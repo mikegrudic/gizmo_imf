@@ -939,7 +939,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-//	if(P[target].ID==1){printf("J_UV=%g\n",J_UV);}
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(J_UV != 0)
 #else
@@ -1031,7 +1030,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             if(!isfinite(LambdaMol)) {LambdaMol=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             LambdaMol *= ((T-T_cmb_radeff)/(T+T_cmb_radeff)); // account (approximately) for the CMB temperature 'bath' (could more accurately subtract Lambda(T[cmb]), but that's an approximation as well that can give some odd results owing to not treating the solve for molecules indepedently there, so we use this form instead, which is generally good)
             if(LambdaMol > 0) {Lambda += LambdaMol;}
-//	    if(P[target].ID==1){printf("f_molec=%g LambdaMol=%g\n", f_molec,LambdaMol);}
             /* now add the dust cooling/heating terms */
             LambdaDust = gas_dust_heating_coeff(target,T,Tdust) * (T-Tdust);// Note our sign convention is such that positive lambda = gas cooling
 #ifdef RT_INFRARED
@@ -1043,7 +1041,6 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
             LambdaDust *= truncation_factor; // cutoff factor from above for where the tabulated rates take over at high temperatures
             if(!isfinite(LambdaDust)) {LambdaDust=0;} // here to check vs underflow errors since dividing by some very small numbers, but in that limit Lambda should be negligible
             if(LambdaDust>0) {Lambda += LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
-//	    if(P[target].ID==1){printf("Tdust=%g LambdaDust=%g T_cmb=%g\n", Tdust, LambdaDust, T_cmb_radeff);}
         }
 #endif
 
@@ -1814,7 +1811,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
         if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
         dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
     double dv_turb=sqrt(dv2)*dx_cell*UNIT_VEL_IN_KMS; // delta-velocity across cell
-    double x00 = surface_density_local / surface_density_H2_0, x01 = x00 / (sqrt(1. + 3.*dv_turb*dv_turb/(v_thermal_rms*v_thermal_rms)) * sqrt(2.)*v_thermal_rms), y_ss, x_ss_1, x_ss_sqrt, fH2_tmp, fH2_max, fH2_min, Q_max, Q_min, Q_initial, Q_0, Q_1, fH2_0, fH2_1, fH2_new; // variable needed below. note the x01 term corrects following Gnedin+Draine 2014 for the velocity gradient at the sonic scale, assuming a Burgers-type spectrum [their Eq. 3]
+    double x00 = surface_density_local / surface_density_H2_0, x01 = x00 / (sqrt(1. + 3.*dv_turb*dv_turb/(v_thermal_rms*v_thermal_rms)) * sqrt(2.)*v_thermal_rms), y_ss, x_ss_1, x_ss_sqrt, fH2_tmp, fH2_max, fH2_min, Q_max, Q_min, Q_initial; // variable needed below. note the x01 term corrects following Gnedin+Draine 2014 for the velocity gradient at the sonic scale, assuming a Burgers-type spectrum [their Eq. 3]
     double b_time_Mach = 0.5 * dv_turb / (v_thermal_rms/sqrt(3.)); // cs_thermal for molecular [=rms v_thermal / sqrt(3)], dv_turb to full inside dx, assume "b" prefactor for compressive-to-solenoidal ratio corresponding to the 'natural mix' = 0.5. could further multiply by 1.58 if really needed to by extended dvturb to 2h = H, and vthermal from molecular to atomic for the generating field, but not as well-justified
     double clumping_factor = 1. + b_time_Mach*b_time_Mach; // this is the exact clumping factor for a standard lognormal PDF with S=ln[1+b^2 Mach^2] //
     double clumping_factor_3 = clumping_factor*clumping_factor*clumping_factor; // clumping factor N for <rho^n>/<rho>^n = clumping factor^(N*(N-1)/2) //
@@ -1874,7 +1871,6 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON) || defined(RT_ISRF_BACKGROUND) // scale ionization+dissociation rates with local CR energy density
     xi_cr_H2 = Get_CosmicRayIonizationRate_cgs(i) * (1./2.); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
 #endif
-    //if(P[i].ID==1){printf("x_Hminus=%g xe=%g a_GP=%g b_3B=%g a_Z=%g\n",x_Hminus, x_e, a_GP,b_3B, a_Z);}
     // want to solve the implicit equation: f_f = f_0 + g[f_f]*dt, where g[f_f] = df_dt evaluated at f=f_f, so root-find: dt*g[f_f] + f_0-f_f = 0
     // can write this as a quadtratic: x_a*f^2 - x_b_0*f - xb_LW*f + x_c = 0, where xb_LW is a non-linear function of f accounting for the H2 self-shielding terms
     double G_LW_dt_unshielded = G_LW * dtime_cgs; // LW term without shielding, multiplied by timestep for dimensions needed below
@@ -1896,93 +1892,46 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     } else { // we do a nonlinear solve
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
-	Q_initial = molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+        #define ROOTFIND_FUNCTION(x) molecfrac_rootfind_function(x, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	Q_initial = ROOTFIND_FUNCTION(fH2_initial) //molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
 	double fH2_mid = fH2;
-	double Q_mid = molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	double Q_mid = ROOTFIND_FUNCTION(fH2_mid); //molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 
 	// OK now let's let the initial and previous-shielding values by the candidate bracket, and if that fails then find another value to bracket the other end
-	double fH2_a, fH2_b, fH2_c, Q_a, Q_b, Q_c; 
-	fH2_a = fH2_mid; Q_a = Q_mid; 
-	if(Q_mid * Q_initial < 0){
-	    fH2_b = fH2_initial; Q_b = fH2_initial;	    
-	} else {
+	double ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b;
+	ROOTFIND_X_a = fH2_mid; ROOTFUNC_a = Q_mid; 
+	ROOTFIND_X_b = fH2_initial; ROOTFUNC_b = Q_initial;	    
+        //if not bracketing we must try other bounds
+	if(ROOTFUNC_b * ROOTFUNC_a > 0){	
 	    // lower bound
 	    x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
-	    fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
-	    Q_min = molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	    double fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+	    Q_min = ROOTFIND_FUNCTION(fH2_min); //molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 	    if(Q_min * Q_mid < 0){
-		fH2_b = fH2_min;  Q_b = fH2_min;
-	    } else {
+		ROOTFIND_X_b = fH2_min;  ROOTFUNC_b = Q_min;
+ 	    } else {
 		// upper bound
 		fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding    	
 		z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-		fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
-		Q_max = molecfrac_rootfind_function(fH2_max, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+		double fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
+		Q_max = ROOTFIND_FUNCTION(fH2_max);
 		if(Q_max * Q_mid < 0){
-		    fH2_b = fH2_max;  Q_b = fH2_max;
+		    ROOTFIND_X_b = fH2_max;  ROOTFUNC_b = Q_max;
 		} else {
-		    fH2_a = fH2_min; fH2_b = fH2_max; Q_a = Q_min; Q_b = Q_max;
-		}
-	    }
-	}	
-
-	if(fabs(Q_a) < fabs(Q_b)){ // in our convention 'a' represents the bracket with the larger residual
-	    double tmp = Q_a; Q_a = Q_b; Q_b = tmp;
-	    tmp = fH2_a; fH2_a = fH2_b; fH2_b = tmp;
-	}
-	fH2_c = fH2_a, Q_c = Q_a;
-
-	int used_bisection = 1;
-	double fH2_c_old = fH2_c, fH2_new, Q_new=Q_c;
-	int method=0, do_bisection=0;
-	double rel_fH2_error = 1e100, rel_fH2_tol=1e-3;
-	/* now we do a Brent 1973 method root-find */
-	while(rel_fH2_error > rel_fH2_tol){
-	    fH2_new=0;
-	    if((Q_a != Q_c) && (Q_b != Q_c)){ // inverse quadratic interpolation
-		fH2_new += log(fH2_a) * Q_c * Q_b / (Q_a - Q_b) / (Q_a - Q_c);
-		fH2_new += log(fH2_b) * Q_c * Q_a / (Q_b - Q_a) / (Q_b - Q_c);
-		fH2_new += log(fH2_c) * Q_a * Q_b / (Q_c - Q_a) / (Q_c - Q_b);
-		fH2_new = exp(fH2_new);
-	    } else { // secant method
-		fH2_new = exp( (log(fH2_a)*Q_b - log(fH2_b)*Q_a) / (Q_b-Q_a) ); 
-	    }
-	    do_bisection = 0;
-	    double fH2_midpoint_a = 0.25 * (3*fH2_a + fH2_b);
-	    if((fH2_new < DMIN(fH2_midpoint_a, fH2_b)) || (fH2_new > DMAX(fH2_midpoint_a, fH2_b))) {do_bisection=1;}
-	    if(used_bisection){
-		if(fabs(fH2_new - fH2_b) >= 0.5 * fabs(fH2_c - fH2_b)){do_bisection = 1;}
-		if(fH2_b != fH2_c){
-		    if(fabs(fH2_b - fH2_c) < 1e-6 * (fH2_b + fH2_c)){do_bisection = 1;}
-		}
-	    } else {
-		if(fabs(fH2_new - fH2_b) >= 0.5 * fabs(fH2_c_old - fH2_c)){do_bisection = 1;}
-		if(fH2_c_old != fH2_c){
-		    if(fabs(fH2_c_old - fH2_c) < 1e-6 * (fH2_c_old + fH2_c)){do_bisection = 1;}
-		}
-	    }
-	    if(do_bisection){fH2_new = sqrt((fH2_b + MIN_REAL_NUMBER)*(fH2_a + MIN_REAL_NUMBER)); used_bisection = 1; method=0;} // bisection in log space
-	    else {used_bisection = 0;}
-		
-	    Q_new = molecfrac_rootfind_function(fH2_new, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-	    if(fabs(Q_new) < 1e-10){break;} // small residual; we're done
-	    fH2_c_old = fH2_c; fH2_c = fH2_b; Q_c = Q_b;
-	    if(Q_a * Q_new < 0){fH2_b = fH2_new; Q_b = Q_new;} else {fH2_a = fH2_new; Q_a = Q_new;}
-
-	    if(fabs(Q_a) < fabs(Q_b)){
-		double tmp = Q_a; Q_a = Q_b; Q_b = tmp;
-		tmp = fH2_a; fH2_a = fH2_b; fH2_b = tmp;
-	    }
-	    rel_fH2_error = fabs(fH2_b-fH2_a)/fH2_new;
-	    iter++;
-	    if(iter>30){break;}
-	}
-	fH2 = fH2_new;
-	//if(P[i].ID==1){printf("fH2=%g Q=%g rel_error=%g\n",fH2,fH2_new,rel_fH2_error);}
-	if(iter > 30){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+		    ROOTFIND_X_a = fH2_min; ROOTFIND_X_b = fH2_max; ROOTFUNC_a = Q_min; ROOTFUNC_b = Q_max;
+                }
+            }
+        }
+	
+	// specify desired relative error in fH2 and call the rootfinder
+	double ROOTFIND_REL_X_tol=1e-3; 
+        #include "../system/bracketed_rootfind.h"
+	fH2 = ROOTFIND_X_new;
+//	if(!(P[i].ID%1000)){printf("iter=%d Q=%g error=%g\n", ROOTFIND_ITER, ROOTFUNC_new, ROOTFIND_REL_X_error);}
+	if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
     } // end nonlinear solve part
 
     if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
