@@ -1908,7 +1908,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 	if(ROOTFUNC_b * ROOTFUNC_a > 0){	
 	    // lower bound
 	    x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
-	    double fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+	    fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
 	    Q_min = ROOTFIND_FUNCTION(fH2_min); //molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 	    if(Q_min * Q_mid < 0){
 		ROOTFIND_X_b = fH2_min;  ROOTFUNC_b = Q_min;
@@ -1916,7 +1916,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
 		// upper bound
 		fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding    	
 		z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-		double fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
+		fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
 		Q_max = ROOTFIND_FUNCTION(fH2_max);
 		if(Q_max * Q_mid < 0){
 		    ROOTFIND_X_b = fH2_max;  ROOTFUNC_b = Q_max;
