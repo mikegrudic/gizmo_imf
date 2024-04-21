@@ -352,10 +352,11 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     /* core iteration to convergence */
     double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
     #include "../system/bracketed_rootfind.h"
-    u = ROOTFIND_X_new + u_old;
+    u =ROOTFIND_X_new + u_old;
 
     /* crash condition */
     if(ROOTFIND_ITER >= MAXITER || isnan(u)) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
+    u = DMAX(u_min, u);
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION

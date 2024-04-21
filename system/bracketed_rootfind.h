@@ -25,7 +25,7 @@ if (ROOTFUNC_a * ROOTFUNC_b > 0)
     }
     if (iter == MAXITER)
     {
-        PRINT_WARNING("ERROR: Could not bracket root.\n");
+        PRINT_WARNING("ERROR: Could not bracket root. x_a=%g x_b=%g f_a=%g f_b=%g\n", ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b);
     }
 }
 
