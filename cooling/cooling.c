@@ -341,22 +341,24 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     double u_step_fac = 1.1;
     int bracket_iter = 0;
     while(du_net_upper * du_net_lower > 0 && bracket_iter<MAXITER){
-        u_upper *= u_step_fac; u_lower /= u_step_fac;
+    u_upper *= u_step_fac; u_lower /= u_step_fac; u_lower = DMAX(u_lower, u_min);
         du_net_upper = ROOTFIND_FUNCTION(u_upper - u_old);
         du_net_lower = ROOTFIND_FUNCTION(u_lower - u_old);
         u_step_fac *= u_step_fac;
         bracket_iter++;
     }
+    if(bracket_iter == MAXITER) {PRINT_WARNING("Could not bracket cooling solution. u_min=%g u=%g u_upper=%g\n", u_min, u, u_upper); endrun(10);}
 
     if(du_net*du_net_upper < 0){u_lower = u; du_net_lower = du_net;} else {u_upper = u; du_net_upper = du_net;}
     /* core iteration to convergence */
     double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
     #include "../system/bracketed_rootfind.h"
-    u =ROOTFIND_X_new + u_old;
+    u = ROOTFIND_X_new + u_old;
 
     /* crash condition */
     if(ROOTFIND_ITER >= MAXITER || isnan(u)) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
-    u = DMAX(u_min, u);
+    
+    u = DMAX(u_min,u);
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
