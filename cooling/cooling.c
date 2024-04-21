@@ -332,55 +332,30 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     dt *= UNIT_TIME_IN_CGS;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
     ratefact = nHcgs * nHcgs / rho;
-
     u = u_old; u_lower = u; u_upper = u; /* initialize values */
-    LambdaNet = CoolingRateFromU(u, rho, ne_guess, ne_eval, target);
-    double du_net = u - u_old - ratefact * LambdaNet * dt , du_net_upper = du_net, du_net_lower = du_net;
+    #define ROOTFIND_FUNCTION(du) du - ratefact * CoolingRateFromU(u_old+du, rho, ne_guess, ne_eval, target) * dt // control the *relative* error on the *change* in u
+
+    double du_net = ROOTFIND_FUNCTION(u - u_old), du_net_upper = du_net, du_net_lower = du_net;
 
     /* bracketing */
-    if(u - u_old - ratefact * LambdaNet * dt < 0)	/* heating */
-    {
-        u_upper *= sqrt(1.1); u_lower /= sqrt(1.1);
-        du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_upper<maxiter_uplo)&&(u_upper>u_min)&&(du_net_upper < 0))
-        {
-            u_upper *= 1.1; u_lower *= 1.1; iter_upper++;
-            du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
-        }
-        du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
+    double u_step_fac = 1.1;
+    int bracket_iter = 0;
+    while(du_net_upper * du_net_lower > 0 && bracket_iter<MAXITER){
+        u_upper *= u_step_fac; u_lower /= u_step_fac;
+        du_net_upper = ROOTFIND_FUNCTION(u_upper - u_old);
+        du_net_lower = ROOTFIND_FUNCTION(u_lower - u_old);
+        u_step_fac *= u_step_fac;
+        bracket_iter++;
     }
 
-    if(u - u_old - ratefact * LambdaNet * dt > 0) /* cooling */
-    {
-        u_lower /= sqrt(1.1); u_upper *= sqrt(1.1);
-        du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
-        while((iter_lower<maxiter_uplo)&&(u_lower>u_min)&&(du_net_lower > 0))
-        {
-            u_upper /= 1.1; u_lower /= 1.1; iter_lower++;
-            du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
-        }
-        du_net_upper = u_upper - u_old - ratefact * CoolingRateFromU(u_upper, rho, ne_guess, ne_eval, target) * dt;
-    }
-
-    /* check if our initial iteration already overshot */
-    if(du_net_upper < 0 && du_net > 0) {u_upper = u;}
-    if(du_net_lower > 0 && du_net < 0) {u_lower = u;}
-    if(u_upper < u_lower) {double u_temp = u_lower; u_lower = u_upper; u_upper = u_temp;} /* ensure ordering */
-    /* check against going below the minimum temperature limit */
-    if(u_upper < u_min) {u_upper=u_lower=u_min;} else {
-        if(u_lower < u_min) {u_lower=u_min;}
-        if(u_upper>u_min && u_lower <= u_min) {
-            du_net_lower = u_lower - u_old - ratefact * CoolingRateFromU(u_lower, rho, ne_guess, ne_eval, target) * dt;
-            if(du_net_lower > 0) {u_upper=u_lower=u_min;}}}
-
+    if(du_net*du_net_upper < 0){u_lower = u; du_net_lower = du_net;} else {u_upper = u; du_net_upper = du_net;}
     /* core iteration to convergence */
-    #define ROOTFIND_FUNCTION(du) du - ratefact * CoolingRateFromU(u_old+du, rho, ne_guess, ne_eval, target) * dt // control the *relative* error on the *change* in u
     double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
     #include "../system/bracketed_rootfind.h"
     u = ROOTFIND_X_new + u_old;
 
     /* crash condition */
-    if(ROOTFIND_ITER >= MAXITER) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
+    if(ROOTFIND_ITER >= MAXITER || isnan(u)) {printf("failed to converge in DoCooling(): u_in=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old,rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
@@ -1873,44 +1848,46 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
         #define ROOTFIND_FUNCTION(x) molecfrac_rootfind_function(x, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-	Q_initial = ROOTFIND_FUNCTION(fH2_initial) //molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+	    Q_initial = ROOTFIND_FUNCTION(fH2_initial); //molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-	double fH2_mid = fH2;
-	double Q_mid = ROOTFIND_FUNCTION(fH2_mid); //molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+        double fH2_mid = fH2;
+        double Q_mid = ROOTFIND_FUNCTION(fH2_mid); //molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
 
-	// OK now let's let the initial and previous-shielding values by the candidate bracket, and if that fails then find another value to bracket the other end
-	double ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b;
-	ROOTFIND_X_a = fH2_mid; ROOTFUNC_a = Q_mid; 
-	ROOTFIND_X_b = fH2_initial; ROOTFUNC_b = Q_initial;	    
-        //if not bracketing we must try other bounds
-	if(ROOTFUNC_b * ROOTFUNC_a > 0){	
-	    // lower bound
-	    x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
-	    fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
-	    Q_min = ROOTFIND_FUNCTION(fH2_min); //molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-	    if(Q_min * Q_mid < 0){
-		ROOTFIND_X_b = fH2_min;  ROOTFUNC_b = Q_min;
- 	    } else {
-		// upper bound
-		fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding    	
-		z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
-		fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
-		Q_max = ROOTFIND_FUNCTION(fH2_max);
-		if(Q_max * Q_mid < 0){
-		    ROOTFIND_X_b = fH2_max;  ROOTFUNC_b = Q_max;
-		} else {
-		    ROOTFIND_X_a = fH2_min; ROOTFIND_X_b = fH2_max; ROOTFUNC_a = Q_min; ROOTFUNC_b = Q_max;
+        // OK now let's let the initial and previous-shielding values by the candidate bracket, and if that fails then find another value to bracket the other end
+        double ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b;
+        ROOTFIND_X_a = fH2_mid; ROOTFUNC_a = Q_mid; 
+        ROOTFIND_X_b = fH2_initial; ROOTFUNC_b = Q_initial;	    
+            //if not bracketing we must try other bounds
+        if(ROOTFUNC_b * ROOTFUNC_a > 0){	
+            // lower bound
+            x_b=x_b_0+G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // recalculate all terms that depend on the shielding
+            fH2_min = DMAX(0,DMIN(1,fH2)); // this serves as a lower-limit for fH2
+            Q_min = ROOTFIND_FUNCTION(fH2_min); //molecfrac_rootfind_function(fH2_min, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+            ROOTFIND_X_b = fH2_min;  ROOTFUNC_b = Q_min;
+            if(Q_min * Q_mid > 0){
+            // upper bound
+                fH2_tmp=1.; x_ss_1=1.+fH2_tmp*x01; x_ss_sqrt=sqrt(1.+fH2_tmp*x00); y_ss=(1.-w0)/(x_ss_1*x_ss_1) + w0/x_ss_sqrt*exp(-DMIN(EXPmax,x_exp_fac*x_ss_sqrt)); x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding    	
+                z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
+                fH2_max = DMAX(0,DMIN(1,fH2)); // this serves as an upper-limit for fH2	
+                Q_max = ROOTFIND_FUNCTION(fH2_max);
+                ROOTFIND_X_b = fH2_max;  ROOTFUNC_b = Q_max;
+                if(Q_max * Q_mid > 0){
+                    if(Q_min*Q_max > 0){
+                        ROOTFIND_X_a = 0; ROOTFIND_X_b = 1; ROOTFUNC_a = ROOTFIND_FUNCTION(0); ROOTFUNC_b = ROOTFIND_FUNCTION(1.);
+                    } else { 
+                        ROOTFIND_X_a = fH2_min; ROOTFIND_X_b = fH2_max; ROOTFUNC_a = Q_min; ROOTFUNC_b = Q_max;
+                    }
                 }
             }
         }
-	
-	// specify desired relative error in fH2 and call the rootfinder
-	double ROOTFIND_REL_X_tol=1e-3; 
+        
+        // specify desired relative error in fH2 and call the rootfinder
+        double ROOTFIND_REL_X_tol=1e-3; 
         #include "../system/bracketed_rootfind.h"
-	fH2 = ROOTFIND_X_new;
-	if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+        fH2 = ROOTFIND_X_new;
+        if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
     } // end nonlinear solve part
 
     if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
