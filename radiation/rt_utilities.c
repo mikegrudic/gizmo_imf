@@ -1443,7 +1443,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
-    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance\n",P[i].ID);}
+    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance\n",P[i].ID);}
     return Tdust;
 }
 

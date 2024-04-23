@@ -1854,13 +1854,13 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     } else { // we do a nonlinear solve
         x_b_0=x_b_00 + 1.; x_c=x_c_00 + fH2_initial; // x_c and x_b re-incorporate their constant terms in this limit to make the math easier
         y_a=x_a/(x_c + MIN_REAL_NUMBER); // convenient to convert to dimensionless variable needed for checking definite-ness
-        #define ROOTFIND_FUNCTION(x) molecfrac_rootfind_function(x, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
-	    Q_initial = ROOTFIND_FUNCTION(fH2_initial); //molecfrac_rootfind_function(fH2_initial, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+        #define ROOTFIND_FUNCTION(x) molecfrac_rootfind_function(x, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded); // want to find f_mol such that this is 0
+	Q_initial = ROOTFIND_FUNCTION(fH2_initial); 
 
         x_b=x_b_0+y_ss*G_LW_dt_unshielded; y_b=x_b/(x_c + MIN_REAL_NUMBER); // recalculate all terms that depend on the shielding
         z_a=4.*y_a/(y_b*y_b + MIN_REAL_NUMBER); if(z_a>1.) {fH2=1.;} else {if(fabs(z_a)<0.1) {fH2=(1.+0.25*z_a*(1.+0.5*z_a))/(y_b + MIN_REAL_NUMBER);} else {fH2=(2./(y_b + MIN_REAL_NUMBER))*(1.-sqrt(1.-z_a))/z_a;}} // calculate f assuming the shielding term is constant
         double fH2_mid = fH2;
-        double Q_mid = ROOTFIND_FUNCTION(fH2_mid); //molecfrac_rootfind_function(fH2_mid, x00, x01, x_b_0, x_c, y_a, G_LW_dt_unshielded);
+        double Q_mid = ROOTFIND_FUNCTION(fH2_mid);
 
         // OK now let's let the initial and previous-shielding values by the candidate bracket, and if that fails then find another value to bracket the other end
         double ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b;
@@ -1890,11 +1890,15 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
             }
         }
         
+	if(ROOTFUNC_a * ROOTFUNC_b < 0){
         // specify desired relative error in fH2 and call the rootfinder
-        double ROOTFIND_REL_X_tol=1e-3; 
-        #include "../system/bracketed_rootfind.h"
-        fH2 = ROOTFIND_X_new;
-        if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+            double ROOTFIND_REL_X_tol=1e-3; 
+            #include "../system/bracketed_rootfind.h"
+	    fH2 = ROOTFIND_X_new;
+	    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+        } else { // must be at 0 or 1 within machine precision of solution but not bracketing - choose the closer bracketing value of 0 or 1
+	    if(fabs(ROOTFUNC_a) < fabs(ROOTFUNC_b)){fH2 = ROOTFIND_X_a;} else {fH2 = ROOTFIND_X_b;}
+	}
     } // end nonlinear solve part
 
     if(!isfinite(fH2)) {fH2=0;} else {if(fH2>1) {fH2=1;} else if(fH2<0) {fH2=0;}} // check vs nans, valid values
