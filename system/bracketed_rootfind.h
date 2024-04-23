@@ -15,17 +15,17 @@ if (ROOTFUNC_a * ROOTFUNC_b > 0)
     int fac = 1.1, iter = 0;
     while (ROOTFUNC_a * ROOTFUNC_b > 0 && iter < MAXITER)
     {
-	double tmp = ROOTFIND_X_a;
+	double tmp = ROOTFIND_X_a; // let a be the lower value
         ROOTFIND_X_a = DMIN(ROOTFIND_X_a, ROOTFIND_X_b) / fac;
         ROOTFIND_X_b = DMAX(tmp, ROOTFIND_X_b) * fac;
         ROOTFUNC_a = ROOTFIND_FUNCTION(ROOTFIND_X_a);
         ROOTFUNC_b = ROOTFIND_FUNCTION(ROOTFIND_X_b);
-        fac *= fac;
         iter++;
     }
     if (iter == MAXITER)
     {
         PRINT_WARNING("ERROR: Could not bracket root. x_a=%g x_b=%g f_a=%g f_b=%g\n", ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b);
+	endrun(234528);
     }
 }
 
