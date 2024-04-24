@@ -1,11 +1,13 @@
 /*
-Code block containing a Brent 1973 rootfind routine.
+Code block containing a Brent 1973 rootfind routine, guaranteed to find the root provided
+upper and lower bounds for a continuous function
 
 Required initializations outside this block:
     ROOTFIND_FUNCTION(x) - #define'd macro that evaluates a function of a single
 variable whose root we wish to find
     ROOTFIND_X_a, ROOTFIND_X_b - Arguments to ROOTFIND_FUNCTION that are known
 to bracket the root.
+    ROOTFUNC_a, ROOTFUNC_b - values of the function evaluated at the bracket points
     ROOTFIND_REL_X_tol - Tolerance for desired *relative* error in the root
 */
 
