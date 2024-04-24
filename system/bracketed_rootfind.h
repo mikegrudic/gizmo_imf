@@ -13,15 +13,15 @@ if (ROOTFUNC_a * ROOTFUNC_b > 0)
 {
     PRINT_WARNING("ERROR: Bounds supplied to bracketed_roofind.h block do not bracket the root. Expanding region...");
     double bracket_fac = 1.1; int bracket_iter;
-    while (ROOTFUNC_a * ROOTFUNC_b > 0 && bracket_iter < MAXITER)
+    do
     {
 	double tmp = ROOTFIND_X_a; // let a be the lower value
         ROOTFIND_X_a = DMIN(ROOTFIND_X_a, ROOTFIND_X_b) / bracket_fac;
         ROOTFIND_X_b = DMAX(tmp, ROOTFIND_X_b) * bracket_fac;
         ROOTFUNC_a = ROOTFIND_FUNCTION(ROOTFIND_X_a);
         ROOTFUNC_b = ROOTFIND_FUNCTION(ROOTFIND_X_b);
-        iter++;
-    }
+        bracket_iter++;
+    } while (ROOTFUNC_a * ROOTFUNC_b > 0 && bracket_iter < MAXITER);
     if ((bracket_iter == MAXITER) || isnan(ROOTFUNC_a) || isnan(ROOTFUNC_b))
     {
         PRINT_WARNING("ERROR: Could not bracket root. x_a=%g x_b=%g f_a=%g f_b=%g\n", ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b);
