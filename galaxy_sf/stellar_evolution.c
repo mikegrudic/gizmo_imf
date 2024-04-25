@@ -506,7 +506,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *Msne)
 {
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || (defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE))
-#if !defined(SINGLE_STAR_FB_SNE)
+#if !defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
     if(!is_particle_single_star_eligible(i)) {if(t_gyr > 0.044) {SNeIaFlag=1;} else {SNeIaFlag=0;}} /* match to rates tabulation above to determine if Ia or CC */
 #endif
     if(SNeIaFlag==1) {*Msne=1.4;} else {*Msne=8.72;} /* default to a mean mass for Ia vs CC SNe; for updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass */
@@ -625,7 +625,9 @@ void get_wind_yields(double *yields, int i)
 #ifdef STARFORGE_FEEDBACK_TRACERS
         for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+k]=0;} yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+1]=1; // this is 'fully' wind material, so mark as such here, so it is noted for all wind routines [whichever form of the wind subroutine we actually use, otherwise it would only appear in the jet version]
 #endif
+#if !defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
         return; /* nothing more complicated gets modeled here, just use initial surface abundances */
+#endif
     }
 #endif
     if(NUM_METAL_SPECIES>=10) /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
