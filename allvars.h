@@ -2468,6 +2468,7 @@ extern struct global_data_all_processes
 
 #ifdef RT_ISRF_BACKGROUND
     double InterstellarRadiationFieldStrength;
+    double RadiationBackgroundRedshift;
 #endif
 
 #ifdef RT_LEBRON
