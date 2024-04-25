@@ -383,6 +383,7 @@ double Get_Gas_Alfven_speed_i(int i);
 double Get_Gas_Fast_MHD_wavespeed_i(int i);
 double Get_Gas_Mean_Molecular_Weight_mu(double T_guess, double rho, double *xH0, double *ne_guess, double urad_from_uvb_in_G0, int target);
 void update_explicit_molecular_fraction(int i, double dtime_cgs);
+double molecfrac_rootfind_function(double fH2, double x00, double x01, double x_b_0, double x_c, double y_a, double G_LW_dt_unshielded);
 double return_dust_to_metals_ratio_vs_solar(int i, double T_dust_manual_override);
 double yhelium(int target);
 double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral_fraction, double free_electron_ratio, double urad_from_uvb_in_G0);
@@ -916,6 +917,7 @@ void rt_get_lum_gas(int target, double *je);
 #ifdef RT_ISRF_BACKGROUND
 void rt_apply_boundary_conditions(int i);
 void get_background_isrf_urad(int i, double *urad);
+double background_isrf_cmb_Teff(void);
 #endif
 double slab_averaging_function(double x);
 double blackbody_lum_frac(double E_lower, double E_upper, double T_eff);
