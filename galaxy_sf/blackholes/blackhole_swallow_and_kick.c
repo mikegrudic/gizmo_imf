@@ -781,7 +781,7 @@ void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz, doub
     Bmag = DMAX(Bmag , 0.1 * Bmag_IC);
 #endif
 #if defined(SINGLE_STAR_FB_SNE)
-    if(P[j].ProtoStellarStage == 6) {Bmag=0;} // No need to have flux in SN ejecta - note that this assumes we inherited this attribute from the spawning sink before calling this routine
+    if(P[j].ProtoStellarStage == 6) {Bmag *= 1.e-3;} // No need to have flux in SN ejecta - note that this assumes we inherited this attribute from the spawning sink before calling this routine
 #endif
     Bmag = DMAX(Bmag, MIN_REAL_NUMBER); // floor to prevent underflow errors
     /* add magnetic flux here to 'Bmag' if desired */
