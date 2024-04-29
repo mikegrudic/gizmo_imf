@@ -672,8 +672,8 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     double vT_an = DMIN(vT_crit, vA_crit); // speed for anomalous term to kick on
     double vdrift_mag = ((B_Gauss / L_B) * C_LIGHT_CGS) / (4.*M_PI*ELECTRONCHARGE_CGS * n_eff * xi_AbsZi_eff), vslip_mag = eta_A/L_B, epstein_corr = sqrt(1. + (vdrift_mag*vdrift_mag + vslip_mag*vslip_mag)/(vT_crit*vT_crit));
     double eta_an = (eta_prefac * units_cgs_to_code / xi_AbsZi_eff) * sqrt(1. + 4.*M_PI*C_LIGHT_CGS*C_LIGHT_CGS*ELECTRONMASS_CGS*n_eff*xe/(B_Gauss*B_Gauss)); // anomalous resistivity, set to max of either gyro frequency or electron plasma frequency (dust plasma frequency should be lower unless in dusty plasma regime, where behavior is much more complicated
-    if(vdrift_mag > vT_an/40.) {eta_ohmic += eta_an * exp(-vT_an/vdrift_mag);} // factor to represent boosted ohmic to diffuse when exceed critical limit
-    eta_ohmic*=epstein_corr; eta_ad/=epstein_corr; // epstein-type correction for superthermal drift or slip
+    eta_ohmic*=epstein_corr; eta_ad/=sqrt(epstein_corr); // epstein-type correction for superthermal drift or slip
+    if(vdrift_mag > vT_an/40.) {eta_ohmic += eta_an * exp(-vT_an/vdrift_mag) * sqrt(1. + (vdrift_mag*vdrift_mag)/(vT_an*vT_an));} // factor to represent boosted ohmic to diffuse when exceed critical limit
 #endif
     SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
     SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */
