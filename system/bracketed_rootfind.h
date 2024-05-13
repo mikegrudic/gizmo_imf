@@ -14,7 +14,7 @@ to bracket the root.
 if (ROOTFUNC_a * ROOTFUNC_b > 0)
 {
     PRINT_WARNING("ERROR: Bounds supplied to bracketed_roofind.h block do not bracket the root. Expanding region...");
-    double bracket_fac = 1.1; int bracket_iter;
+    double bracket_fac = 1.1; int bracket_iter = 0;
     do
     {
 	double tmp = ROOTFIND_X_a; // let a be the lower value
