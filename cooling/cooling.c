@@ -352,7 +352,7 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     }
 
     if(!skip_rootfind){ // assuming we're not bouncing off the min temp
-	if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%ld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
+	if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
 
 	/* core iteration to convergence */
 	double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
