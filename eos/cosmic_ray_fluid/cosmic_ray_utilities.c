@@ -1895,17 +1895,25 @@ double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i)
 /* return total CR ionization rate zeta_cr in s^-1 associated with a cell */
 double Get_CosmicRayIonizationRate_cgs(int i)
 {
+    double zeta_cr = 0;
 #if defined(COSMIC_RAY_FLUID) && (N_CR_PARTICLE_BINS > 2)
-    double ecr_units=(SphP[i].Density*All.cf_a3inv/P[i].Mass)*UNIT_PRESSURE_IN_CGS, zeta_cr=0; int k;
+    double ecr_units=(SphP[i].Density*All.cf_a3inv/P[i].Mass)*UNIT_PRESSURE_IN_CGS; int k;
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
         double T_GeV=return_CRbin_kinetic_energy_in_GeV(-1,k), beta=return_CRbin_beta_factor(-1,k), Z=return_CRbin_CR_charge_in_e(-1,k), gamma=return_CRbin_gamma_factor(-1,k);
         zeta_cr += 3.43e-18 * (Z*Z/T_GeV) * ((1.-0.069*beta*beta+0.14*log(beta*gamma))/beta) * (SphP[i].CosmicRayEnergyPred[k]*ecr_units); // cross sections from standard Bethe-Blocke formulation, valid at all CR energies we consider explicitly
     }
-    return zeta_cr;
 #else
-    return 1.e-5 * Get_CosmicRayEnergyDensity_cgs(i); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
+    zeta_cr = 1.e-5 * Get_CosmicRayEnergyDensity_cgs(i); // scales following Cummings et al. 2016 to 1.6e-17 per eV/cm^3
+#if !defined(COSMIC_RAY_FLUID) && !defined(COSMIC_RAY_SUBGRID_LEBRON) && !defined(RT_ISRF_BACKGROUND)
+    double prefac_CR=1.; if(All.ComovingIntegrationOn) {double rhofac = (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS) / (1000.*COSMIC_BARYON_DENSITY_CGS); if(rhofac < 0.2) {prefac_CR=0;} else {if(rhofac > 200.) {prefac_CR=1;} else {prefac_CR=exp(-1./(rhofac*rhofac));}}}
+    zeta_cr *= prefac_CR; // in cosmological runs where we're not following CRs in any sense, turn off CR ionization for any gas with density unless it's >1000 times the cosmic mean density
 #endif
+#endif
+#ifdef METALS
+    zeta_cr += 1.e-21 * P[i].Metallicity[0]/All.SolarAbundances[0]; // include radioactive decay of K-40 and other species, which scales with metallicity
+#endif
+    return zeta_cr;
 }
 
 
