@@ -1415,6 +1415,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     int n_iter=0;    
     dEdt_guess = dEdt = dust_dEdt(i,T,Tdust_guess,dust_absorption_rate);
     
+    if(dEdt==0){return Tdust_guess;}
     /* bracketing the dust temperature */
     if(dEdt < 0) 
     {
@@ -1423,6 +1424,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 	while(dEdt<0) {
 	    Tdust *= scalefac; 
 	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
+        if(dEdt==0){return Tdust;}
 	    scalefac *= 0.9; 
 	    n_iter++;
 	}
@@ -1433,6 +1435,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 	while(dEdt>0 && Tdust < Tmax) {
 	    Tdust *= scalefac; Tdust = DMIN(Tdust,Tmax);
 	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
+        if(dEdt==0){return Tdust;}
 	    scalefac *= 1.1; 
 	    n_iter++;
 	}
