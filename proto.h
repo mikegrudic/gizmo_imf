@@ -677,6 +677,8 @@ void apply_grain_dragforce(void);
 #ifdef RT_INFRARED
 double get_min_allowed_dustIRrad_temperature(void);
 double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target, int update_Tdust);
+double dust_dE_cooling(int i, double Tgas, double Tdust);
+double rt_ir_lambdadust(int i, double Tgas);
 #endif
 
 #if defined(GALSF_FB_FIRE_RT_HIIHEATING) || (defined(RT_CHEM_PHOTOION) && defined(GALSF))

@@ -1353,6 +1353,91 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     return 0;
 }
 
+
+double dust_dE_cooling(int i, double Tgas, double Tdust){
+    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
+    double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
+    double lambda_to_dErad = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs * (dt*UNIT_TIME_IN_CGS) / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
+
+    double dust_absorption_nonIR = 0;
+    for(int k=0; k < N_RT_FREQ_BINS; k++){
+        if(RT_BAND_IS_IONIZING(k)){continue;} /* gas-phase absorption */
+        if(k==RT_FREQ_BIN_INFRARED){continue;} /* this is only counting up non-IR contributions, e.g. nebular NUV */
+        double e_final = SphP[i].Rad_E_gamma[k] + SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * lambda_to_dErad;
+        dust_absorption_nonIR += e_final * rt_absorption_rate(i, k) * dt;
+    }
+    double LambdaDust = gas_dust_heating_coeff(i,Tgas,Tdust) * (Tgas-Tdust);
+    double de_IR_dust = LambdaDust * lambda_to_dErad; // equates to *net* emission of radiation by dust (emission - absorption)
+    double LambdaIR_gas = SphP[i].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
+    double de_IR_gas = LambdaIR_gas * lambda_to_dErad; // net emission by gas
+
+    double kappa_dust_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1,1); 
+    double dust_emission = 4.*5.67e-5/(UNIT_PRESSURE_IN_CGS*UNIT_VEL_IN_CGS)*P[i].Mass*RT_SPEEDOFLIGHT_REDUCTION*kappa_dust_emission*pow(Tdust,4)*dt; // *total* dust emission
+
+    double e_IR_0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED];
+    double e_IR_final = e_IR_0 + de_IR_dust + de_IR_gas;
+    double T_IR_0 = SphP[i].Radiation_Temperature;
+    double T_IR_final = e_IR_final / (e_IR_0/T_IR_0 + de_IR_gas / Tgas + de_IR_dust / Tdust + MIN_REAL_NUMBER); // assume gas-phase IR component emitted at Tgas
+    T_IR_final=DMAX(T_IR_final,MIN_REAL_NUMBER);
+    SphP[i].Radiation_Temperature_CoolingWeighted = T_IR_final;
+
+    double dE_dust = 0; // now count up the energy changes in the dust for us to solve for 0
+    double dust_absorption = dust_absorption_nonIR;
+    dust_absorption += e_IR_final * C_LIGHT_CODE_REDUCED * rt_kappa_adaptive_IR_band(i, Tdust, T_IR_final,-1,1) * SphP[i].Density*All.cf_a3inv * dt;
+    double result = LambdaDust * lambda_to_dErad + dust_absorption - dust_emission;
+    return result;
+}
+
+double rt_ir_lambdadust(int i, double T){
+    double Tdust, T_lower, T_upper, dE, dE_lower, dE_upper, dE_guess;
+    double Tmax = 1e4;
+    
+    #define ROOTFIND_FUNCTION_INNER(Tdust) dust_dE_cooling(i, T, Tdust)
+    if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = SphP[i].Dust_Temperature;}
+    dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust);
+    /* bracketing the dust temperature */
+    int n_iter = 0;
+    if(dE < 0)
+    {
+        double scalefac = 0.9;
+        T_upper = Tdust;
+        dE_upper = dE_guess; 
+        while(dE < 0) {
+            Tdust *= scalefac; 
+            dE = ROOTFIND_FUNCTION_INNER(Tdust);
+            if(dE==0){break;}
+            scalefac *= 0.9; 
+            n_iter++;
+        }
+        T_lower = Tdust, dE_lower = dE;
+    } else {
+        T_lower = Tdust, dE_lower = dE_guess;
+        double scalefac = 1.1;
+        while(dE > 0 && Tdust < Tmax) {
+            Tdust *= scalefac; Tdust = DMIN(Tdust,Tmax);
+            dE = ROOTFIND_FUNCTION_INNER(Tdust); 
+            if(dE==0){break;}
+            scalefac *= 1.1; 
+            n_iter++;
+        }
+        T_upper = Tdust, dE_upper = dE;
+    }     
+    if(T_upper>=Tmax && dE_upper > 0){Tdust = Tmax;}
+
+    if(dE!=0){
+        double ROOTFIND_X_a = T_lower, ROOTFIND_X_b = T_upper;
+        double ROOTFUNC_a = dE_lower; double ROOTFUNC_b = dE_upper;
+        double ROOTFIND_REL_X_tol = 1e-15;
+        #include "../system/bracketed_rootfind.h"
+        Tdust = ROOTFIND_X_new;
+    }
+
+    double LambdaDust = gas_dust_heating_coeff(i,T,Tdust) * (T-Tdust);
+    SphP[i].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] += LambdaDust;
+    SphP[i].Dust_Temperature = Tdust;
+    return LambdaDust;
+}
+
 #endif
 
 /******************************************************************************************************
@@ -1417,7 +1502,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     
     if(dEdt==0){return Tdust_guess;}
     /* bracketing the dust temperature */
-    if(dEdt < 0) 
+    if(dEdt < 0)
     {
 	scalefac = 0.9;
 	T_upper = Tdust, dEdt_upper = dEdt_guess; 

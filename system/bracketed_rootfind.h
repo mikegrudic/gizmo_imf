@@ -11,6 +11,12 @@ to bracket the root.
     ROOTFIND_REL_X_tol - Tolerance for desired *relative* error in the root
 */
 
+#ifdef ROOTFIND_FUNCTION_INNER
+#define ROOTFUNC ROOTFIND_FUNCTION_INNER
+#else
+#define ROOTFUNC ROOTFIND_FUNCTION
+#endif
+
 if (ROOTFUNC_a * ROOTFUNC_b > 0)
 {
     PRINT_WARNING("ERROR: Bounds supplied to bracketed_roofind.h block do not bracket the root. Expanding region...");
@@ -20,8 +26,8 @@ if (ROOTFUNC_a * ROOTFUNC_b > 0)
 	double tmp = ROOTFIND_X_a; // let a be the lower value
         ROOTFIND_X_a = DMIN(ROOTFIND_X_a, ROOTFIND_X_b) / bracket_fac;
         ROOTFIND_X_b = DMAX(tmp, ROOTFIND_X_b) * bracket_fac;
-        ROOTFUNC_a = ROOTFIND_FUNCTION(ROOTFIND_X_a);
-        ROOTFUNC_b = ROOTFIND_FUNCTION(ROOTFIND_X_b);
+        ROOTFUNC_a = ROOTFUNC(ROOTFIND_X_a);
+        ROOTFUNC_b = ROOTFUNC(ROOTFIND_X_b);
         bracket_iter++;
     } while (ROOTFUNC_a * ROOTFUNC_b > 0 && bracket_iter < MAXITER);
     if ((bracket_iter == MAXITER) || isnan(ROOTFUNC_a) || isnan(ROOTFUNC_b))
@@ -125,7 +131,7 @@ while (ROOTFIND_REL_X_error > ROOTFIND_REL_X_tol)
     {
         USED_BISECTION = 0;
     }
-    ROOTFUNC_new = ROOTFIND_FUNCTION(ROOTFIND_X_new);
+    ROOTFUNC_new = ROOTFUNC(ROOTFIND_X_new);
     if (ROOTFUNC_new == 0)
     {
         break;
@@ -162,4 +168,10 @@ while (ROOTFIND_REL_X_error > ROOTFIND_REL_X_tol)
     }
 }
 
-#undef ROOTFIND_FUNCTION
+#undef ROOTFUNC
+
+#ifdef ROOTFIND_FUNCTION_INNER
+#undef ROOTFIND_FUNCTION_INNER
+#else
+#undef ROOTFUNC_FUNCTION
+#endif
