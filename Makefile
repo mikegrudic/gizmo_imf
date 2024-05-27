@@ -548,7 +548,7 @@ ifeq ($(SYSTYPE),"PopOS")
 CC       =  mpicc
 CXX      =  mpiccxx
 FC       =  $(CC) #mpifort  ## change this to "mpifort" for packages requiring linking secondary fortran code, currently -only- the helmholtz eos modules do this, so I leave it un-linked for now to save people the compiler headaches
-OPTIMIZE = -O1 -funroll-loops
+OPTIMIZE =  -fcommon
 OPTIMIZE += -g -Wall # compiler warnings
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CXX     = mpic++
@@ -572,6 +572,7 @@ HDF5LIB  = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ -lhdf5 -lz
 MPICHLIB =
 OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION
 endif
+# to get required packages: sudo apt install libhdf5-openmpi-dev libgsl-dev libopenmpi-dev
 
 
 #----------------------------------------------------------------------------------------------
