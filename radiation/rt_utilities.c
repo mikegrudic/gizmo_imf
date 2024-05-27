@@ -1003,9 +1003,9 @@ void rt_apply_boundary_conditions(int i)
 #endif
 #ifdef RT_INFRARED
             if(k==RT_FREQ_BIN_INFRARED) {
-		SphP[i].Radiation_Temperature = background_isrf_cmb_Teff();
-		SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);
-	    }
+                SphP[i].Radiation_Temperature = background_isrf_cmb_Teff();
+                SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);
+            }
 #endif
         }
     } else {
@@ -1068,8 +1068,10 @@ void rt_set_simple_inits(int RestartFlag)
         {
             int k;
 #ifdef RT_INFRARED
-            if(flag_to_reset_values_on_startup) {SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);} //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
+            if(flag_to_reset_values_on_startup) {SphP[i].Radiation_Temperature = SphP[i].Dust_Temperature = DMIN(All.InitGasTemp,100.);} //get_min_allowed_dustIRrad_temperature(); // in K, floor = CMB temperature or 10K
+#ifdef RT_ISRF_BACKGROUND
             if(flag_to_reset_values_on_startup) {SphP[i].Radiation_Temperature = background_isrf_cmb_Teff();} //SphP[i].Dust_Temperature;
+#endif
             SphP[i].Dt_Rad_E_gamma_T_weighted_IR = 0;
 #endif
 #ifdef RT_CHEM_PHOTOION
@@ -1447,7 +1449,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
-    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance\n",P[i].ID);}
+    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance\n",(long long)P[i].ID);}
     return Tdust;
 }
 

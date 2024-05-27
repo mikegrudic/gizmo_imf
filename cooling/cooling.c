@@ -1895,7 +1895,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
             double ROOTFIND_REL_X_tol=1e-3; 
             #include "../system/bracketed_rootfind.h"
 	    fH2 = ROOTFIND_X_new;
-	    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %d did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
+	    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %lld did not converge to desired H_2 abundance tolerance\n",(long long)P[i].ID);}
         } else { // must be at 0 or 1 within machine precision of solution but not bracketing - choose the closer bracketing value of 0 or 1
 	    if(fabs(ROOTFUNC_a) < fabs(ROOTFUNC_b)){fH2 = ROOTFIND_X_a;} else {fH2 = ROOTFIND_X_b;}
 	}
