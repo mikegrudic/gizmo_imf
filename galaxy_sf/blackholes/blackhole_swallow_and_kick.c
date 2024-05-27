@@ -928,7 +928,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #if defined(BH_TEST_WIND_MIXED_FASTSLOW)
         double masscorrfac_fast = 50.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
         if((j - (NumPart + num_already_spawned)) % 2) {mode=mode_prev; v_magnitude_physical=v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
-        } else {if(get_random_number(j)<0.002*masscorrfac_fast) {mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=6.e4/UNIT_VEL_IN_KMS;}} /* collimated jet */
+        } else {if(get_random_number(j)<0.002*masscorrfac_fast) {mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS;}} /* collimated jet */
 #endif
         v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode; mass_of_new_particle_prev=mass_of_new_particle;
 
