@@ -8,9 +8,12 @@ variable whose root we wish to find
     ROOTFIND_X_a, ROOTFIND_X_b - Arguments to ROOTFIND_FUNCTION that are known
 to bracket the root.
     ROOTFUNC_a, ROOTFUNC_b - values of the function evaluated at the bracket points
-    ROOTFIND_REL_X_tol - Tolerance for desired *relative* error in the root
+    ROOTFIND_REL_X_tol - Tolerance for desired relative error in the root; stop iterating when this is achieved
+    ROOTFIND_ABS_X_tol - Tolerance for desired absolute error in the root; stop iterating when this is achieved
 */
 
+// if doing nested rootfinds, need to def a different inner function because
+// ROOTFIND_FUNCTION has not yet been undef'd
 #ifdef ROOTFIND_FUNCTION_INNER
 #define ROOTFUNC ROOTFIND_FUNCTION_INNER
 #else
@@ -20,10 +23,11 @@ to bracket the root.
 if (ROOTFUNC_a * ROOTFUNC_b > 0)
 {
     PRINT_WARNING("ERROR: Bounds supplied to bracketed_roofind.h block do not bracket the root. Expanding region...");
-    double bracket_fac = 1.1; int bracket_iter = 0;
+    double bracket_fac = 1.1;
+    int bracket_iter = 0;
     do
     {
-	double tmp = ROOTFIND_X_a; // let a be the lower value
+        double tmp = ROOTFIND_X_a; // let a be the lower value
         ROOTFIND_X_a = DMIN(ROOTFIND_X_a, ROOTFIND_X_b) / bracket_fac;
         ROOTFIND_X_b = DMAX(tmp, ROOTFIND_X_b) * bracket_fac;
         ROOTFUNC_a = ROOTFUNC(ROOTFIND_X_a);
@@ -33,7 +37,7 @@ if (ROOTFUNC_a * ROOTFUNC_b > 0)
     if ((bracket_iter == MAXITER) || isnan(ROOTFUNC_a) || isnan(ROOTFUNC_b))
     {
         PRINT_WARNING("ERROR: Could not bracket root. x_a=%g x_b=%g f_a=%g f_b=%g\n", ROOTFIND_X_a, ROOTFIND_X_b, ROOTFUNC_a, ROOTFUNC_b);
-	endrun(234528);
+        endrun(234528);
     }
 }
 
@@ -52,10 +56,10 @@ if (fabs(ROOTFUNC_a) < fabs(ROOTFUNC_b))
 double ROOTFIND_X_c = ROOTFIND_X_a, ROOTFUNC_c = ROOTFUNC_a;
 int USED_BISECTION = 1, DO_BISECTION = 0, ROOTFIND_ITER = 0;
 double ROOTFIND_X_c_old = ROOTFIND_X_c, ROOTFIND_X_new,
-       ROOTFUNC_new = ROOTFUNC_c, ROOTFIND_REL_X_error = 1e100, EPS_TOL = 1e-8;
+       ROOTFUNC_new = ROOTFUNC_c, ROOTFIND_X_error = 1e100, EPS_TOL = 1e-14;
 
 /* now we do a Brent 1973 method root-find */
-while (ROOTFIND_REL_X_error > ROOTFIND_REL_X_tol)
+do
 {
     ROOTFIND_X_new = 0;
     if ((ROOTFUNC_a != ROOTFUNC_c) &&
@@ -160,18 +164,18 @@ while (ROOTFIND_REL_X_error > ROOTFIND_REL_X_tol)
         ROOTFIND_X_a = ROOTFIND_X_b;
         ROOTFIND_X_b = tmp;
     }
-    ROOTFIND_REL_X_error = fabs((ROOTFIND_X_b - ROOTFIND_X_a) / ROOTFIND_X_new);
+    ROOTFIND_X_error = fabs(ROOTFIND_X_b - ROOTFIND_X_a);
     ROOTFIND_ITER++;
     if (ROOTFIND_ITER > MAXITER)
     {
         break;
     }
-}
+} while (ROOTFIND_X_error > DMAX(fabs(ROOTFIND_ABS_X_tol), ROOTFIND_REL_X_tol *fabs(ROOTFIND_X_new)));
 
 #undef ROOTFUNC
 
 #ifdef ROOTFIND_FUNCTION_INNER
 #undef ROOTFIND_FUNCTION_INNER
 #else
-#undef ROOTFUNC_FUNCTION
+#undef ROOTFIND_FUNCTION
 #endif

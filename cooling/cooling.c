@@ -191,7 +191,7 @@ void do_the_cooling_for_particle(int i)
         double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
         double de_u = (unew - SphP[i].InternalEnergy) * P[i].Mass; /* change in the total internal energy of the gas cell [integrating over everything] */
         double de_rad_tot_final = 0, de_rad_tot = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {de_rad_tot += SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact;} /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-	if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+	    if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             if((fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
@@ -200,8 +200,8 @@ void do_the_cooling_for_particle(int i)
 		if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
                 if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
-		    double de_rad_min = DMIN(DMAX( -0.99*SphP[i].Rad_E_gamma[k] , -de_u ), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
-		    double de_rad_max = DMAX(DMIN( 100.*unew*P[i].Mass, -de_u), 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
+                    double de_rad_min = DMIN(DMAX( -0.99*SphP[i].Rad_E_gamma[k] , -de_u ), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
+                    double de_rad_max = DMAX(DMIN( 100.*unew*P[i].Mass, -de_u), 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
                     de_rad = DMAX(DMIN(de_rad, de_rad_max), de_rad_min); // limit de_rad appropriately                    
                     if(fabs(de_rad) > MIN_REAL_NUMBER)
                     {
@@ -342,17 +342,20 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
     }
 
     if(!skip_rootfind){ // assuming we're not bouncing off the min temp
-	if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
+        if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
 
-	/* core iteration to convergence */
-	double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-4;
-    #include "../system/bracketed_rootfind.h"
-	u = ROOTFIND_X_new + u_old;
+        /* core iteration to convergence */
+        double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-2, ROOTFIND_ABS_X_tol = 1e-15 * u_old;
+        #include "../system/bracketed_rootfind.h"
+        u = ROOTFIND_X_new + u_old;
 
-	/* crash condition */
-	if((ROOTFIND_REL_X_error > 1e-2 && ROOTFIND_ITER >= MAXITER) || isnan(u)) {printf("failed to converge in DoCooling(): u_in=%g u_upper=%g u_lower=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",u_old, u_upper, u_lower, rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);}    
-	u = DMAX(u_min,u);
+        /* crash condition */
+        if((ROOTFIND_ITER >= MAXITER) || isnan(u)) {
+            printf("failed to converge in DoCooling(): ROOTFIND_X_new=%g ROOTFIND_X_a=%g ROOTFIND_X_b=%g ROOTFIND_X_error=%g u_in=%g u_upper=%g u_lower=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",ROOTFIND_X_new, ROOTFIND_X_a, ROOTFIND_X_b,  ROOTFIND_X_error, u_old, u_upper, u_lower, rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);
+        }    
+        u = DMAX(u_min,u);
     } else {u = All.MinEgySpec;}
+
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
 #ifdef RT_CHEM_PHOTOION
@@ -1138,7 +1141,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
      the equations of gas+dust+radiation energy conservation with 0 dust heat capacity - note that Tdust is always in equilibrium in
      this system, and we should overwrite it with whatever we get here. */
 #ifdef RT_INFRARED
-    if(target >= 0) {LambdaDust = rt_ir_lambdadust(target, T);} 
+    if(target >= 0) {LambdaDust = rt_ir_lambdadust(target, T);}
 #endif
     if(LambdaDust>0) {Lambda += LambdaDust;} /* add the -positive- Lambda-dust associated with cooling */
     if(LambdaDust<0) {Heat -= LambdaDust;} // Dust collisional heating (Tdust > Tgas) //
@@ -1215,7 +1218,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
     if(target >= 0) {SphP[target].HydroHeatingRate = SphP[target].DtInternalEnergy / nHcgs;}
 #endif
 #endif
-  return Q;
+    return Q;
 } // ends CoolingRate
 
 
@@ -1886,8 +1889,8 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
         
 	if(ROOTFUNC_a * ROOTFUNC_b < 0){
         // specify desired relative error in fH2 and call the rootfinder
-            double ROOTFIND_REL_X_tol=1e-3; 
-            #include "../system/bracketed_rootfind.h"
+	    double ROOTFIND_REL_X_tol=1e-3, ROOTFIND_ABS_X_tol=0;
+        #include "../system/bracketed_rootfind.h"
 	    fH2 = ROOTFIND_X_new;
 	    if(ROOTFIND_ITER > MAXITER){PRINT_WARNING("WARNING: Particle %lld did not converge to desired H_2 abundance tolerance\n",P[i].ID);}
         } else { // must be at 0 or 1 within machine precision of solution but not bracketing - choose the closer bracketing value of 0 or 1

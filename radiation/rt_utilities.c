@@ -1354,7 +1354,7 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
 }
 
 
-double dust_dE_cooling(int i, double Tgas, double Tdust){
+double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoint_1, double* Tdust_fixedpoint_2){
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
     double lambda_to_dErad = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs * (dt*UNIT_TIME_IN_CGS) / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
@@ -1366,13 +1366,15 @@ double dust_dE_cooling(int i, double Tgas, double Tdust){
         double e_final = SphP[i].Rad_E_gamma[k] + SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * lambda_to_dErad;
         dust_absorption_nonIR += e_final * rt_absorption_rate(i, k) * dt;
     }
-    double LambdaDust = gas_dust_heating_coeff(i,Tgas,Tdust) * (Tgas-Tdust);
+    double alpha_gd = gas_dust_heating_coeff(i,Tgas,Tdust);
+    double LambdaDust = alpha_gd * (Tgas-Tdust);
     double de_IR_dust = LambdaDust * lambda_to_dErad; // equates to *net* emission of radiation by dust (emission - absorption)
     double LambdaIR_gas = SphP[i].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
     double de_IR_gas = LambdaIR_gas * lambda_to_dErad; // net emission by gas
 
-    double kappa_dust_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1,1); 
-    double dust_emission = 4.*5.67e-5/(UNIT_PRESSURE_IN_CGS*UNIT_VEL_IN_CGS)*P[i].Mass*RT_SPEEDOFLIGHT_REDUCTION*kappa_dust_emission*pow(Tdust,4)*dt; // *total* dust emission
+    double kappa_dust_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1,1);
+    double fac_emission = 4.*5.67e-5/(UNIT_PRESSURE_IN_CGS*UNIT_VEL_IN_CGS)*P[i].Mass*RT_SPEEDOFLIGHT_REDUCTION*dt;
+    double dust_emission = fac_emission*kappa_dust_emission*pow(Tdust,4); // *total* dust emission
 
     double e_IR_0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED];
     double e_IR_final = e_IR_0 + de_IR_dust + de_IR_gas;
@@ -1385,21 +1387,31 @@ double dust_dE_cooling(int i, double Tgas, double Tdust){
     double dust_absorption = dust_absorption_nonIR;
     dust_absorption += e_IR_final * C_LIGHT_CODE_REDUCED * rt_kappa_adaptive_IR_band(i, Tdust, T_IR_final,-1,1) * SphP[i].Density*All.cf_a3inv * dt;
     double result = LambdaDust * lambda_to_dErad + dust_absorption - dust_emission;
+    *Tdust_fixedpoint_1 = Tgas + (dust_absorption - dust_emission)/(alpha_gd*lambda_to_dErad);
+    *Tdust_fixedpoint_2 = sqrt(sqrt((LambdaDust * lambda_to_dErad + dust_absorption)/(fac_emission * kappa_dust_emission)));
     return result;
 }
 
 double rt_ir_lambdadust(int i, double T){
-    double Tdust, T_lower, T_upper, dE, dE_lower, dE_upper, dE_guess;
-    double Tmax = 1e4;
-    
-    #define ROOTFIND_FUNCTION_INNER(Tdust) dust_dE_cooling(i, T, Tdust)
+    double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess,  Tmax = 1e4, Tdust_tol=1e-4;
+    double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;        
+    #define ROOTFIND_FUNCTION_INNER(Tdust) dust_dE_cooling(i, T, Tdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2);
     if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = SphP[i].Dust_Temperature;}
+
     dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust);
+   
+    if(Tdust_fixedpoint_1 > 0){dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
+    if(Tdust_fixedpoint_2 > 0){dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
+
+    double fixedpoint_error = DMIN(fabs(Tdust-Tdust_fixedpoint_2), fabs(Tdust-Tdust_fixedpoint_1))/Tdust;
+    if(fabs(dE1) < fabs(dE)){Tdust = Tdust_fixedpoint_1; dE=dE_guess=dE1;}
+    if(fabs(dE2) < fabs(dE)){Tdust = Tdust_fixedpoint_2; dE=dE_guess=dE2;}
+    
     /* bracketing the dust temperature */
     int n_iter = 0;
     if(dE < 0)
     {
-        double scalefac = 0.9;
+        double scalefac = DMAX(0.9, 1-fixedpoint_error);
         T_upper = Tdust;
         dE_upper = dE_guess; 
         while(dE < 0) {
@@ -1412,7 +1424,7 @@ double rt_ir_lambdadust(int i, double T){
         T_lower = Tdust, dE_lower = dE;
     } else {
         T_lower = Tdust, dE_lower = dE_guess;
-        double scalefac = 1.1;
+        double scalefac = DMIN(1.1, 1+fixedpoint_error);
         while(dE > 0 && Tdust < Tmax) {
             Tdust *= scalefac; Tdust = DMIN(Tdust,Tmax);
             dE = ROOTFIND_FUNCTION_INNER(Tdust); 
@@ -1423,11 +1435,10 @@ double rt_ir_lambdadust(int i, double T){
         T_upper = Tdust, dE_upper = dE;
     }     
     if(T_upper>=Tmax && dE_upper > 0){Tdust = Tmax;}
-
-    if(dE!=0){
+    if(dE!=0){  
         double ROOTFIND_X_a = T_lower, ROOTFIND_X_b = T_upper;
         double ROOTFUNC_a = dE_lower; double ROOTFUNC_b = dE_upper;
-        double ROOTFIND_REL_X_tol = 1e-15;
+        double ROOTFIND_REL_X_tol = Tdust_tol, ROOTFIND_ABS_X_tol=0.;
         #include "../system/bracketed_rootfind.h"
         Tdust = ROOTFIND_X_new;
     }
@@ -1529,10 +1540,10 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(T_upper==Tmax && dEdt_upper > 0){return Tmax;}
 
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
-    double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3;
+    double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3, ROOTFIND_ABS_X_tol=0.;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
-    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance\n",P[i].ID);}
+    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %d did not converge to desired Tdust tolerance: Tdust=%g\n",P[i].ID, Tdust);}
     return Tdust;
 }
 
@@ -1691,7 +1702,7 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
             kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
         }
         if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
-        kappa = DMIN(1.e-3 * Trad * Trad, kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
+    	kappa = DMIN(1.e-3 * Trad * Trad, kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
 #else
         kappa = DMIN(1.e-3 * Trad * Trad, 5.); // beta=2 law capped at 5 cm^2/g, rough approximation of Semenov model neglecting jumps in composition
 #endif

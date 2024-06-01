@@ -1278,6 +1278,10 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define RT_FREQ_BIN_He2 (RT_FREQ_BIN_He1+1)
 #endif
 
+#ifdef RT_CHEM_PHOTOION
+#define RT_BAND_IS_IONIZING(k) ((k==RT_FREQ_BIN_H0) || (k==RT_FREQ_BIN_He0) || (k==RT_FREQ_BIN_He1) || (k==RT_FREQ_BIN_He2))
+#endif
+
 #ifndef GALSF_FB_FIRE_RT_LONGRANGE
 #define RT_FREQ_BIN_FIRE_UV (RT_FREQ_BIN_He2+0)
 #define RT_FREQ_BIN_FIRE_OPT (RT_FREQ_BIN_FIRE_UV+0)
@@ -3517,6 +3521,9 @@ extern struct gas_cell_data
     MyFloat Radiation_Temperature; /* IR radiation field temperature (evolved variable ^4 power, for convenience) */
     MyFloat Dt_Rad_E_gamma_T_weighted_IR; /* IR radiation temperature-weighted time derivative of photon energy (evolved variable ^4 power, for convenience) */
     MyFloat Dust_Temperature; /* Dust temperature (evolved variable ^4 power, for convenience) */
+#ifdef COOLING
+    MyFloat Radiation_Temperature_CoolingWeighted; /* Radiation temperature weighted to combine dust+gas emission with existing SED in cooling solver */
+#endif
 #endif
 #ifdef RT_CHEM_PHOTOION
     MyFloat HI;                  /* HI fraction */
