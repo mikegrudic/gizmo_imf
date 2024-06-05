@@ -973,7 +973,7 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
     // phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
-    double L = BPP(n).StarLuminosity_Solar, R = BPP(n).ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
+    double L = ps_lum_MS(BPP(n).BH_Mass) * UNIT_LUM_IN_SOLAR, R = BPP(n).ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
     logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
 #if (SINGLE_STAR_FB_WINDS > 0)
     double vinf_over_vesc = single_star_wind_velocity(n)/single_star_escape_speed(n);
