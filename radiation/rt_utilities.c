@@ -1353,7 +1353,23 @@ double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, d
     return 0;
 }
 
+/* Returns the derivative of the dust energy, to be root-solved to 0 to obtain
+the equilibrium dust temperature assuming 0 dust heat capacity. Accounts for
+dust emission/absorption to obtain a solution consistent with a backward-Euler
+implicit cooling solution.
 
+Parameters
+----------
+i - index of particle in particle list
+Tgas - Assumed final gas temperature at the end of the timestep
+Tdust - Dust temperature (generally the unknown quantity we need to solve for)
+Tdust_fixedpoint_1 - Stores one possible fixed-point iterate for approximating the root (can use as a guess)
+Tdust_fixedpoint_2 - Stores another possible fixed-point iterate for approximating the root 
+
+Returns
+-------
+dE - net dust heating (=0 for dust in equilibrium)
+*/
 double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoint_1, double* Tdust_fixedpoint_2){
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
@@ -1392,9 +1408,12 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     return result;
 }
 
+/* Returns the dust cooling rate LambdaDust in erg s^-1 cm^3, accounting for 
+dust emission
+*/
 double rt_ir_lambdadust(int i, double T){
-    double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess,  Tmax = 1e4, Tdust_tol=1e-4;
-    double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;        
+    double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess,  Tmax = 1e4, Tdust_tol=1e-6;
+    double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;
     #define ROOTFIND_FUNCTION_INNER(Tdust) dust_dE_cooling(i, T, Tdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2);
     if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = SphP[i].Dust_Temperature;}
 
@@ -1435,7 +1454,9 @@ double rt_ir_lambdadust(int i, double T){
         T_upper = Tdust, dE_upper = dE;
     }     
     if(T_upper>=Tmax && dE_upper > 0){Tdust = Tmax;}
-    if(dE!=0){  
+
+
+    if(dE!=0){  // root-solve for Tdust
         double ROOTFIND_X_a = T_lower, ROOTFIND_X_b = T_upper;
         double ROOTFUNC_a = dE_lower; double ROOTFUNC_b = dE_upper;
         double ROOTFIND_REL_X_tol = Tdust_tol, ROOTFIND_ABS_X_tol=0.;

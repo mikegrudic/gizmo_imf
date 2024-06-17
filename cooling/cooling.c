@@ -226,6 +226,7 @@ void do_the_cooling_for_particle(int i)
                 }
             }
         }
+        
 #endif // done with RHD-cooling block update
         
 
