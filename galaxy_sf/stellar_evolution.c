@@ -495,7 +495,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
     if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT
-    if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0]; SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.33333);}
+    if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0]; SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);}
 #endif
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/in->Msne); // v_ej in code units
@@ -700,6 +700,10 @@ void update_stellarnumber_and_timedistribofstarformation(void)
                 double dt_remaining = P[i].TimeDistribOfStarFormation - dt_since_form_code; // time remaining to spawn
                 double dt_timestep = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); // timestep being taken [code units]
                 double d_tau = DMAX(DMIN( dt_timestep , dt_remaining) , 0) / P[i].TimeDistribOfStarFormation; // effective step size in dimensionless units
+#ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT // SIMPLE_POPTHREE_MODEL
+                double f_highz=0.0115, f_lowz=2., zmin=-7, zmax=-5, z0=log10(P[i].Metallicity[0]/0.01 + 1.e-15);
+                double f_m=f_highz; if(z0<=zmin) {f_m=f_lowz;} else if(z0<zmax) {f_m=f_lowz + (f_highz-f_lowz)*(z0-zmin)/(zmax-zmin);}
+#endif
                 double n_expected_total = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
                 double dn_expected_in_dt = n_expected_total * d_tau; // expected number to spawn in this particular interval
                 gsl_rng *random_generator_for_massivestars; // allocate rng
@@ -969,7 +973,7 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
     // phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
-    double L = BPP(n).StarLuminosity_Solar, R = BPP(n).ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
+    double L = ps_lum_MS(BPP(n).BH_Mass) * UNIT_LUM_IN_SOLAR, R = BPP(n).ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
     logmdot_wind = -6 + 1.5 * log10(BPP(n).StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
 #if (SINGLE_STAR_FB_WINDS > 0)
     double vinf_over_vesc = single_star_wind_velocity(n)/single_star_escape_speed(n);
