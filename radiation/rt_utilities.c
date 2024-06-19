@@ -1310,52 +1310,8 @@ double get_min_allowed_dustIRrad_temperature(void)
     return MIN_REAL_NUMBER;
 }
 
-/* return Lambda_Dust, the dust cooling/heating rate (<0 is heating, >0 is cooling) */
-double get_rt_ir_lambdadust_effective(double T, double rho, double *nH0_guess, double *ne_guess, int target, int update_Tdust)
-{
-#ifdef COOLING
-    double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS; // effective hydrogen number dens in cgs units (just for normalization convention)
-    double volume = (P[target].Mass / (SphP[target].Density*All.cf_a3inv)); // particle volume in code units
-    double ratefact = (nHcgs*nHcgs) * volume / (UNIT_PRESSURE_IN_CGS / UNIT_TIME_IN_CGS); // conversion b/t Lambda and du used by code
-    double Erad_to_T4_fac = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * (C_LIGHT_CGS/(4. * 5.67e-5)) * UNIT_PRESSURE_IN_CGS / volume; // conversion from absolute rad energy to T^4 units, used multiple places below, coefficient = cL_reduced/(4*sigma_B); note RSOL power above cancels here b/c of the cancellation in absorption+emission coefficients
-
-    double Tdust_0 = SphP[target].Dust_Temperature; // dust temperature estimate from previous loop over radiation operators
-    double Tdust = Tdust_0;
-    double egy_therm = SphP[target].InternalEnergyPred*P[target].Mass; // true internal energy (before this cooling loop)
-    double egy_rad = (C_LIGHT_CODE/C_LIGHT_CODE_REDUCED) * SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED]; // effective radiation field energy (before this cooling loop), accounting for the effects of an RSOL on the difference between the gas and radiation field energy equations
-    egy_rad = DMAX(egy_rad , pow(Tdust_0,4) / Erad_to_T4_fac); // take the actual dust temp for this, which accounts for the absorption from other bands and difference in absorption efficiency -properly-, but floor it at the IR/dust-band radiation energy density
-    double egy_tot = egy_rad + egy_therm; // true total energy [in code units]
-    double Teff = Get_Gas_Mean_Molecular_Weight_mu(T, rho, nH0_guess, ne_guess, 0, target) * (GAMMA(target)-1.) * U_TO_TEMP_UNITS * (egy_tot / P[target].Mass); // convert from internal energy to temperature units for factor below
-
-    double xf, a = Teff*Teff*Teff*Teff / (Erad_to_T4_fac*egy_tot); // dimensionless factors needed to solve for the equilibrium Tdust-Tgas relation; this assumes total 'effective' energy between gas and radiation is conserved, and Td=Tgas, and solves for what the equilibrium temperature would be in terms of xf = Teqm / Teff
-    if(a<0.2138) {xf=(1+19*a+132*a*a+418*a*a*a+580*a*a*a*a+243*a*a*a*a*a)/(1+20*a+148*a*a+508*a*a*a+796*a*a*a*a+432*a*a*a*a*a);} // eqm solution (power series approx)
-     else {double a0=pow(a,0.25); xf=(-704-1045*a0+128*a0*a0*a0*(39+32*a0*(4+7*a0+64*a0*a0*a0*(-1+8*a0*(-1+4*a0)))))/(8388608.*a*a*a0*a0);} // eqm solution (power series approx)
-
-    double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(target); // timestep being taken [code units]
-    double Lambda_Dust_initial_guess, lambda_eff, L0_abs, Edot0, efinal_minus_einitial, t_cooling_eff, sign_term, tau, xfac, lambda_fac=gas_dust_heating_coeff(target,T,Tdust); int iter=0;
-    efinal_minus_einitial = egy_tot*xf - egy_therm; // change in gas thermal energy if we went all the way to equilibrium
-    sign_term=1.; if(efinal_minus_einitial < 0.) {sign_term=-1.;} // sign of the cooling/heating (to keep for below)
-//    do // Lambda_Dust implicitly depends nonlinearly on Tdust the way we have this set up here, so we do fixed-point iteration to convergence - typically only a few iters needed - 
-//    {
-      Lambda_Dust_initial_guess = lambda_fac * (Tdust-T); // guess value based on the -current- values of T, Tdust //
-      L0_abs = fabs(Lambda_Dust_initial_guess); // absolute value of the initially-computed guess for the cooling/heating rate of the gas
-      Edot0 = L0_abs * ratefact; // now this is an absolute Edot in code units, for the gas loss/gain from dust
-      t_cooling_eff = fabs(efinal_minus_einitial) / Edot0; // effective cooling time at the initially-estimated rate here: we'll use this to stably interpolate
-      tau = dt / t_cooling_eff;
-      xfac=(1.-exp(-tau))/tau; if(tau<0.05) {xfac=1.-0.5*tau+tau*tau/6.;} else {if(tau>20.) {xfac=1./tau;}} // correct rate to asymptote to equilibrium
-      lambda_eff = sign_term * L0_abs * xfac; // final effective gas cooling/heating rate
-      Tdust_0 = Tdust;
-      Tdust = DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature());
-//      iter += 1;
-//    } while ((fabs(Tdust - Tdust_0) > 1e-14 * Tdust) && (iter<MAXITER));
-
-    if(update_Tdust) {SphP[target].Dust_Temperature = Tdust;} //DMAX(pow(Erad_to_T4_fac*DMAX( 0., egy_rad - lambda_eff*ratefact*dt ), 0.25), get_min_allowed_dustIRrad_temperature());} // update dust temperature guess  -- in new code, don't need to do this here, will be done in radiation update instead //
-    return -lambda_eff; /* note sign convention defined above, so minus sign here makes this behave appropriately */
-#endif
-    return 0;
-}
-
-/* Returns the derivative of the dust energy, to be root-solved to 0 to obtain
+/* dust_dE_cooling
+Returns the derivative of the dust energy, to be root-solved to 0 to obtain
 the equilibrium dust temperature assuming 0 dust heat capacity. Accounts for
 dust emission/absorption to obtain a solution consistent with a backward-Euler
 implicit cooling solution.
@@ -1414,17 +1370,19 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
 dust emission
 */
 double rt_ir_lambdadust(int i, double T){
-    double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess,  Tmax = 1e4, Tdust_tol=1e-6;
+    double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess,  Tmax = 1e4, dTdust_tol=1e-6;
     double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;
-    #define ROOTFIND_FUNCTION_INNER(Tdust) dust_dE_cooling(i, T, Tdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2);
+    // define ROOTFIND_FUNCTION_INNER because this gets called nested inside the cooling solver, and needs to be def'd distinctly from the overlying ROOTFIND_FUNCTION
+    #define ROOTFIND_FUNCTION_INNER(dTdust) dust_dE_cooling(i, T, T+dTdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2)
     if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = SphP[i].Dust_Temperature;}
 
-    dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust);
+    dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust-T);
    
     if(Tdust_fixedpoint_1 > 0){dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
     if(Tdust_fixedpoint_2 > 0){dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
 
-    double fixedpoint_error = DMIN(fabs(Tdust-Tdust_fixedpoint_2), fabs(Tdust-Tdust_fixedpoint_1))/Tdust;
+    // error estimate of the fixed-point guesses, used for bracketing below
+    double fixedpoint_error = DMIN(fabs(Tdust-Tdust_fixedpoint_2), fabs(Tdust-Tdust_fixedpoint_1))/Tdust; 
     if(fabs(dE1) < fabs(dE)){Tdust = Tdust_fixedpoint_1; dE=dE_guess=dE1;}
     if(fabs(dE2) < fabs(dE)){Tdust = Tdust_fixedpoint_2; dE=dE_guess=dE2;}
     
@@ -1437,7 +1395,7 @@ double rt_ir_lambdadust(int i, double T){
         dE_upper = dE_guess; 
         while(dE < 0) {
             Tdust *= scalefac; 
-            dE = ROOTFIND_FUNCTION_INNER(Tdust);
+            dE = ROOTFIND_FUNCTION_INNER(Tdust-T);
             if(dE==0){break;}
             scalefac *= 0.9; 
             n_iter++;
@@ -1448,24 +1406,24 @@ double rt_ir_lambdadust(int i, double T){
         double scalefac = DMIN(1.1, 1+fixedpoint_error);
         while(dE > 0 && Tdust < Tmax) {
             Tdust *= scalefac; Tdust = DMIN(Tdust,Tmax);
-            dE = ROOTFIND_FUNCTION_INNER(Tdust); 
+            dE = ROOTFIND_FUNCTION_INNER(Tdust-T); 
             if(dE==0){break;}
             scalefac *= 1.1; 
             n_iter++;
         }
         T_upper = Tdust, dE_upper = dE;
     }     
-    if(T_upper>=Tmax && dE_upper > 0){Tdust = Tmax;}
+    if(T_upper>=Tmax && dE_upper > 0){SphP[i].Dust_Temperature = Tmax; return Tmax;}
 
+    if(dE_lower * dE_upper > 0){ PRINT_WARNING("Failed to bracket Tdust solution for ID=%d T=%g T_lower=%g T_upper=%g dE_lower=%g dE_upper=%g\n", P[i].ID, T, T_lower,T_upper, dE_lower, dE_upper); endrun(19564623439);}
 
     if(dE!=0){  // root-solve for Tdust
-        double ROOTFIND_X_a = T_lower, ROOTFIND_X_b = T_upper;
+        double ROOTFIND_X_a = T_lower-T, ROOTFIND_X_b = T_upper-T;
         double ROOTFUNC_a = dE_lower; double ROOTFUNC_b = dE_upper;
-        double ROOTFIND_REL_X_tol = Tdust_tol, ROOTFIND_ABS_X_tol=0.;
+        double ROOTFIND_REL_X_tol = dTdust_tol, ROOTFIND_ABS_X_tol=0.;
         #include "../system/bracketed_rootfind.h"
-        Tdust = ROOTFIND_X_new;
+        Tdust = ROOTFIND_X_new+T;
     }
-
     double LambdaDust = gas_dust_heating_coeff(i,T,Tdust) * (T-Tdust);
     SphP[i].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] += LambdaDust;
     SphP[i].Dust_Temperature = Tdust;
@@ -1563,7 +1521,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(T_upper==Tmax && dEdt_upper > 0){return Tmax;}
 
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
-    double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3, ROOTFIND_ABS_X_tol=0.;
+    double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-6, ROOTFIND_ABS_X_tol=0.;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
     if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance\n",(long long)P[i].ID);}
