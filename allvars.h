@@ -1606,6 +1606,7 @@ typedef unsigned long long peano1D;
 #endif
 
 #ifdef RT_INFRARED
+#define MAX_DUST_TEMP 1.0e4 // maximum dust temperature for which we expect to call opacity or dust-to-metals ratio functions
 #define COOL_LOWTEMP_THIN_ONLY // don't want to double-count trapping of radiation if we're doing it self-consistently
 #endif
 
