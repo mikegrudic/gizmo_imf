@@ -156,7 +156,13 @@ static inline double ForceSoftening_KernelRadius(int p)
     return All.ForceSoftening[P[p].Type];
 }
 
-
+/* Returns the Frobenius norm of the velocity gradient in physical units */
+static inline double velocity_gradient_norm(int i){
+    double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+    if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
+    dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
+    return sqrt(dv2);
+}
 
 #ifdef BOX_SHEARING
 void calc_shearing_box_pos_offset(void);
