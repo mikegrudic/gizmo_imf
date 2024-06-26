@@ -777,7 +777,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 IRBand_opacity_fraction_from_gas_absorption = kappa_gas / (kappa_total + MIN_REAL_NUMBER); /* gas absorption opacity only, relative to total opacity (all sources+scattering) */
                 double total_emission_rate = total_absorption_rate * (1.-IRBand_opacity_fraction_from_gas_absorption) + SphP[i].Rad_Je[kf]; /* we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop */
                 total_de_dt = E_abs_tot_toIR + SphP[i].Rad_Je[kf] + dt_e_gamma_band;
-                if((mode==0) && (Tdust_eff <= MAX_DUST_TEMP)) // only update temperatures on kick operations and Tdust is meaningful //
+                if((mode==0) && (Tdust_eff < MAX_DUST_TEMP)) // only update temperatures on kick operations and Tdust is meaningful //
                 {
                     /* dust absorption and re-emission brings T_rad towards T_dust: */
                     double dE_abs_IR = -e0 * (1. - exp(a0_abs*dt_entr)); /* change in energy from absorption */
