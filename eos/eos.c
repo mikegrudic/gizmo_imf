@@ -343,7 +343,8 @@ double return_dust_to_metals_ratio_vs_solar(int i, double T_dust_manual_override
     double T_evap = 1500.; // 2e3 * pow(SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, 0.0195); // latter function from Kuiper 2010 eqs 21-22; sublimation temeprature from Isella & Natta 2005, fit to Pollack 1994. works for protostellar environments, but extrapolates poorly to diffuse ISM and/or stellar/AGN atmosphere environments, so for now use a simpler 1500 K which is a rough median between these, with more sophisticated dust modules required to fit all different parameter regimes.
     double T_dust = T_dust_manual_override; if(T_dust == 0) {T_dust = SphP[i].Dust_Temperature;} // use this iff the dust temp sent is nil
     double Tdust_Tsub = T_dust / T_evap; // ratio for below
-    return sigmoid_sqrt(9.*(1.-Tdust_Tsub)) * exp(-DMIN(40.,Tdust_Tsub*Tdust_Tsub/9.)); // crudely don't bother accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
+    double fdust = sigmoid_sqrt(9.*(1.-Tdust_Tsub)) * exp(-DMIN(40.,Tdust_Tsub*Tdust_Tsub/9.)); // crudely don't bother accounting for size spectrum, just adopt an exponential cutoff above the sublimation temperature
+    return DMAX(fdust,1e-10); // floor at value too small to influence physical dust processes, just so dust temp root-finders have something finite and continuous to work with
 #endif
 #if defined(COOL_LOW_TEMPERATURES) && !defined(SINGLE_STAR_SINK_DYNAMICS) // skip this and assume fdust=1 if SINGLE_STAR_SINK_DYNAMICS on because it uses the fancy dust temp solver whose result depends implicitly on the dust fraction - if sublimation is important then we should be running full RT anyway
     double Tdust = T_dust_manual_override; if(Tdust == 0) {Tdust = get_equilibrium_dust_temperature_estimate(i,0,0);} // call this iff the dust temp sent is nil
@@ -437,10 +438,8 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
         double surface_density_H2_0 = 5.e14 * PROTONMASS_CGS, x_exp_fac=0.00085, w0=0.2; // characteristic cgs column for -molecular line- self-shielding
         double surface_density_local = xH0 * SphP[i].Density * All.cf_a3inv * dx_cell * UNIT_SURFDEN_IN_CGS; // this is -just- the [neutral] depth through the local cell/slab. that's closer to what we want here, since G0 is -already- attenuated in the pre-processing step!
         double v_thermal_rms = 0.111*sqrt(T); // sqrt(3*kB*T/2*mp), since want rms thermal speed of -molecular H2- in kms
-        double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = SphP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
-            if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
-            dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
-        double dv_turb=sqrt(dv2)*dx_cell*UNIT_VEL_IN_KMS; // delta-velocity across cell
+        double gradv=velocity_gradient_norm(i);
+        double dv_turb=gradv*dx_cell*UNIT_VEL_IN_KMS; // delta-velocity across cell
         double x00 = surface_density_local / surface_density_H2_0, x01 = x00 / (sqrt(1. + 3.*dv_turb*dv_turb/(v_thermal_rms*v_thermal_rms)) * sqrt(2.)*v_thermal_rms), y_ss, x_ss_1, x_ss_sqrt, fH2_tmp, fH2_max, Qmax, Qmin; // variable needed below. note the x01 term corrects following Gnedin+Draine 2014 for the velocity gradient at the sonic scale, assuming a Burgers-type spectrum [their Eq. 3]
 
         fH2_tmp = 1.; // now consider the maximally shielded case, if you had fmol = 1 in the shielding terms
