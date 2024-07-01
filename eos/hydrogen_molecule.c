@@ -1,7 +1,7 @@
 /*
-Special routines for computing thermodynamic properties of the hydrogen molecule,
-assuming a standard 3:1 ortho:para mixture and accounting for rotational, vibration,
-and translational degrees of freedom.
+Special routines for computing thermodynamic properties of the hydrogen
+molecule, assuming a standard 3:1 ortho:para mixture and accounting for
+rotational, vibration, and translational degrees of freedom.
 
 Equations follow Boley 2007, ApJ, 656, L89
 */
@@ -10,8 +10,7 @@ Equations follow Boley 2007, ApJ, 656, L89
 
 #ifdef EOS_SUBSTELLAR_ISM
 
-double molecular_hydrogen_zrot_mixture(double temp, double result[3])
-{
+double molecular_hydrogen_zrot_mixture(double temp, double result[3]) {
     /*
     Rotational partition function of hydrogen molecule and derived quantities,
     considering a 3:1 mixture of ortho- and parahydrogen that cannot efficiently
@@ -24,18 +23,18 @@ double molecular_hydrogen_zrot_mixture(double temp, double result[3])
     ortho_frac: double
         Fraction of ortho-H2 (default is 3:1 ortho:para mixture)
     result: double[3]
-        Stores the partition function value, the average rotational energy per molecule,
-        and the heat capacity per molecule at constant volume.
+        Stores the partition function value, the average rotational energy per
+    molecule, and the heat capacity per molecule at constant volume.
     */
 
     const double EPSILON = 2.220446049250313e-16;
-    const double THETA_ROT = 85.4;         // in K
+    const double THETA_ROT = 85.4;  // in K
     const double ortho_frac = 0.75; // 3:1 mixture
     const double para_frac = 1 - ortho_frac;
     const double x = THETA_ROT / temp;
     const double expmx = exp(-x);
     const double expmx4 = pow(expmx, 4);
-    
+
     double error = 1e100;
     double z[2] = {0}; // index 0 for para, 1 for ortho
     double dz_dtemp[2] = {0};
@@ -49,45 +48,47 @@ double molecular_hydrogen_zrot_mixture(double temp, double result[3])
     // Summing over rotational levels
     int j = 2;
     double dzterm, d2zterm;
-    while (error > EPSILON)
-    {
+    while (error > EPSILON) {
         int s = j % 2;
         zterm[s] *= (2 * j + 1) * expterm / (2 * j - 3);
         int jjplusone = j * (j + 1);
-        if (s == 1)
-        { // ortho
+        if (s == 1) { // ortho
             dzterm = (jjplusone - 2) * x * zterm[1];
             d2zterm = ((jjplusone - 2) * x - 2) * dzterm;
-        }
-        else
-        { // para
+        } else { // para
             dzterm = jjplusone * x * zterm[0];
             d2zterm = (jjplusone * x - 2) * dzterm;
         }
         z[s] += zterm[s];
         dz_dtemp[s] += dzterm;
         d2z_dtemp2[s] += d2zterm;
-        double err0 = zterm[0]/z[0];
-        double err1 = zterm[1]/z[1];
-        if (err1 > err0)
-        {
+        double err0 = zterm[0] / z[0];
+        double err1 = zterm[1] / z[1];
+        if (err1 > err0) {
             error = err1;
-        }
-        else
-        {
+        } else {
             error = err0;
         }
         expterm *= expmx4;
         j++;
-    } 
+    }
 
-    result[0] = exp(para_frac * log(z[0]) + ortho_frac * log(z[1]));                                                                                                                                              // partition function
-    result[1] = BOLTZMANN_CGS * temp * (para_frac * dz_dtemp[0] / z[0] + ortho_frac * dz_dtemp[1] / z[1]);                                                                                                            // mean energy per molecule
-    result[2] = BOLTZMANN_CGS * (ortho_frac * (2 * dz_dtemp[1] + d2z_dtemp2[1] - dz_dtemp[1] * dz_dtemp[1] / z[1]) / z[1] + para_frac * (2 * dz_dtemp[0] + d2z_dtemp2[0] - dz_dtemp[0] * dz_dtemp[0] / z[0]) / z[0]); // heat capacity
+    result[0] = exp(para_frac * log(z[0]) +
+                    ortho_frac * log(z[1])); // partition function
+    result[1] = BOLTZMANN_CGS * temp *
+                (para_frac * dz_dtemp[0] / z[0] +
+                 ortho_frac * dz_dtemp[1] / z[1]); // mean energy per molecule
+    result[2] = BOLTZMANN_CGS * (ortho_frac *
+                                     (2 * dz_dtemp[1] + d2z_dtemp2[1] -
+                                      dz_dtemp[1] * dz_dtemp[1] / z[1]) /
+                                     z[1] +
+                                 para_frac *
+                                     (2 * dz_dtemp[0] + d2z_dtemp2[0] -
+                                      dz_dtemp[0] * dz_dtemp[0] / z[0]) /
+                                     z[0]); // heat capacity
 }
 
-double molecular_hydrogen_zvib(double temp, double result[3])
-{
+double molecular_hydrogen_zvib(double temp, double result[3]) {
     /*
     Vibrational partition function of hydrogen molecule and derived quantities.
 
@@ -96,8 +97,8 @@ double molecular_hydrogen_zvib(double temp, double result[3])
     temp: double
         Temperature in K
     result: double[3]
-        Stores the partition function value, the average rotational energy per molecule,
-        and the heat capacity per molecule at constant volume.
+        Stores the partition function value, the average rotational energy per
+    molecule, and the heat capacity per molecule at constant volume.
     */
     const double THETA_VIB = 6140;
     const double x = THETA_VIB / temp;
@@ -106,7 +107,7 @@ double molecular_hydrogen_zvib(double temp, double result[3])
     result[2] = THETA_VIB * result[0] * result[1] / (temp * temp);
 }
 
-double molecular_hydrogen_partition(double temp, double result[3]){
+double molecular_hydrogen_partition(double temp, double result[3]) {
     /*
     Thermodynamic quantities derived from the partition function of the
     hydrogen molecule.
@@ -116,18 +117,19 @@ double molecular_hydrogen_partition(double temp, double result[3]){
     temp: double
         Temperature in K
     result: double[3]
-        Stores the rotational partition function value, the average rotational energy per molecule in erg,
-        the heat capacity per molecule at constant volume in erg/K, and the adiabatic index
+        Stores the rotational partition function value, the average rotational
+    energy per molecule in erg, the heat capacity per molecule at constant
+    volume in erg/K, and the adiabatic index
     */
 
     double zrot[4], zvib[4];
     molecular_hydrogen_zrot_mixture(temp, zrot);
-    molecular_hydrogen_zvib(temp,zvib);
-    double etot = 1.5 * BOLTZMANN_CGS * temp;  // translation
+    molecular_hydrogen_zvib(temp, zvib);
+    double etot = 1.5 * BOLTZMANN_CGS * temp; // translation
     double cv = 1.5 * BOLTZMANN_CGS;
-    etot += zrot[1];  // rotation
+    etot += zrot[1]; // rotation
     cv += zrot[2];
-    etot += zvib[1];  // vibration
+    etot += zvib[1]; // vibration
     cv += zvib[2];
     double gamma = (cv / BOLTZMANN_CGS + 1) / (cv / BOLTZMANN_CGS);
     result[0] = etot;
