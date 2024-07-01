@@ -2,6 +2,8 @@
 Special routines for computing thermodynamic properties of the hydrogen molecule,
 assuming a standard 3:1 ortho:para mixture and accounting for rotational, vibration,
 and translational degrees of freedom.
+
+Equations follow Boley 2007, ApJ, 656, L89
 */
 
 #include <math.h>
