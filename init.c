@@ -841,7 +841,7 @@ void init(void)
     density();
     for(i = 0; i < N_gas; i++)	/* initialize gas/fluid cell properties */
     {
-        int k; k=0;
+        int k=0;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
         SphP[i].recent_refinement_flag = 0; // always initialize to zero, no recent refinements
 
