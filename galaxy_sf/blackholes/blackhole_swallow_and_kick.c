@@ -686,6 +686,9 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         veldir[0]=sin_theta*cos_phi; veldir[1]=sin_theta*sin_phi; veldir[2]=cos_theta;dpdir[0]=veldir[0];dpdir[1]=veldir[1];dpdir[2]=veldir[2];
     } else if (mode==1){ // collimated according to a conical velocity field
         double theta0=0.01, thetamax=30.*(M_PI/180.); // "flattening parameter" and max opening angle of jet velocity distribution from Matzner & McKee 1999, sets the collimation of the jets
+#if !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+        theta0=1.e-4; thetamax=10.*(M_PI/180.); // narrower opening angle distribution for agn jets
+#endif
         double theta=atan(theta0*tan(get_random_number(num_spawned_this_call+7+5*ThisTask)*atan(sqrt(1+theta0*theta0)*tan(thetamax)/theta0))/sqrt(1+theta0*theta0)); // biased sampling to get collimation
         phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask);
         cos_theta = cos(theta), sin_theta=sin(theta), sin_phi=sin(phi), cos_phi=cos(phi);
@@ -726,11 +729,16 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
-#ifdef BH_WIND_SUBEDDINGTON_MODEL
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
     double MBH_4 = BPP(i).BH_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
     double lambda_edd_eff = DMAX( BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
-    double v_eff_esc_BLR = 270. * sqrt(sqrt(MBH_4 / lambda_edd_eff)) / UNIT_VEL_IN_KMS; // escape velocity from BLR in km/s, using canonical RBLR ~ 20 light-days * (L_bol/1e45)^(1/2)-ish scaling
-    v_magnitude = DMIN(v_magnitude , v_eff_esc_BLR); // the input BAL_v_outflow parameter now sets the maximum efficiency/velocity this is allowed to reach, but it can be arbitrarily lower
+    if(lambda_edd_eff > (BH_RIAF_SUBEDDINGTON_MODEL))
+    {
+        double v_eff_esc_BLR = 270. * sqrt(sqrt(MBH_4 / lambda_edd_eff)) / UNIT_VEL_IN_KMS; // escape velocity from BLR in km/s, using canonical RBLR ~ 20 light-days * (L_bol/1e45)^(1/2)-ish scaling
+        v_magnitude = DMIN(v_magnitude , v_eff_esc_BLR); // the input BAL_v_outflow parameter now sets the maximum efficiency/velocity this is allowed to reach, but it can be arbitrarily lower
+    } else {
+        v_magnitude = DMAX(v_magnitude , 1.e5 / UNIT_VEL_IN_KMS); // fast jet speed
+    }
 #endif
 #ifdef SINGLE_STAR_FB_JETS
     v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
@@ -868,6 +876,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #if defined(BH_DEBUG_SPAWN_JET_TEST)
     mode = 4;
 #endif
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+    if(BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) < (BH_RIAF_SUBEDDINGTON_MODEL)) {mode=0;}
+#endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     mode = 0;
 #if defined(SINGLE_STAR_FB_JETS)
@@ -926,9 +937,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         P[j] = P[dummy_cell_i_to_clone]; SphP[j] = SphP[dummy_cell_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
 #if defined(BH_TEST_WIND_MIXED_FASTSLOW)
-        double masscorrfac_fast = 50.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
+        double masscorrfac_fast = 100.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
         if((j - (NumPart + num_already_spawned)) % 2) {mode=mode_prev; v_magnitude_physical=v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
-        } else {if(get_random_number(j)<0.002*masscorrfac_fast) {mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS;}} /* collimated jet */
+        } else {
+            if(get_random_number(j)<0.5) {
+                mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS; /* collimated jet */
+            } else {
+                mode=0; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
+            }
+        }
 #endif
         v_magnitude_physical_prev = v_magnitude_physical; mode_prev = mode; mass_of_new_particle_prev=mass_of_new_particle;
 
