@@ -144,7 +144,7 @@ double hydrogen_molecule_energy(double temp) {
         Average energy of a H2 molecule of temperture T in erg
     */
 
-    if (temp < 1.) {
+    if (temp < 12.5) {
         return 1.5 * BOLTZMANN_CGS * temp; // only translation
     } else if (temp > 1e5) {
         return 3.5 * BOLTZMANN_CGS * temp; // all DOF excited
@@ -175,7 +175,7 @@ double hydrogen_molecule_gamma(double temp) {
         Adiabatic index
     */
 
-    if (temp < 1.) {
+    if (temp < 12.5) {
         return 5. / 3; // only translation
     } else if (temp > 1e5) {
         return 9. / 7; // all DOF excited
