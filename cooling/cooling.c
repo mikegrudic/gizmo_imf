@@ -1226,8 +1226,9 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 #endif
     
 #if defined(RT_INFRARED)
+<<<<<<< HEAD
     double Lambda_rad_IR = LambdaMol; // include molecular line cooling, cold atomic cooling (in LambdaMol) and dust cooling here, since all coming out in the IR
-    // LambdaCompton not included below because its primarily cooling off the CMB, which we ignore, or heating off the explicit harder bands, which -is- accounted for in their opacities, effectively
+    Lambda_rad_IR += LambdaCompton; // Compton cooling/heating influences things here as well. Need to be a bit careful because Compton cooling can, in very low-density regions, be off the CMB, which we aren't explicitly evolving. so may want to add a check here for this case. but in the limits of interest that term is small, so not so important here.
 #if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
     if(logT < 5.) {Lambda_rad_IR += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
 #endif

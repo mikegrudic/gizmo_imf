@@ -563,18 +563,20 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #endif
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
-#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-#define PARTICLE_EXCISION
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define OUTPUT_ACCELERATION
 #define OUTPUT_HYDROACCELERATION
-#define OUTPUT_GRADIENT_RHO
-#define OUTPUT_GRADIENT_VEL
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_TEMPERATURE
+#define OUTPUT_ADDITIONAL_RUNINFO
+#endif
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define PARTICLE_EXCISION
+#define OUTPUT_GRADIENT_RHO
+#define OUTPUT_GRADIENT_VEL
 #define OUTPUT_RT_RAD_FLUX
 #define OUTPUT_RT_RAD_OPACITY
 #define RT_RAD_PRESSURE_OUTPUT
-#define OUTPUT_ADDITIONAL_RUNINFO
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
 #define GRAVITY_ANALYTIC
 #endif
@@ -610,7 +612,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) // optimization
 #endif
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
-#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) && !defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #endif
@@ -758,7 +760,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
 #define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
-#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) 
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #endif
 #endif

@@ -1363,7 +1363,7 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     double e_IR_final = DMAX(e_IR_0 + de_IR_dust + de_IR_gas, 0);
     double T_IR_final = e_IR_final / (DMAX(e_IR_0/T_IR_0,0) + DMAX(de_IR_gas / Tgas,0) + DMAX(de_IR_dust / Tdust,0) + MIN_REAL_NUMBER); // assume gas-phase IR component emitted at Tgas
     T_IR_final=DMAX(Tmin, DMIN(T_IR_final,Tmax));
-    if(Tdust < MAX_DUST_TEMP){SphP[i].Radiation_Temperature_CoolingWeighted = T_IR_final;}
+    if(Tdust < MAX_DUST_TEMP) {SphP[i].Radiation_Temperature_CoolingWeighted = T_IR_final;}
 
     double dE_dust = 0; // now count up the energy changes in the dust for us to solve for 0
     double dust_absorption = dust_absorption_nonIR;
@@ -1386,8 +1386,8 @@ double rt_ir_lambdadust(int i, double T){
 
     dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust-T);
    
-    if(Tdust_fixedpoint_1 > 0 && Tdust_fixedpoint_1 < MAX_DUST_TEMP){dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
-    if(Tdust_fixedpoint_2 > 0 && Tdust_fixedpoint_2 < MAX_DUST_TEMP){dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
+    if(Tdust_fixedpoint_1 > 0 && Tdust_fixedpoint_1 < MAX_DUST_TEMP) {dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
+    if(Tdust_fixedpoint_2 > 0 && Tdust_fixedpoint_2 < MAX_DUST_TEMP) {dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
 
     // error estimate of the fixed-point guesses, used for bracketing below
     double fixedpoint_error = DMIN(fabs(Tdust-Tdust_fixedpoint_2), fabs(Tdust-Tdust_fixedpoint_1))/Tdust; 
@@ -1474,6 +1474,8 @@ and we only solve for equilibrium between emission and absorption.
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 {
     double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant, Tdust_guess, Tdust, dEdt, dEdt_upper, dEdt_lower, fac, dEdt_guess, scalefac;
+    double Tmax=1e10; // upper-bound dust temperature above which we definitely don't believe our detailed (tiny) dust abundance
+    Tmax = MAX_DUST_TEMP; // this is now a global variable
     /* First we come up with a reasonable guess for the dust temp based on available info */
 #ifdef RT_INFRARED
     Tdust_guess = DMAX(SphP[i].Dust_Temperature,1.); // previous dust temperature should be a good guess
@@ -1516,8 +1518,8 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     } else {
 	T_lower = Tdust, dEdt_lower = dEdt_guess;
 	scalefac = 1.1;
-	while(dEdt>0 && Tdust < MAX_DUST_TEMP) {
-	    Tdust *= scalefac; Tdust = DMIN(Tdust,MAX_DUST_TEMP);
+	while(dEdt>0 && Tdust < Tmax) {
+	    Tdust *= scalefac; Tdust = DMIN(Tdust,Tmax);
 	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
         if(dEdt==0){return Tdust;}
 	    scalefac *= 1.1; 
@@ -1525,13 +1527,14 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 	    }
 	    T_upper = Tdust, dEdt_upper = dEdt;
     }     
-    if(T_upper==MAX_DUST_TEMP && dEdt_upper > 0){return MAX_DUST_TEMP;}
+    if(T_upper==Tmax && dEdt_upper > 0) {return Tmax;}
+    if(T_lower>=Tmax) {return Tmax;}
 
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-6, ROOTFIND_ABS_X_tol=0.;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
-    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance\n",(long long)P[i].ID);}
+    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance (iter=%d, Tdust=%g, Tgas=%g)\n",(long long)P[i].ID,ROOTFIND_ITER,Tdust,T);}
     return Tdust;
 }
 
