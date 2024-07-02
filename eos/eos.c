@@ -664,8 +664,9 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     double gradbmag2=0,gradbmag=0,btmp=0,L_B=MAX_REAL_NUMBER;
     int j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {btmp=SphP[i].Gradients.B[k][j]; gradbmag2+=btmp*btmp;}} // need to get magnitude of B gradient for below
     if(gradbmag2>0) {gradbmag=sqrt(gradbmag2)*(All.cf_a2inv/All.cf_atime)*gizmo2gauss; L_B=(B_Gauss/gradbmag)*UNIT_LENGTH_IN_CGS;} // L_B is gradient length in cgs
-    double xi_AbsZi_eff = (xe*beta_e + xi*beta_i + xg*fabs(Z_grain)*beta_g) / (beta_e + beta_i + beta_g); // weighted mean xi_qi to use
-    double psi_n = (xe/(1.+beta_e) + xi/(1.+beta_i) + xg*fabs(Z_grain)/(1.+beta_g)) / (xe+xi+xg*fabs(Z_grain)); // coupling parameter for weight of neutrals in effective speed
+    double xi_AbsZi_eff = (xe*beta_e + (xi+1.e-25)*beta_i + xg*fabs(Z_grain)*beta_g) / (beta_e + beta_i + beta_g); // weighted mean xi_qi to use
+    double psi_n = (xe/(1.+beta_e) + xi/(1.+beta_i) + xg*fabs(Z_grain)/(1.+beta_g)) / (xe+xi+xg*fabs(Z_grain) + 1.e-20); // coupling parameter for weight of neutrals in effective speed
+    if(xe+xi+xg < 1.e-20) {psi_n = 1.;}
     double m_carrier_weighted = PROTONMASS_CGS * (xe*ELECTRONMASS_CGS/PROTONMASS_CGS + xi*m_ion + xg*fabs(Z_grain)*m_grain + psi_n*m_neutral); // effective weight of the dragged carriers for speeds below
     double vT_crit = sqrt( BOLTZMANN_CGS*temperature * (xe + xi + xg*fabs(Z_grain) + psi_n) / m_carrier_weighted ); // salient thermal speed for superthermal drift
     double vA_crit = B_Gauss / sqrt(4.*M_PI*m_carrier_weighted*n_eff); // effective Alfven speed to compare as well
@@ -674,6 +675,8 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     double eta_an = (eta_prefac * units_cgs_to_code / xi_AbsZi_eff) * sqrt(1. + 4.*M_PI*C_LIGHT_CGS*C_LIGHT_CGS*ELECTRONMASS_CGS*n_eff*xe/(B_Gauss*B_Gauss)); // anomalous resistivity, set to max of either gyro frequency or electron plasma frequency (dust plasma frequency should be lower unless in dusty plasma regime, where behavior is much more complicated
     eta_ohmic*=epstein_corr; eta_ad/=sqrt(epstein_corr); // epstein-type correction for superthermal drift or slip
     if(vdrift_mag > vT_an/40.) {eta_ohmic += eta_an * exp(-vT_an/vdrift_mag) * sqrt(1. + (vdrift_mag*vdrift_mag)/(vT_an*vT_an));} // factor to represent boosted ohmic to diffuse when exceed critical limit
+    double eta_max = 1.e24;
+    if(eta_ohmic > eta_max) {eta_ohmic = eta_max;}
 #endif
     SphP[i].Eta_MHD_OhmicResistivity_Coeff = eta_ohmic;     /*!< Ohmic resistivity coefficient [physical units of L^2/t] */
     SphP[i].Eta_MHD_HallEffect_Coeff = eta_hall;            /*!< Hall effect coefficient [physical units of L^2/t] */

@@ -915,7 +915,7 @@ void init(void)
         SphP[i].SubGrid_CosmicRayEnergyDensity = 0;
 #endif
         
-#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES==2)
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES>=2)
         if(RestartFlag != 1) {if(P[i].ID == All.AGNWindID) {P[i].ID += 1;}} // reset any of these so can obey desired merge-split rules
 #endif
 

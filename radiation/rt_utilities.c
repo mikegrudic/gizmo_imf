@@ -1391,7 +1391,7 @@ and we only solve for equilibrium between emission and absorption.
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 {
     double T_old, T_lower=0, T_upper=MAX_REAL_NUMBER, T_secant, Tdust_guess, Tdust, dEdt, dEdt_upper, dEdt_lower, fac, dEdt_guess, scalefac;
-    double Tmax=1e4; // upper-bound dust temperature above which we definitely don't believe our detailed (tiny) dust abundance
+    double Tmax=1e10; // upper-bound dust temperature above which we definitely don't believe our detailed (tiny) dust abundance
     /* First we come up with a reasonable guess for the dust temp based on available info */
 #ifdef RT_INFRARED
     Tdust_guess = DMAX(SphP[i].Dust_Temperature,1.); // previous dust temperature should be a good guess
@@ -1444,12 +1444,13 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
 	T_upper = Tdust, dEdt_upper = dEdt;
     }     
     if(T_upper==Tmax && dEdt_upper > 0){return Tmax;}
+    if(T_lower>=Tmax) {return Tmax;}
 
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-3;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
-    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance\n",(long long)P[i].ID);}
+    if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance (iter=%d, Tdust=%g, Tgas=%g)\n",(long long)P[i].ID,ROOTFIND_ITER,Tdust,T);}
     return Tdust;
 }
 

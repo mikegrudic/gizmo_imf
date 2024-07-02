@@ -191,13 +191,13 @@ void do_the_cooling_for_particle(int i)
         double ratefact = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
         double de_u = (unew - SphP[i].InternalEnergy) * P[i].Mass; /* change in the total internal energy of the gas cell [integrating over everything] */
         double de_rad_tot_final = 0, de_rad_tot = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {de_rad_tot += SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact;} /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-        if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+        //if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below (PFH: dont think we need to be so conservative here, can let this go) */
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             if((fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
             {
                 double de_rad = SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-                if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+                //if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below (PFH: dont think we need to be so conservative here, can let this go) */
                 if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
                     double de_rad_min = DMIN(DMAX( -0.99*SphP[i].Rad_E_gamma[k] , -de_u ), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
@@ -211,9 +211,20 @@ void do_the_cooling_for_particle(int i)
                         {
                             double u_in=unew, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, temp, ne=1, nHI=0, nHII=1, nHeI=1, nHeII=0, nHeIII=0;
                             temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
-                            double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp;
-                            SphP[i].Radiation_Temperature = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
-                            SphP[i].Radiation_Temperature = DMIN( SphP[i].Radiation_Temperature , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
+                            double e0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED], temp_e0 = SphP[i].Radiation_Temperature + MIN_REAL_NUMBER, de0 = de_rad, temp_de0 = MIN_REAL_NUMBER + temp, T_guess = temp_e0; int badguess = 0;
+                            /* below we have some approximate scalings for the temperature modification, since the different photon-gas interchange operations can behave differently in terms of photon number changes (N_emitted - N_absorbed); we interpolate between regimes to prevent unphysical behavior in the strong-coupling limit */
+                            T_guess = ((e0 + de0)/e0) * temp_e0; /* begin by guessing the value we would have if these operations conserved photon number */
+                            if((T_guess > DMAX(temp_e0,temp_de0)) || (T_guess < DMIN(temp_e0,temp_de0))) {badguess = 1;} /* this gives an unphysical evolution in radiation temperature */
+                            if(badguess)
+                            {
+                                if(de0 > 0) { /* only new emission occurs, radiation temperature updated assuming all energy gained comes from emission with radiation temperature = gas temperature */
+                                    T_guess = (e0 + de0) / (MIN_REAL_NUMBER + DMAX(0., e0/temp_e0 + de0/temp_de0)); // the added energy should modify the radiation temperature appropriately, to reflect the effective temperature of the material from which its being transferred
+                                    T_guess= DMIN( T_guess , DMAX(temp_e0 , temp_de0) ); // need to restrict going outside these bounds from numerical error
+                                } else {
+                                    T_guess = temp_e0; /* only absorption occurs, radiation temperature unmodified */
+                                }
+                            }
+                            SphP[i].Radiation_Temperature = T_guess;
                         }
 #endif
                         double Rad_E_gamma_before = SphP[i].Rad_E_gamma[k]; // save for immediate use below
@@ -1148,7 +1159,7 @@ double CoolingRate(double logT, double rho, double n_elec_guess, double *n_elec_
     
 #if defined(RT_INFRARED)
     double Lambda_rad_IR = LambdaMol + LambdaDust; // include molecular line cooling, cold atomic cooling (in LambdaMol) and dust cooling here, since all coming out in the IR
-    // LambdaCompton not included below because its primarily cooling off the CMB, which we ignore, or heating off the explicit harder bands, which -is- accounted for in their opacities, effectively
+    Lambda_rad_IR += LambdaCompton; // Compton cooling/heating influences things here as well. Need to be a bit careful because Compton cooling can, in very low-density regions, be off the CMB, which we aren't explicitly evolving. so may want to add a check here for this case. but in the limits of interest that term is small, so not so important here.
 #if !defined(RT_FREEFREE) // if this module is active, these photons are accounted for explicitly in the free-free bands
     if(logT < 5.) {Lambda_rad_IR += LambdaFF;} // this can be coming at a wide range of wavelengths of course, but if not explicitly followed, it will go in one bin or another depending on the gas temperature
 #endif
