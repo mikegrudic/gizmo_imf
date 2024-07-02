@@ -512,12 +512,15 @@ double convert_u_to_temp(double u, double rho, int target, double *ne, double *n
 {        
     double T_guess = u * PROTONMASS_CGS / BOLTZMANN_CGS;
     double T_max = 3*u * PROTONMASS_CGS / BOLTZMANN_CGS, T_min = 0.5 * u * PROTONMASS_CGS / BOLTZMANN_CGS;
+    if(All.Time==0){T_min = pow(10.,Tmin); T_max = pow(10., Tmax);}
     #define ROOTFIND_FUNCTION_INNER(temp) convert_temp_to_u(temp, rho, target, ne, nH0, nHp, nHe0, nHep, nHepp, mu) - u
-    double ROOTFIND_REL_X_tol=1e-3, ROOTFIND_ABS_X_tol=0;
-    double ROOTFIND_X_a=T_max, ROOTFIND_X_b=T_min, ROOTFUNC_a=ROOTFIND_FUNCTION_INNER(T_max), ROOTFUNC_b = ROOTFIND_FUNCTION_INNER(T_min);
-    #include "../system/bracketed_rootfind.h"
+    double ROOTFIND_X_b = T_guess, ROOTFUNC_b = ROOTFIND_FUNCTION_INNER(T_guess), ROOTFIND_X_a = T_min, ROOTFUNC_a=ROOTFIND_FUNCTION_INNER(T_min);
+    if(ROOTFUNC_a * ROOTFUNC_b > 0){ROOTFUNC_a = ROOTFIND_FUNCTION_INNER(T_max); ROOTFIND_X_a = T_max;} // make sure it's bracketed
+    double ROOTFIND_REL_X_tol=1e-5, ROOTFIND_ABS_X_tol=0;
+    #include "../system/bracketed_rootfind.h"    
     double temp = ROOTFIND_X_new;
-	if(temp<=0) temp=pow(10.0,Tmin);
+    if(All.Time > 0){if(ROOTFIND_ITER > 10){printf("ID=%d iter=%d T_guess=%g T=%g\n",P[target].ID,ROOTFIND_ITER, T_guess, temp); endrun(420);}}
+    if(temp<=0) temp=pow(10.0,Tmin);
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
     return temp;
 }
