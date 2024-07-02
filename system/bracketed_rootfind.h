@@ -54,7 +54,7 @@ if (fabs(ROOTFUNC_a) < fabs(ROOTFUNC_b)) { // in our convention 'a' represents
 
 double ROOTFIND_X_c = ROOTFIND_X_a, ROOTFUNC_c = ROOTFUNC_a;
 int USED_BISECTION = 1, DO_BISECTION = 0, ROOTFIND_ITER = 0;
-double ROOTFIND_X_c_old = ROOTFIND_X_c, ROOTFIND_X_new, ROOTFUNC_new = ROOTFUNC_c, ROOTFIND_X_error = 1e100;
+double ROOTFIND_X_c_old = ROOTFIND_X_c, ROOTFIND_X_new, ROOTFUNC_new = ROOTFUNC_c, ROOTFIND_X_error = 1e100, DELTA_TOL=0.;
 
 /* now we do a Brent 1973 method root-find */
 do {
@@ -66,7 +66,7 @@ do {
     } else { // secant method
         ROOTFIND_X_new = (ROOTFIND_X_a * ROOTFUNC_b - ROOTFIND_X_b * ROOTFUNC_a) / (ROOTFUNC_b - ROOTFUNC_a);
     }
-    double DELTA_TOL = DMAX(fabs(ROOTFIND_ABS_X_tol), ROOTFIND_REL_X_tol * fabs(ROOTFIND_X_new)); // new absolute tolerance
+    DELTA_TOL = DMAX(fabs(ROOTFIND_ABS_X_tol), ROOTFIND_REL_X_tol * fabs(ROOTFIND_X_new)); // new absolute tolerance, incorporating relative tolerance
 
     DO_BISECTION = 0;
     double ROOTFIND_X_midpoint_a = 0.25 * (3 * ROOTFIND_X_a + ROOTFIND_X_b);
@@ -138,7 +138,7 @@ do {
     if (ROOTFIND_ITER > MAXITER) {
         break;
     }
-} while (ROOTFIND_X_error > DMAX(fabs(ROOTFIND_ABS_X_tol), ROOTFIND_REL_X_tol *fabs(ROOTFIND_X_new)));
+} while (ROOTFIND_X_error > DELTA_TOL);
 
 #undef ROOTFUNC
 

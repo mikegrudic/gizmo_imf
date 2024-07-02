@@ -476,7 +476,6 @@ u = Etot/Mtot = SUM_i(N_i E_i) / SUM_i(N_i m_i) over all species i with energy E
 double convert_temp_to_u(double temp, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu){
     double dummy;
     find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy, &dummy); // all the thermo variables for this T
-    *mu = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0, ne, 0., target);
     double X=HYDROGEN_MASSFRAC, Y=1.-X, Z=0, fmol;
 #ifdef METALS
     if(target >= 0)
@@ -495,7 +494,6 @@ double convert_temp_to_u(double temp, double rho, int target, double *ne, double
 
     E_i[0] = e_mono; if(fmol > MIN_REAL_NUMBER){E_i[0] = hydrogen_molecule_energy(temp);}
     m_i[0] = 2.; N_i[0] = 0.5 * X * fmol;
-
     
     // all mono species have 3/2 kB T
     m_i[1] = 1.; N_i[1] = X*(1-fmol); // H
@@ -508,6 +506,10 @@ double convert_temp_to_u(double temp, double rho, int target, double *ne, double
     return sum_E / sum_M / PROTONMASS_CGS;
 }
 
+/*
+   EOS_SUBSTELLAR_ISM implementation of convert_u_to_temp: we call convert_temp_to_u
+   and root-find to solve it = u
+*/
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu)
 {        
     double T_guess = u * PROTONMASS_CGS / BOLTZMANN_CGS;
@@ -516,10 +518,9 @@ double convert_u_to_temp(double u, double rho, int target, double *ne, double *n
     #define ROOTFIND_FUNCTION_INNER(temp) convert_temp_to_u(temp, rho, target, ne, nH0, nHp, nHe0, nHep, nHepp, mu) - u
     double ROOTFIND_X_b = T_guess, ROOTFUNC_b = ROOTFIND_FUNCTION_INNER(T_guess), ROOTFIND_X_a = T_min, ROOTFUNC_a=ROOTFIND_FUNCTION_INNER(T_min);
     if(ROOTFUNC_a * ROOTFUNC_b > 0){ROOTFUNC_a = ROOTFIND_FUNCTION_INNER(T_max); ROOTFIND_X_a = T_max;} // make sure it's bracketed
-    double ROOTFIND_REL_X_tol=1e-5, ROOTFIND_ABS_X_tol=0;
-    #include "../system/bracketed_rootfind.h"    
+    double ROOTFIND_REL_X_tol=1e-4, ROOTFIND_ABS_X_tol=0;
+    #include "../system/bracketed_rootfind.h"
     double temp = ROOTFIND_X_new;
-    if(All.Time > 0){if(ROOTFIND_ITER > 10){printf("ID=%d iter=%d T_guess=%g T=%g\n",P[target].ID,ROOTFIND_ITER, T_guess, temp); endrun(420);}}
     if(temp<=0) temp=pow(10.0,Tmin);
     if(log10(temp)<Tmin) temp=pow(10.0,Tmin);
     return temp;
