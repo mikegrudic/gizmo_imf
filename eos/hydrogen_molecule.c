@@ -6,11 +6,12 @@ rotational, vibration, and translational degrees of freedom.
 Equations follow Boley 2007, ApJ, 656, L89
 */
 
+#include "../allvars.h"
 #include <math.h>
 
 #ifdef EOS_SUBSTELLAR_ISM
 
-double molecular_hydrogen_zrot_mixture(double temp, double result[3]) {
+void hydrogen_molecule_zrot_mixture(double temp, double result[3]) {
     /*
     Rotational partition function of hydrogen molecule and derived quantities,
     considering a 3:1 mixture of ortho- and parahydrogen that cannot efficiently
@@ -73,22 +74,13 @@ double molecular_hydrogen_zrot_mixture(double temp, double result[3]) {
         j++;
     }
 
-    result[0] = exp(para_frac * log(z[0]) +
-                    ortho_frac * log(z[1])); // partition function
-    result[1] = BOLTZMANN_CGS * temp *
-                (para_frac * dz_dtemp[0] / z[0] +
-                 ortho_frac * dz_dtemp[1] / z[1]); // mean energy per molecule
-    result[2] = BOLTZMANN_CGS * (ortho_frac *
-                                     (2 * dz_dtemp[1] + d2z_dtemp2[1] -
-                                      dz_dtemp[1] * dz_dtemp[1] / z[1]) /
-                                     z[1] +
-                                 para_frac *
-                                     (2 * dz_dtemp[0] + d2z_dtemp2[0] -
-                                      dz_dtemp[0] * dz_dtemp[0] / z[0]) /
-                                     z[0]); // heat capacity
+    result[0] = exp(para_frac * log(z[0]) + ortho_frac * log(z[1]));                                       // partition function
+    result[1] = BOLTZMANN_CGS * temp * (para_frac * dz_dtemp[0] / z[0] + ortho_frac * dz_dtemp[1] / z[1]); // mean energy per molecule
+    result[2] = BOLTZMANN_CGS * (ortho_frac * (2 * dz_dtemp[1] + d2z_dtemp2[1] - dz_dtemp[1] * dz_dtemp[1] / z[1]) / z[1] +
+                                 para_frac * (2 * dz_dtemp[0] + d2z_dtemp2[0] - dz_dtemp[0] * dz_dtemp[0] / z[0]) / z[0]); // heat capacity
 }
 
-double molecular_hydrogen_zvib(double temp, double result[3]) {
+void hydrogen_molecule_zvib(double temp, double result[3]) {
     /*
     Vibrational partition function of hydrogen molecule and derived quantities.
 
@@ -103,11 +95,11 @@ double molecular_hydrogen_zvib(double temp, double result[3]) {
     const double THETA_VIB = 6140;
     const double x = THETA_VIB / temp;
     result[0] = -1.0 / expm1(-x);
-    result[1] = BOLTZMANN_CGS_CGS * THETA_VIB / expm1(x);
+    result[1] = BOLTZMANN_CGS * THETA_VIB / expm1(x);
     result[2] = THETA_VIB * result[0] * result[1] / (temp * temp);
 }
 
-double molecular_hydrogen_partition(double temp, double result[3]) {
+void hydrogen_molecule_partitionfunc(double temp, double result[3]) {
     /*
     Thermodynamic quantities derived from the partition function of the
     hydrogen molecule.
@@ -117,14 +109,14 @@ double molecular_hydrogen_partition(double temp, double result[3]) {
     temp: double
         Temperature in K
     result: double[3]
-        Stores the rotational partition function value, the average rotational
-    energy per molecule in erg, the heat capacity per molecule at constant
-    volume in erg/K, and the adiabatic index
+        Stores the the average rotational energy per molecule in erg,
+        the heat capacity per molecule at constan volume in erg/K,
+        and the adiabatic index
     */
 
     double zrot[4], zvib[4];
-    molecular_hydrogen_zrot_mixture(temp, zrot);
-    molecular_hydrogen_zvib(temp, zvib);
+    hydrogen_molecule_zrot_mixture(temp, zrot);
+    hydrogen_molecule_zvib(temp, zvib);
     double etot = 1.5 * BOLTZMANN_CGS * temp; // translation
     double cv = 1.5 * BOLTZMANN_CGS;
     etot += zrot[1]; // rotation
@@ -135,6 +127,67 @@ double molecular_hydrogen_partition(double temp, double result[3]) {
     result[0] = etot;
     result[1] = cv;
     result[2] = gamma;
+}
+
+double hydrogen_molecule_energy(double temp) {
+    /*
+    Average energy of a H2 molecule in thermodynamic equilibrium
+
+    Parameters
+    ----------
+    temp: double
+        Temperature in K
+
+    Returns
+    -------
+    etot: double
+        Average energy of a H2 molecule of temperture T in erg
+    */
+
+    if (temp < 1.) {
+        return 1.5 * BOLTZMANN_CGS * temp; // only translation
+    } else if (temp > 1e5) {
+        return 3.5 * BOLTZMANN_CGS * temp; // all DOF excited
+    }
+
+    double zrot[3], zvib[3];
+    hydrogen_molecule_zrot_mixture(temp, zrot);
+    hydrogen_molecule_zvib(temp, zvib);
+    double etot = 1.5 * BOLTZMANN_CGS * temp; // translation
+    etot += zrot[1];                          // rotation
+    etot += zvib[1];                          // vibration
+    return etot;
+}
+
+double hydrogen_molecule_gamma(double temp) {
+    /*
+    First adiabatic index of hydrogen molecule assuming
+    a 3:1 ortho:para mixture
+
+    Parameters
+    ----------
+    temp: double
+        Temperature in K
+
+    Returns
+    -------
+    gamma: double
+        Adiabatic index
+    */
+
+    if (temp < 1.) {
+        return 5. / 3; // only translation
+    } else if (temp > 1e5) {
+        return 9. / 7; // all DOF excited
+    }
+
+    double zrot[3], zvib[3];
+    hydrogen_molecule_zrot_mixture(temp, zrot);
+    hydrogen_molecule_zvib(temp, zvib);
+    double cv = 1.5;               // translation
+    cv += zrot[2] / BOLTZMANN_CGS; // rotation
+    cv += zvib[2] / BOLTZMANN_CGS; // vibration
+    return (cv + 1) / cv;
 }
 
 #endif // EOS_SUBSTELLAR_ISM

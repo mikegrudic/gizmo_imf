@@ -196,6 +196,14 @@ double calculate_eos_tillotson(int i);
 void tillotson_eos_init(void);
 #endif
 
+#ifdef EOS_SUBSTELLAR_ISM
+void hydrogen_molecule_partitionfunc(double temp, double result[3]);
+void hydrogen_molecule_zrot_mixture(double temp, double result[3]);
+void hydrogen_molecule_zvib(double temp, double result[3]);
+double hydrogen_molecule_energy(double temp);
+double hydrogen_molecule_gamma(double temp);
+#endif
+
 void read_fof(int num);
 int fof_compare_ID_list_ID(const void *a, const void *b);
 
