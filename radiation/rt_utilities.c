@@ -223,7 +223,7 @@ double rt_kappa(int i, int k_freq)
     double T_min = get_min_allowed_dustIRrad_temperature();
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        if(isnan(SphP[i].Dust_Temperature)) {PRINT_WARNING("\n NaN dust temperature for cell-ID=%llu  \n", (unsigned long long) P[i].ID);}
+        if(isnan(SphP[i].Dust_Temperature)) {PRINT_WARNING("\n NaN dust temperature for cell-ID=%llu  \n", (unsigned long long) P[i].ID); SphP[i].Dust_Temperature = 1.e4;}
         if(isnan(SphP[i].Radiation_Temperature)) {PRINT_WARNING("\n NaN gas temperature for cell-ID=%llu  \n", (unsigned long long) P[i].ID);}
         if(SphP[i].Dust_Temperature<=T_min) {SphP[i].Dust_Temperature=T_min;} // reset baseline
         if(SphP[i].Radiation_Temperature<=T_min) {SphP[i].Radiation_Temperature=T_min;} // reset baseline
@@ -1339,7 +1339,7 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
     double lambda_to_dErad = (C_LIGHT_CODE_REDUCED/C_LIGHT_CODE) * nHcgs * nHcgs * (dt*UNIT_TIME_IN_CGS) / (SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
-
+    
     double dust_absorption_nonIR = 0;
     for(int k=0; k < N_RT_FREQ_BINS; k++){
         if(RT_BAND_IS_IONIZING(k)){continue;} /* gas-phase absorption */
@@ -1352,18 +1352,23 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     double de_IR_dust = LambdaDust * lambda_to_dErad; // equates to *net* emission of radiation by dust (emission - absorption)
     double LambdaIR_gas = SphP[i].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED];
     double de_IR_gas = LambdaIR_gas * lambda_to_dErad; // net emission by gas
-
+    
     double kappa_dust_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1,1);
     double fac_emission = 4.*5.67e-5/(UNIT_PRESSURE_IN_CGS*UNIT_VEL_IN_CGS)*P[i].Mass*RT_SPEEDOFLIGHT_REDUCTION*dt;
     double dust_emission = fac_emission*kappa_dust_emission*pow(Tdust,4); // *total* dust emission
-
+    
     double T_IR_0 = SphP[i].Radiation_Temperature;
-    double Tmax = DMAX(DMAX(Tgas, Tdust),T_IR_0), Tmin = DMIN(DMIN(Tgas,Tdust), T_IR_0);    
+    double Tmax = DMAX(DMAX(Tgas, Tdust),T_IR_0), Tmin = DMIN(DMIN(Tgas,Tdust), T_IR_0);
     double e_IR_0 = SphP[i].Rad_E_gamma[RT_FREQ_BIN_INFRARED];
     double e_IR_final = DMAX(e_IR_0 + de_IR_dust + de_IR_gas, 0);
-    double T_IR_final = e_IR_final / (DMAX(e_IR_0/T_IR_0,0) + DMAX(de_IR_gas / Tgas,0) + DMAX(de_IR_dust / Tdust,0) + MIN_REAL_NUMBER); // assume gas-phase IR component emitted at Tgas
-    T_IR_final=DMAX(Tmin, DMIN(T_IR_final,Tmax));
-    if(Tdust < MAX_DUST_TEMP) {SphP[i].Radiation_Temperature_CoolingWeighted = T_IR_final;}
+    /* below we have some approximate scalings for the temperature modification, since the different photon-gas interchange operations can behave differently in terms of photon number changes (N_emitted - N_absorbed); we interpolate between regimes to prevent unphysical behavior in the strong-coupling limit */
+    //double T_IR_final = (e_IR_final/e_IR_0) * T_IR_0; /* begin by guessing the value we would have if these operations conserved photon number */
+    //if(T_IR_final > Tmax || T_IR_final < Tmin) { /* this gives an unphysical evolution in radiation temperature */
+    //if(de_IR_gas + de_IR_dust < 0) {T_IR_final = T_IR_0;} else {  /* only absorption occurs, radiation temperature unmodified */
+    double T_IR_final = e_IR_final / (DMAX(e_IR_0/T_IR_0,0) + DMAX(de_IR_gas / Tgas,0) + DMAX(de_IR_dust / Tdust,0) + MIN_REAL_NUMBER); // assume gas-phase IR component emitted at Tgas. /* if new emission occurs, radiation temperature updated assuming all energy gained comes from emission with radiation temperature = gas temperature; if absorption occurs, radiation temperature unmodified  */
+    T_IR_final = DMAX(Tmin, DMIN(T_IR_final, Tmax)); // limiters for edge-cases above //
+    //}}
+    SphP[i].Radiation_Temperature_CoolingWeighted = T_IR_final; // PFH: this had been protected by a Tdust < max, but that will give the wrong radiation temperature when radiation-gas (non dust) interactions like Compton or Kramers are important, needs to be set regardless of whether the dust itself is present
 
     double dE_dust = 0; // now count up the energy changes in the dust for us to solve for 0
     double dust_absorption = dust_absorption_nonIR;
@@ -1530,11 +1535,45 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(T_upper==Tmax && dEdt_upper > 0) {return Tmax;}
     if(T_lower>=Tmax) {return Tmax;}
 
+#if 0  // PFH: still testing which option is better, but the new rootfind struggles here, in hyper-zoom-in runs when given dust close to max temperature (raising max temp resolves the failure to converge or Nan's but then jumps to very high solutions somewhat randomly, where it shouldnt. The old secant routine below appears stable and more robust in this particular instance for now.
+
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-6, ROOTFIND_ABS_X_tol=0.;
     #include "../system/bracketed_rootfind.h"
     Tdust = ROOTFIND_X_new + T;
     if(ROOTFIND_ITER > MAXITER || isnan(Tdust)){PRINT_WARNING("WARNING: Particle %lld did not converge to desired Tdust tolerance (iter=%d, Tdust=%g, Tgas=%g)\n",(long long)P[i].ID,ROOTFIND_ITER,Tdust,T);}
+    
+#else
+
+    T_old = Tdust; double dEdt_old = dEdt; Tdust = Tdust_guess; dEdt = dEdt_guess; // For our second guess we take the backeting value opposite of the initial guess.
+    double dT_dustgas = T-Tdust;
+    do  // secant method iterations with bisection as a backup; usually converges to machine epsilon in 4-5 iterations
+    {
+        dT_dustgas = T - Tdust;
+        T_secant = Tdust - dEdt * (Tdust - T_old) / (dEdt - dEdt_old);
+        T_secant = DMAX(DMIN(T_secant,T_upper),T_lower);
+        dEdt_old = dEdt;
+        dEdt = dust_dEdt(i,T,T_secant,dust_absorption_rate);
+        fac = fabs(T_secant - Tdust)/(MIN_REAL_NUMBER+fabs(Tdust-T_old)); //fabs(dEdt)/(MIN_REAL_NUMBER+fabs(dEdt_old));
+        if(fac < 0.5) { // accept the secant iteration if it is converging more rapidly
+            T_old=Tdust;
+            Tdust=T_secant;
+        } else { // if secant isn't working do bisection iteration instead; guaranteed to reduce the error
+            T_old = Tdust;
+            Tdust = sqrt(T_lower*T_upper);
+            dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate);
+            fac = 0.5;
+        }
+        if(dEdt>0) {T_lower=Tdust;} else {T_upper=Tdust;} // either way, update upper and lower bounds
+        n_iter++;
+        if(n_iter > MAXITER-10) {
+            PRINT_WARNING("Warning: Dust temperature iteration converging slowly: ID=%lld iter=%d T=%g Tdust=%g Tdust_guess=%g T_upper=%g T_lower=%g dEdt=%g fac=%g.\n",(long long)P[i].ID,n_iter,T,Tdust,Tdust_guess, T_upper, T_lower,dEdt, fac);
+            if(n_iter > MAXITER){break;}
+        }
+    } while(fabs(dT_dustgas - (T-Tdust)) > 1.e-3 * fabs(T-Tdust)); // sufficient to converge dust cooling to 10^-3 tolerance, at this point uncertainties in dust properties will dominate the error budget
+
+#endif
+    
     return Tdust;
 }
 
