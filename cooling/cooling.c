@@ -464,19 +464,16 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
 }
 // CHIMES
 #elif defined(EOS_SUBSTELLAR_ISM)
-
-#define NUM_SPECIES_IN_EOS 5
 /*
-Given the temperature, determine the internal energy assuming local thermodynamic equilibrium between the species present.
-
 Returns the internal energy of the gas mixture per unit mass in erg/g:
 
 u = Etot/Mtot = SUM_i(N_i E_i) / SUM_i(N_i m_i) over all species i with energy E_i, mass m_i, and relative abundance N_i
+
+Argument cv will return the specific heat capacity at constant volume du/dT
  */
-double convert_temp_to_u(double temp, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
+#define NUM_SPECIES_IN_EOS 5
+double convert_temp_to_u(double temp, double rho, int target, double *cv, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
     double dummy;
-    find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,
-                              &dummy); // all the thermo variables for this T
     double X = HYDROGEN_MASSFRAC, Y = 1. - X, Z = 0, fmol;
 #ifdef METALS
     if (target >= 0) {
@@ -487,18 +484,25 @@ double convert_temp_to_u(double temp, double rho, int target, double *ne, double
         X = 1. - (Y + Z);
     }
 #endif
-    double urad_from_uvb_in_G0 = MIN_REAL_NUMBER;                                         // pass this eventually
+    double urad_from_uvb_in_G0 = MIN_REAL_NUMBER;                                         // pass this eventually?
     fmol = Get_Gas_Molecular_Mass_Fraction(target, temp, *nH0, *ne, urad_from_uvb_in_G0); /* use our simple subroutine to estimate this, ignoring UVB and with clumping factor=1 */
 
     /* For full generality, make arrays of species' mean energy, masses, and abundances. Indices: 0: H_2 1: H 2: He 3: e 4: metals */
-    double E_i[NUM_SPECIES_IN_EOS] = {0}, m_i[NUM_SPECIES_IN_EOS] = {0}, N_i[NUM_SPECIES_IN_EOS] = {0};
-    double e_mono = 1.5 * BOLTZMANN_CGS * temp;
-    E_i[1] = E_i[2] = E_i[3] = E_i[4] = e_mono;
-
+    double E_i[NUM_SPECIES_IN_EOS] = {0}, cv_i[NUM_SPECIES_IN_EOS] = {0}, m_i[NUM_SPECIES_IN_EOS] = {0}, N_i[NUM_SPECIES_IN_EOS] = {0};
+    double cv_mono = 1.5 * BOLTZMANN_CGS;
+    cv_i[1] = cv_i[2] = cv_i[3] = cv_i[4] = cv_mono;
+    E_i[1] = E_i[2] = E_i[3] = E_i[4] = cv_mono * temp;
+#ifndef EOS_SUBSTELLAR_ISM
     E_i[0] = e_mono;
+    cv[0] = 7. / 5 * BOLTZMANN_CGS;
+#else
     if (fmol > MIN_REAL_NUMBER) {
-        E_i[0] = hydrogen_molecule_energy(temp);
+        double z[3];
+        hydrogen_molecule_partitionfunc(temp, z);
+        E_i[0] = z[0];
+        cv_i[0] = z[1];
     }
+#endif
     m_i[0] = 2.;
     N_i[0] = 0.5 * X * fmol;
 
@@ -513,11 +517,14 @@ double convert_temp_to_u(double temp, double rho, int target, double *ne, double
     N_i[4] = Z / (16. + 12. * fmol); // metals, consistent with mean molecular weight calculation
 
     int k;
-    double sum_E = 0., sum_M = 0.;
+    double sum_E = 0., sum_cv = 0., sum_M = 0.;
     for (k = 0; k < NUM_SPECIES_IN_EOS; k++) {
+        sum_cv += N_i[k] * cv_i[k];
         sum_E += N_i[k] * E_i[k];
         sum_M += N_i[k] * m_i[k];
     }
+    *cv = sum_cv / sum_M / PROTONMASS_CGS;
+
     return sum_E / sum_M / PROTONMASS_CGS;
 }
 
@@ -526,21 +533,30 @@ double convert_temp_to_u(double temp, double rho, int target, double *ne, double
    and root-find to solve it = u
 */
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
-    double T_guess = u * PROTONMASS_CGS / BOLTZMANN_CGS;
-    double T_max = 3 * u * PROTONMASS_CGS / BOLTZMANN_CGS, T_min = 0.5 * u * PROTONMASS_CGS / BOLTZMANN_CGS;
-    if (All.Time == 0) {
-        T_min = pow(10., Tmin);
-        T_max = pow(10., Tmax);
+    double dT = 1e100, dT_old = 1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
+    const double T_tolerance = 1e-4;
+    double dummy;
+    int iter = 0;
+
+    do {
+        u_from_temp = convert_temp_to_u(temp, rho, target, &cv, ne, nH0, nHp, nHe0, nHep, nHepp, mu);
+        dT_old = dT;
+        dT = (u_from_temp - u) / cv; // Newton iteration (converges fast except when chemistry is changing rapidly)
+        if (fabs(dT) > 0.5 * fabs(dT_old)) {
+            dT = 0.5 * fabs(dT_old) * dT / fabs(dT);            
+        } // if not converging, limit the step
+        temp -= dT;
+        if (fabs(dT) > T_tolerance * temp) {
+            find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,
+                                      &dummy); // all the thermo variables for this T
+        }
+        iter++;
+    } while ((fabs(dT) > T_tolerance * temp) && (iter < MAXITER));
+    if (iter >= MAXITER) {
+        PRINT_WARNING("Particle ID=%lld failed to converge in convert_u_to_temp. u=%g T=%g\n", P[target].ID, u, temp);
+        endrun(91743);
     }
-#define ROOTFIND_FUNCTION_INNER(temp) convert_temp_to_u(temp, rho, target, ne, nH0, nHp, nHe0, nHep, nHepp, mu) - u
-    double ROOTFIND_X_b = T_guess, ROOTFUNC_b = ROOTFIND_FUNCTION_INNER(T_guess), ROOTFIND_X_a = T_min, ROOTFUNC_a = ROOTFIND_FUNCTION_INNER(T_min);
-    if (ROOTFUNC_a * ROOTFUNC_b > 0) {
-        ROOTFUNC_a = ROOTFIND_FUNCTION_INNER(T_max);
-        ROOTFIND_X_a = T_max;
-    } // make sure it's bracketed
-    double ROOTFIND_REL_X_tol = 1e-4, ROOTFIND_ABS_X_tol = 0;
-#include "../system/bracketed_rootfind.h"
-    double temp = ROOTFIND_X_new, logtemp = log10(temp);
+    double logtemp = log10(temp);
     if (temp <= 0) {
         return pow(10.0, Tmin);
     }
