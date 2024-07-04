@@ -1345,7 +1345,9 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
         if(RT_BAND_IS_IONIZING(k)){continue;} /* gas-phase absorption */
         if(k==RT_FREQ_BIN_INFRARED){continue;} /* this is only counting up non-IR contributions, e.g. nebular NUV */
         double e_final = SphP[i].Rad_E_gamma[k] + SphP[i].Lambda_RadiativeCooling_toRHDBins[k] * lambda_to_dErad;
-        dust_absorption_nonIR += e_final * (-expm1(-rt_absorption_rate(i, k) * dt));
+        e_final = DMAX(0,e_final); // check against overshoot into negative values
+        double absrate_k = rt_absorption_rate(i, k) * dt; // this needs to be positive to sensible behavior here
+        if(absrate_k > 0) {dust_absorption_nonIR += e_final * fabs(expm1(-absrate_k));}
     }
     double alpha_gd = gas_dust_heating_coeff(i,Tgas,Tdust);
     double LambdaDust = alpha_gd * (Tgas-Tdust);
@@ -1374,8 +1376,13 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     double dust_absorption = dust_absorption_nonIR;
     dust_absorption += e_IR_final * C_LIGHT_CODE_REDUCED * rt_kappa_adaptive_IR_band(i, Tdust, T_IR_final,-1,1) * SphP[i].Density*All.cf_a3inv * dt;
     double result = LambdaDust * lambda_to_dErad + dust_absorption - dust_emission;
-    *Tdust_fixedpoint_1 = Tgas + (dust_absorption - dust_emission)/(alpha_gd*lambda_to_dErad);
-    *Tdust_fixedpoint_2 = sqrt(sqrt((LambdaDust * lambda_to_dErad + dust_absorption)/(fac_emission * kappa_dust_emission)));
+
+    double Tdust_fixed1_tmp = Tgas + (dust_absorption - dust_emission)/(alpha_gd*lambda_to_dErad + MIN_REAL_NUMBER); // make sure to include term in denominator to protect vs nans
+    double Tdust_fixed2_tmp = sqrt(sqrt(DMAX(0,LambdaDust * lambda_to_dErad + dust_absorption)/(fac_emission * kappa_dust_emission + MIN_REAL_NUMBER))); // make sure to include term in denominator and MAX in numerator to protect vs nans
+    // PFH: better behavior for 2 above is to bracket with solution for fixed dust absorption, which gives T2 = (T0 == above with Tdust = 0 in LambdaDust, positive-definite) x , where x solves x^4+b*x=1, b=((alpha_gd * lambda_to_dErad)/(fac_emission * kappa_dust_emission * T0^3)), should be dimensionless, for b << 1, x=1, for b >> 1, x->1/b; the above essentially jumps to b->infinity in the latter regime
+    
+    *Tdust_fixedpoint_1 = DMAX(Tdust_fixed1_tmp, 0); // check against overshoot into negative values
+    *Tdust_fixedpoint_2 = DMAX(Tdust_fixed2_tmp, 0); // check against overshoot into negative values
     return result;
 }
 
