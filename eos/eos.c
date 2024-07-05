@@ -37,8 +37,11 @@ double return_user_desired_target_pressure(int i)
      */
 }
 
-
-
+/*! Updates the thermodynamic quantities determined by the current internal
+energy, density, and chemistry: pressure, and potentially adiabatic index
+and temperature if those are getting cached
+ */
+void set_eos(int i){SphP[i].Pressure = get_pressure(i);}
 
 /*! return the pressure of particle i: this subroutine needs to  set the value of the 'press' variable (pressure), which you can see from the
     templates below can follow an arbitrary equation-of-state. for more general equations-of-state you want to specifically set the soundspeed

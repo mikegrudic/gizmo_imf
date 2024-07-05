@@ -992,7 +992,7 @@ int merge_particles_ij(int i, int j)
         P[j].dp[k] += P[j].Mass*P[j].Vel[k] - p_old_j[k];
     }
     /* call the pressure routine to re-calculate pressure (and sound speeds) as needed */
-    SphP[j].Pressure = get_pressure(j);
+    set_eos(j);;
 #if defined(MHD_CONSERVE_B_ON_REFINEMENT)
     /* flag cells as having just undergone refinement/derefinement for other subroutines to be aware */
     SphP[j].recent_refinement_flag = SphP[i].recent_refinement_flag = 1;
