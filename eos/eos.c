@@ -37,16 +37,25 @@ double return_user_desired_target_pressure(int i)
      */
 }
 
-/*! Updates the thermodynamic quantities determined by the current internal
-energy, density, and chemistry: pressure, and potentially adiabatic index
-and temperature if those are getting cached
+/*!
+Simple getter for the Pressure attribute - will calculate it on-the-fly if EOS quantities are not being cached
  */
-void set_eos(int i){SphP[i].Pressure = get_pressure(i);}
+void get_pressure(int i) {
+#ifndef EOS_PRECOMPUTE
+    set_eos(i);
+#endif
+    return SphP[i].Pressure;
+}
 
-/*! return the pressure of particle i: this subroutine needs to  set the value of the 'press' variable (pressure), which you can see from the
+/*!
+    Updates the thermodynamic quantities determined by the current internal
+    energy, density, and chemistry: pressure, and potentially adiabatic index
+    and temperature if those are getting cached.
+
+    this subroutine needs to set the value of the 'press' variable (pressure), which you can see from the
     templates below can follow an arbitrary equation-of-state. for more general equations-of-state you want to specifically set the soundspeed
     variable as well. */
-double get_pressure(int i)
+void set_eos(int i)
 {
     double soundspeed, press=0, gamma_eos_index = GAMMA(i); soundspeed=0; /* get effective adiabatic index */
     press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
@@ -60,7 +69,6 @@ double get_pressure(int i)
 #ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
     if(SphP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * SphP[i].Density * All.InitGasU;}
 #endif    
-    
     
 #ifdef EOS_HELMHOLTZ /* pass the necessary quantities to wrappers for the Timms EOS */
     struct eos_input eos_in;
@@ -76,12 +84,10 @@ double get_pressure(int i)
     soundspeed = eos_out.csound;
     SphP[i].Temperature = eos_out.temp;
 #endif
-
     
 #ifdef EOS_TILLOTSON
     press = calculate_eos_tillotson(i); soundspeed = SphP[i].SoundSpeed; /* done in subroutine, save for below */
 #endif
-    
     
 #ifdef EOS_ENFORCE_ADIABAT
     press = EOS_ENFORCE_ADIABAT * pow(SphP[i].Density, gamma_eos_index);
@@ -90,7 +96,6 @@ double get_pressure(int i)
 #endif
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (SphP[i].Density * (gamma_eos_index-1.)); /* reset internal energy: particles live -exactly- along this relation */
 #endif
-
     
 #ifdef EOS_GMC_BAROTROPIC // barytropic EOS calibrated to Masunaga & Inutsuka 2000, eq. 4 in Federrath 2014 Apj 790. Reasonable over the range of densitites relevant to some small-scale star formation problems
     gamma_eos_index=7./5.; double rho=Get_Gas_density_for_energy_i(i), nH_cgs=rho*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
@@ -111,7 +116,6 @@ double get_pressure(int i)
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eos_index-1.));
 #endif
     
-    
 #ifdef COSMIC_RAY_FLUID /* compute the CR contribution to the total pressure and effective soundspeed here */
     double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
@@ -131,7 +135,6 @@ double get_pressure(int i)
     press += (1./3.) * SphP[i].SubGrid_CosmicRayEnergyDensity;
 #endif
     
-    
 #ifdef RT_RADPRESSURE_IN_HYDRO /* add radiation pressure in the Riemann problem directly */
     int k_freq; double gamma_rad=4./3., fluxlim=1; double soundspeed2 = gamma_eos_index*(gamma_eos_index-1) * SphP[i].InternalEnergyPred;
     if(P[i].Mass>0 && SphP[i].Density>0) {for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++)
@@ -141,7 +144,6 @@ double get_pressure(int i)
     }}
     soundspeed = sqrt(soundspeed2);
 #endif
-    
     
 #if defined(EOS_TRUELOVE_PRESSURE) || defined(TRUELOVE_CRITERION_PRESSURE)
     /* add an artificial pressure term to suppress fragmentation at/below the explicit resolution scale */
@@ -153,20 +155,18 @@ double get_pressure(int i)
     if(xJeans>press) press=xJeans;
 #endif
     
-    
 #if defined(HYDRO_GENERATE_TARGET_MESH)
     press = return_user_desired_target_pressure(i) * (SphP[i].Density / return_user_desired_target_density(i)); // define pressure by reference to 'desired' fluid quantities //
     SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = return_user_desired_target_pressure(i) / ((gamma_eos_index-1) * SphP[i].Density);
 #endif
     
-    
 #ifdef EOS_GENERAL /* need to be sure soundspeed variable is set: if not defined above, set it to the default which is given by the effective gamma */
     if(soundspeed == 0) {SphP[i].SoundSpeed = sqrt(gamma_eos_index * press / Get_Gas_density_for_energy_i(i));} else {SphP[i].SoundSpeed = soundspeed;}
 #endif
-    return press;
+
+    /* Finally, set the pressure as advertised */
+    SphP[i].Pressure = press;
 }
-
-
 
 
 /*! this function allows the user to specify an arbitrarily complex adiabatic index. note that for pure adiabatic evolution, one can simply set the pressure to obey some barytropic equation-of-state and use EOS_GENERAL to tell the code to deal with it appropriately.
