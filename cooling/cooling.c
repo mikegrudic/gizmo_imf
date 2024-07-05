@@ -463,7 +463,7 @@ double chimes_convert_u_to_temp(double u, double rho, int target)
   return u * (GAMMA(target)-1) * PROTONMASS_CGS * ((double) calculate_mean_molecular_weight(&(ChimesGasVars[target]), &ChimesGlobalVars)) / BOLTZMANN_CGS;
 }
 // CHIMES
-#elif defined(EOS_SUBSTELLAR_ISM)
+#elif  defined(EOS_SUBSTELLAR_ISM)
 /*
 Returns the internal energy of the gas mixture per unit mass in erg/g:
 
@@ -533,40 +533,38 @@ double convert_temp_to_u(double temp, double rho, int target, double *cv, double
    and root-find to solve it = u
 */
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
-    double dT = 1e100, dT_old = 1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
-    const double T_tolerance = 1e-4;
+    double dT = 1e100, dT_old = 1e100, du=1e100, du_old=1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
+    double temp_min = DMAX(pow(10.,Tmin), 0.1*temp), temp_max=DMIN(pow(10.,Tmax),temp*10);
+    temp = DMIN(DMAX(temp,temp_min),temp_max);
+    const double tolerance = 1e-4;
     double dummy;
-    int iter = 0;
-
+    int iter = 0, bisection = 0;
     do {
         u_from_temp = convert_temp_to_u(temp, rho, target, &cv, ne, nH0, nHp, nHe0, nHep, nHepp, mu);
+	du_old = du; du = u_from_temp - u;
+	if(du > 0 && temp <= temp_min){return temp_min;}
+	if(du < 0 && temp >= temp_max){return temp_max;}
+	if(du > 0){temp_max = DMIN(temp, temp_max);} else {temp_min = DMAX(temp, temp_min);}
         dT_old = dT;
-        dT = (u_from_temp - u) / cv; // Newton iteration (converges fast except when chemistry is changing rapidly)
-        if (fabs(dT) > 0.5 * fabs(dT_old)) {
-            dT = 0.5 * fabs(dT_old) * dT / fabs(dT);            
-        } // if not converging, limit the step
-        temp -= dT;
-        if (fabs(dT) > T_tolerance * temp) {
-            find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,
-                                      &dummy); // all the thermo variables for this T
+        dT = -du / cv; // Newton iteration (converges fast except when chemistry is changing rapidly)
+        if ((fabs(du) > 0.5 * fabs(du_old)) || (bisection)) {
+	    bisection = 1;
+            dT = sqrt(temp_min*temp_max) - temp;
+        } // if not converging, switch to bisection
+        temp += dT;
+	temp = DMAX(DMIN(temp,temp_max),temp_min);
+        if (fabs(dT) > tolerance * temp) {
+	    find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,&dummy); // all the thermo variables for this T
         }
+	if(iter > 10 && fabs(dT)<tolerance * temp){
+	    break; // we're probably bisecting onto a discontinuity from the chemistry so accept this temperature
+	}
         iter++;
-    } while ((fabs(dT) > T_tolerance * temp) && (iter < MAXITER));
+    } while ((fabs(du) > tolerance * u) && iter < MAXITER);
     if (iter >= MAXITER) {
-        PRINT_WARNING("Particle ID=%lld failed to converge in convert_u_to_temp. u=%g T=%g\n", P[target].ID, u, temp);
-        endrun(91743);
+        PRINT_WARNING("Particle ID=%lld failed to converge in convert_u_to_temp. u=%g du=%g T=%g dT=%g\n", P[target].ID, u, du, temp, dT); endrun(91743);
     }
-    double logtemp = log10(temp);
-    if (temp <= 0) {
-        return pow(10.0, Tmin);
-    }
-    if (logtemp < Tmin) {
-        return pow(10.0, Tmin);
-    }
-    if (logtemp > Tmax) {
-        return pow(10., Tmax);
-    }
-    return temp;
+    return DMAX(DMIN(temp,pow(10.,Tmax)),pow(10.,Tmin));
 }
 // elif defined(EOS_SUBSTELLAR_ISM)
 #else 
