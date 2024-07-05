@@ -535,6 +535,9 @@ double convert_temp_to_u(double temp, double rho, int target, double *cv, double
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
     double dT = 1e100, dT_old = 1e100, du=1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
     double temp_min = DMAX(pow(10.,Tmin), 0.1*temp), temp_max=DMIN(pow(10.,Tmax),temp*10);
+#ifdef EOS_CARRIES_TEMPERATURE
+    temp = SphP[target].Temperature * u / (SphP[target].InternalEnergy * UNIT_SPECEGY_IN_CGS);
+#endif
     temp = DMIN(DMAX(temp,temp_min),temp_max);
     const double tolerance = 1e-4;
     double dummy;
