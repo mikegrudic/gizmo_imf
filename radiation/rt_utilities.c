@@ -759,8 +759,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 }
                 double total_absorption_rate = E_abs_tot_toIR + fabs(a0_abs)*e0; // add the summed absorption and equate to dust emission //
 #ifdef COOLING  // we account for gas-dust coupling as an additional heat source to be radiated away
-		        double u_in=SphP[i].InternalEnergy, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, ne=1, nHI=0, nHII=0, nHeI=1, nHeII=0, nHeIII=0;
-		        double temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+		        double temp = get_temperature(i);
 		        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
 
                 /* 
