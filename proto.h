@@ -189,6 +189,8 @@ void do_fewbody_kick(int i, double fewbody_kick_dv[3], double dt);
 void check_particle_for_temperature_minimum(int i);
 void set_eos(int i);
 double get_pressure(int i);
+double get_temperature(int i);
+double compute_temperature(int i);
 double return_user_desired_target_density(int i);
 double return_user_desired_target_pressure(int i);
 #ifdef EOS_TILLOTSON

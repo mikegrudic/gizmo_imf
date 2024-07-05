@@ -40,7 +40,7 @@ double return_user_desired_target_pressure(int i)
 /*!
 Simple getter for the Pressure attribute - will calculate it on-the-fly if EOS quantities are not being cached
  */
-void get_pressure(int i) {
+double get_pressure(int i) {
 #ifndef EOS_PRECOMPUTE
     set_eos(i);
 #endif
@@ -60,10 +60,21 @@ void set_eos(int i)
     double soundspeed, press=0, gamma_eos_index = GAMMA(i); soundspeed=0; /* get effective adiabatic index */
     press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */
 
+#if (defined(EOS_PRECOMPUTE) && defined(EOS_CARRIES_TEMPERATURE)) || defined(EOS_SUBSTELLAR_ISM) // will do temperature here
+    double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temp, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+    temp = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
+#endif
+#ifdef EOS_PRECOMPUTE
+#ifdef EOS_CARRIES_TEMPERATURE
+    SphP[i].Temperature = temp; // cache the tempature
+#endif
+#ifdef EOS_CARRIES_GAMMA
+    SphP[i].Gamma = gamma_eos(i); // cache the adiabatic index; this will reuse the pre-computed SphP[i].Temperature assigned above
+#endif
+#endif
+
 #ifdef EOS_SUBSTELLAR_ISM
-    double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
-    temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-    press = Get_Gas_density_for_energy_i(i) * BOLTZMANN_CGS * temperature / UNIT_ENERGY_IN_CGS / (mu_meanwt * PROTONMASS_CGS / UNIT_MASS_IN_CGS);
+    press = Get_Gas_density_for_energy_i(i) * BOLTZMANN_CGS * temp / UNIT_ENERGY_IN_CGS / (mu_meanwt * PROTONMASS_CGS / UNIT_MASS_IN_CGS);
 #endif
     
 #ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
@@ -179,20 +190,29 @@ double gamma_eos(int i)
             double fH = HYDROGEN_MASSFRAC, f = SphP[i].MolecularMassFraction, xe = SphP[i].Ne; // use the variables below to update the EOS as needed
             double f_mono = fH*(xe + 1.-f) + (1.-fH)/4., f_di = fH*f/2., gamma_mono=5./3., gamma_di=7./5.; // sum e-, H or p, He, which act monotomic, and molecular, by number
 #ifdef EOS_SUBSTELLAR_ISM
-            //gamma_di = 5./3;
-            double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
-            temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties
-            gamma_di = hydrogen_molecule_gamma(temperature);
+            gamma_di = hydrogen_molecule_gamma(get_temperature(i));
 #endif
             return 1. + (f_mono + f_di) / (f_mono/(gamma_mono-1.) + f_di/(gamma_di-1.)); // weighted sum by number to compute effective EOS
-            //return 1. + (fH*((1.-f)/1. + f/2.) + (1.-fH)/4.) / (fH*((1.-f + xe)/(1.*(5./3.-1.)) + f/(2.*(7./5.-1.))) + (1.-fH)/(4.*(5./3.-1.))); // assume He is atomic, H has a mass fraction f molecular
         }
     }
 #endif
     return GAMMA_DEFAULT; /* default to universal constant here */
 }
 
+/* Returns the temperature, either pre-computed or calling the routine to re-compute it*/
+double get_temperature(int i){
+#if defined(EOS_PRECOMPUTE) && defined(EOS_CARRIES_TEMPERATURE)
+    return SphP[i].Temperature;
+#else
+    return compute_temperature(i);
+#endif
+}
 
+/* Simple wrapper for calling ThermalProperties for temperature only - should only be called by get_temperature() above */
+double compute_temperature(int i){
+    double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=SphP[i].Density*All.cf_a3inv, u0=SphP[i].InternalEnergyPred;
+    temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+}
 
 
 /* trivial function to check if particle falls below the minimum allowed temperature */

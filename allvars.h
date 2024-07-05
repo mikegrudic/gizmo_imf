@@ -1162,6 +1162,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if defined(EOS_SUBSTELLAR_ISM) || defined(COOL_MOLECFRAC_NONEQM)
 #define EOS_GAMMA_VARIABLE
 #endif
+#ifdef EOS_PRECOMPUTE  // cache EOS quantities - default to storing temperature and adiabatic index
+#define EOS_CARRIES_TEMPERATURE
+#define EOS_CARRIES_GAMMA
+#endif
+
 
 #if defined(EOS_GAMMA_VARIABLE)
 #define GAMMA(i) (gamma_eos(i)) /*! use an actual function! */
@@ -3564,6 +3569,9 @@ extern struct gas_cell_data
     MyFloat SoundSpeed;                   /* Sound speed */
 #ifdef EOS_CARRIES_TEMPERATURE
     MyFloat Temperature;                  /* Temperature */
+#endif
+#ifdef EOS_CARRIES_GAMMA
+    MyFloat Gamma;                        /* First adiabatic index */
 #endif
 #ifdef EOS_CARRIES_YE
     MyFloat Ye;                           /* Electron fraction */
