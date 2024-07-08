@@ -42,7 +42,7 @@ Simple getter for the Pressure attribute - will calculate it on-the-fly if EOS q
  */
 double get_pressure(int i) {
 #ifndef EOS_PRECOMPUTE
-    set_eos(i);
+    set_eos_pressure(i);
 #endif
     return SphP[i].Pressure;
 }
@@ -55,7 +55,7 @@ double get_pressure(int i) {
     this subroutine needs to set the value of the 'press' variable (pressure), which you can see from the
     templates below can follow an arbitrary equation-of-state. for more general equations-of-state you want to specifically set the soundspeed
     variable as well. */
-void set_eos(int i)
+void set_eos_pressure(int i)
 {
     double soundspeed, press=0, gamma_eos_index = GAMMA(i); soundspeed=0; /* get effective adiabatic index */
     press = (gamma_eos_index-1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i); /* ideal gas EOS (will get over-written it more complex EOS assumed) */

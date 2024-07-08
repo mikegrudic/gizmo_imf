@@ -107,7 +107,7 @@ void do_the_cooling_for_particle(int i)
 #else
         if(SphP[i].DelayTimeHII < 0) { // this cell re-combined at the end of the previous timestep and has not been re-ionized yet, so we need to recombine it correctly given our sub-grid model (at fixed T not fixed U)
             SphP[i].DelayTimeHII = 0; SphP[i].InternalEnergy *= 0.59/1.28; SphP[i].Ne = DMIN(SphP[i].Ne , 0.01); // assume efficient recombination here, at fixed temperature, and reset conserved quantities
-            SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; set_eos(i);}
+            SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; set_eos_pressure(i);}
 #endif
 #endif
         
@@ -237,7 +237,7 @@ void do_the_cooling_for_particle(int i)
          if the flag is not set (default), then the full hydro-heating is accounted for in the cooling loop, so it should be re-zeroed here */
         SphP[i].InternalEnergy = unew;
         SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        set_eos(i);
+        set_eos_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
         if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here
 #endif

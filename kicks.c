@@ -466,7 +466,7 @@ void set_predicted_quantities_for_extra_physics(int i)
         for(k=0;k<3;k++) {for(kf=0;kf<3;kf++) {SphP[i].Elastic_Stress_Tensor_Pred[k][kf]=SphP[i].Elastic_Stress_Tensor[k][kf];}}
 #endif
         
-        set_eos(i);
+        set_eos_pressure(i);
     }
 }
 
