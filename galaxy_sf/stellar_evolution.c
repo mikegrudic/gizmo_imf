@@ -630,7 +630,7 @@ void get_wind_yields(double *yields, int i)
 #endif
     }
 #endif
-    if(NUM_METAL_SPECIES>=10) /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ;; follow AGB/O star yields in more detail for the light elements */
+    if(NUM_METAL_SPECIES>=10) /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ; follow AGB/O star yields in more detail for the light elements */
     {
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         /* everything except He and CNO and S-process is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum for secondary production */
