@@ -676,6 +676,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef COOLING
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
+#define EOS_PRECOMPUTE
+#define EOS_SUBSTELLAR_ISM
 #define OUTPUT_MOLECULAR_FRACTION
 #if defined(MAGNETIC) && !defined(CONDUCTION) && !defined(VISCOSITY) // if we have cooling and magnetic fields, enable conduction + viscosity
 #define CONDUCTION           /* enable conduction */

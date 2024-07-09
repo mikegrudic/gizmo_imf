@@ -366,7 +366,7 @@ void find_next_sync_point_and_drift(void)
 	  if(n > 0)
 	    {
 	      highest_occupied_bin = n;
-	      dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);;
+	      dt_bin = GET_INTEGERTIME_FROM_TIMEBIN(n);
 	      ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;	/* next kick time for this timebin */
 	    }
 	  else
