@@ -474,6 +474,7 @@ Argument cv will return the specific heat capacity at constant volume du/dT
 #define NUM_SPECIES_IN_EOS 5
 double convert_temp_to_u(double temp, double rho, int target, double *cv, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
     double dummy;
+    find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,&dummy); // all the thermo variables for this T
     double X = HYDROGEN_MASSFRAC, Y = 1. - X, Z = 0, fmol;
 #ifdef METALS
     if (target >= 0) {
@@ -533,7 +534,7 @@ double convert_temp_to_u(double temp, double rho, int target, double *cv, double
    and root-find to solve it = u
 */
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
-    double dT = 1e100, dT_old = 1e100, du=1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
+    double dT = 1e100, dT_old = 1e100, du=1e100, du_old=1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
     double temp_min = DMAX(pow(10.,Tmin), 0.1*temp), temp_max=DMIN(pow(10.,Tmax),temp*10);
 #ifdef EOS_CARRIES_TEMPERATURE
     temp = SphP[target].Temperature * u / (SphP[target].InternalEnergy * UNIT_SPECEGY_IN_CGS);
@@ -544,23 +545,26 @@ double convert_u_to_temp(double u, double rho, int target, double *ne, double *n
     int iter = 0, bisection = 0;
     do {
         u_from_temp = convert_temp_to_u(temp, rho, target, &cv, ne, nH0, nHp, nHe0, nHep, nHepp, mu);
+	du_old = du;
 	du = u_from_temp - u;
 	if(du > 0 && temp <= temp_min){return temp_min;}
 	if(du < 0 && temp >= temp_max){return temp_max;}
 	if(du > 0){temp_max = DMIN(temp, temp_max);} else {temp_min = DMAX(temp, temp_min);}
         dT_old = dT;
-        dT = -du / cv; // Newton iteration (converges fast except when chemistry is changing rapidly)
-        if ((fabs(dT) > 0.5 * fabs(dT_old)) || (bisection)) {
+	if(iter==0){
+	    dT = -du / cv; // Newton iteration (converges fast except when chemistry is changing rapidly)
+	} else {
+	    dT = -du * dT_old / (du-du_old); // otherwise secant iteration
+	}
+        if (fabs(du) > 0.5 * fabs(du_old) || bisection) {
 	    bisection = 1;
             dT = sqrt(temp_min*temp_max) - temp;
         } // if not converging, switch to bisection
+	if(dT==0){break;}
         temp += dT;
 	temp = DMAX(DMIN(temp,temp_max),temp_min);
-        if (fabs(dT) > tolerance * temp) {
-	    find_abundances_and_rates(log10(temp), rho, target, -1, 0, ne, nH0, nHp, nHe0, nHep, nHepp, mu, &dummy, &dummy, &dummy,&dummy); // all the thermo variables for this T
-        }
         iter++;
-    } while ((fabs(dT) > tolerance * temp) && iter < MAXITER);
+    } while (fabs(du) > tolerance * u && iter < MAXITER);
     if (iter >= MAXITER) {
         PRINT_WARNING("Particle ID=%lld failed to converge in convert_u_to_temp. u=%g du=%g T=%g dT=%g\n", P[target].ID, u, du, temp, dT); endrun(91743);
     }
