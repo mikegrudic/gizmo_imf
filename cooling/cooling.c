@@ -343,21 +343,24 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         u_step_fac *= 1.1;
         bracket_iter++;
     }
-
-    if(!skip_rootfind){ // assuming we're not bouncing off the min temp
-        if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
-
-        /* core iteration to convergence */
-        double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-2, ROOTFIND_ABS_X_tol = 1e-15 * u_old;
-        #include "../system/bracketed_rootfind.h"
-        u = ROOTFIND_X_new + u_old;
-
-        /* crash condition */
-        if((ROOTFIND_ITER >= MAXITER) || isnan(u)) {
-            printf("failed to converge in DoCooling(): ROOTFIND_X_new=%g ROOTFIND_X_a=%g ROOTFIND_X_b=%g ROOTFIND_X_error=%g u_in=%g u_upper=%g u_lower=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",ROOTFIND_X_new, ROOTFIND_X_a, ROOTFIND_X_b,  ROOTFIND_X_error, u_old, u_upper, u_lower, rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);
-        }    
-        u = DMAX(u_min,u);
-    } else {u = All.MinEgySpec;}
+    if(fabs(du_net_upper) < MIN_REAL_NUMBER) {u=u_upper;}
+    else if(fabs(du_net_lower) < MIN_REAL_NUMBER) {u=u_lower;}
+    else {
+        if(!skip_rootfind){ // assuming we're not bouncing off the min temp
+            if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
+            
+            /* core iteration to convergence */
+            double ROOTFIND_X_a = u_upper-u_old, ROOTFIND_X_b = u_lower-u_old, ROOTFUNC_a = du_net_upper, ROOTFUNC_b = du_net_lower, ROOTFIND_REL_X_tol = 1e-2, ROOTFIND_ABS_X_tol = 1e-15 * u_old;
+            #include "../system/bracketed_rootfind.h"
+            u = ROOTFIND_X_new + u_old;
+            
+            /* crash condition */
+            if((ROOTFIND_ITER >= MAXITER) || isnan(u)) {
+                printf("failed to converge in DoCooling(): ROOTFIND_X_new=%g ROOTFIND_X_a=%g ROOTFIND_X_b=%g ROOTFIND_X_error=%g u_in=%g u_upper=%g u_lower=%g rho_in=%g dt=%g ne_in=%g ne_out=%g target=%d ID=%ld \n",ROOTFIND_X_new, ROOTFIND_X_a, ROOTFIND_X_b,  ROOTFIND_X_error, u_old, u_upper, u_lower, rho,dt,ne_guess,*ne_eval,target, (long)P[target].ID); endrun(10);
+            }
+            u = DMAX(u_min,u);
+        } else {u = All.MinEgySpec;}
+    }
 
     double specific_energy_codeunits_toreturn = u / UNIT_SPECEGY_IN_CGS;    /* in internal units */
     SphP[target].Ne = *ne_eval;
