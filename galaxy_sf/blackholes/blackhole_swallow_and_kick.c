@@ -877,7 +877,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     mode = 4;
 #endif
 #ifdef BH_RIAF_SUBEDDINGTON_MODEL
-    if(BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) < (BH_RIAF_SUBEDDINGTON_MODEL)) {mode=0;}
+    if(BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) > (BH_RIAF_SUBEDDINGTON_MODEL)) {mode=0;} // broad-angle at high mdot, jets at low mdot
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     mode = 0;

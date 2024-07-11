@@ -590,7 +590,6 @@
 #BH_DEBUG_FIX_MDOT_MBH=(0.2)      # fix BH fb mass flux and fixed BH mass.  Cite Su et al., arXiv:2102.02206, for methods.
 #BH_WAKEUP_GAS                    # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
 #BH_RIAF_SUBEDDINGTON_MODEL=(0.01) # enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties, with the critical transition to the jet mode at this eddington ratio (defined in terms of mdot/mdot_crit)
-#BH_CR_SUBEDDINGTON_MODEL         # enable an arbitrary modular variation in the CR acceleration efficiency from BHs as a function of mass, eddington ratio, spin, or other particle properties
 #BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS # rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
 #BH_EXCISION_NONGAS               # excise non-gas elements too close to a sink if they meet various criteria including being bound, sufficiently old (if stars), within and with maximum possible apocentric radii within the sink softening (which is rescaled appropriately). mass is added to the sink dynamical mass reservoir, not disk or sink itself. developed by PFH; cite arXiv:2203.00040
 #BH_EXCISION_GAS                  # excise gas elements too close to a sink with a similar criterion to BH_EXCISION_NONGAS (same references and details apply)
@@ -682,7 +681,7 @@
 #CBE_INTEGRATOR_WITHGRADIENTS               #- module being developed. early stage
 #CRFLUID_INJECTION_AT_SHOCKS=(0.1)          #- inject CRs (using standard spectra) at resolved shocks throughout simulation. value=maximum fraction of shock energy flux to convert to accelerated CRs. currently using hard threshold of >Mach 5, >100 km/s shock velocity, along with spurious shock detection. coded by PFH, in testing
 #BH_CR_INJECTION_AT_TERMINATION=(0.25)      #- inject CRs (requires BH_WIND_SPAWN and BH_COSMIC_RAYS) approximately at spawned-cell termination shocks. developed by Kung-Yi Su, this version testing by PFH, currently uses very simple deceleration to fraction of launch velocity (=value set here) to determine when to inject
-#BH_TEST_WIND_MIXED_FASTSLOW=(6.e4)         #- BH has a slow outflow and fast jet, where fast jet has 1/50th the mass-loading and this speed in kms by default
+#BH_TEST_WIND_MIXED_FASTSLOW=(1.e5)         #- BH has a slow outflow and fast jet, where fast jet has 1/50th the mass-loading and this speed in kms by default
 #MHD_CONSERVE_B_ON_REFINEMENT               #- redefine B after density step after a refinement/de-refinement operation so as to exactly conserve "B" between the steps, as compared to conserving the code "VB" between the steps [the default conserved integrated quantity]
 #BOX_SHEARING_QB=(-4.0/3.0)                 #- shearing box with shear-periodic boundaries for By to represent toroidally magnetized disks. here the value is the logarithmic slope of dln{B_phi}/dlnR.
 ####################################################################################################-
