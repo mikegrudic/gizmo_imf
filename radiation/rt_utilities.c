@@ -759,8 +759,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 }
                 double total_absorption_rate = E_abs_tot_toIR + fabs(a0_abs)*e0; // add the summed absorption and equate to dust emission //
 #ifdef COOLING  // we account for gas-dust coupling as an additional heat source to be radiated away
-		        double u_in=SphP[i].InternalEnergy, rho_in=SphP[i].Density*All.cf_a3inv, mu=1, ne=1, nHI=0, nHII=0, nHeI=1, nHeII=0, nHeIII=0;
-		        double temp = ThermalProperties(u_in, rho_in, i, &mu, &ne, &nHI, &nHII, &nHeI, &nHeII, &nHeIII);
+		        double temp = get_temperature(i);
 		        double nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
 
                 /* 
@@ -1394,7 +1393,7 @@ double rt_ir_lambdadust(int i, double T){
     double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;
     // define ROOTFIND_FUNCTION_INNER because this gets called nested inside the cooling solver, and needs to be def'd distinctly from the overlying ROOTFIND_FUNCTION
     #define ROOTFIND_FUNCTION_INNER(dTdust) dust_dE_cooling(i, T, T+dTdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2)
-    if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = SphP[i].Dust_Temperature;}
+    if((All.Time==0 )|| (!isfinite(SphP[i].Dust_Temperature))){Tdust=T;} else {Tdust = DMIN(1e3,SphP[i].Dust_Temperature);}
 
     dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust-T);
    
@@ -1490,7 +1489,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     Tmax = MAX_DUST_TEMP; // this is now a global variable
     /* First we come up with a reasonable guess for the dust temp based on available info */
 #ifdef RT_INFRARED
-    Tdust_guess = DMAX(SphP[i].Dust_Temperature,1.); // previous dust temperature should be a good guess
+    Tdust_guess = DMIN(DMAX(SphP[i].Dust_Temperature,1.),1e3); // previous dust temperature should be a good guess
 #else // case where we don't have a pre-computed dust temp, use asymptotic limits to get a good guess
     double Zfac = 1.0;
 #ifdef METALS
@@ -1518,7 +1517,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(dEdt < 0)
     {
 	scalefac = 0.9;
-	T_upper = Tdust, dEdt_upper = dEdt_guess; 
+	T_upper = DMIN(Tmax,Tdust), dEdt_upper = dEdt_guess; 
 	while(dEdt<0) {
 	    Tdust *= scalefac; 
 	    dEdt = dust_dEdt(i,T,Tdust,dust_absorption_rate); 
@@ -1542,8 +1541,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     if(T_upper==Tmax && dEdt_upper > 0) {return Tmax;}
     if(T_lower>=Tmax) {return Tmax;}
 
-#if 0  // PFH: still testing which option is better, but the new rootfind struggles here, in hyper-zoom-in runs when given dust close to max temperature (raising max temp resolves the failure to converge or Nan's but then jumps to very high solutions somewhat randomly, where it shouldnt. The old secant routine below appears stable and more robust in this particular instance for now.
-
+#if 1  // PFH: still testing which option is better, but the new rootfind struggles here, in hyper-zoom-in runs when given dust close to max temperature (raising max temp resolves the failure to converge or Nan's but then jumps to very high solutions somewhat randomly, where it shouldnt. The old secant routine below appears stable and more robust in this particular instance for now.
     #define ROOTFIND_FUNCTION(dTdust) dust_dEdt(i,T,T+dTdust,dust_absorption_rate); // here we want to converge on a relative tolerance for Tdust-Tgas
     double ROOTFIND_X_a = T_upper-T, ROOTFIND_X_b = T_lower-T, ROOTFUNC_a = dEdt_upper, ROOTFUNC_b = dEdt_lower, ROOTFIND_REL_X_tol = 1e-6, ROOTFIND_ABS_X_tol=0.;
     #include "../system/bracketed_rootfind.h"
