@@ -194,6 +194,10 @@ void do_the_cooling_for_particle(int i)
         /* Removing the de_u * de_rad_tot > 0 limiter because this is not ruled out physically, e.g. if gas is being heated by PdV work while radiating away energy. 
         Can only do the limiter if the cooling function accounts for radiative processes only. */
 	    //if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
+        double de_u_rad = -de_rad_tot, de_u_work = de_u - de_u_rad; if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {de_u_work=SphP[i].DtInternalEnergy/nHcgs*ratefact; if((de_u_rad + de_u_work)*de_u < 0) {de_u=0;}} /* ok have a sign conflict here, this is potentially a problem, so we dont mess with the radiation here. verified this only occurs when the two almost exactly cancel and the remainer is very small (4 dex smaller than both) so its dominated by roundoff error, should be null in that case */
+        double de_u_touse = de_u - de_u_work; /* this is the actual difference between the implicit hydro work term and the total term, i.e. a corrected de_u_rad, which we use below */
+        if((de_u_touse<0) && (de_u_work>0) && (fabs(de_u)<fabs(de_u_touse))) {de_u_touse=-fabs(de_u);} /* de_u_rad*de_u_work >= 0 -- same sign, fabs(de_u) > fabs(de_u_rad), change from rad smaller than total; else (1) de_u_rad > 0, de_u_work < 0: rad heating, adiabatic cooling. rad field should lose |de_u_rad|, not lesser (let alone gain); de_u_rad < 0, de_u_work > 0: rad cooling, shock/compressive heating. rad field should gain |de_u_rad|, but can allow limiter; */
+        
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             if((fabs(SphP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
@@ -202,9 +206,9 @@ void do_the_cooling_for_particle(int i)
 		        //if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below  - removed, see note above */
                 if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
-                    double de_rad_min = DMIN(-0.99*SphP[i].Rad_E_gamma[k], 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
-                    double de_rad_max = DMAX(100.*unew*P[i].Mass, 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
-                    de_rad = DMAX(DMIN(de_rad, de_rad_max), de_rad_min); // limit de_rad appropriately                    
+                    double de_rad_min = DMIN(DMAX(-0.99*SphP[i].Rad_E_gamma[k], -de_u_touse), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
+                    double de_rad_max = DMAX(DMIN(10.*unew*P[i].Mass, -de_u_touse), 0); // don't let the radiation gain take more than some large factor times the current energy, or more than the energy lost from cooling+heating
+                    de_rad = DMAX(DMIN(de_rad, de_rad_max), de_rad_min); // limit de_rad appropriately
                     if(fabs(de_rad) > MIN_REAL_NUMBER)
                     {
                         de_rad_tot_final += de_rad; // add to our running total                        
@@ -1072,11 +1076,11 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
             f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
             double Lambda_CCO = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+1.*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
-	    
-	    /* Large-velocity-gradient limiter for the CO cooling rate from Whitworth & Jaffa arXiv:1811.06814; compute Lambda_HI and use this as an upper bound */ 
-	    double gradv_norm_kms_pc = velocity_gradient_norm(target) * UNIT_VEL_IN_KMS / UNIT_LENGTH_IN_PC; // velocity gradient in km/s/pc
-	    double Lambda_CO_HI = 4.42e-28 * gradv_norm_kms_pc * pow(T,4) / (nHcgs * nHcgs);
-	    double Lambda_CO = DMIN(Lambda_CO_HI, (1.-f_Cplus_CCO) * Lambda_CCO); // Let the LVG value be the limiter
+            
+            /* Large-velocity-gradient limiter for the CO cooling rate from Whitworth & Jaffa arXiv:1811.06814; compute Lambda_HI and use this as an upper bound */
+            double gradv_norm_kms_pc = velocity_gradient_norm(target) * UNIT_VEL_IN_KMS / UNIT_LENGTH_IN_PC; // velocity gradient in km/s/pc
+            double Lambda_CO_HI = 4.42e-28 * gradv_norm_kms_pc * pow(T,4) / (nHcgs * nHcgs);
+            double Lambda_CO = DMIN(Lambda_CO_HI, (1.-f_Cplus_CCO) * Lambda_CCO); // Let the LVG value be the limiter
 
             double Lambda_Metals = f_Cplus_CCO * Lambda_Cplus + Lambda_CO; // interpolate between both regimes //
             /* in the above Lambda_Metals expression, the column density expression attempts to account for the optically-thick correction in a slab. this is largely redundant (not exactly, b/c this is specific for CO-type molecules) with our optically-thick cooling module already included below, so we will not double-count it here [coefficient set to zero]. But it's included so you can easily turn it back on, if desired, instead of using the module below. */
@@ -1214,7 +1218,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
         nHp = 1.0; nHep = 0; nHepp = yhelium(target); n_elec = nHp + 2.0 * nHepp; /* very hot: H and He both fully ionized */
         *n_elec_eval = n_elec; /* save this value for the output cycle */
 
-        LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec; // free-free
+        LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (nHp + 4 * nHepp) * n_elec * (1. + sqrt(T/0.4e10)); // free-free (with simplified relativistic correction)
         LambdaCompton = evaluate_Compton_heating_cooling_rate(target,T,nHcgs,n_elec,shieldfac); // Compton
         Lambda = LambdaFF + DMAX(LambdaCompton,0);
     }
@@ -1273,6 +1277,9 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
     double Q = Heat - Lambda;
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0) {SphP[target].CoolingRate = Lambda; SphP[target].HeatingRate = Heat;}
+#endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES)
+    if(target >= 0) {SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV]=0; SphP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = -Q;} // for these runs want to do it all with our dedicated band //
 #endif
     
 #if defined(COOL_LOW_TEMPERATURES) && !defined(COOL_LOWTEMP_THIN_ONLY)
@@ -2239,10 +2246,14 @@ double evaluate_Compton_heating_cooling_rate(int target, double T, double nHcgs,
     double T_eff_for_relativistic_corr = T; /* used below, but can be corrected */
     if(Lambda > 0) /* per CAFG's calculations, we should note that at very high temperatures, the rate-limiting step may be the Coulomb collisions moving energy from protons to e-; which if slow will prevent efficient e- cooling */
     {
-        double Lambda_limiter_var = 1.483e34 * Lambda*Lambda*T; /* = (Lambda/2.6e-22)^2 * (T/1e9): if this >> 1, follow CAFG and cap at cooling rate assuming equilibrium e- temp from Coulomb exchange balancing compton */
-        if(Lambda_limiter_var > 1) {Lambda_limiter_var = 1./pow(Lambda_limiter_var,0.2); Lambda*=Lambda_limiter_var; T_eff_for_relativistic_corr*=Lambda_limiter_var;}
+        //double Lambda_limiter_var = 1.483e34 * Lambda*Lambda*T; /* = (Lambda/2.6e-22)^2 * (T/1e9): if this >> 1, follow CAFG and cap at cooling rate assuming equilibrium e- temp from Coulomb exchange balancing compton */
+        double Lambda_limiter_var = 2.38e33 * Lambda*Lambda*T; /* = (slightly revised with coefficients recalculated to be more general) */
+        if(Lambda_limiter_var > 1 && T < 1.e12) { /* at higher temps, protons start to become relativistic */
+            Lambda_limiter_var = 1./pow(Lambda_limiter_var, 1./5.); if(T*Lambda_limiter_var > 1.5e9) {Lambda_limiter_var = 1./pow(Lambda_limiter_var, 1./7.);} /* correction factor is different for the relativistic case */
+            if(Lambda_limiter_var < 0.01) {Lambda_limiter_var = 0.01;} /* formulae above not valid for too large a ratio here, because then need to include additional proton terms */
+            Lambda*=Lambda_limiter_var; T_eff_for_relativistic_corr*=Lambda_limiter_var;}
     }
-    if(T_eff_for_relativistic_corr > 3.e7) {Lambda *= (T_eff_for_relativistic_corr/1.5e9) / (1-exp(-T_eff_for_relativistic_corr/1.5e9));} /* relativistic correction term, becomes important at >1e9 K, enhancing rate */
+    if(T_eff_for_relativistic_corr > 3.e7) {double tau=T_eff_for_relativistic_corr/1.5e9; Lambda*=tau; if(tau < 20.) {Lambda/=1.-exp(-tau);}} /* relativistic correction term, becomes important at >1e9 K, enhancing rate */
     
     return Lambda;
 }
@@ -2253,20 +2264,16 @@ double get_background_radiation_temperature_for_emission_corrections(int target)
 {
     double T_cmb = 2.73/All.cf_atime;
 #ifdef RT_ISRF_BACKGROUND
-    if(!All.ComovingIntegrationOn){
-	T_cmb *= 1.+All.RadiationBackgroundRedshift;
-    }
-#endif	
+    if(!All.ComovingIntegrationOn) {T_cmb *= 1.+All.RadiationBackgroundRedshift;}
+#endif
 #if defined(RT_INFRARED)
     if(target >= 0)
     {
         double e_tmp_CMB = 0.262*All.cf_a3inv/All.cf_atime;
 #ifdef RT_ISRF_BACKGROUND
-	if(!All.ComovingIntegrationOn){
-	    e_tmp_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);
-	}
+        if(!All.ComovingIntegrationOn) {e_tmp_CMB *= pow(1.+All.RadiationBackgroundRedshift,4);}
 #endif
-	double e_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
+        double e_tot_to_evol_eVcgs = (SphP[target].Density*All.cf_a3inv/P[target].Mass) * UNIT_PRESSURE_IN_EV;
         double e_tmp_IR = SphP[target].Rad_E_gamma_Pred[RT_FREQ_BIN_INFRARED] * e_tot_to_evol_eVcgs, T_tmp_IR = SphP[target].Radiation_Temperature;
         return (e_tmp_IR * T_tmp_IR + e_tmp_CMB * T_cmb) / (e_tmp_IR + e_tmp_CMB); // if evolving IR band, use sum of it plus cmb for background
     }
