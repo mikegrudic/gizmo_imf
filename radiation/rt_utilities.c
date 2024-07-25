@@ -1434,7 +1434,7 @@ double rt_ir_lambdadust(int i, double T){
     }     
     if(T_upper>=MAX_DUST_TEMP && dE_upper > 0){SphP[i].Dust_Temperature = MAX_DUST_TEMP; return 0;}
 
-    if(dE_lower * dE_upper > 0){ PRINT_WARNING("Failed to bracket Tdust solution for ID=%d T=%g T_lower=%g T_upper=%g dE_lower=%g dE_upper=%g\n", P[i].ID, T, T_lower,T_upper, dE_lower, dE_upper);}
+    if(dE_lower * dE_upper > 0){ PRINT_WARNING("Failed to bracket Tdust solution for ID=%lld T=%g T_lower=%g T_upper=%g dE_lower=%g dE_upper=%g\n", P[i].ID, T, T_lower,T_upper, dE_lower, dE_upper);}
 
     if(dE!=0){  // root-solve for Tdust
         double ROOTFIND_X_a = T_lower-T, ROOTFIND_X_b = T_upper-T;
