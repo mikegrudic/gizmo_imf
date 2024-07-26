@@ -943,7 +943,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
             if(get_random_number(j)<0.5) {
                 mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS; /* collimated jet */
             } else {
-                mode=0; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
+                mode=0; mass_of_new_particle=mass_of_new_particle_default*(1.-1./masscorrfac_fast); v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
             }
         }
 #endif
