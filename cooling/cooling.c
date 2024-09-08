@@ -25,7 +25,7 @@
 #define NCOOLTAB  2000 /* defines size of cooling table */
 
 #if !defined(CHIMES)
-static double Tmin = -1.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding: will be appropriately set in make_cooling_tables subroutine below */
+static double Tmin = -1.0, Tmax = 9.0, deltaT; /* minimum/maximum temp, in log10(T/K) and temperature gridding for the TABULATED rates only - not the same as the min/max temperature gas is actually allowed to reach: will be appropriately set in make_cooling_tables subroutine below */
 static double *BetaH0, *BetaHep, *Betaff, *AlphaHp, *AlphaHep, *Alphad, *AlphaHepp, *GammaeH0, *GammaeHe0, *GammaeHep; // UV background parameters
 #ifdef COOL_METAL_LINES_BY_SPECIES
 /* if this is enabled, the cooling table files should be in a folder named 'spcool_tables' in the run directory.
@@ -542,7 +542,7 @@ double convert_temp_to_u(double temp, double rho, int target, double *cv, double
 */
 double convert_u_to_temp(double u, double rho, int target, double *ne, double *nH0, double *nHp, double *nHe0, double *nHep, double *nHepp, double *mu) {
     double dT = 1e100, dT_old = 1e100, du=1e100, du_old=1e100, temp = 0.9 * u * PROTONMASS_CGS / BOLTZMANN_CGS, cv, u_from_temp;
-    double temp_min = DMAX(pow(10.,Tmin), 0.1*temp), temp_max=DMIN(pow(10.,Tmax),temp*10);
+    double temp_min_0 = DMAX(DMIN(1.e-3,pow(10.,Tmin)), 0.1*temp), temp_max_0=DMIN(DMAX(1.e12,pow(10.,Tmax)),temp*10), temp_min=temp_min_0, temp_max=temp_max_0;
 #ifdef EOS_CARRIES_TEMPERATURE
     temp = SphP[target].Temperature * u / (SphP[target].InternalEnergy * UNIT_SPECEGY_IN_CGS);
 #endif
@@ -575,7 +575,7 @@ double convert_u_to_temp(double u, double rho, int target, double *ne, double *n
     if (iter >= MAXITER) {
         PRINT_WARNING("Particle ID=%lld failed to converge in convert_u_to_temp. u=%g du=%g T=%g dT=%g\n", P[target].ID, u, du, temp, dT); endrun(91743);
     }
-    return DMAX(DMIN(temp,pow(10.,Tmax)),pow(10.,Tmin));
+    return DMAX(DMIN(temp,temp_max_0),temp_min_0);
 }
 // elif defined(EOS_SUBSTELLAR_ISM)
 #else 

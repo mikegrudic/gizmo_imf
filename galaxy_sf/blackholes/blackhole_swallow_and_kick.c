@@ -590,8 +590,11 @@ void spawn_bh_wind_feedback(void)
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20;
-        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (P[i].Type == 5)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
+        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20; ptype_can_spawn = 0; if(P[i].Type == 5) {ptype_can_spawn == 1;}
+#ifdef SNE_NONSINK_SPAWN
+        if(P[i].Type == 4) {ptype_can_spawn == 1;}
+#endif
+        if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
             if(BPP(i).unspawned_wind_mass >= (BH_WIND_SPAWN)*target_mass_for_wind_spawning(i)) {sink_eligible_to_spawn=1;} // have 'enough' mass to spawn
@@ -729,6 +732,21 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
+#ifdef SNE_NONSINK_SPAWN
+    if(P[i].Type == 4) {
+        double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
+        double Msne=10.5/UNIT_MASS_IN_SOLAR; if(SNeIaFlag) {Msne=1.4/UNIT_MASS_IN_SOLAR;} // average ejecta mass for single event (normalized to give total mass loss correctly)
+        double SNeEgy = (1.0e51/UNIT_ENERGY_IN_CGS)
+#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+        if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
+#ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT
+        if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0]; SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);}
+#endif
+#endif
+        return sqrt(2.0*SNeEgy/Msne); // v_ej in code units: assume all SNe = 1e51 erg //
+    }
+#endif
+
 #ifdef BH_RIAF_SUBEDDINGTON_MODEL
     double MBH_4 = BPP(i).BH_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
     double lambda_edd_eff = DMAX( BPP(i).BH_Mdot / bh_eddington_mdot(BPP(i).BH_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
@@ -740,6 +758,7 @@ double get_spawned_cell_launch_speed(int i)
         v_magnitude = DMAX(v_magnitude , 1.e5 / UNIT_VEL_IN_KMS); // fast jet speed
     }
 #endif
+    
 #ifdef SINGLE_STAR_FB_JETS
     v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
 #endif
@@ -1051,7 +1070,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
-#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE))
+#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
         if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);} // get abundances in wind
@@ -1153,6 +1172,10 @@ double target_mass_for_wind_spawning(int i)
 #endif
 #endif // single-star if above 
 
+#if defined(SNE_NONSINK_SPAWN)
+    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_MSUN;} // replace later as needed ??? //
+#endif
+    
 #if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #else

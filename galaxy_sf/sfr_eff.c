@@ -548,6 +548,12 @@ void star_formation_parent_routine(void)
 #if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
                             P[i].NewStar_Momentum_For_JetFeedback = P[i].Mass * 40./UNIT_VEL_IN_KMS;
 #endif
+#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
+                            double bh_mu=2.0*get_random_number(P[i].ID+3)-1.0, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu); P[i].BH_Specific_AngMom[0]=bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=bh_mu;
+#endif
+#ifdef BH_WIND_SPAWN
+                            P[i].unspawned_wind_mass = 0;
+#endif
 
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                             if(is_particle_single_star_eligible(i))
