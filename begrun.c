@@ -258,6 +258,7 @@ void begrun(void)
       All.ResubmitOn = all.ResubmitOn;
       All.SnapFormat = all.SnapFormat;
       All.TimeBetSnapshot = all.TimeBetSnapshot;
+      All.TimeOfFirstSnapshot = all.TimeOfFirstSnapshot;
       All.TimeBetStatistics = all.TimeBetStatistics;
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
@@ -407,6 +408,8 @@ void begrun(void)
         If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
       All.AGS_MaxNumNgbDeviation = all.AGS_MaxNumNgbDeviation;
 #endif
+
+      if(All.ComovingIntegrationOn==0) {set_softenings();}
 
       strcpy(All.ResubmitCommand, all.ResubmitCommand);
       strcpy(All.OutputListFilename, all.OutputListFilename);

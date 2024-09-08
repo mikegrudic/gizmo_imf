@@ -218,7 +218,7 @@ void find_timesteps(void)
         All.Mass_Accreted_By_SpecialSMBHParticle = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
     }
     MPI_Allreduce(&special_particle_mass_local, &special_particle_mass_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the mass of the SMBH particle
-    All.Mass_of_SpecialSMBHParticle = special_particle_mass_global; // update the mass of the SMBH particle for everyone to use
+    if(special_particle_mass_global > 0) {All.Mass_of_SpecialSMBHParticle = special_particle_mass_global;} // update the mass of the SMBH particle for everyone to use
 #endif
 
 
