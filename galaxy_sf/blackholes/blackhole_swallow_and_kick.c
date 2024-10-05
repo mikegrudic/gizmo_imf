@@ -590,7 +590,7 @@ void spawn_bh_wind_feedback(void)
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20; ptype_can_spawn = 0; if(P[i].Type == 5) {ptype_can_spawn == 1;}
+        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20; int ptype_can_spawn = 0; if(P[i].Type == 5) {ptype_can_spawn == 1;}
 #ifdef SNE_NONSINK_SPAWN
         if(P[i].Type == 4) {ptype_can_spawn == 1;}
 #endif
