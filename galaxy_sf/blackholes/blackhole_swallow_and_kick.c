@@ -1173,7 +1173,7 @@ double target_mass_for_wind_spawning(int i)
 #endif // single-star if above 
 
 #if defined(SNE_NONSINK_SPAWN)
-    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_MSUN;} // replace later as needed ??? //
+    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_MSUN;} // replace later as needed //
 #endif
     
 #if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)

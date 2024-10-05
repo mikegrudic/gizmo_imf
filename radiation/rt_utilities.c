@@ -267,9 +267,9 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 #ifdef RT_INFRARED /* opacity comes from Thompson + dust -- assume 0.5/(1 + (Trad/725K)^(-2)) scattering from dust [Rayleigh, since we're in the long-wavelength limit by definition here], 1 from Thompson */
     if(k_freq==RT_FREQ_BIN_INFRARED)
     {
-        double fA_tmp = (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature)))); // rough interpolation depending on the radiation temperature: high Trad, this is 1/2, low Trad, gets closer to unity */
+        double fA_tmp = (1.-0.5/(1.+((725.*725.)/(1.+SphP[i].Radiation_Temperature*SphP[i].Radiation_Temperature)))); // rough interpolation depending on the radiation temperature: high Trad, this is 1/2, low Trad, gets closer to unity; need to revise for sublimated cases here ??? */
 #ifdef COOLING
-		if(rt_kappa(i,k_freq)>0) {fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));} else {return 1.0;} // the value should not matter if rt_kappa=0
+		if(rt_kappa(i,k_freq)>0) {fA_tmp *= (1.-DMIN(1.,0.35*SphP[i].Ne*fac/rt_kappa(i,k_freq)));} else {return 1.0;} // the value should not matter if rt_kappa=0 // ??? correct this for Klein-Nishina as well?
 #endif
         return fA_tmp;
     }
@@ -1134,7 +1134,7 @@ void rt_set_simple_inits(int RestartFlag)
                 } else {
                     for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] *= P[i].Mass/(SphP[i].Density*All.cf_a3inv);} // need to correct the units here before using
                 }
-                for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux_Pred[k][k_dir] = SphP[i].Rad_Flux[k][k_dir];}
+                for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Rad_Flux[k][k_dir] = SphP[i].Rad_Flux_Pred[k][k_dir];}
                 for(k_dir=0;k_dir<3;k_dir++) {SphP[i].Dt_Rad_Flux[k][k_dir] = 0;}
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
