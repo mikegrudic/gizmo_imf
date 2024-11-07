@@ -594,6 +594,9 @@ void spawn_bh_wind_feedback(void)
 #ifdef SNE_NONSINK_SPAWN
         if(P[i].Type == 4) {ptype_can_spawn == 1;}
 #endif
+#ifdef SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY
+        if(P[i].Type == 3) {ptype_can_spawn == 1;}
+#endif
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
             int sink_eligible_to_spawn = 0; // flag to check eligibility for spawning
@@ -732,6 +735,13 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
 double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
+
+#ifdef SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY
+    if(P[i].Type == 3) {
+        return ????; // ????
+    }
+#endif
+    
 #ifdef SNE_NONSINK_SPAWN
     if(P[i].Type == 4) {
         double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
@@ -1070,7 +1080,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
-#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN))
+#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || defined(SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
         if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);} // get abundances in wind
@@ -1160,8 +1170,12 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 /* simple routine that evaluates the target cell mass for the spawning subroutine */
 double target_mass_for_wind_spawning(int i)
 {
-#ifdef BH_WIND_SPAWN
+#if defined(SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY) // replace later as needed //
+    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_MSUN;} // ???
+#endif
     
+#ifdef BH_WIND_SPAWN
+
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) || defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS) // we specify the value relative to Sink_Formation_Mass
     if((All.Cell_Spawn_Mass_ratio_MS>0.0)&&(P[i].ProtoStellarStage == 5)&&(P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS * P[i].Sink_Formation_Mass;} //use different (probably lower) mass for winds than for jets (will also reduce it for MS jets, but that should be fine)
