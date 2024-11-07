@@ -736,7 +736,7 @@ double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
 
-#ifdef (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
     if(P[i].Type == 3) {return 1.e5/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
 #endif
     
@@ -1171,13 +1171,13 @@ void special_rt_feedback_injection(void)
 {
     double L0_cgs = 7.e45, MdotJetMsunYr=1.;
     if(All.Mass_of_SpecialSMBHParticle <= 0) {return;}
-    double delta_wt_sum = 0, delta_wt_sumsum, r_min = All.ForceSoftening[3] * All.cf_atime, r_max = 5. * r_min, dt = All.TimeStep, subgrid_lum = L0_cgs / (UNIT_ENERGY_IN_CGS/UNIT_TIME_IN_CGS), de_00 = subgrid_lum * dt; if(dt <= 0) {continue;}
+    double delta_wt_sum = 0, delta_wt_sumsum, r_min = All.ForceSoftening[3] * All.cf_atime, r_max = 5. * r_min, dt = All.TimeStep, subgrid_lum = L0_cgs / (UNIT_ENERGY_IN_CGS/UNIT_TIME_IN_CGS), de_00 = subgrid_lum * dt; if(dt <= 0) {return;}
     int n_wt = 0, i,k; for(i=0;i<N_gas;i++) {
         if(P[i].Type != 0) {continue;}
         double dp[3], r2=0, wt, wt_new=0, r; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
         r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
         double vol = P[i].Mass / (SphP[i].Density*All.cf_a3inv), cos_t = dp[0] / r;
-        wt = 1.e-5 * pow(fabs(cos_t),8) * vol * (r_max*r_max/(r*r)-1.); delta_wt_sum += wt_new - wt_old;
+        wt = 1.e-5 * pow(fabs(cos_t),8) * vol * (r_max*r_max/(r*r)-1.); delta_wt_sum += wt;
     }
     MPI_Allreduce(&delta_wt_sum, &delta_wt_sumsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
     if(All.Time <= All.TimeBegin) {return;}
@@ -1204,7 +1204,7 @@ void special_rt_feedback_injection(void)
 double target_mass_for_wind_spawning(int i)
 {
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
-    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_MSUN;} //
+    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
 #endif
     
 #ifdef BH_WIND_SPAWN
@@ -1220,7 +1220,7 @@ double target_mass_for_wind_spawning(int i)
 #endif // single-star if above 
 
 #if defined(SNE_NONSINK_SPAWN)
-    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_MSUN;} // replace later as needed //
+    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_SOLAR;} // replace later as needed //
 #endif
     
 #if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
