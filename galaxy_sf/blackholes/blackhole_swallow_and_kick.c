@@ -594,7 +594,7 @@ void spawn_bh_wind_feedback(void)
 #ifdef SNE_NONSINK_SPAWN
         if(P[i].Type == 4) {ptype_can_spawn == 1;}
 #endif
-#ifdef SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
         if(P[i].Type == 3) {ptype_can_spawn == 1;}
 #endif
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
@@ -736,10 +736,8 @@ double get_spawned_cell_launch_speed(int i)
 {
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
 
-#ifdef SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY
-    if(P[i].Type == 3) {
-        return ????; // ????
-    }
+#ifdef (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
+    if(P[i].Type == 3) {return 1.e5/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
 #endif
     
 #ifdef SNE_NONSINK_SPAWN
@@ -1080,7 +1078,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
         BPP(i).unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
-#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || defined(SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY))
+#if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
         if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);} // get abundances in wind
@@ -1167,11 +1165,46 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
 
 
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
+/* routine for injection from sink boundary around 'special' particle types */
+void special_rt_feedback_injection(void)
+{
+    double L0_cgs = 7.e45, MdotJetMsunYr=1.;
+    if(All.Mass_of_SpecialSMBHParticle <= 0) {return;}
+    double delta_wt_sum = 0, delta_wt_sumsum, r_min = All.ForceSoftening[3] * All.cf_atime, r_max = 5. * r_min, dt = All.TimeStep, subgrid_lum = L0_cgs / (UNIT_ENERGY_IN_CGS/UNIT_TIME_IN_CGS), de_00 = subgrid_lum * dt; if(dt <= 0) {continue;}
+    int n_wt = 0, i,k; for(i=0;i<N_gas;i++) {
+        if(P[i].Type != 0) {continue;}
+        double dp[3], r2=0, wt, wt_new=0, r; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
+        r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
+        double vol = P[i].Mass / (SphP[i].Density*All.cf_a3inv), cos_t = dp[0] / r;
+        wt = 1.e-5 * pow(fabs(cos_t),8) * vol * (r_max*r_max/(r*r)-1.); delta_wt_sum += wt_new - wt_old;
+    }
+    MPI_Allreduce(&delta_wt_sum, &delta_wt_sumsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
+    if(All.Time <= All.TimeBegin) {return;}
+    if(delta_wt_sumsum <= 0) {return;}
+    for(i=0;i<N_gas;i++) {
+        if(P[i].Type != 0) {continue;}
+        double dp[3], r2=0, wt, wt_new=0, r, de; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
+        r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
+        double vol = P[i].Mass / (SphP[i].Density*All.cf_a3inv), cos_t = dp[0] / r;
+        wt = 1.e-5 * pow(fabs(cos_t),8) * vol * (r_max*r_max/(r*r)-1.); de = de_00 * wt / delta_wt_sumsum;
+        if(de <= 0 || !isfinite(de)) {continue;}
+        k=RT_FREQ_BIN_INFRARED; double T00 = 1.e5, f0 = de * C_LIGHT_CODE / r;
+        if(SphP[i].Radiation_Temperature > 0 && SphP[i].Rad_E_gamma[k] > 0) {SphP[i].Radiation_Temperature = (SphP[i].Rad_E_gamma[k] + de)/(SphP[i].Rad_E_gamma[k]/SphP[i].Radiation_Temperature + de/T00);} else {SphP[i].Radiation_Temperature = T00;}
+        SphP[i].Rad_E_gamma[k] += de; SphP[i].Rad_E_gamma_Pred[k] += de;
+        int j; for(j=0;j<3;j++) {SphP[i].Rad_Flux[k][j] += f0 * dp[j]; SphP[i].Rad_Flux_Pred[k][j] += f0 * dp[j];}
+    }
+    P[i].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS); // will sent to jets subroutine, for spawning, alongside radiation injection //
+    return;
+}
+#endif
+
+
 /* simple routine that evaluates the target cell mass for the spawning subroutine */
 double target_mass_for_wind_spawning(int i)
 {
-#if defined(SUPERZOOM_ZOOMOUT_SPECIAL_BOUNDARY) // replace later as needed //
-    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_MSUN;} // ???
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
+    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_MSUN;} //
 #endif
     
 #ifdef BH_WIND_SPAWN
