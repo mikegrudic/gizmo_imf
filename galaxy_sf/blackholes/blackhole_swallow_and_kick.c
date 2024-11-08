@@ -1095,7 +1095,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         /* condition number, smoothing length, and density */
         SphP[j].ConditionNumber *= 100.0; /* boost the condition number to be conservative, so we don't trigger madness in the kernel */
         SphP[j].recent_refinement_flag = 1; /* tag the newly-created cell as recently-refined for all purposes */
-#if defined(SINGLE_STAR_SINK_DYNAMICS) 
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
         SphP[j].MaxSignalVel = 2.*DMAX(v_magnitude_physical, SphP[j].MaxSignalVel); // need this to satisfy the Courant condition in the first timestep after spawn; note here MaxSignalVel is now defined in physical code units
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 	    P[j].ProtoStellarStage = P[i].ProtoStellarStage; // inherit this from the spawning sink particle so we can use it in subroutines
@@ -1106,14 +1106,14 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         } else { // we are spawning in the jet/wind piecemeal, so use the local density estimator around the star
             SphP[j].Density = P[i].DensAroundStar;
             P[j].Hsml = P[i].Hsml;
-        }                         
+        }
 #endif
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
 #ifdef BH_DEBUG_SPAWN_JET_TEST
         PPP[j].Hsml=5.*d_r; SphP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*PPP[j].Hsml,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
 #endif
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) 
+#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR)
         SphP[j].IniDen = -1. * SphP[j].Density; /* this is essentially acting like a bitflag, to signal to the code that the density needs to be recalculated because a spawn event just occurred */
 #endif
 #ifdef MAGNETIC
@@ -1134,7 +1134,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<3;k++) {SphP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
-#endif        
+#endif
         } /* complete CR initialization to null */
 #endif
         SphP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
@@ -1217,8 +1217,8 @@ double target_mass_for_wind_spawning(int i)
 #else // we specify the absolute value
         if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {return All.Cell_Spawn_Mass_ratio_MS;} // specified absolute mass resolution for stellar winds
         else if(P[i].ProtoStellarStage == 6) {return P[i].Sink_Formation_Mass;} // If supernova, use the nominal "average" mass resolution
-    }
 #endif
+    }
 #endif // single-star if above 
 
 #if defined(SNE_NONSINK_SPAWN)
