@@ -181,11 +181,13 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         f0 = DMAX(f0, 1.e-4);
         double f0minfac = 30.;
         r0 = 0.001; if(r_pc < r0) {f0minfac *= pow(r_pc/r0 , 2);}
-        f0minfac = DMAX(f0minfac , 0.005); // may need to be further lowered later
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES < 4)
+        f0minfac = DMAX(f0minfac , 0.005); // may need to be further lowered later
         minimum_refinement_mass_in_solar = 1.e-9;
-#endif
         f0 = DMIN(1., f0minfac*f0);
+#endif
+        f0minfac = DMAX(f0minfac , 0.015); // may need to be further lowered later
+        f0 = DMIN(DMAX(1.,1./m_ref_mJ), f0minfac*f0);
 #endif
 #endif
 
