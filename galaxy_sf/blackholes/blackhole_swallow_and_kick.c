@@ -1168,10 +1168,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 /* routine for injection from sink boundary around 'special' particle types */
 void special_rt_feedback_injection(void)
 {
-    double L0_cgs = 7.e45, MdotJetMsunYr=1.;
+    double L0_cgs = 7.e45, MdotJetMsunYr=1.; int iBH0=-1;
     if(All.Mass_of_SpecialSMBHParticle <= 0) {return;}
     double delta_wt_sum = 0, delta_wt_sumsum, r_min = All.ForceSoftening[3] * All.cf_atime, r_max = 5. * r_min, dt = All.TimeStep, subgrid_lum = L0_cgs / (UNIT_ENERGY_IN_CGS/UNIT_TIME_IN_CGS), de_00 = subgrid_lum * dt; if(dt <= 0) {return;}
-    int n_wt = 0, i,k; for(i=0;i<N_gas;i++) {
+    int n_wt = 0, i,k; for(i=0;i<NumPart;i++) {
+        if(P[i].Type == 3) {iBH0=i;}
         if(P[i].Type != 0) {continue;}
         double dp[3], r2=0, wt, wt_new=0, r; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
         r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
@@ -1181,7 +1182,7 @@ void special_rt_feedback_injection(void)
     MPI_Allreduce(&delta_wt_sum, &delta_wt_sumsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
     if(All.Time <= All.TimeBegin) {return;}
     if(delta_wt_sumsum <= 0) {return;}
-    for(i=0;i<N_gas;i++) {
+    for(i=0;i<NumPart;i++) {
         if(P[i].Type != 0) {continue;}
         double dp[3], r2=0, wt, wt_new=0, r, de; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
         r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
@@ -1193,7 +1194,7 @@ void special_rt_feedback_injection(void)
         SphP[i].Rad_E_gamma[k] += de; SphP[i].Rad_E_gamma_Pred[k] += de;
         int j; for(j=0;j<3;j++) {SphP[i].Rad_Flux[k][j] += f0 * dp[j]; SphP[i].Rad_Flux_Pred[k][j] += f0 * dp[j];}
     }
-    if(iBH0 >= 0) {P[i].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS);} // will sent to jets subroutine, for spawning, alongside radiation injection //
+    if(iBH0 >= 0) {P[iBH0].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS);} // will sent to jets subroutine, for spawning, alongside radiation injection //
     return;
 }
 #endif
@@ -1203,7 +1204,7 @@ void special_rt_feedback_injection(void)
 double target_mass_for_wind_spawning(int i)
 {
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
-    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
+    if(P[i].Type==3) {return 1.e-8/UNIT_MASS_IN_SOLAR;} //
 #endif
     
 #ifdef BH_WIND_SPAWN
