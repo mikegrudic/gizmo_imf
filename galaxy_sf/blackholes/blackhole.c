@@ -832,7 +832,7 @@ void blackhole_final_operations(void)
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
-       if(P[n].ProtoStellarStage == 5){
+       if(P[n].ProtoStellarStage == 5) {
            if(P[n].wind_mode == 1) {
                 dm_wind = single_star_wind_mdot(n,0) * dt;
                 BPP(n).BH_Mass -= dm_wind;

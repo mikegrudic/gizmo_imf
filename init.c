@@ -281,6 +281,10 @@ void init(void)
 #endif
 #endif
 #endif
+        
+#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+        if(RestartFlag == 0) {P[i].ProtoStellarStage = 0;}
+#endif
 
         if(RestartFlag != 1)
         {
