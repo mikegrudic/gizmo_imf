@@ -590,12 +590,12 @@ void spawn_bh_wind_feedback(void)
     /* don't loop or go forward if there are no gas particles in the domain, or the code will crash */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20; int ptype_can_spawn = 0; if(P[i].Type == 5) {ptype_can_spawn == 1;}
+        long nmax = (int)(0.99*All.MaxPart); if(All.MaxPart-20 < nmax) nmax=All.MaxPart-20; int ptype_can_spawn = 0; if(P[i].Type == 5) {ptype_can_spawn = 1;}
 #ifdef SNE_NONSINK_SPAWN
-        if(P[i].Type == 4) {ptype_can_spawn == 1;}
+        if(P[i].Type == 4) {ptype_can_spawn = 1;}
 #endif
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
-        if(P[i].Type == 3) {ptype_can_spawn == 1;}
+        if(P[i].Type == 3) {ptype_can_spawn = 1;}
 #endif
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
@@ -737,7 +737,7 @@ double get_spawned_cell_launch_speed(int i)
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
 
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
-    if(P[i].Type == 3) {return 1.e5/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
+    if(P[i].Type == 3) {return 3.e4/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
 #endif
     
 #ifdef SNE_NONSINK_SPAWN
@@ -888,6 +888,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
     d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
 #endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) && defined(PARTICLE_EXCISION)
+    if(P[i].Type == 3) {double rmin=All.ForceSoftening[3], r=sqrt(r2), r0=0.5*(rmin+r)*(1.+0.1*get_random_number(i+j)); d_r=r0;} // make sure to spawn OUTSIDE of the excision radius!
+#endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
     bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
     bin = P[i0].TimeBin; /* make this particle active on the BH/star timestep */
@@ -923,6 +926,8 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {mode = 3;}} // SNe use an angular grid
 #endif
 #endif // single-star evolution clause
+    if(P[i].Type==3) {mode = 1;} // special particle spawn is collimated
+    if(P[i].Type==4) {mode = 0;} // star particle spawn is isotropic
 
     // based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
     double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
@@ -1194,7 +1199,12 @@ void special_rt_feedback_injection(void)
         SphP[i].Rad_E_gamma[k] += de; SphP[i].Rad_E_gamma_Pred[k] += de;
         int j; for(j=0;j<3;j++) {SphP[i].Rad_Flux[k][j] += f0 * dp[j]; SphP[i].Rad_Flux_Pred[k][j] += f0 * dp[j];}
     }
-    if(iBH0 >= 0) {P[iBH0].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS);} // will sent to jets subroutine, for spawning, alongside radiation injection //
+    if(iBH0 >= 0) {
+        P[iBH0].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS); // will sent to jets subroutine, for spawning, alongside radiation injection //
+        double n_unspawned = P[iBH0].unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(iBH0)); // number of spawned gas cells that can be made from the mass in the reservoir
+        if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
+        P[i].BH_Specific_AngMom[0]=1; P[i].BH_Specific_AngMom[1]=0; P[i].BH_Specific_AngMom[2]=0; // HACK FOR NOW!!!! (will fix to desired direction in future)
+    }
     return;
 }
 #endif
@@ -1204,7 +1214,7 @@ void special_rt_feedback_injection(void)
 double target_mass_for_wind_spawning(int i)
 {
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
-    if(P[i].Type==3) {return 1.e-8/UNIT_MASS_IN_SOLAR;} //
+    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
 #endif
     
 #ifdef BH_WIND_SPAWN

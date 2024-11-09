@@ -500,7 +500,13 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/(in->Msne)); // v_ej in code units
 #ifdef SNE_NONSINK_SPAWN
-    if(P[i].Type == 4) {double frac_spawned = 0.5; P[i].unspawned_wind_mass += frac_spawned * (in->Msne); in->Msne *= 1.-frac_spawned;} // designate some fraction of the SNe ejecta for spawning new high-res cells, instead of coupling to pre-existing neighbor cells //
+    if(P[i].Type == 4) {
+        double frac_spawned = 0.5;
+        P[i].unspawned_wind_mass += frac_spawned * (in->Msne);
+        in->Msne *= 1.-frac_spawned;
+        double n_unspawned = P[i].unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
+        if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
+    } // designate some fraction of the SNe ejecta for spawning new high-res cells, instead of coupling to pre-existing neighbor cells //
 #endif
 }
 
