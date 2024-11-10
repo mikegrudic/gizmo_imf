@@ -744,7 +744,7 @@ double get_spawned_cell_launch_speed(int i)
     if(P[i].Type == 4) {
         double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
         double Msne=10.5/UNIT_MASS_IN_SOLAR; if(SNeIaFlag) {Msne=1.4/UNIT_MASS_IN_SOLAR;} // average ejecta mass for single event (normalized to give total mass loss correctly)
-        double SNeEgy = (1.0e51/UNIT_ENERGY_IN_CGS)
+        double SNeEgy = (1.0e51/UNIT_ENERGY_IN_CGS);
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT
@@ -856,7 +856,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
-    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
+    int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
+#if defined(SNE_NONSINK_SPAWN)
+    n0max = DMAX(6 , (int)(3.*(BH_WIND_SPAWN)+0.1)); // more conservative to spread over more timesteps to avoid nasty overlaps //
+#endif
+    if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {n0max = DMAX(n0max, SINGLE_STAR_FB_SNE_N_EJECTA);}} // so that we can spawn the number of wind particles we want, by setting BH_WIND_SPAWN high it ispossible to spawn multitudes of SINGLE_STAR_FB_SNE_N_EJECTA, but in practice we usually spawn just one
 #endif
@@ -890,6 +894,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) && defined(PARTICLE_EXCISION)
     if(P[i].Type == 3) {double rmin=All.ForceSoftening[3], r=sqrt(r2), r0=0.5*(rmin+r)*(1.+0.1*get_random_number(i+j)); d_r=r0;} // make sure to spawn OUTSIDE of the excision radius!
+#endif
+#if defined(SNE_NONSINK_SPAWN)
+    if(P[i].Type == 4) {double rmin=All.ForceSoftening[4], r=sqrt(r2), r0=0.5*(rmin+r)*(0.5+1.5*get_random_number(i+j)); d_r=r0;} // need a generous padding to ensure no overlaps
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
     bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
@@ -1203,7 +1210,7 @@ void special_rt_feedback_injection(void)
         P[iBH0].unspawned_wind_mass += MdotJetMsunYr * dt * (6.304e25 * UNIT_TIME_IN_CGS/UNIT_MASS_IN_CGS); // will sent to jets subroutine, for spawning, alongside radiation injection //
         double n_unspawned = P[iBH0].unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(iBH0)); // number of spawned gas cells that can be made from the mass in the reservoir
         if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
-        P[i].BH_Specific_AngMom[0]=1; P[i].BH_Specific_AngMom[1]=0; P[i].BH_Specific_AngMom[2]=0; // HACK FOR NOW!!!! (will fix to desired direction in future)
+        P[iBH0].BH_Specific_AngMom[0]=1; P[iBH0].BH_Specific_AngMom[1]=0; P[iBH0].BH_Specific_AngMom[2]=0; // HACK FOR NOW!!!! (will fix to desired direction in future)
     }
     return;
 }
@@ -1215,6 +1222,10 @@ double target_mass_for_wind_spawning(int i)
 {
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
     if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
+#endif
+
+#if defined(SNE_NONSINK_SPAWN)
+    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_SOLAR;} // replace later as needed //
 #endif
     
 #ifdef BH_WIND_SPAWN
@@ -1231,10 +1242,6 @@ double target_mass_for_wind_spawning(int i)
     }
 #endif // single-star if above 
 
-#if defined(SNE_NONSINK_SPAWN)
-    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_SOLAR;} // replace later as needed //
-#endif
-    
 #if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
     return All.BAL_wind_particle_mass * P[i].Sink_Formation_Mass;
 #else
