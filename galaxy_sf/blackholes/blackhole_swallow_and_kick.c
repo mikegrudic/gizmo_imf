@@ -710,7 +710,7 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         else {for(k=0; k<3; k++) {veldir[k] = P[i].Wind_direction[k+3]; dpdir[k]=veldir[k];}}
     }
 #endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+#if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
     else if (mode==3) { // spawn on a specific angular grid
         int dir_ind = num_spawned_this_call % SINGLE_STAR_FB_SNE_N_EJECTA;
         for(k=0;k<3;k++) { //Particle positioned at one of the regular positions on the randomized coordinate system
@@ -849,9 +849,11 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
             P[i].BH_Mass_AlphaDisk = 0; // just to be safe
 #endif
         }
-        if (n_particles_split<SINGLE_STAR_FB_SNE_N_EJECTA) {return 0;} // we have to wait until we get a full shell
-        else {n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA);} // we only eject full shells, in practice this will be one shell at a time
     }}
+#endif
+#if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
+    if (n_particles_split<SINGLE_STAR_FB_SNE_N_EJECTA) {return 0;} // we have to wait until we get a full shell
+    else {n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA);} // we only eject full shells, in practice this will be one shell at a time
 #endif
 
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
@@ -859,6 +861,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
 #if defined(SNE_NONSINK_SPAWN)
     n0max = DMAX(6 , (int)(3.*(BH_WIND_SPAWN)+0.1)); // more conservative to spread over more timesteps to avoid nasty overlaps //
+#if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
+    n0max = DMAX(SINGLE_STAR_FB_SNE_N_EJECTA , (int)(3.*(BH_WIND_SPAWN)+0.1)); if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
+#endif
 #endif
     if((n0max % 2) != 0) {n0max += 1;} // should ensure n0max is always an even number //
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
@@ -935,6 +940,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #endif // single-star evolution clause
     if(P[i].Type==3) {mode = 1;} // special particle spawn is collimated
     if(P[i].Type==4) {mode = 0;} // star particle spawn is isotropic
+#ifdef SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT
+    if(P[i].Type==4) {mode = 3;} // star particle spawn is isotropic but regularized
+#endif
 
     // based on the mode we're in, let's pick a fixed orthonormal basis that all spawned elements are aware of
     double jz[3]={0,0,1},jy[3]={0,1,0},jx[3]={1,0,0};  /* set up a coordinate system [xyz if we don't have any other information */
@@ -976,13 +984,15 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         P[j] = P[dummy_cell_i_to_clone]; SphP[j] = SphP[dummy_cell_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
 #if defined(BH_TEST_WIND_MIXED_FASTSLOW)
-        double masscorrfac_fast = 100.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
-        if((j - (NumPart + num_already_spawned)) % 2) {mode=mode_prev; v_magnitude_physical=v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
-        } else {
-            if(get_random_number(j)<0.5) {
-                mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS; /* collimated jet */
+        if(P[i].Type==5) {
+            double masscorrfac_fast = 100.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
+            if((j - (NumPart + num_already_spawned)) % 2) {mode=mode_prev; v_magnitude_physical=v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
             } else {
-                mode=0; mass_of_new_particle=mass_of_new_particle_default*(1.-1./masscorrfac_fast); v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
+                if(get_random_number(j)<0.5) {
+                    mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS; /* collimated jet */
+                } else {
+                    mode=0; mass_of_new_particle=mass_of_new_particle_default*(1.-1./masscorrfac_fast); v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
+                }
             }
         }
 #endif
