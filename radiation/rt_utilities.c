@@ -1476,6 +1476,7 @@ double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate)
     return LambdaDust_fac * (T-Tdust) + dust_absorption_rate - dust_emission;
 }
 
+#ifdef COOLING
 /***********************************************************************************************************
 Returns the equilibrium dust temperature as a function of gas temperature and dust absorption rate.
 dust_absorption_rate must be passed as the photon energy absorption rate per unit volume in code units,
@@ -1581,6 +1582,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     
     return Tdust;
 }
+#endif
 
 /***********************************************************************************************************/
 /* returns the fraction of a blackbody SED in a given photon energy band - accurate to <1% over all wavelengths
