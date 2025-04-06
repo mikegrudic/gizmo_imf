@@ -454,7 +454,7 @@
 #endif
 #endif
 #if !defined(PM_HIRES_REGION_CLIPPING)
-#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
+//#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
 #endif
 #endif // PMGRID check
 

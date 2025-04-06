@@ -684,6 +684,9 @@ double singlestar_WR_lifetime_Gyr(int n);
 double single_star_SN_velocity(int n);
 void single_star_SN_init_directions(void);
 #endif
+#ifdef SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES
+int is_star_eligible_for_binary_merge_away(int j);
+#endif
 #endif
 
 #ifdef GRAIN_FLUID

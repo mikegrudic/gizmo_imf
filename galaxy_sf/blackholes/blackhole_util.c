@@ -190,5 +190,17 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
 }
 
 
+#ifdef SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES
+/* routine to assess whether stellar properties allow for a star to be merged if in a too-close binary */
+int is_star_eligible_for_binary_merge_away(int j)
+{
+    int merge_key = 1;
+    if(BPP(j).ProtoStellarStage < 5) {merge_key = 0;} /* only allow mergers once the stars reach the main sequence */
+    double star_age = evaluate_stellar_age_Gyr(j) / UNIT_TIME_IN_GYR; /* stellar age */
+    if(BPP(n).BH_Mass*star_age > 2.*BPP(n).BH_Mdot) {merge_key = 0;} /* dont allow mergers if the star is still growing very rapidly */
+    return merge_key;
+}
+#endif
+
 
 #endif // top-level flag
