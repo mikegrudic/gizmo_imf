@@ -1652,7 +1652,7 @@ typedef unsigned long long peano1D;
 #ifndef PM_RCUT
 #define PM_RCUT (4.5) /*! PM_RCUT gives the maximum distance (in units of the scale used for the force split) out to which short-range forces are evaluated in the short-range tree walk. */
 #endif
-#define MAXLEN_OUTPUTLIST 2501	/*!< maxmimum number of entries in output list */
+#define MAXLEN_OUTPUTLIST 1201	/*!< maxmimum number of entries in output list */
 #define DRIFT_TABLE_LENGTH 1000	/*!< length of the lookup table used to hold the drift and kick factors */
 #define MAXITER 150
 
