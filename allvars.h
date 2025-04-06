@@ -613,7 +613,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define IO_SINKS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
 #endif
 #define SINGLE_STAR_SINK_DYNAMICS
+#if !defined(PMGRID)
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
+#endif
 #define ADAPTIVE_GRAVSOFT_FORGAS
 #define GRAVITY_ACCURATE_FEWBODY_INTEGRATION
 #define SINGLE_STAR_TIMESTEPPING 0
@@ -1650,7 +1652,7 @@ typedef unsigned long long peano1D;
 #ifndef PM_RCUT
 #define PM_RCUT (4.5) /*! PM_RCUT gives the maximum distance (in units of the scale used for the force split) out to which short-range forces are evaluated in the short-range tree walk. */
 #endif
-#define MAXLEN_OUTPUTLIST 1201	/*!< maxmimum number of entries in output list */
+#define MAXLEN_OUTPUTLIST 2501	/*!< maxmimum number of entries in output list */
 #define DRIFT_TABLE_LENGTH 1000	/*!< length of the lookup table used to hold the drift and kick factors */
 #define MAXITER 150
 

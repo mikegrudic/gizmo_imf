@@ -221,7 +221,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                             if(((local.ID != P[j].ID) && (r2>0)) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
                             {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                                int allow_bh_merger == 1; /* flag here b/c we have different options */
+                                int allow_bh_merger = 1; /* flag here b/c we have different options */
                                 if(r >= 1.0001*P[j].min_dist_to_bh) {allow_bh_merger = 0;} // not the closest sink!
                                 if(r >= heff_j) {allow_bh_merger = 0;} // beyond MAX[search/kernel/softening] radius: heff_j = DMAX( PPP[j].Hsml , ForceSoftening_KernelRadius(j) )
                                 if(P[j].Mass > local.Mass) {allow_bh_merger = 0;} // always merge from more massive eating lower
