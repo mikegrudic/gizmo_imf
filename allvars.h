@@ -330,16 +330,30 @@
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
 #if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
-#define GALSF_SFR_IMF_SAMPLING
-//#define GALSF_MERGER_STARCLUSTER_PARTICLES
-#define GALSF_FB_FIRE_PROTOSTELLARJETS
-#define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0)
+#define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
+#define GALSF_FB_FIRE_PROTOSTELLARJETS /* use jet feedback per mike grudic's simple parameterization; zero cost, easy to add, not big large-scale effects */
+#define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0) /* spread SF over a couple free-fall times when a cell becomes a star, as compared to doing it instantly when the probability roll comes up */
+#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
+#if !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
+#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION (2) /* use tidal softening for dark matter, where its well-defined, more accurate subhalo/center/caustic evolution, minimal cost */
+#endif
+#if defined(FIRE_MHD) && !defined(MHD_CONSTRAINED_GRADIENT)
+#define MHD_CONSTRAINED_GRADIENT (1) /* use CG-mhd in newer runs, more accurate, minimal cost; but do need to check stability */
+#endif
 #if defined(FIRE_BHS)
-#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS
-#define MAINTAIN_TREE_IN_REARRANGE
-#define BH_EXCISION_NONGAS
-#define BH_EXCISION_GAS
-#define BH_DYNFRICTION_FROMTREE
+#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
+#define MAINTAIN_TREE_IN_REARRANGE /* optimization when using cell-spawning */
+#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
+#endif
+/* more aggressive module experiments here, only enabled if this module is active and set to a numerical value >= 3 */
+#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_MODULE_TESTS)
+#if (FIRE_MODULE_TESTS >= 3) /* more aggressive module experiments here */
+#define GALSF_MERGER_STARCLUSTER_PARTICLES /* merge bound star clusters together into super-star-clusters. works, but bit more experimental, could in principle eat too much, so needs some testing */
+#if defined(FIRE_BHS)
+#define BH_EXCISION_NONGAS /* merge over-bound particles into BH [non-gas]. works but could be over-aggressive in some cases, needs bit more testing */
+#define BH_EXCISION_GAS /* merge over-bound particles into BH [gas]. works but could be over-aggressive in some cases, needs bit more testing */
+#endif
+#endif
 #endif
 #endif
 
@@ -440,7 +454,7 @@
 #endif
 #endif
 #if !defined(PM_HIRES_REGION_CLIPPING)
-#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
+//#define PM_HIRES_REGION_CLIPPING 3000 /* just a safety factor here */
 #endif
 #endif // PMGRID check
 
