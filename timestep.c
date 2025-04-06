@@ -1010,7 +1010,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // SINGLE_STAR_TIMESTEPPING
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {double dt_spawn = target_mass_for_wind_spawning(p) / single_star_wind_mdot(p,1); if(dt > dt_spawn && dt_spawn > 0) {dt = 1.01 * dt_spawn;}}
+        if(P[p].ProtoStellarStage == 5) {
+            double mdot_spawn = single_star_wind_mdot(p,1);
+            if(mdot_spawn > 0) {
+                double dm_spawn = target_mass_for_wind_spawning(p), dt_spawn = dm_spawn / mdot_spawn;
+                if(dt > dt_spawn && dt_spawn > 0) {dt = 1.01 * dt_spawn;}
+            }}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
