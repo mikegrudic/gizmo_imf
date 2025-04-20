@@ -541,9 +541,9 @@ integertime get_timestep(int p,		/*!< particle index */
                     double tmp_grad = Get_Gas_BField(p,k);
                     b_mag += tmp_grad * tmp_grad;
                 }
-                double L_cond_inv = sqrt(b_grad / (MIN_REAL_NUMBER + b_mag));
-                double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
-                L_cond = DMIN( L_particle , L_cond_inv ) * All.cf_atime; // more conservative estimator - may be needed sometimes to deal accurately with steep local gradients //
+                double L_cond_inv = MIN_REAL_NUMBER + sqrt(b_grad / (MIN_REAL_NUMBER + b_mag));
+                double L_cond = DMAX(0.5*L_particle , DMIN(L_particle , 1./(L_cond_inv + 1./L_particle))) * All.cf_atime;
+                L_cond = DMIN( L_particle , DMAX(1./L_cond_inv, 0.5*L_particle) ) * All.cf_atime; // more conservative estimator - may be needed sometimes to deal accurately with steep local gradients //
                 double diff_coeff = fabs(SphP[p].Eta_MHD_OhmicResistivity_Coeff) + fabs(SphP[p].Eta_MHD_HallEffect_Coeff) + fabs(SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff);
                 double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (MIN_REAL_NUMBER + diff_coeff);
 #ifdef SUPER_TIMESTEP_DIFFUSION
