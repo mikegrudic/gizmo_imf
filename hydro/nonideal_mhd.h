@@ -87,7 +87,7 @@ if((local.Mass > 0) && (P[j].Mass > 0) && (dt_hydrostep > 0))
         db_direct[1] = Face_Area_Vec[2]*b_flux_direct[0] - Face_Area_Vec[0]*b_flux_direct[2];
         db_direct[2] = Face_Area_Vec[0]*b_flux_direct[1] - Face_Area_Vec[1]*b_flux_direct[0];
 
-        double db_direct_diff{3}, F_ddiff_prefac = -Face_Area_Norm * rinv * DMAX(eta_ohmic, fabs(eta_hall)+eta_ad);
+        double db_dot_direct_diff=0, db_direct_diff[3]={0}, F_ddiff_prefac = -Face_Area_Norm * rinv * DMAX(eta_ohmic, fabs(eta_hall)+eta_ad);
         for(k=0;k<3;k++) {db_direct_diff[k] = F_ddiff_prefac * d_scalar[k];} // direct differential for face pointing along dp //
         
         double bfluxmag = 0;
