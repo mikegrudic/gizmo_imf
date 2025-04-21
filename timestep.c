@@ -541,10 +541,11 @@ integertime get_timestep(int p,		/*!< particle index */
                     double tmp_grad = Get_Gas_BField(p,k);
                     b_mag += tmp_grad * tmp_grad;
                 }
-                double L_cond_inv = sqrt(b_grad / (1.e-37 + b_mag));
-                double L_cond = DMAX(L_particle , 1./(L_cond_inv + 1./L_particle)) * All.cf_atime;
+                double L_cond_inv = MIN_REAL_NUMBER + sqrt(b_grad / (MIN_REAL_NUMBER + b_mag));
+                double L_cond = DMAX(0.5*L_particle , DMIN(L_particle , 1./(L_cond_inv + 1./L_particle))) * All.cf_atime;
+                L_cond = DMIN( L_particle , DMAX(1./L_cond_inv, 0.5*L_particle) ) * All.cf_atime; // more conservative estimator - may be needed sometimes to deal accurately with steep local gradients //
                 double diff_coeff = fabs(SphP[p].Eta_MHD_OhmicResistivity_Coeff) + fabs(SphP[p].Eta_MHD_HallEffect_Coeff) + fabs(SphP[p].Eta_MHD_AmbiPolarDiffusion_Coeff);
-                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (1.0e-37 + diff_coeff);
+                double dt_conduction = dt_prefac_diffusion * L_cond*L_cond / (MIN_REAL_NUMBER + diff_coeff);
 #ifdef SUPER_TIMESTEP_DIFFUSION
                 if(dt_conduction < dt_superstep_explicit) dt_superstep_explicit = dt_conduction; // explicit time-step
                 double dt_advective = dt_conduction * DMAX(1,DMAX(L_particle , 1/(MIN_REAL_NUMBER + L_cond_inv))*All.cf_atime / L_cond);
@@ -1010,7 +1011,12 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif // SINGLE_STAR_TIMESTEPPING
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
 #ifdef SINGLE_STAR_FB_WINDS
-        if(P[p].ProtoStellarStage == 5) {double dt_spawn = target_mass_for_wind_spawning(p) / single_star_wind_mdot(p,1); if(dt > dt_spawn && dt_spawn > 0) {dt = 1.01 * dt_spawn;}}
+        if(P[p].ProtoStellarStage == 5) {
+            double mdot_spawn = single_star_wind_mdot(p,1);
+            if(mdot_spawn > 0) {
+                double dm_spawn = target_mass_for_wind_spawning(p), dt_spawn = dm_spawn / mdot_spawn;
+                if(dt > dt_spawn && dt_spawn > 0) {dt = 1.01 * dt_spawn;}
+            }}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject

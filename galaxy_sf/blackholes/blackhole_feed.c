@@ -229,7 +229,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 double max_rmerge = 1.0*sink_radius; // default STARFORGE behavior: only merge away stuff that is within the softening radius; sink_radius=SinkParticle_GravityKernelRadius
                                 double max_mmerge = 10.*P[j].Sink_Formation_Mass; // default STARFORGE behavior: only merge away stuff no more massive than a few gas cells
 #ifdef SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES
-                                if(BH_eligible_for_binary_merge_away == 0) {allow_bh_merger = 0;}
+                                if(local.BH_eligible_for_binary_merge_away == 0) {allow_bh_merger = 0;}
                                 if(is_star_eligible_for_binary_merge_away(j) == 0) {allow_bh_merger = 0;}
                                 max_mmerge = 10.*P[j].Mass; // makes it so there is no mass limit - even extremely massive stars can be merged
                                 max_rmerge = DMAX(max_rmerge, ForceSoftening_KernelRadius(j));
@@ -238,13 +238,15 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
                                 double dt_min_orbit_yr = 100.; // 'target' minimum orbital time of the binary in yr
                                 double rmax_dt = 0.000485/(All.cf_atime*UNIT_LENGTH_IN_PC) * pow(((P[j].Mass+local.Mass)*UNIT_MASS_IN_SOLAR/100.) * (dt_min_orbit_yr*dt_min_orbit_yr/(100.*100.)),1./3.); // ensures the binary period satisfies this
                                 max_rmerge = DMAX( max_rmerge , rmax_dt);
+#else
+                                if(bh_check_boundedness(j,vrel,vesc,r,sink_radius) != 1) {allow_bh_merger = 0;} // stricter criterion
 #endif
                                 if(r >= max_rmerge) {allow_bh_merger = 0;} // beyond max radius (default sink)
                                 if(P[j].Mass > max_mmerge) {allow_bh_merger = 0;} // beyond max mass (default few cells)
                                 if(allow_bh_merger == 1) /* ok only if meet all the criteria above are we allowed to consider a BH-BH merger */
 #endif
                                 {
-                                    if((vrel < vesc) && (bh_check_boundedness(j,vrel,vesc,r,sink_radius)==1))
+                                    if(vrel < vesc)
                                     {
                                         printf(" ..BH-BH Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
                                         SwallowID_j = local.ID;

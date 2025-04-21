@@ -194,7 +194,10 @@ void do_the_cooling_for_particle(int i)
         /* Removing the de_u * de_rad_tot > 0 limiter because this is not ruled out physically, e.g. if gas is being heated by PdV work while radiating away energy. 
         Can only do the limiter if the cooling function accounts for radiative processes only. */
 	    //if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
-        double de_u_rad = -de_rad_tot, de_u_work = de_u - de_u_rad; if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {de_u_work=SphP[i].DtInternalEnergy/nHcgs*ratefact; if((de_u_rad + de_u_work)*de_u < 0) {de_u=0;}} /* ok have a sign conflict here, this is potentially a problem, so we dont mess with the radiation here. verified this only occurs when the two almost exactly cancel and the remainer is very small (4 dex smaller than both) so its dominated by roundoff error, should be null in that case */
+        double de_u_rad = -de_rad_tot, de_u_work = de_u - de_u_rad;
+#ifndef COOLING_OPERATOR_SPLIT
+        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {de_u_work=SphP[i].DtInternalEnergy/nHcgs*ratefact; if((de_u_rad + de_u_work)*de_u < 0) {de_u=0;}} /* ok have a sign conflict here, this is potentially a problem, so we dont mess with the radiation here. verified this only occurs when the two almost exactly cancel and the remainer is very small (4 dex smaller than both) so its dominated by roundoff error, should be null in that case */
+#endif
         double de_u_touse = de_u - de_u_work; /* this is the actual difference between the implicit hydro work term and the total term, i.e. a corrected de_u_rad, which we use below */
         if((de_u_touse<0) && (de_u_work>0) && (fabs(de_u)<fabs(de_u_touse))) {de_u_touse=-fabs(de_u);} /* de_u_rad*de_u_work >= 0 -- same sign, fabs(de_u) > fabs(de_u_rad), change from rad smaller than total; else (1) de_u_rad > 0, de_u_work < 0: rad heating, adiabatic cooling. rad field should lose |de_u_rad|, not lesser (let alone gain); de_u_rad < 0, de_u_work > 0: rad cooling, shock/compressive heating. rad field should gain |de_u_rad|, but can allow limiter; */
         
