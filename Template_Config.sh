@@ -84,6 +84,7 @@
 #MHD_NON_IDEAL                  # enable non-ideal MHD terms: Ohmic resistivity, Hall effect, and ambipolar diffusion (solved explicitly); Users should cite Hopkins 2017, MNRAS, 466, 3387, in addition to the MHD paper
 #MHD_CONSTRAINED_GRADIENT=1     # use CG method (in addition to cleaning, optional!) to maintain low divB: set this value to control how aggressive the div-reduction is:
                                 # 0=minimal (safest), 1=intermediate (recommended), 2=aggressive (less stable), 3+=very aggressive (less stable+more expensive). [Please cite Hopkins, MNRAS, 2016, 462, 576]
+#MHD_NON_IDEAL_CORRECTIONTERMS  # enable approximate corrections for anomalous resistivity and Epstein-like (drift/slip-dependent) cross sections in non-ideal MHD coefficients. Please cite Hopkins et al., https://arxiv.org/abs/2405.06026, where the scalings here are derived and presented
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- Conduction
 # ----------------------------------------- [Please cite and read the methods paper Hopkins 2017, MNRAS, 466, 3387]

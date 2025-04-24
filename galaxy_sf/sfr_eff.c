@@ -211,7 +211,7 @@ double get_starformation_rate(int i, int mode)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION)
     int cell_can_be_singlestar = is_particle_single_star_eligible(i); // call function to determine if we're actually eligible to be a true single-star element
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
-    //if(cell_can_be_singlestar<=0) {return 0;} // in this case, we want to temporarily de-activate the FIRE SF modules [but not in general, only for our tests]
+    //if(cell_can_be_singlestar<=0) {return 0;} // for special cases, where we want to temporarily de-activate the FIRE SF modules [but not in general, only for our tests]
 #endif
 #endif
 
