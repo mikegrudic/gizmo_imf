@@ -37,7 +37,7 @@ int does_particle_need_to_be_merged(int i)
     return 0;
 #else
     if(P[i].Type==0) {if(SphP[i].recent_refinement_flag==1) return 0;}
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
     if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
 #endif
 #ifdef GRAIN_RDI_TESTPROBLEM
@@ -46,7 +46,7 @@ int does_particle_need_to_be_merged(int i)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
     if(P[i].Type==4) {return evaluate_starstar_merger_for_starcluster_eligibility(i);}
 #endif
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
     if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
     if(P[i].Type==3) {return 0;}
 #endif
@@ -97,7 +97,7 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #else
     if(P[i].Type==0) {if(SphP[i].recent_refinement_flag==1) return 0;}
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
     if(check_if_sufficient_mergesplit_time_has_passed(i) == 0) return 0;
 #endif
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
@@ -117,6 +117,91 @@ int does_particle_need_to_be_split(int i)
     return 0;
 #endif
 }
+
+
+/* This is a routine to calculate the center of the refinement region.
+   The center of refinement can either be the center of mass or the center of resolution (inverse mass)
+   for particles that are flagged for refinement.
+*/
+#ifdef FLAG_BASED_REFINEMENT
+void calculate_refinement_region_center(void)
+{
+    // Logic: Sum up the particle masses and particle masses * x coordinate for the particles 
+    // which have a refinement flag and then collect the sum on task 0. Then we will assign the 
+    // center of mass position to the variable All.RefinementRegionCenter[3] on task 0.
+    double distance_cutoff = 0.01; // in kpc, this is the distance from the center of refinement region to consider for calculating the COM of tagged particles. Larger values like 0.1 are or more are more stable (the refinement region center jumps around lesser)
+    double distance_multiplier = 2; // this is the multiplier for the distance cutoff to reset the refinement flag if particles wander too far away.
+    double sum_mass = 0.0, sum_mass_x = 0.0, sum_mass_y = 0.0, sum_mass_z = 0.0, mass_inv = 0.0;
+    int count_refinement_particles = 0;
+    for (int i = 0; i < NumPart; i++)
+    {   
+        // Find the distance from the center of the refinement region to the particle
+        // and then calculate COM based on that -- we are going to take the inverse of mass as a proxy for resolution.
+       if (P[i].Refinement_Flag==1)
+        {
+            double dx = 0.0, r2 = 0.0, dist = 0.0; 
+            for (int k = 0; k < 3; k++){dx = (P[i].Pos[k] - All.RefinementRegionCenter[k]) * All.cf_atime; r2 += dx*dx;}
+            dist = sqrt(r2) * UNIT_LENGTH_IN_PC/1000.;
+            if (dist < distance_cutoff)
+            {
+#ifdef FLAG_BASED_REFINEMENT_MASS
+                sum_mass += P[i].Mass; sum_mass_x += P[i].Mass * P[i].Pos[0]; sum_mass_y += P[i].Mass * P[i].Pos[1]; sum_mass_z += P[i].Mass * P[i].Pos[2];
+#endif
+#ifdef FLAG_BASED_REFINEMENT_INVMASS
+                mass_inv = 1./(P[i].Mass*1.e10); sum_mass += mass_inv; sum_mass_x += mass_inv * P[i].Pos[0]; sum_mass_y += mass_inv * P[i].Pos[1]; sum_mass_z += mass_inv * P[i].Pos[2]; 
+#endif
+#ifdef FLAG_BASED_REFINEMENT_NUMBER
+                sum_mass_x += P[i].Pos[0]; sum_mass_y += P[i].Pos[1]; sum_mass_z += P[i].Pos[2]; sum_mass++;
+#endif
+                count_refinement_particles++;
+            }
+            // Check if particles have wandered too far and still have their refinement flag set.
+            // if so, we can must reset the flag to 0.
+            if (dist > distance_multiplier*distance_cutoff) // arbitrary distance cutoff, can be adjusted
+            {
+                P[i].Refinement_Flag = 0; // reset the flag if particle is too far away
+            }
+        }
+    }
+    // Finish up the calculation by combining all processes.
+    double sum_mass_global = 0.0, sum_mass_x_global = 0.0, sum_mass_y_global = 0.0, sum_mass_z_global = 0.0;
+    int count_refinement_particles_global = 0;
+
+    MPI_Allreduce(&sum_mass, &sum_mass_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&sum_mass_x, &sum_mass_x_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&sum_mass_y, &sum_mass_y_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&sum_mass_z, &sum_mass_z_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&count_refinement_particles, &count_refinement_particles_global, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    if (ThisTask==0)
+    {
+        if ((sum_mass_global > 0.0) && (count_refinement_particles_global > 0))
+        {
+            All.RefinementRegionCenter[0] = sum_mass_x_global / sum_mass_global;
+            All.RefinementRegionCenter[1] = sum_mass_y_global / sum_mass_global;
+            All.RefinementRegionCenter[2] = sum_mass_z_global / sum_mass_global;
+
+            if (count_refinement_particles_global==1)
+            {
+                printf("Modifying Refinement Region Center: %f, %f, %f, %d\n", All.RefinementRegionCenter[0],
+                All.RefinementRegionCenter[1], All.RefinementRegionCenter[2], count_refinement_particles_global);
+                All.RefinementRegionCenter[0] += 0.01; // add a tiny displacement by hand
+            }
+            else
+            {
+                printf("Refinement Region Center: %f, %f, %f, %d, %d, %d\n", All.RefinementRegionCenter[0],
+                All.RefinementRegionCenter[1], All.RefinementRegionCenter[2], count_refinement_particles_global, ThisTask, All.NumCurrentTiStep);
+            }
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Bcast(&All.RefinementRegionCenter[0], 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    if (ThisTask==0)
+    {
+        printf("Done broadcasting the refinement region center\n");
+    }
+}
+#endif
 
 /*! A multiplicative factor that determines the target mass of a particle for the (de)refinement routines; split_key tells you if this is for a split (1) or merge (0) */
 double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
