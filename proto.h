@@ -47,8 +47,11 @@ void merge_and_split_particles(void);
 int does_particle_need_to_be_merged(int i);
 int does_particle_need_to_be_split(int i);
 double target_mass_renormalization_factor_for_mergesplit(int i, int split_key);
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION)
 int check_if_sufficient_mergesplit_time_has_passed(int i);
+#endif
+#ifdef FLAG_BASED_REFINEMENT
+void calculate_refinement_region_center(void);
 #endif
 int merge_particles_ij(int i, int j);
 int split_particle_i(int i, int n_particles_split, int i_nearest);
@@ -147,7 +150,7 @@ static inline double ForceSoftening_KernelRadius(int p)
     if(P[p].Type == 0) {return PPP[p].Hsml;}
 #endif
 #endif
-#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION)
     if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
