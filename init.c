@@ -140,7 +140,7 @@ void init(void)
 
     All.TotNumOfForces = 0;
     All.TopNodeAllocFactor = 0.008; /* this will start from a low value and be iteratively increased until it is well-behaved */
-#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#if defined (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION)
     All.TopNodeAllocFactor = 0.1; /* for optimization on startup this needs to be increased for these extreme dynamic range runs */
 #endif
     All.TreeAllocFactor = 0.45; /* this will also iteratively increase to fit the particle distribution */
@@ -167,6 +167,13 @@ void init(void)
 #if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
+
+#ifdef FLAG_BASED_REFINEMENT
+    for (int k = 0; k < 3; k++) {All.RefinementRegionCenter[k] = header.refinement_center[k];}
+    printf("Refinement region center calculation: %f, %f, %f, %d\n", All.RefinementRegionCenter[0], All.RefinementRegionCenter[1], All.RefinementRegionCenter[2], ThisTask);
+    calculate_refinement_region_center(); 
+#endif
+
 
     for(i = 0; i < GRAVCOSTLEVELS; i++) {All.LevelToTimeBin[i] = 0;}
 
@@ -321,7 +328,7 @@ void init(void)
 #endif
 #endif
 #endif
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
             P[i].Time_Of_Last_MergeSplit = All.TimeBegin;
 #endif
         }
