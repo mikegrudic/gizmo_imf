@@ -121,7 +121,20 @@ void run(void)
 #endif
 
         compute_hydro_densities_and_forces();	/* densities, gradients, & hydro-accels for synchronous particles */
-        
+
+#ifdef FLAG_BASED_REFINEMENT
+        // We will calculate this only every 100 timesteps for the first 1000 timesteps, then every 10000 timesteps
+        // If we don't do this, the center jumps around a lot more than we'd like it to.         
+        if ((All.NumCurrentTiStep < 1000) && (All.NumCurrentTiStep % 100) == 0)
+        {
+          calculate_refinement_region_center();  // calculate the center of mass of the refinement region    
+        }
+        if ((All.NumCurrentTiStep >= 1000) && (All.NumCurrentTiStep % 10000) == 0)
+        {
+          calculate_refinement_region_center();  // calculate the center of mass of the refinement region
+        }
+#endif        
+
 #ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP // do merge/split routines every single timestep - need to do it here if we didn't do it during domain decomp on a coarse timestep
         if(!reconstructed_tree)
         {
