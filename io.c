@@ -302,6 +302,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                     n++;
                 }
             break;
+        
+        case IO_REFINE_FLAG:
+#ifdef FLAG_BASED_REFINEMENT
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    //*ip_int++ = (int) P[pindex].Refinement_Flag;
+                    *ip++ = (MyIDType) P[pindex].Refinement_Flag;
+                    n++;
+                }
+#endif
+            break;
 
         case IO_U:			/* internal energy */
             for(n = 0; n < pc; pindex++)
@@ -1915,6 +1927,12 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             bytes_per_blockelement = sizeof(MyIDType);
             break;
 
+#ifdef FLAG_BASED_REFINEMENT
+            case IO_REFINE_FLAG:
+                bytes_per_blockelement = sizeof(MyIDType);
+                break;
+#endif
+
         case IO_BHPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
@@ -2199,6 +2217,7 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_ID:
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
+        case IO_REFINE_FLAG:
 #ifdef LONGIDS
             typekey = 2;		/* native long long */
 #else
@@ -2247,6 +2266,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ID:
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
+        case IO_REFINE_FLAG:
         case IO_MASS:
         case IO_BH_DIST:
         case IO_U:
@@ -2498,6 +2518,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_ID:
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
+        case IO_REFINE_FLAG:
         case IO_POT:
         case IO_SOFT:
         case IO_AGS_HKERN:
@@ -2701,6 +2722,36 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
  */
 int blockpresent(enum iofields blocknr)
 {
+    int reduced_output_flag = 0;
+#ifdef IO_REFINE_REDUCED_OUTPUT
+    if( (All.SnapshotFileCount-1) % (IO_REFINE_SNAPSHOT_FREQUENCY+1) ) //behaves the same way as IO_SINK_ONLY_SNAPSHOT_FREQUENCY
+    {
+        //io_reduced_output_flag=1;
+        if(ThisTask == 0)
+                printf("\nOutputting a reduced snapshot...\n");
+        reduced_output_flag = 1;
+    }
+#endif 
+if (reduced_output_flag==1){
+        switch (blocknr)
+        {
+        
+        
+        case IO_POS:
+        case IO_VEL:
+        case IO_ID:
+        case IO_CHILD_ID:
+        case IO_GENERATION_ID:
+        case IO_REFINE_FLAG:
+        case IO_MASS:
+        case IO_U:
+        case IO_RHO:
+        case IO_HSML:
+            return 1;			/* always present */
+            break;
+        }
+    }
+    else {
     switch (blocknr)
     {
         case IO_POS:
@@ -2713,6 +2764,12 @@ int blockpresent(enum iofields blocknr)
         case IO_RHO:
         case IO_HSML:
             return 1;			/* always present */
+            break;
+
+        case IO_REFINE_FLAG:
+#ifdef FLAG_BASED_REFINEMENT
+            return 1;
+#endif
             break;
 
         case IO_NE:
@@ -3329,7 +3386,7 @@ int blockpresent(enum iofields blocknr)
         case IO_LASTENTRY: /* will not occur */
             break;
     }
-
+    }
     return 0;			/* default: not present */
 }
 
@@ -3770,6 +3827,9 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             break;
         case IO_GENERATION_ID:
             strcpy(buf, "ParticleIDGenerationNumber");
+            break;
+        case IO_REFINE_FLAG:
+            strcpy(buf, "RefinementFlag");
             break;
         case IO_MASS:
             strcpy(buf, "Masses");
@@ -4435,6 +4495,8 @@ void write_file(char *fname, int writeTask, int lastTask)
                 {
 #if IO_SINKS_ONLY_SNAPSHOT_FREQUENCY > 0
                     if ( typelist[type] && ( (type!=0) || !( (All.SnapshotFileCount-1) % (IO_SINKS_ONLY_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip type 0 (gas) data for the reduced snapshots
+#elif IO_REFINE_SNAPSHOT_FREQUENCY > 0
+                    if ( typelist[type] && ( (type==0) || (type==3) || !( (All.SnapshotFileCount-1) % (IO_REFINE_SNAPSHOT_FREQUENCY+1) ) ) ) //we skip all except type 0 (gas) data for the reduced snapshots
 #else
                     if(typelist[type])
 #endif
@@ -4658,6 +4720,13 @@ void write_header_attributes_in_hdf5(hid_t handle)
 
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "HubbleParam", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &header.HubbleParam); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+
+#ifdef FLAG_BASED_REFINEMENT
+    hsize_t bdim[1] = { 3 }; // change adim for this attribute
+    hdf5_dataspace = H5Screate(H5S_SIMPLE); H5Sset_extent_simple(hdf5_dataspace, 1, bdim, NULL);
+    hdf5_attribute = H5Acreate(handle, "RefinementRegionCenter", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.RefinementRegionCenter); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#endif
 
     {double tmp=UNIT_MASS_IN_CGS; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "UnitMass_In_CGS", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
         H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &tmp); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
