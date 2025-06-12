@@ -577,7 +577,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_SPEEDOFLIGHT_REDUCTION (0.1)   /* for many problems on these scales, need much larger RSOL than default starforge values (dynamical velocities are big, without this they will severely lag behind) */
 #endif
 #define ADAPTIVE_TREEFORCE_UPDATE (0.0625) /* rough typical value we use for ensuring stability */
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
 #define OUTPUT_ACCELERATION
 #define OUTPUT_HYDROACCELERATION
 #define OUTPUT_MOLECULAR_FRACTION
@@ -2782,6 +2782,11 @@ extern struct global_data_all_processes
     double Mass_of_SpecialSMBHParticle;
 #endif
 
+#ifdef FLAG_BASED_REFINEMENT
+    double RefinementRegionCenter[3];     /*!< COM of the particles with this flag on will be used to determine the center of refinement for the entire sim */
+    MyIDType RefinementRegionCenterParticleID; /*!< particle ID of the particle with this flag on */
+#endif 
+
 #ifdef NUCLEAR_NETWORK
   char EosSpecies[100];
   char NetworkRates[100];
@@ -3154,10 +3159,14 @@ extern ALIGN(32) struct particle_data
     integertime dt_step;
 #endif
 
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
     MyFloat Time_Of_Last_MergeSplit;
 #endif
-    
+
+#ifdef FLAG_BASED_REFINEMENT
+    MyIDType Refinement_Flag;       /*!< COM of the particles with this flag on will be used to determine the center of refinement for the entire sim */
+#endif
+
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
     MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
     MyFloat AGS_zeta;           /*!< factor in the correction term */
@@ -3883,7 +3892,9 @@ extern struct io_header
   double HubbleParam;		/*!< Hubble parameter in units of 100 km/sec/Mpc */
   int flag_stellarage;		/*!< flags whether the file contains formation times of star particles */
   int flag_metals;		    /*!< flags whether the file contains metallicity values for gas and star particles */
-
+#ifdef FLAG_BASED_REFINEMENT  
+  double refinement_center[3]; /*!< position of the center of the refinement region */
+#endif
   unsigned int npartTotalHighWord[6];   /*!< High word of the total number of particles of each type (needed to combine with npartTotal to allow >2^31 particles of a given type) */
   int flag_entropy_instead_u; /*!< flag here strictly for historical compatibility with unformatted binary files from GADGET-3 era formats, which expect this flag to exist. this does nothing in gizmo */
   int flag_doubleprecision; /*!< flags that snapshot contains double-precision instead of single precision */
@@ -3917,6 +3928,7 @@ enum iofields
   IO_VEL,
   IO_ID,
   IO_CHILD_ID,
+  IO_REFINE_FLAG,
   IO_GENERATION_ID,
   IO_MASS,
   IO_U,
