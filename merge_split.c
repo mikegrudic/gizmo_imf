@@ -211,6 +211,225 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
     ref_factor = 1; // need to determine appropriate desired refinement criterion, if resolution is not strictly pre-defined //
 #endif
     
+#ifdef STEP_REFINEMENT_FUNCTION
+        /* This is a function to do the refinement in steps, where we do a splitting step, then a relaxation step, then another splitting step, etc.
+           The time steps are defined in dt_tau, and the refinement starts at t_00. The target mass is calculated based on the distance from the center of the refinement region.
+           The parameters for the different refinement zones are defined below.        
+        */
+        double dt_tau = 2.e-7;//7.e-5;//1.e-6;            	                // refinement will end by 9*dt_tau, code units
+        double t_00 = 1.0017971;//1.00072;                                  // this is the time at which the refinement starts, in units of the simulation time        
+        double t = All.Time - t_00;
+        double R_cloud = 100;                                               // in pc
+        double r_out1 = 6*R_cloud, r_in1 = 3*R_cloud;                       // in pc 
+        double r_out2 = 2*R_cloud, r_in2 = 1.75*R_cloud;                    // in pc 
+        double r_out3 = 1.6*R_cloud, r_in3 = 1.5*R_cloud;                   // in pc 
+        // Parameters that control the different refinement zones 
+        double init_res = 7000, final_res = 0.01;                           // in Msun
+        double m_init1 = init_res, m_final1 = 10000*final_res;
+        double m_init2 = 10000*final_res, m_final2 = 100*final_res;
+        double m_init3 = 100*final_res, m_final3 = final_res;
+        double slope=0, intercept=0, m_target=m_init1;                      // the slope and intercept are determined based on the parameters above
+
+        int k; double dx,r2=0; 
+#ifdef REFINE_FROM_CENTER
+        for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.BoxSize/2)*All.cf_atime; r2+=dx*dx;} 
+#else
+#ifdef FLAG_BASED_REFINEMENT
+        for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.RefinementRegionCenter[k])*All.cf_atime; r2+=dx*dx;}
+#endif
+        //for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k])*All.cf_atime; r2+=dx*dx;}
+#endif
+        double rbh = sqrt(r2) * UNIT_LENGTH_IN_PC/1000.;    // in kpc
+        double r_pc = rbh*1000;                             // in pc
+        double relaxation_multiple = 2;
+        double time_step1 = dt_tau;                                     // split
+        double time_step2 = time_step1 + relaxation_multiple*dt_tau;    // relax
+        double time_step3 = dt_tau + time_step2;                        // split
+        double time_step4 = time_step3 + relaxation_multiple*dt_tau;    // relax
+        double time_step5 = dt_tau + time_step3;                        // split
+        int zone = 0; int time_period = 0; 
+	    
+        // The part where the target mass is calcualted
+        if (t<0){return 1;}
+
+        //First time period: split
+        else if ((t<time_step1) && (t>=0))
+        {
+            time_period = 1;
+            if(r_pc>=r_out1) {m_target=m_init1;
+		        //if ((ThisTask==0)&&(r_pc<=2000)){
+                //printf("Outside the first refinement zone, m_target = %.4f, m_ref_mJ = %e, r_pc = %.4f \n", m_target, m_ref_mJ, r_pc);
+		        return 1;
+	        }
+            else if((r_pc<r_out1) && (r_pc>=r_in1))
+            {
+                intercept = -1*log(m_init1/m_final1)*t/dt_tau + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope*log(r_pc/r_in1)+intercept);
+                zone = 1;
+            }
+            else 
+            {
+                intercept = -1*log(m_init1/m_final1)*t/dt_tau + log(m_init1);
+                m_target = exp(intercept);
+                zone = 2;
+            }
+        }
+
+        // Second time period: relaxation
+        else if ((t<time_step2) && (t>=time_step1))
+        {
+            time_period = 2;
+            if(r_pc>=r_out1) {m_target=m_init1;
+		        //if ((ThisTask==0)&&(r_pc<=2000)){
+		        return 1; //}
+	        }
+            else if((r_pc<r_out1) && (r_pc>=r_in1))
+            {
+                intercept = -1*log(m_init1/m_final1) + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope*log(r_pc/r_in1)+intercept);
+                zone = 1;
+            }
+            else 
+            {
+                m_target = m_final1;
+                zone = 2;
+            }
+        }
+
+        // Third time period: split
+        else if ((t<time_step3) && (t>=time_step2))
+        {
+            time_period = 3;
+            if (r_pc>=r_out1) {m_target = m_init1; return 1;}
+            else if ((r_pc<r_out1) && (r_pc>=r_in1))
+            {
+                intercept = -1*log(m_init1/m_final1) + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope * log(r_pc/r_in1) + intercept);
+                zone = 1;
+            }
+            else if ((r_pc<r_in1) && (r_pc>=r_out2)) {m_target = m_init2; zone=2;}
+            else if ((r_pc<r_out2) && (r_pc>=r_in2))
+            {
+                intercept = -1*log(m_init2/m_final2)*(t-time_step2)/dt_tau + log(m_init2);
+                slope = (log(m_init2) - intercept)/(log(r_out2/r_in2));
+                m_target = exp(slope*log(r_pc/r_in2) + intercept);
+                zone = 3;
+            }
+            else
+            {
+                intercept = -1*log(m_init2/m_final2)*(t-time_step2)/dt_tau + log(m_init2);
+                m_target = exp(intercept);
+                zone = 4;
+            }
+        }
+        
+        // Fourth time period: relax
+        else if ((t<time_step4) && (t>=time_step3))
+        {
+            time_period = 4;
+            if (r_pc>=r_out1) {m_target = m_init1; return 1;}
+            else if ((r_pc<r_out1) && (r_pc>=r_in1))
+            {
+                intercept = -1*log(m_init1/m_final1) + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope * log(r_pc/r_in1) + intercept);
+                zone = 1;
+            }
+            else if ((r_pc<r_in1) && (r_pc>=r_out2)) {m_target = m_init2; zone = 2;}
+            else if ((r_pc<r_out2) && (r_pc>=r_in2))
+            {
+                intercept = -1*log(m_init2/m_final2) + log(m_init2);
+                slope = (log(m_init2) - intercept)/(log(r_out2/r_in2));
+                m_target = exp(slope*log(r_pc/r_in2) + intercept);
+                zone = 3;
+            }
+            else
+            {
+                m_target = m_final2;
+                zone = 4;
+            }
+        }        
+        
+        // Fifth time period: split
+        else if ((t<time_step5) && (t>=time_step4))
+        {
+            time_period = 5;
+            if (r_pc>=r_out1) {m_target = m_init1;return 1;}
+            else if ((r_pc<r_out1) && (r_pc>=r_in1)) 
+            {
+                intercept = -1*log(m_init1/m_final1) + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope * log(r_pc/r_in1) + intercept);
+                zone = 1;
+            }
+            else if ((r_pc<r_in1) && (r_pc>=r_out2)) {m_target = m_init2; zone = 2;}
+            else if ((r_pc<r_out2) && (r_pc>=r_in2))
+            {
+                intercept = -1*log(m_init2/m_final2) + log(m_init2);
+                slope = (log(m_init2) - intercept)/(log(r_out2/r_in2));
+                m_target = exp(slope*log(r_pc/r_in2) + intercept);
+                zone = 3;
+            }
+            else if ((r_pc<r_in2) && (r_pc>=r_out3)) {m_target = m_init3; zone = 4;}
+            else if ((r_pc<r_out3) && (r_pc>=r_in3))
+            {
+                intercept = -1*log(m_init3/m_final3)*(t-time_step4)/dt_tau + log(m_init3);
+                slope = (log(m_init3) - intercept)/(log(r_out3/r_in3));
+                m_target = exp(slope*log(r_pc/r_in3) + intercept);
+                zone = 5;
+            }
+            else
+            {
+                intercept = -1*log(m_init3/m_final3)*(t-time_step4)/dt_tau + log(m_init3);
+                m_target = exp(intercept);
+                zone = 6;
+            }
+        }
+
+        // On to perpetuity
+        else
+        {
+            if (r_pc>=r_out1) {m_target = m_init1;return 1;}
+            else if ((r_pc<r_out1) && (r_pc>=r_in1)) 
+            {
+                intercept = -1*log(m_init1/m_final1) + log(m_init1);
+                slope = (log(m_init1) - intercept)/(log(r_out1/r_in1));
+                m_target = exp(slope * log(r_pc/r_in1) + intercept);
+            }
+            else if ((r_pc<r_in1) && (r_pc>=r_out2)) {m_target = m_init2;}
+            else if ((r_pc<r_out2) && (r_pc>=r_in2))
+            {
+                intercept = -1*log(m_init2/m_final2) + log(m_init2);
+                slope = (log(m_init2) - intercept)/(log(r_out2/r_in2));
+                m_target = exp(slope*log(r_pc/r_in2) + intercept);
+            }
+            else if ((r_pc<r_in2) && (r_pc>=r_out3)) {m_target = m_init3;}
+            else if ((r_pc<r_out3) && (r_pc>=r_in3))
+            {
+                intercept = -1*log(m_init3/m_final3) + log(m_init3);
+                slope = (log(m_init3) - intercept)/(log(r_out3/r_in3));
+                m_target = exp(slope*log(r_pc/r_in3) + intercept);
+            }
+            else {m_target=m_final3;}
+        }
+
+        
+        /* If you want to print out the refinement zone, time period, current mass, target mass, and r_pc for debugging purposes, uncomment the following lines:
+        if (ThisTask==0)
+        {
+		    printf("Refinement zone = %d, time period = %d, current mass = %.2f, target mass = %.2f, r_pc = %.2f \n", zone, time_period, P[i].Mass*UNIT_MASS_IN_SOLAR, m_target, r_pc);
+        } */
+
+        
+        if (r_pc<=2*r_out1){ref_factor = m_target/m_init1;}
+        return ref_factor;
+
+#endif
+
+
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     if(P[i].Type==0)
     {
