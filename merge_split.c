@@ -805,7 +805,7 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     for(k = 0; k < 3; k++) {r_near += dp[k]*dp[k];}
     r_near = sqrt(r_near);
     d_r = DMIN(d_r , 0.35 * r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(STEP_REFINEMENT_FUNCTION) || defined(FLAG_BASED_REFINEMENT)
     double dx_eff = Get_Particle_Size(i), dx_h = KERNEL_CORE_SIZE * PPP[i].Hsml; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); dx_h = r_near; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); d_r = 0.39685*dx_eff; // this allows a larger split in order to reduce artefacts in more aggressive splits, at the expense of more diffusion of the original mass //
 #endif
     /*
@@ -843,6 +843,11 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     if(P[i].ID_generation > 30) {P[i].ID_generation=0;} // roll over at 32 generations (unlikely to ever reach this)
     P[j].ID_generation = P[i].ID_generation; // ok, all set!
 
+#ifdef FLAG_BASED_REFINEMENT
+    // All split particles are tagged for the refinement center calculation -- we probably don't need this since all quantities are copied anyway.
+    if(P[i].Refinement_Flag == 1) {P[j].Refinement_Flag = 1;} // copy the refinement flag from the parent particle
+    //P[j].Refinement_Flag = 1; P[i].Refinement_Flag = 1;
+#endif
     /* assign masses to both particles (so they sum correctly), but first record some numbers in case we need them below */
     double mass_before_split = 0, density_before_split = 0, volume_before_split = 0; mass_before_split = P[i].Mass; // save for use below
     if(P[i].Type==0) {density_before_split = SphP[i].Density; volume_before_split = mass_before_split/density_before_split;} // save for use below
@@ -1002,7 +1007,7 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
      any other operations on the particles */
     P[i].Pos[0] += dx; P[j].Pos[0] -= dx; P[i].Pos[1] += dy; P[j].Pos[1] -= dy; P[i].Pos[2] += dz; P[j].Pos[2] -= dz;
 
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(FLAG_BASED_REFINEMENT) || defined(STEP_REFINEMENT_FUNCTION)
     P[i].Time_Of_Last_MergeSplit = All.Time; P[j].Time_Of_Last_MergeSplit = All.Time;
 #endif
     
@@ -1316,7 +1321,7 @@ int merge_particles_ij(int i, int j)
     }
 #endif
 
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(FLAG_BASED_REFINEMENT) || defined(STEP_REFINEMENT_FUNCTION)
     P[i].Time_Of_Last_MergeSplit = All.Time; P[j].Time_Of_Last_MergeSplit = All.Time;
 #endif
     
@@ -1653,7 +1658,7 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
 
 
 
-#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || defined(FLAG_BASED_REFINEMENT) || defined(STEP_REFINEMENT_FUNCTION)
 /* subroutine to check if too little time has passed since the last merge-split, in which case we won't allow it again */
 int check_if_sufficient_mergesplit_time_has_passed(int i)
 {
@@ -1665,7 +1670,7 @@ int check_if_sufficient_mergesplit_time_has_passed(int i)
     double dtime_code = All.Time - P[i].Time_Of_Last_MergeSplit; // time [in code units] since last merge/split
     double dt_incodescale = (GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * All.cf_hubble_a) * All.cf_atime; // timestep converted appropriately to code units [physical if non-comoving, else scale factor]
     if(dtime_code < N_timesteps_fac*dt_incodescale) {return 0;} // not enough time passed, prohibit
-#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) || !defined(FLAG_BASED_REFINEMENT)
     if(All.ComovingIntegrationOn) {if(dtime_code < 1.e-8) {return 0;}} // also enforce an absolute time limit (don't use for nuclear zooms since absolute timesteps can become arbitrarily short
 #endif
     return 1; // otherwise, if no check so far to reject, allow this merge/split
