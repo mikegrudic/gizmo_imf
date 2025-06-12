@@ -225,6 +225,16 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_GENERATION_ID:		// particle generation ID //
             if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P[offset + n].ID_generation = *ip++;}}
             break;
+        
+        case IO_REFINE_FLAG:
+#ifdef FLAG_BASED_REFINEMENT
+            if(RestartFlag == 2)
+            {
+                //for(n = 0; n < pc; n++) {P[offset + n].Refinement_Flag = *ip_int++;}
+                for(n = 0; n < pc ; n++) {P[offset + n].Refinement_Flag = *ip++;}
+            }
+#endif
+            break;
 
         case IO_MASS:		/* particle mass */
             for(n = 0; n < pc; n++) {P[offset + n].Mass = *fp++;}
@@ -984,7 +994,7 @@ void read_file(char *fname, int readTask, int lastTask)
                                 continue;	/* ignore all other blocks in initial conditions */
 
 
-            if(RestartFlag == 0 && (blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID)) {continue;}
+            if(RestartFlag == 0 && (blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID || blocknr == IO_REFINE_FLAG)) {continue;}
 #if defined(NO_CHILD_IDS_IN_ICS) || defined(ASSIGN_NEW_IDS)
             if(blocknr == IO_GENERATION_ID || blocknr == IO_CHILD_ID) {continue;}
 #endif
@@ -1442,6 +1452,19 @@ void read_header_attributes_in_hdf5(char *fname)
     hdf5_attribute = H5Aopen_name(hdf5_headergrp, "Flag_DoublePrecision");
     H5Aread(hdf5_attribute, H5T_NATIVE_INT, &header.flag_doubleprecision);
     H5Aclose(hdf5_attribute);
+
+#ifdef FLAG_BASED_REFINEMENT
+    //double read_refine_center[3];
+    hdf5_attribute = H5Aopen_name(hdf5_headergrp, "RefinementRegionCenter");
+    H5Aread(hdf5_attribute, H5T_NATIVE_DOUBLE, header.refinement_center);
+    //H5Aread(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.RefinementRegionCenter);
+    H5Aclose(hdf5_attribute);
+    // Send this to all processors to set All.RefinementRegionCenter
+    //MPI_Allreduce(read_refine_center, All.RefinementRegionCenter, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    //printf("Refinement Region Center read: %.3f %.3f %.3f, %d\n", 
+    //        All.RefinementRegionCenter[0], All.RefinementRegionCenter[1], All.RefinementRegionCenter[2], ThisTask);
+#endif
 
 #ifdef METALS /* some trickery here to enable snapshot-restarts from runs with different numbers of metal species */
     if(RestartFlag==2)
