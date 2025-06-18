@@ -48,7 +48,7 @@ int does_particle_need_to_be_merged(int i)
 #endif
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
-    if(P[i].Type==3) {return 0;}
+    if(is_particle_a_special_zoom_target(i)) {return 0;}
 #endif
 #ifdef BH_WIND_SPAWN
     if(P[i].ID==All.AGNWindID && P[i].Type==0)
@@ -135,7 +135,15 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         
         double mcrit_0=1.*(4000.), T_eff = 1.23 * (5./3.-1.) * U_TO_TEMP_UNITS * SphP[i].InternalEnergyPred, nH_cgs = SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, MJ = 9.e6 * pow( 1 + T_eff/1.e4, 1.5) / sqrt(1.e-12 + nH_cgs);
         if(All.ComovingIntegrationOn) {MJ *= pow(1. + (100.*COSMIC_BARYON_DENSITY_CGS) / (SphP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS), 3);}
-        double m_ref_mJ = 0.001 * MJ; int k; double dx,r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[k])*All.cf_atime; r2+=dx*dx;}
+        double m_ref_mJ = 0.001 * MJ;
+        int k,j; double dx,r2=0,r2min=MAX_REAL_NUMBER;
+        for(j=0;j<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;j++)
+        {
+            r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[j][k])*All.cf_atime; r2+=dx*dx;}
+            if(r2<r2min) {r2min=r2;}
+        }
+        r2 = r2min; // want minimum distance to nearest refinement center
+        
         double rbh = sqrt(r2) * UNIT_LENGTH_IN_PC/1000.;
         if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
         {
@@ -1257,7 +1265,7 @@ void rearrange_particle_sequence(void)
 void apply_pm_hires_region_clipping_selection(int i)
 {
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-    if(P[i].Type==3) {return;}
+    if(is_particle_a_special_zoom_target(i)) {return;}
 #endif
 #ifdef PM_HIRES_REGION_CLIPPING
     int clip_flag = 0; // flag for clipping

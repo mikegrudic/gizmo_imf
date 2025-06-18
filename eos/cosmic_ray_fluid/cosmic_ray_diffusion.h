@@ -192,15 +192,15 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         // now just assign these fluxes: written lengthily here to prevent any typos, but trivial assignment //
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * SphP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
-        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
+        for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {SphP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
 #endif // CRFLUID_M1
     } // close check that kappa and particle masses are positive
     // actually assign the fluxes //
-    out.DtCosmicRayEnergy[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy];
-    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy];}
+    out.DtCosmicRayEnergy[k_CRegy] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayPressure[k_CRegy];
+    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRayEnergy[k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy];}
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
     double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
 #if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
@@ -209,8 +209,8 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  SphP[j].CosmicRay_Number_in_Bin[k_CRegy] / (SphP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
 #endif
     //CR_number_to_energy_ratio *= 0.98; // = if want a simple approximation to the difference b/t diffusivities in energy vs number: multiply by 1 - 0.103021*epsilon, where epsilon = D_diffusion (0.5-ish) - gamma_slope where L_grad[R] ~ R^gamma_slope and kappa_diffusion ~ R^D_diffusion. reasonable approx is something like gamma_slope ~ (0.5-0.75)*D_diffusion [trends towards D_diffusion in eqm]
-    out.DtCosmicRay_Number_in_Bin[k_CRegy] += Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;
-    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] -= Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
+    out.DtCosmicRay_Number_in_Bin[k_CRegy] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;
+    if(j_is_active_for_fluxes) {SphP[j].DtCosmicRay_Number_in_Bin[k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
 #endif
 }
 
@@ -238,7 +238,7 @@ if(vdotr2_phys < 0 && vdotf2_phys < 0 && (DMAX(vdotf2_phys, vdotr2_phys)*UNIT_VE
                 double q = (1.-fabs(cos_t))/0.34; zeta_obliquity_fac = exp(-q*q*q);
 #endif
                 double DtCREgyNewInjection = saturation_fraction_for_craccel * zeta_obliquity_fac * dissipation_fac * 0.5 * upwind_density * velforflux*velforflux*velforflux * Face_Area_Norm;
-                if(local.InternalEnergyPred > SphP[j].InternalEnergyPred) {out.DtCREgyNewInjectionFromShocks += DtCREgyNewInjection;} else {if(j_is_active_for_fluxes) {SphP[j].DtCREgyNewInjectionFromShocks += DtCREgyNewInjection;}} // do injection upstream
+                if(local.InternalEnergyPred > SphP[j].InternalEnergyPred) {out.DtCREgyNewInjectionFromShocks += FluxCorrectionFactor_to_i * DtCREgyNewInjection;} else {if(j_is_active_for_fluxes) {SphP[j].DtCREgyNewInjectionFromShocks += FluxCorrectionFactor_to_j * DtCREgyNewInjection;}} // do injection upstream
             }}}}
 #endif
 

@@ -595,7 +595,7 @@ void spawn_bh_wind_feedback(void)
         if(P[i].Type == 4) {ptype_can_spawn = 1;}
 #endif
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
-        if(P[i].Type == 3) {ptype_can_spawn = 1;}
+        if(is_particle_a_special_zoom_target(i)) {ptype_can_spawn = 1;}
 #endif
         if((NumPart+n_particles_split+(int)(2.*(BH_WIND_SPAWN+0.1)) < nmax) && (ptype_can_spawn==1)) // basic condition: particle is a 'spawner' (sink), and code can handle the event safely without crashing.
         {
@@ -737,7 +737,7 @@ double get_spawned_cell_launch_speed(int i)
     double v_magnitude = All.BAL_v_outflow; // velocity of the jet: default mode is to set this manually to a specific value in physical units
 
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4)
-    if(P[i].Type == 3) {return 3.e4/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
+    if(is_particle_a_special_zoom_target(i)) {return 3.e4/UNIT_VEL_IN_KMS;} // need an initial velocity for launch here //
 #endif
     
 #ifdef SNE_NONSINK_SPAWN
@@ -747,8 +747,14 @@ double get_spawned_cell_launch_speed(int i)
         double SNeEgy = (1.0e51/UNIT_ENERGY_IN_CGS);
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
         if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
-#ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT
-        if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0]; SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);}
+#if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 1)
+        if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0];
+#if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 2)
+            SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);
+#else
+            SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.1);
+#endif
+        }
 #endif
 #endif
         return sqrt(2.0*SNeEgy/Msne); // v_ej in code units: assume all SNe = 1e51 erg //
@@ -898,7 +904,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     d_r = DMIN(P[i].SinkRadius, d_r); //launch close to the sink
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) && defined(PARTICLE_EXCISION)
-    if(P[i].Type == 3) {double rmin=All.ForceSoftening[3], r=sqrt(r2), r0=0.5*(rmin+r)*(1.+0.1*get_random_number(i+j)); d_r=r0;} // make sure to spawn OUTSIDE of the excision radius!
+    if(is_particle_a_special_zoom_target(i)) {double rmin=All.ForceSoftening[3], r=sqrt(r2), r0=0.5*(rmin+r)*(1.+0.1*get_random_number(i+j)); d_r=r0;} // make sure to spawn OUTSIDE of the excision radius!
 #endif
 #if defined(SNE_NONSINK_SPAWN)
     if(P[i].Type == 4) {double rmin=All.ForceSoftening[4], r=sqrt(r2), r0=0.5*(rmin+r)*(0.5+1.5*get_random_number(i+j)); d_r=r0;} // need a generous padding to ensure no overlaps
@@ -1190,18 +1196,19 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 /* routine for injection from sink boundary around 'special' particle types */
 void special_rt_feedback_injection(void)
 {
-    double L0_cgs = 7.e45, MdotJetMsunYr=1.; int iBH0=-1;
-    if(All.Mass_of_SpecialSMBHParticle <= 0) {return;}
+    double L0_cgs = 7.e45, MdotJetMsunYr=1., mspecial_tot=0; int iBH0=-1, k;
+    for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++) {mspecial_tot += All.Mass_of_SpecialSMBHParticle[k];}
+    if(mspecial_tot <= 0) {return;}
     double delta_wt_sum = 0, delta_wt_sumsum, r_min = All.ForceSoftening[3] * All.cf_atime, r_max = 5. * r_min, dt = All.TimeStep, subgrid_lum = L0_cgs / (UNIT_ENERGY_IN_CGS/UNIT_TIME_IN_CGS), de_00 = subgrid_lum * dt; if(dt <= 0) {return;}
-    int n_wt = 0, i,k; for(i=0;i<NumPart;i++) {
-        if(P[i].Type == 3) {iBH0=i;}
+    int n_wt = 0, i; for(i=0;i<NumPart;i++) {
+        if(is_particle_a_special_zoom_target(i)) {iBH0=i;}
         if(P[i].Type != 0) {continue;}
         double dp[3], r2=0, wt, wt_new=0, r; for(k=0;k<3;k++) {dp[k]=All.cf_atime*(P[i].Pos[k]); r2+=dp[k]*dp[k];}
         r = sqrt(r2); if(r < r_min || r >= r_max) {continue;}
         double vol = P[i].Mass / (SphP[i].Density*All.cf_a3inv), cos_t = dp[0] / r;
         wt = 1.e-5 * pow(fabs(cos_t),8) * vol * (r_max*r_max/(r*r)-1.); delta_wt_sum += wt;
     }
-    MPI_Allreduce(&delta_wt_sum, &delta_wt_sumsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
+    MPI_Allreduce(&delta_wt_sum, &delta_wt_sumsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // collect the information on weight sums
     if(All.Time <= All.TimeBegin) {return;}
     if(delta_wt_sumsum <= 0) {return;}
     for(i=0;i<NumPart;i++) {
@@ -1231,7 +1238,8 @@ void special_rt_feedback_injection(void)
 double target_mass_for_wind_spawning(int i)
 {
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
-    if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
+    if(is_particle_a_special_zoom_target(i)) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
+    //if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
 #endif
 
 #if defined(SNE_NONSINK_SPAWN)

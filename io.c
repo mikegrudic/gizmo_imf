@@ -177,8 +177,7 @@ void savepositions(int num)
 
 
 
-/*! This function fills the write buffer with particle data. New output blocks can in
- *  principle be added here.
+/*! This function fills the write buffer with particle data. New output blocks can in principle be added here.
  */
 void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 {
@@ -201,11 +200,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
     MyBigFloat flde, psde;
 #endif
 #ifdef PMGRID
-    double dt_gravkick_pm = 0;
-    if(All.ComovingIntegrationOn)
-        {dt_gravkick_pm = get_gravkick_factor(All.PM_Ti_begstep, All.Ti_Current) - get_gravkick_factor(All.PM_Ti_begstep, (All.PM_Ti_begstep + All.PM_Ti_endstep) / 2);}
-    else
-        {dt_gravkick_pm = (All.Ti_Current - (All.PM_Ti_begstep + All.PM_Ti_endstep) / 2) * All.Timebase_interval;}
+    double dt_gravkick_pm = get_gravkick_factor((All.PM_Ti_begstep + All.PM_Ti_endstep) / 2, All.Ti_Current, -1, 0);
 #endif
 
     fp = (MyOutputFloat *) CommBuffer;
@@ -242,26 +237,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-#if 1
                     for(k=0;k<3;k++) {fp[k] = (MyOutputFloat) (P[pindex].Vel[k] * sqrt(All.cf_a3inv));} // JUST write the conserved velocity here, not the drifted one in this manner //
-#else
-                    double dt_gravkick, dt_hydrokick;
-                    integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(pindex);
-                    dt_hydrokick = (All.Ti_Current - (P[pindex].Ti_begstep + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL;
-                    if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(P[pindex].Ti_begstep, All.Ti_Current) - get_gravkick_factor(P[pindex].Ti_begstep, P[pindex].Ti_begstep + dt_integerstep / 2);} else {dt_gravkick = dt_hydrokick;}
-                    for(k = 0; k < 3; k++)
-                    {
-                        fp[k] = (MyOutputFloat) (P[pindex].Vel[k] + P[pindex].GravAccel[k] * dt_gravkick);
-#if (SINGLE_STAR_TIMESTEPPING > 0)
-			            if((P[pindex].Type == 5) && (P[pindex].SuperTimestepFlag >= 2)) {fp[k] += (MyOutputFloat) ((P[pindex].COM_GravAccel[k]-P[pindex].GravAccel[k]) * dt_gravkick);}
-#endif
-                        if(P[pindex].Type == 0) {fp[k] += (MyOutputFloat) (SphP[pindex].HydroAccel[k] * dt_hydrokick * All.cf_atime);}
-                    }
-#ifdef PMGRID
-                    for(k = 0; k < 3; k++) {fp[k] += (MyOutputFloat) (P[pindex].GravPM[k] * dt_gravkick_pm);}
-#endif
-                    for(k = 0; k < 3; k++) {fp[k] *= (MyOutputFloat) sqrt(All.cf_a3inv);}
-#endif
                     fp += 3;
                     n++;
                 }

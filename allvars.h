@@ -333,12 +333,12 @@
 #define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
 #define GALSF_FB_FIRE_PROTOSTELLARJETS /* use jet feedback per mike grudic's simple parameterization; zero cost, easy to add, not big large-scale effects */
 #define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0) /* spread SF over a couple free-fall times when a cell becomes a star, as compared to doing it instantly when the probability roll comes up */
-#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
+#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
 #if !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION (2) /* use tidal softening for dark matter, where its well-defined, more accurate subhalo/center/caustic evolution, minimal cost */
 #endif
 #if defined(FIRE_MHD) && !defined(MHD_CONSTRAINED_GRADIENT)
-#define MHD_CONSTRAINED_GRADIENT (1) /* use CG-mhd in newer runs, more accurate, minimal cost; but do need to check stability */
+//#define MHD_CONSTRAINED_GRADIENT (1) /* use CG-mhd in newer runs, more accurate, minimal cost; but do need to check stability */
 #endif
 #if defined(FIRE_BHS)
 #define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
@@ -613,7 +613,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define IO_SINKS_ONLY_SNAPSHOT_FREQUENCY 0 /* Determines the number of snapshots with reduced data (stars only) per full snapshots (gas+stars), e.g., setting it to 2 means 2/3 of the snapshots will be reduced, 1/3 will have full data. Setting it to 0 disables it.  */
 #endif
 #define SINGLE_STAR_SINK_DYNAMICS
-#if !defined(PMGRID) && !defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
+#if !defined(PMGRID) && !defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) && !defined(USE_TIMESTEP_DILATION_FOR_ZOOMS)
 #define HERMITE_INTEGRATION 32 // bitflag for which particles to do 4th-order Hermite integration
 #endif
 #define ADAPTIVE_GRAVSOFT_FORGAS
@@ -1264,15 +1264,21 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #define  TIMEBINS        29
 #endif
 #define  TIMEBASE        (((integertime) 1)<<TIMEBINS)  /* The simulated timespan is mapped onto the integer interval [0,TIMESPAN], where TIMESPAN needs to be a power of 2. Note that (1<<28) corresponds to 2^29 */
-#define UNIT_INTEGERTIME_IN_PHYSICAL ((All.Timebase_interval/All.cf_hubble_a))
+
+#ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
+#define TIMESTEP_DILATION_FACTOR(i,mode) (return_timestep_dilation_factor(i,mode))
+#else
+#define TIMESTEP_DILATION_FACTOR(i,mode) (1)
+#endif
+#define UNIT_INTEGERTIME_IN_PHYSICAL(i) ((All.Timebase_interval/All.cf_hubble_a) * TIMESTEP_DILATION_FACTOR(i,0))
 #define GET_INTEGERTIME_FROM_TIMEBIN(bin) ((bin ? (((integertime) 1) << bin) : 0))
-#define GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin) ((GET_INTEGERTIME_FROM_TIMEBIN(bin) * UNIT_INTEGERTIME_IN_PHYSICAL))
+#define GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(bin, i) ((GET_INTEGERTIME_FROM_TIMEBIN(bin) * UNIT_INTEGERTIME_IN_PHYSICAL(i)))
 #ifndef WAKEUP
 #define GET_PARTICLE_INTEGERTIME(i) ((GET_INTEGERTIME_FROM_TIMEBIN(P[i].TimeBin)))
 #else
 #define GET_PARTICLE_INTEGERTIME(i) ((P[i].dt_step))
 #endif
-#define GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) ((GET_PARTICLE_INTEGERTIME(i) * UNIT_INTEGERTIME_IN_PHYSICAL))
+#define GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) ((GET_PARTICLE_INTEGERTIME(i) * UNIT_INTEGERTIME_IN_PHYSICAL(i)))
 
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
@@ -2778,9 +2784,13 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    double SMBH_SpecialParticle_Position_ForRefinement[3];
-    double Mass_Accreted_By_SpecialSMBHParticle;
-    double Mass_of_SpecialSMBHParticle;
+#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)) // allow to be set to integer value to represent a >1 number of special zoom sites
+#undef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
+#define SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM (1)
+#endif
+    double SMBH_SpecialParticle_Position_ForRefinement[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM][3];
+    double Mass_Accreted_By_SpecialSMBHParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
+    double Mass_of_SpecialSMBHParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
 #endif
 
 #ifdef NUCLEAR_NETWORK

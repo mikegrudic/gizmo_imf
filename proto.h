@@ -49,6 +49,7 @@ int does_particle_need_to_be_split(int i);
 double target_mass_renormalization_factor_for_mergesplit(int i, int split_key);
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 int check_if_sufficient_mergesplit_time_has_passed(int i);
+int is_particle_a_special_zoom_target(int i);
 #endif
 int merge_particles_ij(int i, int j);
 int split_particle_i(int i, int n_particles_split, int i_nearest);
@@ -814,6 +815,7 @@ integertime find_next_time_walk(int node);
 void free_memory(void);
 void advance_and_find_timesteps(void);
 integertime get_timestep(int p, double *a, int flag);
+double return_timestep_dilation_factor(int i, int mode);
 
 void determine_PMinterior(void);
 void gravity_tree(void);
@@ -870,13 +872,12 @@ void veldisp(void);
 void veldisp_ensure_neighbours(int mode);
 int binarySearch(const double * arr, const double x, const int l, const int r, const int total);
 
-double get_gravkick_factor(integertime time0, integertime time1);
+double get_gravkick_factor(integertime time0, integertime time1, int i, int mode);
 double drift_integ(double a, void *param);
 double gravkick_integ(double a, void *param);
 double growthfactor_integ(double a, void *param);
-double hydrokick_integ(double a, void *param);
 void init_drift_table(void);
-double get_drift_factor(integertime time0, integertime time1);
+double get_drift_factor(integertime time0, integertime time1, int i, int mode);
 double measure_time(void);
 double report_time(void);
 

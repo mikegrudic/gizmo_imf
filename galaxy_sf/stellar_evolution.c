@@ -494,8 +494,14 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
 #if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
     if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
-#ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT
-    if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0]; SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);}
+#if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 1)
+    if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0];
+#if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 2)
+        SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);
+#else
+        SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.1);
+#endif
+    }
 #endif
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/(in->Msne)); // v_ej in code units
@@ -712,6 +718,9 @@ void update_stellarnumber_and_timedistribofstarformation(void)
                 double f_highz=0.0115, f_m; f_m = f_highz; // 1/mass in solar per O-star number
 #ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT // SIMPLE_POPTHREE_MODEL
                 double f_lowz=2., zmin=-7, zmax=-5, z0=log10(P[i].Metallicity[0]/0.01 + 1.e-15);
+#if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 3)
+                zmin=-5.; zmax=-3.;
+#endif
                 if(z0<=zmin) {f_m=f_lowz;} else if(z0<zmax) {f_m=f_lowz + (f_highz-f_lowz)*(z0-zmin)/(zmax-zmin);}
 #endif
                 double n_expected_total = f_m * P[i].Mass * UNIT_MASS_IN_SOLAR; // default f_m above is 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]

@@ -104,10 +104,8 @@ void drift_particle(int i, integertime time1)
     }
     if(time1 == time0) {return;}
     
-    if(All.ComovingIntegrationOn) {dt_drift = get_drift_factor(time0, time1);}
-        else {dt_drift = (time1 - time0) * All.Timebase_interval;}
-    
-    
+    dt_drift = get_drift_factor(time0, time1, i, 0);
+        
 #if !defined(FREEZE_HYDRO)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
     if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {for(j=0;j<3;j++) {P[i].Pos[j] += P[i].Vel[j] * dt_drift;}}
@@ -179,12 +177,13 @@ void drift_particle(int i, integertime time1)
     
     if((P[i].Type == 0) && (P[i].Mass > 0))
         {
-            double dt_gravkick, dt_hydrokick, dt_entr;
-            dt_entr = dt_hydrokick = (time1 - time0) * UNIT_INTEGERTIME_IN_PHYSICAL;
-            if(All.ComovingIntegrationOn) {dt_gravkick = get_gravkick_factor(time0, time1);} else {dt_gravkick = dt_hydrokick;}
+            double dt_gravkick, dt_gravkick_pm, dt_hydrokick, dt_entr;
+            dt_entr = dt_hydrokick = (time1 - time0) * UNIT_INTEGERTIME_IN_PHYSICAL(i);
+            dt_gravkick = get_gravkick_factor(time0, time1, i, 0);
             
 #ifdef PMGRID
-            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j] + P[i].GravPM[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
+            dt_gravkick_pm = get_gravkick_factor(time0, time1, -1, 0);
+            for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j]*dt_gravkick + P[i].GravPM[j]*dt_gravkick_pm) + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
 #else
             for(j = 0; j < 3; j++) {SphP[i].VelPred[j] += (P[i].GravAccel[j]) * dt_gravkick + (SphP[i].HydroAccel[j] * dt_hydrokick)*All.cf_atime;} /* make sure v is in code units */
 #endif
@@ -498,7 +497,7 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
 #else
     double damping_tinv;
 #ifdef SELFGRAVITY_OFF
-    damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / Get_Particle_Size(i_particle_id); // fastest wavespeed has units of [vphys]
+    damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveSpeed / (All.cf_atime*Get_Particle_Size(i_particle_id)); // fastest wavespeed has units of [vphys]
     //double damping_tinv = All.DivBcleanParabolicSigma * All.FastestWaveDecay * All.cf_a2inv; // no improvement over fastestwavespeed; decay has units [vphys/rphys]
 #else
     // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
