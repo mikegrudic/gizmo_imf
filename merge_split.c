@@ -193,9 +193,10 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         f0minfac = DMAX(f0minfac , 0.005); // may need to be further lowered later
         minimum_refinement_mass_in_solar = 1.e-9;
         f0 = DMIN(1., f0minfac*f0);
-#endif
+#else
         f0minfac = DMAX(f0minfac , 0.015); // may need to be further lowered later
         f0 = DMIN(DMAX(1.,1./m_ref_mJ), f0minfac*f0);
+#endif
 #endif
 #endif
 

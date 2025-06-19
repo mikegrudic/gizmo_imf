@@ -90,7 +90,11 @@ void find_timesteps(void)
     integertime ti_min_glob;
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+#if defined(USE_TIMESTEP_DILATION_FOR_ZOOMS)
+    ti_min_glob <<= 2; // 2^N times min timestep - shift to N bins higher
+#else
     ti_min_glob <<= 4; // 2^N times min timestep - shift to N bins higher
+#endif
 #endif
 #endif
 

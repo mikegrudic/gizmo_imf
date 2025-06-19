@@ -171,8 +171,14 @@ double return_timestep_dilation_factor(int i, int mode)
 #ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
     if(i < 0) {return 1;}
     /* now specify some dilation factor a(r) or otherwise */
-    double amax = 100.;
-    double r_amax = 100. * All.ForceSoftening[3]; // modify as needed ???
+    double fac_amax = 100.;
+#ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
+#if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES == 3)
+    r_cut = fac_amax = 1.e4;
+#endif
+#endif
+    double amax = fac_amax;
+    double r_amax = fac_amax * All.ForceSoftening[3]; // modify as needed
     double index = 1;
     int j, k; double rmin = MAX_REAL_NUMBER, r=0, a=1;
     for(j=0;j<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;j++)
