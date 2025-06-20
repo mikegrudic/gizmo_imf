@@ -417,8 +417,8 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, dou
     double gradrho_mag=0;
     if(rho>0)
     {
-#ifdef RT_USE_TREECOL_FOR_NH
-        gradrho_mag = include_h * rho * hsml / numngb_ndim; if(target>0) {gradrho_mag += P[target].SigmaEff;}
+#ifdef RT_USE_TREECOL_FOR_NH        
+        gradrho_mag = include_h * rho * hsml / numngb_ndim; if(target>=0) {gradrho_mag += P[target].SigmaEff;}
 #else             
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
