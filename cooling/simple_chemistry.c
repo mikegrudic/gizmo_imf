@@ -122,8 +122,6 @@ MyFloat f_CO(int i, MyFloat temp, MyFloat shieldfac, MyFloat nHp)
     MyFloat n_COcrit = pow(4e3 * Zd / (xi_cr16 * xi_cr16), cbrt(G0)) * (50 * xi_cr16 / pow(Zd, 1.4));
     MyFloat nHcgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS * HYDROGEN_MASSFRAC / PROTONMASS_CGS;
     MyFloat f_CO = 0.5 * SphP[i].MolecularMassFraction * (1 - DMAX(f_Cplus(i, temp, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
-    MyFloat f_Cplus_CCO = (nHcgs / (340. * DMAX(0.1, G0)));
-    f_Cplus_CCO = 1. / (1. + f_Cplus_CCO * f_Cplus_CCO / sqrt(get_temperature(i)));
     return f_CO;
 }
 
