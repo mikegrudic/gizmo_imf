@@ -689,6 +689,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_USE_TREECOL_FOR_NH 6 
 #endif
 #ifdef COOLING
+#define SIMPLE_CO_CHEMISTRY
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define EOS_PRECOMPUTE
