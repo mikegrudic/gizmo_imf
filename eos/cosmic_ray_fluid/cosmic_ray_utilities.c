@@ -1916,6 +1916,7 @@ double Get_CosmicRayIonizationRate_cgs(int i)
 #endif
 #ifdef METALS
     zeta_cr += 1.e-21 * P[i].Metallicity[0]/All.SolarAbundances[0]; // include radioactive decay of K-40 and other species, which scales with metallicity
+    zeta_cr += 1.e-19 * P[i].Metallicity[10]/All.SolarAbundances[10]; // Contribution from short-lived radioisotopes, here scaling to Fe abundance - Adams et al 2014 Apj 789 86
 #endif
     return zeta_cr;
 }
