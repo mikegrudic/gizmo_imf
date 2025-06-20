@@ -32,9 +32,9 @@ MyFloat total_ionization_rate_C(int i, MyFloat shieldfac)
 }
 
 /* Grain charging parameter psi = G0 sqrt(T) / ne in cgs units */
-MyFloat grain_charge_psi(int i, MyFloat temp, MyFloat shieldfac)
+MyFloat grain_charge_psi(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac)
 {
-    MyFloat ne = SphP[i].Density * All.cf_a3inv * HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS / PROTONMASS_CGS * SphP[i].Ne;
+    MyFloat ne = SphP[i].Density * All.cf_a3inv * HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS / PROTONMASS_CGS * x_elec;
     MyFloat G0 = get_FUV_G0(i, shieldfac);
     return G0 * sqrt(temp) / ne + 50; // add 50 to prevent from becoming too small in strongly shielded gas, following Kim 2023
 }
@@ -67,9 +67,9 @@ Returns
 alpha_gr: float
     Grain-assisted recombination coefficient in cm^3 s^-1, such that the volumetric recombination rate is alpha_gr n_ion n_e
 */
-MyFloat alpha_recomb_grain(int i, MyFloat temp, MyFloat shieldfac, char *ion_name)
+MyFloat alpha_recomb_grain(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac, char *ion_name)
 {
-    MyFloat psi = grain_charge_psi(i, temp, shieldfac);
+    MyFloat psi = grain_charge_psi(i, temp, x_elec, shieldfac);
     // MyFloat temp = get_temperature(i);
     int j = ion_name_to_index(ion_name);
 
@@ -93,16 +93,16 @@ MyFloat alpha_recomb_grain(int i, MyFloat temp, MyFloat shieldfac, char *ion_nam
 }
 
 /* Fraction of C atoms in C+ */
-MyFloat f_Cplus(int i, MyFloat temp, MyFloat shieldfac)
+MyFloat f_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac)
 {
     MyFloat ionization_rate = total_ionization_rate_C(i, shieldfac);
     MyFloat alpha = sqrt(temp / 6.67e-3), beta = sqrt(temp / 1.943e6), gamma = 0.7849 + 0.1597 * exp(-49550 / temp);
     MyFloat k_rr = 2.995e-9 / (alpha * pow(1 + alpha, 1. - gamma) * pow(1 + beta, 1 + gamma));                                       // radiative recombination coefficient  - Gong 2017 Table 1 Eq 17
     MyFloat k_dr = pow(temp, -1.5) * (6.346e-9 * exp(-12.17 / temp) + 9.793e-9 * exp(-73.8 / temp) + 1.634e-6 * exp(-15230 / temp)); // dielectronic recombination - Gong 2017 Table 1 Eq 17
-    MyFloat k_gr = alpha_recomb_grain(i, temp, shieldfac, "C+");
+    MyFloat k_gr = alpha_recomb_grain(i, temp, x_elec, shieldfac, "C+");
     MyFloat k_cplus_H2 = 2.31e-13 * pow(temp, -1.3) * exp(-23 / temp);
     MyFloat nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
-    MyFloat ne = nHcgs * SphP[i].Ne;
+    MyFloat ne = nHcgs * x_elec;
     MyFloat nH2 = 0.5 * nHcgs * SphP[i].MolecularMassFraction;
     MyFloat result = ionization_rate / (ionization_rate + k_gr * nHcgs + (k_rr + k_dr) * ne + k_cplus_H2 * nH2);
     return result;
@@ -115,13 +115,13 @@ MyFloat f_Oplus(MyFloat nHp)
 }
 
 /* Fraction of C atoms in CO: Kim 2023 Eq 25 */
-MyFloat f_CO(int i, MyFloat temp, MyFloat shieldfac, MyFloat nHp)
+MyFloat f_CO(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac, MyFloat nHp)
 {
     MyFloat xi_cr16 = Get_CosmicRayIonizationRate_cgs(i) / 1e-16, Zd = P[i].Metallicity[0] / All.SolarAbundances[0];
     MyFloat G0 = get_FUV_G0(i, shieldfac);
     MyFloat n_COcrit = pow(4e3 * Zd / (xi_cr16 * xi_cr16), cbrt(G0)) * (50 * xi_cr16 / pow(Zd, 1.4));
     MyFloat nHcgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS * HYDROGEN_MASSFRAC / PROTONMASS_CGS;
-    MyFloat f_CO = 0.5 * SphP[i].MolecularMassFraction * (1 - DMAX(f_Cplus(i, temp, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
+    MyFloat f_CO = 0.5 * SphP[i].MolecularMassFraction * (1 - DMAX(f_Cplus(i, temp, x_elec, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
     return f_CO;
 }
 

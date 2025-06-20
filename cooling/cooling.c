@@ -870,7 +870,7 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef COOL_LOW_TEMPERATURES
         n_elec += return_electron_fraction_from_heavy_ions(target, pow(10.,logT), rho, n_elec);
 #ifdef SIMPLE_CO_CHEMISTRY        
-        n_elec += return_electron_fraction_from_Cplus(target,  pow(10.,logT), shieldfac);        
+	n_elec += return_electron_fraction_from_Cplus(target,  pow(10.,logT), neold, shieldfac);        
         n_elec += return_electron_fraction_from_Oplus(target, nHp);
 #endif        
 #endif       
@@ -2130,9 +2130,9 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac)
     return G0;
 }
 
-double return_electron_fraction_from_Cplus(int target, MyFloat temp, MyFloat shieldfac){
+double return_electron_fraction_from_Cplus(int target, MyFloat temp, MyFloat x_elec, MyFloat shieldfac){
     MyFloat nHcgs = SphP[target].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS * HYDROGEN_MASSFRAC / PROTONMASS_CGS;
-    MyFloat x_Cplus = P[target].Metallicity[2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(target, temp, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
+    MyFloat x_Cplus = P[target].Metallicity[2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(target, temp, x_elec, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
     MyFloat G0=get_FUV_G0(target,shieldfac);
     return x_Cplus;
 }
