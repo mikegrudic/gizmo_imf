@@ -1068,6 +1068,8 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
             Z_C = DMAX(1.e-6, Z[2]/(0.5*All.SolarAbundances[2])); // gas-phase carbon abundance (relative to solar/2, usual assumption implicitly)
 #endif
             // TODO: can now get detailed C+, C, O, and CO abundances from SIMPLE_CO_CHEMISTRY routines, and compute the explicit cooling terms for slightly more accurate cooling here
+// #ifdef SIMPLE_CO_CHEMISTRY            
+// #endif
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3); // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines        
             double photoelec=get_FUV_G0(target, shieldfac); f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
@@ -1315,7 +1317,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
     if(target>=0) {SphP[target].NetHeatingRateQ = Q;}
 #endif
 #ifdef OUTPUT_MOLECULAR_FRACTION
-    if(target>0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));}
+    if(target>=0) {SphP[target].MolecularMassFraction = Get_Gas_Molecular_Mass_Fraction(target, T, nH0, n_elec, sqrt(shieldfac)*(gJH0/2.29e-10));}
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
