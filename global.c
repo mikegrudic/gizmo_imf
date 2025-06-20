@@ -174,7 +174,7 @@ double return_timestep_dilation_factor(int i, int mode)
     double fac_amax = 100.;
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES == 3)
-    r_cut = fac_amax = 1.e4;
+    fac_amax = 1.e4;
 #endif
 #endif
     double amax = fac_amax;
