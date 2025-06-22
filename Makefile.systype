@@ -6,7 +6,7 @@
 #
 #############
 
-SYSTYPE="Frontera"
+#SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Bridges2"
 #SYSTYPE="Anvil"
@@ -19,7 +19,7 @@ SYSTYPE="Frontera"
 #SYSTYPE="TSCC"
 #SYSTYPE="Expanse"
 #SYSTYPE="Iron"
-#SYSTYPE="RUSTY"
+SYSTYPE="RUSTY"
 #SYSTYPE="Darter"
 #SYSTYPE="Comet"
 #SYSTYPE="Gordon"

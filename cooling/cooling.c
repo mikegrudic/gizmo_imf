@@ -1071,7 +1071,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 // #ifdef SIMPLE_CO_CHEMISTRY            
 // #endif
             double f_Cplus_CCO=1./(1.+nHcgs/3.e3); // very crude estimate used to transition between C+ cooling curve and C/CO [nearly-identical] cooling curves above C+ critical density, where C+ rate rapidly declines        
-            double photoelec=get_FUV_G0(target, shieldfac); f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
+            double photoelec=get_FUV_G0(target, shieldfac,0); f_Cplus_CCO = (nHcgs/(340.*DMAX(0.1,photoelec))); f_Cplus_CCO=1./(1.+f_Cplus_CCO*f_Cplus_CCO/sqrt_T); // fco/(1-fco) ~ 0.0022 * ((n/50 cm^-3)/G0)^2 * (100K/T)^(1/2) from Tielens
             double Lambda_Cplus = Z_C * (4.7e-28 * (pow(T,0.15) + 1.04e4*n_elec/sqrt_T) * exp(-DMIN(91.211/T,EXPmax)) + 2.08e-29*exp(-DMIN(23.6/T,EXPmax))); // fit from Barinovs et al., ApJ, 620, 537, 2005, and Wilson & Bell MNRAS 337 1027 2002; assuming factor of 0.5 depletion factor in ISM; rate per C+ relative to solar; + plus [CI]-609 µm line cooling from Hocuk⋆ et al. 2016MNRAS.456.2586H
             double Lambda_CCO = Z_C * T*sqrt_T * 2.73e-31 / (1. + (nHcgs/ncrit_CO)*(1.+1.*DMAX(column,0.017)/Sigma_crit_CO)); // fit from Hollenbach & McKee 1979 for CO (+CH/OH/HCN/OH/HCl/H20/etc., but those don't matter), with slight re-calibration of normalization (factor ~1.4 or so) to better fit the results from the full Glover+Clark network. As Glover+Clark show, if you shift gas out of CO into C+ and O, you have almost no effect on the integrated cooling rate, so this is a surprisingly good approximation without knowing anything about the detailed chemical/molecular state of the gas. uncertainties in e.g. ambient radiation are -much- larger. also note this rate is really carbon-dominated as the limiting abundance, so should probably use that.
             
@@ -1183,7 +1183,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
-            double photoelec = get_FUV_G0(target, shieldfac);
+            double photoelec = get_FUV_G0(target, shieldfac,0);
             if(photoelec > 0)
             {
                 LambdaPElec = -1.3e-24 * photoelec / nHcgs * (P[target].Metallicity[0]/All.SolarAbundances[0]) * return_dust_to_metals_ratio_vs_solar(target,0); // negative sign for lambda b/c heating
@@ -2106,8 +2106,12 @@ double gas_dust_heating_coeff(int i, double T, double Tdust)
     return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
 }
 
-/* Computes the normalized FUV flux in Habing units G0 */
-MyFloat get_FUV_G0(int target, MyFloat shieldfac)
+/* Computes the normalized FUV flux in Habing units G0 
+
+Mode 0: Account only for dust-shielded FUV flux
+Mode 1: Use for the C photoionization rate: apply cross- and self-shielding factor from Tielens & Hollenbach 1985
+*/
+MyFloat get_FUV_G0(int target, MyFloat shieldfac, int mode)
 {
     MyFloat G0 = 0.;
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
@@ -2119,12 +2123,19 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac)
     } // uvb contribution //
 #endif
 #endif
+    double column = evaluate_NH_from_GradRho(P[target].GradRho, PPP[target].Hsml, SphP[target].Density, PPP[target].NumNgb, 1, target) * UNIT_SURFDEN_IN_CGS; // converts to cgs    
 #ifdef RT_PHOTOELECTRIC
     G0 += SphP[target].Rad_E_gamma[RT_FREQ_BIN_PHOTOELECTRIC] * (SphP[target].Density * All.cf_a3inv / P[target].Mass) * UNIT_EGY_DENSITY_IN_HABING; // convert to Habing field //
 #endif
 #if defined(RT_ISRF_BACKGROUND) && (!defined(RADTRANSFER) || defined(RT_USE_GRAVTREE))                                                                        // latter flag decides whether we do treecol/sobolev here to get the background intensity // add a constant assumed FUV background, for isolated ISM simulations that don't get FUV from local sources self-consistently    
-    double column = evaluate_NH_from_GradRho(P[target].GradRho, PPP[target].Hsml, SphP[target].Density, PPP[target].NumNgb, 1, target) * UNIT_SURFDEN_IN_CGS; // converts to cgs
     G0 += All.InterstellarRadiationFieldStrength * 1.7 * exp(-DMAX(P[target].Metallicity[0] / All.SolarAbundances[0], 1e-4) * column * 500.);                 // RT_ISRF_BACKGROUND rescales the overal ISRF, factor of 1.7 gives Draine 1978 field in Habing units, extinction factor assumes the same FUV band-integrated dust opacity as RT module
+#endif
+#ifdef SIMPLE_CO_CHEMISTRY
+    if(mode == 1){ // Gong 2017 Eq. 9
+        MyFloat tau_C = DMIN(column * P[target].Metallicity[2] / (12 * PROTONMASS_CGS) * 1.6e-17, 100.);
+        MyFloat r_H2 = DMIN(2.8e-22 * SphP[target].MolecularMassFraction * column * HYDROGEN_MASSFRAC / (2 * PROTONMASS_CGS), 100.);
+        G0 *= exp(-tau_C) * exp(-r_H2) / (1 + r_H2);
+    }
 #endif
     G0 = DMAX(MIN_REAL_NUMBER, DMIN(G0,1e4));
     return G0;
@@ -2133,7 +2144,7 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac)
 double return_electron_fraction_from_Cplus(int target, MyFloat temp, MyFloat x_elec, MyFloat shieldfac){
     MyFloat nHcgs = SphP[target].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS * HYDROGEN_MASSFRAC / PROTONMASS_CGS;
     MyFloat x_Cplus = P[target].Metallicity[2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(target, temp, x_elec, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
-    MyFloat G0=get_FUV_G0(target,shieldfac);
+    MyFloat G0=get_FUV_G0(target,shieldfac,0);
     return x_Cplus;
 }
 
