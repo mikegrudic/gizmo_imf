@@ -15,7 +15,7 @@ and references therein.
 /* C photoionization rate based on local FUV flux and accounting for CR-generated LW-band photons, e.g. Gredel 1987 */
 MyFloat photoionization_rate_C(int i, MyFloat shieldfac)
 {
-    MyFloat G0 = get_FUV_G0(i, shieldfac, 1); // accounts for dust
+    MyFloat G0 = get_FUV_G0(i, shieldfac, 1); // mode 1 accounts for dust-, self-, and H2 cross-shielding
     return 3.43e-10 * G0 + 520 * SphP[i].MolecularMassFraction * Get_CosmicRayIonizationRate_cgs(i);
 }
 
