@@ -11,7 +11,7 @@ various simplifying steady-state assumptions. Most prescriptions follow Kim et a
 and references therein.
  */
 
-#ifdef COOLING
+#ifdef SIMPLE_STEADYSTATE_CHEMISTRY
 /* C photoionization rate based on local FUV flux and accounting for CR-generated LW-band photons, e.g. Gredel 1987 */
 MyFloat photoionization_rate_C(int i, MyFloat shieldfac)
 {
@@ -101,7 +101,7 @@ MyFloat f_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac)
     MyFloat k_dr = pow(temp, -1.5) * (6.346e-9 * exp(-12.17 / temp) + 9.793e-9 * exp(-73.8 / temp) + 1.634e-6 * exp(-15230 / temp)); // dielectronic recombination - Gong 2017 Table 1 Eq 17
     MyFloat k_gr = alpha_recomb_grain(i, temp, x_elec, shieldfac, "C+");
     MyFloat k_cplus_H2 = 2.31e-13 * pow(temp, -1.3) * exp(-23 / temp);
-    MyFloat nHcgs = HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS;
+    MyFloat nHcgs = nH_CGS(i);
     MyFloat ne = nHcgs * x_elec;
     MyFloat nH2 = 0.5 * nHcgs * SphP[i].MolecularMassFraction;
     MyFloat result = ionization_rate / (ionization_rate + k_gr * nHcgs + (k_rr + k_dr) * ne + k_cplus_H2 * nH2);
@@ -120,9 +120,28 @@ MyFloat f_CO(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac, MyFloat nHp
     MyFloat xi_cr16 = Get_CosmicRayIonizationRate_cgs(i) / 1e-16, Zd = P[i].Metallicity[0] / All.SolarAbundances[0];
     MyFloat G0 = get_FUV_G0(i, shieldfac, 0);
     MyFloat n_COcrit = pow(4e3 * Zd / (xi_cr16 * xi_cr16), cbrt(G0)) * (50 * xi_cr16 / pow(Zd, 1.4));
-    MyFloat nHcgs = SphP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS * HYDROGEN_MASSFRAC / PROTONMASS_CGS;
+    MyFloat nHcgs = nH_CGS(i);
     MyFloat f_CO = 0.5 * SphP[i].MolecularMassFraction * (1 - DMAX(f_Cplus(i, temp, x_elec, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
     return f_CO;
 }
 
+/* Contribution of C+ to electron abundance */
+MyFloat return_electron_fraction_from_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac){
+    MyFloat x_Cplus = P[i].Metallicity[2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(i, temp, x_elec, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
+    return x_Cplus;
+}
+
+/* Contribution of O+ to electrons - essentially always negligible in ISM conditions but included for completeness */
+MyFloat return_electron_fraction_from_Oplus(int i, MyFloat nHp){
+    MyFloat x_Oplus = P[i].Metallicity[4]/All.SolarAbundances[4] * 3.2e-4 * f_Oplus(nHp); // Assumes gas-phase O abundance 3.2e-4 (Savage & Sembach 1996)
+    return x_Oplus;
+}
+
+/* Contribution of molecular ions to electron abundance */
+MyFloat return_electron_fraction_from_molecular_ions(int i, MyFloat temp){
+    MyFloat zeta_cr = Get_CosmicRayIonizationRate_cgs(i);
+    MyFloat beta_recomb = 3e-6 / sqrt(DMAX(All.MinGasTemp, temp)); // Fromang, Terquem & Balbus 2002 eq. 9
+    MyFloat xe= sqrt(zeta_cr / (beta_recomb * DMAX(1e2, nH_CGS(i))));
+    return sqrt(zeta_cr / (beta_recomb * DMAX(1e2, nH_CGS(i)))); // Armitage 2010 eq. 24
+}
 #endif

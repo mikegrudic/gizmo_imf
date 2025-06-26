@@ -689,7 +689,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define RT_USE_TREECOL_FOR_NH 6 
 #endif
 #ifdef COOLING
-#define SIMPLE_CO_CHEMISTRY
+#define SIMPLE_STEADYSTATE_CHEMISTRY
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define EOS_PRECOMPUTE
@@ -1461,6 +1461,8 @@ typedef unsigned long long peano1D;
 #else
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
+
+#define nH_CGS(i) HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS  
 
 #define  MAX_REAL_NUMBER  1e56
 #define  MIN_REAL_NUMBER  1e-56
