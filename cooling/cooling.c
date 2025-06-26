@@ -870,7 +870,8 @@ double find_abundances_and_rates(double logT, double rho, int target, double shi
 #ifdef COOL_LOW_TEMPERATURES
 	    double temp = pow(10.,logT);
         n_elec += return_electron_fraction_from_heavy_ions(target, temp, rho, n_elec);
-#ifdef SIMPLE_STEADYSTATE_CHEMISTRY        
+#ifdef SIMPLE_STEADYSTATE_CHEMISTRY
+        n_elec += return_electron_fraction_from_alkali(target, temp);
 	    n_elec += return_electron_fraction_from_Cplus(target, temp, neold, shieldfac);        
         n_elec += return_electron_fraction_from_Oplus(target, nHp);
 	    n_elec += return_electron_fraction_from_molecular_ions(target, temp);

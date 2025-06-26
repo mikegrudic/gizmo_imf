@@ -144,4 +144,24 @@ MyFloat return_electron_fraction_from_molecular_ions(int i, MyFloat temp){
     MyFloat xe= sqrt(zeta_cr / (beta_recomb * DMAX(1e2, nH_CGS(i))));
     return sqrt(zeta_cr / (beta_recomb * DMAX(1e2, nH_CGS(i)))); // Armitage 2010 eq. 24
 }
+
+
+/* 
+Contribution of collisionally-dissociated alkali ions to electron abundance
+
+Uses fit to Saha equation solution from Balbus & Hawley 2000, capped at abundance of K.
+
+This is only accurate for low ionizations, with an attempt to smoothly interpolate to the fully-ionized limit.
+To do this properly, solve the Saha equation as in e.g. Wurster arxiv:1608.00983 section 2.2
+ */
+MyFloat return_electron_fraction_from_alkali(int i, MyFloat temp){
+    if(temp<100){
+        return 0.; // negligible below critical temperature
+    }
+    MyFloat x_K =  1e-7 * P[i].Metallicity[0]/All.SolarAbundances[0];
+    MyFloat xe = 6.47e-13 * sqrt(x_K/1e-7) * sqrt(sqrt(temp*temp*temp/1e9))  * sqrt(2.4e15 / nH_CGS(i)) * exp(-25188/temp)/1.15e-11; // low-ionization approximation
+    xe = 1./(1/x_K + 1/xe); // smooth interpolant to limit to x_K
+    return xe;
+}
+
 #endif

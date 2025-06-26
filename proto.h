@@ -828,6 +828,7 @@ double return_electron_fraction_from_heavy_ions(int target, double temperature, 
 MyFloat return_electron_fraction_from_Cplus(int target, MyFloat temp, MyFloat x_elec, MyFloat shieldfac);
 MyFloat return_electron_fraction_from_Oplus(int target, MyFloat nHp);
 MyFloat return_electron_fraction_from_molecular_ions(int target, MyFloat temp);
+MyFloat return_electron_fraction_from_alkali(int i, MyFloat temp);
 MyFloat get_FUV_G0(int i, MyFloat shieldfac, int mode);
 MyFloat f_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac); 
 MyFloat f_Oplus(MyFloat nHp);
