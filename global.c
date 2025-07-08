@@ -168,6 +168,7 @@ int is_particle_a_special_zoom_target(int i)
 /* timestep dilation factor for computing quantities in zoom-in runs with variable extreme dynamic range */
 double return_timestep_dilation_factor(int i, int mode)
 {
+    if(All.Time <= All.TimeBegin) {return 1;}
 #ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
     if(i < 0) {return 1;}
     /* now specify some dilation factor a(r) or otherwise */
