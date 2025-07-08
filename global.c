@@ -196,6 +196,7 @@ double return_timestep_dilation_factor(int i, int mode)
         if(r < rmin) {rmin = r;}
     }
     r = rmin;
+    if(r < 1.e-10 || isnan(r) || isfinite(r)==0) {r = 1.e-10;}
     a = 1. + 1. / (1./amax + pow(r / r_amax, index));
     return 1. / a;
 #endif

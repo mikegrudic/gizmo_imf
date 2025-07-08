@@ -110,7 +110,7 @@ void find_timesteps(void)
         ti_step /= TIMESTEP_DILATION_FACTOR(i,0);
         
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-        if(is_particle_a_special_zoom_target(i)) {while(ti_step > ti_min_glob) {ti_step >>= 1;}} // set this per the above loop to minimum threshold relative to previous steps
+        if(ti_min_glob > 0) {if(is_particle_a_special_zoom_target(i)) {while(ti_step > ti_min_glob) {ti_step >>= 1;}}} // set this per the above loop to minimum threshold relative to previous steps
 #endif
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
@@ -966,7 +966,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif
-        if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0)
+        if(BPP(p).BH_Mdot > 0 && BPP(p).BH_Mass > 0 && All.Time > All.TimeBegin)
         {
 #if (defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
             /* really want prefactor to be ratio of median gas mass to bh mass */
@@ -1013,7 +1013,7 @@ integertime get_timestep(int p,		/*!< particle index */
             vsig += P[p].MaxFeedbackVel;
 #endif                        
             double dt_cour_sink = All.CourantFac * (L_particle*All.cf_atime) / vsig;
-            if(dt > dt_cour_sink && dt_cour_sink > 0) {dt = 1.01 * dt_cour_sink;}
+            if(dt > dt_cour_sink && dt_cour_sink > 0 && isfinite(dt_cour_sink)) {dt = 1.01 * dt_cour_sink;}
         }
         if(P[p].StellarAge == All.Time)
         {   // want a brand new sink to be on the lowest occupied timebin
