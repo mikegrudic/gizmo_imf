@@ -880,6 +880,36 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
+        case IO_AMBIPOLAR:   /* Ambipolar resistivity */
+#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_AmbiPolarDiffusion_Coeff;
+                    n++;
+                }
+            break;
+#endif            
+        case IO_OHMIC:   /* Ohmic resistivity */
+#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_OhmicResistivity_Coeff;
+                    n++;
+                }
+            break;
+#endif
+        case IO_HALL:   /* Hall resistivity */
+#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+            for(n = 0; n < pc; pindex++)
+                if(P[pindex].Type == type)
+                {
+                    *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_HallEffect_Coeff;
+                    n++;
+                }
+            break;
+#endif
         case IO_VDIV:		/* Divergence of Vel */
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1896,6 +1926,9 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_ACCEL:
         case IO_HYDROACCEL:
         case IO_BFLD:
+        case IO_AMBIPOLAR:
+        case IO_HALL:
+        case IO_OHMIC:
         case IO_INIB:
         case IO_GRADPHI:
         case IO_GRADRHO:
@@ -2235,6 +2268,9 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ACCEL:
         case IO_HYDROACCEL:
         case IO_BFLD:
+        case IO_AMBIPOLAR:
+        case IO_HALL:
+        case IO_OHMIC:
         case IO_GRADPHI:
         case IO_GRADRHO:
         case IO_RAD_ACCEL:
@@ -2549,6 +2585,9 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_SFR:
         case IO_DTENTR:
         case IO_BFLD:
+        case IO_AMBIPOLAR:
+        case IO_HALL:
+        case IO_OHMIC:        
         case IO_VDIV:
         case IO_VORT:
         case IO_COSMICRAY_ENERGY:
@@ -2959,6 +2998,22 @@ int blockpresent(enum iofields blocknr)
             return 1;
 #endif
             break;
+
+        case IO_AMBIPOLAR:
+#if defined(MHD_NON_IDEAL)
+            return 1;
+#endif
+            break;
+        case IO_HALL:
+#if defined(MHD_NON_IDEAL)
+            return 1;
+#endif
+            break;        
+        case IO_OHMIC:            
+#if defined(MHD_NON_IDEAL)
+            return 1;
+#endif
+            break;        
             
         case IO_DIVB:
 #if defined(MAGNETIC) && defined(OUTPUT_BFIELD_DIVCLEAN_INFO)
@@ -3490,6 +3545,15 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_BFLD:
             strncpy(label, "BFLD", 4);
             break;
+        case IO_AMBIPOLAR:
+            strncpy(label, "AMBI", 4);
+            break;
+        case IO_OHMIC:
+            strncpy(label, "OHM ", 4);
+            break;
+        case IO_HALL:
+            strncpy(label, "HALL", 4);
+            break;            
         case IO_VDIV:
             strncpy(label, "VDIV", 4);
             break;
@@ -3921,6 +3985,15 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_BFLD:
             strcpy(buf, "MagneticField");
             break;
+        case IO_AMBIPOLAR:
+            strcpy(buf, "AmbipolarResistivity");
+            break;            
+        case IO_OHMIC:
+            strcpy(buf, "OhmicResistivity");
+            break;            
+        case IO_HALL:
+            strcpy(buf, "HallResistivity");
+            break;                        
         case IO_VDIV:
             strcpy(buf, "VelocityDivergence");
             break;
