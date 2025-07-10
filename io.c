@@ -881,35 +881,38 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AMBIPOLAR:   /* Ambipolar resistivity */
-#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_AmbiPolarDiffusion_Coeff;
                     n++;
                 }
+#endif            	    
             break;
-#endif            
+
         case IO_OHMIC:   /* Ohmic resistivity */
-#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_OhmicResistivity_Coeff;
                     n++;
                 }
+#endif	    
             break;
-#endif
+
         case IO_HALL:   /* Hall resistivity */
-#if defined(MHD_NON_IDEAL) && defined(IO_MHD_RESISTIVITY)
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
                     *fp++ = (MyOutputFloat) SphP[pindex].Eta_MHD_HallEffect_Coeff;
                     n++;
                 }
+#endif	    
             break;
-#endif
+
         case IO_VDIV:		/* Divergence of Vel */
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -2268,9 +2271,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_ACCEL:
         case IO_HYDROACCEL:
         case IO_BFLD:
-        case IO_AMBIPOLAR:
-        case IO_HALL:
-        case IO_OHMIC:
         case IO_GRADPHI:
         case IO_GRADRHO:
         case IO_RAD_ACCEL:
@@ -2316,6 +2316,9 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_TSTP:
         case IO_VDIV:
         case IO_DIVB:
+	case IO_AMBIPOLAR:
+        case IO_HALL:
+        case IO_OHMIC:
         case IO_ABVC:
         case IO_AMDC:
         case IO_PHI:
@@ -3000,17 +3003,17 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AMBIPOLAR:
-#if defined(MHD_NON_IDEAL)
-            return 1;
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
+	    return 1;
 #endif
             break;
         case IO_HALL:
-#if defined(MHD_NON_IDEAL)
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
             return 1;
 #endif
             break;        
         case IO_OHMIC:            
-#if defined(MHD_NON_IDEAL)
+#if defined(MHD_NON_IDEAL) && defined(OUTPUT_MHD_RESISTIVITY)
             return 1;
 #endif
             break;        
