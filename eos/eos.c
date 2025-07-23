@@ -121,21 +121,19 @@ void set_eos_pressure(int i)
     if (nH_cgs < 6e10) {press = 6.60677e-16 * nH_cgs;} // isothermal below 6e10 cm^-3 (adiabatic gamma=5/3 for soundspeed, etc, but this assumes effective eos from cooling, etc
     else press = 3.964062e-5 * pow(nH_cgs/6e10,1.4);
 #endif
+#endif
+    /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
+        press /= UNIT_PRESSURE_IN_CGS;
+#endif
 #ifdef EOS_MHD_COLLAPSE_TEST
     const double M0 = 1./UNIT_MASS_IN_SOLAR;
-    const double R0 = 4e16 / UNIT_LENGTH_IN_CM;
+    const double R0 = 4e16 / UNIT_LENGTH_IN_CGS;
     const double rho0 = 3*M0 / (4*M_PI * R0*R0*R0);
     const double cs0 = 2e4 / UNIT_VEL_IN_CGS;
     const double rho_crit = 1e-13 / UNIT_DENSITY_IN_CGS;
     const double gamma_adiabatic = 7./5;
-    if(SphP[i].Density < rho0){return 30 * cs0*cs0;}
-    press = cs0*cs0 * (1 + pow(SphP[i].Density / rho_crit, gamma_adiabatic - 1));
-    return press;
-#endif
-#endif
-    press /= UNIT_PRESSURE_IN_CGS;
-    /* in this case the EOS is modeling cooling, etc, so -does not- allow shocks or deviations from adiabat, so we reset the internal energy every time this is checked */
-    SphP[i].InternalEnergy = SphP[i].InternalEnergyPred = press / (rho * (gamma_eos_index-1.));
+    press = cs0*cs0 * SphP[i].Density * (1 + pow(SphP[i].Density / rho_crit, gamma_adiabatic - 1));
+    press = DMAX(press, cs0*cs0*rho0);
 #endif
     
 #ifdef COSMIC_RAY_FLUID /* compute the CR contribution to the total pressure and effective soundspeed here */
@@ -187,6 +185,7 @@ void set_eos_pressure(int i)
 #endif
 
     /* Finally, set the pressure as advertised */
+    if(press==0){printf("PRESSURE IS 0!\n"); endrun(42);}
     SphP[i].Pressure = press;
 }
 
@@ -197,7 +196,7 @@ double gamma_eos(int i)
 {
 #ifdef EOS_MHD_COLLAPSE_TEST
     const double M0 = 1./UNIT_MASS_IN_SOLAR;
-    const double R0 = 4e16 / UNIT_LENGTH_IN_CM;
+    const double R0 = 4e16 / UNIT_LENGTH_IN_CGS;
     const double rho0 = 3*M0 / (4*M_PI * R0*R0*R0);
     const double cs0 = 2e4 / UNIT_VEL_IN_CGS;
     const double rho_crit = 1e-13 / UNIT_DENSITY_IN_CGS;
