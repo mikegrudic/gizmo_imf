@@ -642,9 +642,9 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #ifdef GRAIN_FLUID
 #define BH_GRAVCAPTURE_NONGAS
 #endif
-#ifdef MAGNETIC
-#define MHD_CONSTRAINED_GRADIENT 1
-#endif
+//#ifdef MAGNETIC
+//#define MHD_CONSTRAINED_GRADIENT 1
+//#endif
 #if ( defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_RT_HEATING) || defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_FB_RAD) || defined(SINGLE_STAR_FB_LOCAL_RP))
 #define SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION 2 //we are using the protostellar evolution model from ORION
 #endif

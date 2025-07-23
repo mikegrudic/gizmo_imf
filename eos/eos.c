@@ -131,7 +131,7 @@ void set_eos_pressure(int i)
     const double rho0 = 3*M0 / (4*M_PI * R0*R0*R0);
     const double cs0 = 2e4 / UNIT_VEL_IN_CGS;
     const double rho_crit = 1e-13 / UNIT_DENSITY_IN_CGS;
-    const double gamma_adiabatic = 7./5;
+    const double gamma_adiabatic = 5./3;
     press = cs0*cs0 * SphP[i].Density * (1 + pow(SphP[i].Density / rho_crit, gamma_adiabatic - 1));
     press = DMAX(press, cs0*cs0*rho0);
 #endif
@@ -200,7 +200,7 @@ double gamma_eos(int i)
     const double rho0 = 3*M0 / (4*M_PI * R0*R0*R0);
     const double cs0 = 2e4 / UNIT_VEL_IN_CGS;
     const double rho_crit = 1e-13 / UNIT_DENSITY_IN_CGS;
-    const double gamma_adiabatic = 7./5;
+    const double gamma_adiabatic = 5./3;
     if(SphP[i].Density < rho0){return 1.;}
     double gamma =  (1 + gamma_adiabatic * pow(SphP[i].Density / rho_crit, gamma_adiabatic - 1)) / (1 + pow(SphP[i].Density / rho_crit, gamma_adiabatic - 1));
     gamma = DMAX(gamma, 1.000001);
