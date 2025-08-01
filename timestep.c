@@ -31,7 +31,7 @@ void find_timesteps(void)
     CPU_Step[CPU_MISC] += measure_time();
 
     int i, bin, binold, prev, next;
-    integertime ti_step, ti_step_old, ti_min;
+    integertime ti_step, ti_step_old, ti_min, ti_stepmax, ti_max;
     double aphys;
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     int special_particle_active_with_this_index[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM], j_specialpartical_counter=0;
@@ -74,6 +74,7 @@ void find_timesteps(void)
 #endif
 
 #if defined(FORCE_EQUAL_TIMESTEPS) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
+    ti_max = 0;
     for(i = FirstActiveParticle, ti_min = TIMEBASE; i >= 0; i = NextActiveParticle[i])
     {
 #if defined(FORCE_EQUAL_TIMESTEPS)
@@ -82,19 +83,24 @@ void find_timesteps(void)
         if(is_particle_a_special_zoom_target(i)==0) {ti_step = P[i].dt_step;} else {ti_step = TIMEBASE;} // set the source particle to have a timestep no more than 4 bins larger than the previous smallest active particle/cell bin timestep
 #endif
         if(ti_step < ti_min) {ti_min = ti_step;}
+        if(ti_step > ti_max) {ti_max = ti_step;}
     }
     if(ti_min > (dt_displacement / All.Timebase_interval)) {ti_min = (dt_displacement / All.Timebase_interval);}
 
     ti_step = TIMEBASE;
     while(ti_step > ti_min) {ti_step >>= 1;}
-    integertime ti_min_glob;
+    ti_stepmax = TIMEBASE;
+    while(ti_stepmax > ti_max) {ti_stepmax >>= 1;}
+    integertime ti_min_glob, ti_max_glob;
     MPI_Allreduce(&ti_step, &ti_min_glob, 1, MPI_TYPE_TIME, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(&ti_stepmax, &ti_max_glob, 1, MPI_TYPE_TIME, MPI_MAX, MPI_COMM_WORLD);
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #if defined(USE_TIMESTEP_DILATION_FOR_ZOOMS)
     ti_min_glob <<= 2; // 2^N times min timestep - shift to N bins higher
 #else
     ti_min_glob <<= 4; // 2^N times min timestep - shift to N bins higher
 #endif
+    if(ti_min_glob > ti_max_glob) {ti_min_glob = ti_max_glob;}
 #endif
 #endif
 
@@ -107,10 +113,16 @@ void find_timesteps(void)
 #else
         ti_step = get_timestep(i, &aphys, 0);
 #endif
-        ti_step /= TIMESTEP_DILATION_FACTOR(i,0);
+        ti_step = (integertime)(((double)ti_step) / TIMESTEP_DILATION_FACTOR(i,0));
+        //ti_step /= TIMESTEP_DILATION_FACTOR(i,0);
         
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-        if(ti_min_glob > 0) {if(is_particle_a_special_zoom_target(i)) {while(ti_step > ti_min_glob) {ti_step >>= 1;}}} // set this per the above loop to minimum threshold relative to previous steps
+        if(ti_step < 0) {ti_step = ti_min_glob;}
+        if(is_particle_a_special_zoom_target(i)) {
+            if(ti_step > ti_min_glob) {ti_step = ti_min_glob;}
+            if(ti_step > ti_max_glob) {ti_step = ti_max_glob;}
+        }
+        //if(ti_min_glob > 0) {if(is_particle_a_special_zoom_target(i)) {while(ti_step > ti_min_glob) {ti_step >>= 1;}}} // set this per the above loop to minimum threshold relative to previous steps
 #endif
         /* make it a power 2 subdivision */
         ti_min = TIMEBASE;
@@ -1351,7 +1363,7 @@ void process_wake_ups(void)
     }
 
     sumup_large_ints(1, &n, &ntot);
-    if(ThisTask == 0) {if(ntot > 0) {printf("%d%09d particles woken up.\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}}
+    if(ThisTask == 0) {if(ntot > 0) {printf("%d%09d particles activated (in wakeup check).\n", (int) (ntot / 1000000000), (int) (ntot % 1000000000));}}
     NeedToWakeupParticles = 0;
     NeedToWakeupParticles_local = 0;
 }
