@@ -693,7 +693,7 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     if(eta_ohmic > eta_max_corr) {double fcorr=eta_max_corr/eta_ohmic; eta_ohmic*=fcorr; eta_hall*=fcorr; eta_ad*=fcorr;} // rescale so relative magnitude is preserved
 #endif
     double etamag = fabs(eta_ohmic) + fabs(eta_hall) + fabs(eta_ad); // maximum (total) magnitude of the non-ideal terms
-    double etamax = 1.e21 * units_cgs_to_code; // cap coefficients -- this is problem specific but for disks and related problems, can safely assume this cap
+    double etamax = 1.e24 * units_cgs_to_code; // cap coefficients -- this is problem specific but for disks and related problems, can safely assume this cap
     double etacor = 1.; if(etamag > etamax) {etacor = etamax/etamag;} // suppression factor
     eta_ohmic *= etacor; eta_hall *= etacor; eta_ad *= etacor; // applied
 

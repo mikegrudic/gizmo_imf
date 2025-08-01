@@ -630,7 +630,6 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 //#define DEVELOPER_MODE // no longer needed for parameter-setting, since these will be set automatically in the current default-setting with parameters desired given flags set
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) && !defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
 #define IO_SUPPRESS_TIMEBIN_STDOUT 16 // only prints outputs to log file if the highest active timebin index is within n of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
-#define IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY 6 //keeps an extra set of backup files that are IO_REDUNDANT_BACKUP_RESTARTFILE_FREQUENCY number of restarts old (allows for soft restarts from an older position)
 #endif
 #define OUTPUT_SINK_ACCRETION_HIST // save accretion histories
 #define OUTPUT_SINK_FORMATION_PROPS // save at-formation properties of sink particles
@@ -686,10 +685,11 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 // Below gives a better approximation for column density than the usual scale-length estimator, but is overkill for typical 1e-3msun-resolving simulations that only marginally resolve the opacity limit. Enable for high (<1e-5msun) resolution sims
-#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED))
+#if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED) && !defined(NOGRAVITY))
 #define RT_USE_TREECOL_FOR_NH 6 
 #endif
 #ifdef COOLING
+#define SIMPLE_STEADYSTATE_CHEMISTRY
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define EOS_PRECOMPUTE
@@ -1468,6 +1468,8 @@ typedef unsigned long long peano1D;
 #define  HYDROGEN_MASSFRAC 1.0  /*!< mass fraction of hydrogen, relevant only for radiative cooling */
 #endif
 
+#define nH_CGS(i) HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS * SphP[i].Density * All.cf_a3inv / PROTONMASS_CGS  
+
 #define  MAX_REAL_NUMBER  1e56
 #define  MIN_REAL_NUMBER  1e-56
 
@@ -1495,6 +1497,8 @@ typedef unsigned long long peano1D;
 #define  SECONDS_PER_YEAR   (3.155e7)
 #define  HUBBLE_H100_CGS    (3.2407789e-18)	/* in h/sec */
 #define  ELECTRONVOLT_IN_ERGS (1.60217733e-12)
+#define HABING_FLUX_CGS      (1.6e-3)
+#define DRAINE_FLUX_CGS      (1.7 * HABING_FLUX_CGS)
 
 /* and a bunch of useful unit-conversion macros pre-bundled here, to help keep the 'h' terms and other correct */
 #define UNIT_MASS_IN_CGS        ((All.UnitMass_in_g/All.HubbleParam))
@@ -1521,7 +1525,9 @@ typedef unsigned long long peano1D;
 #define UNIT_PRESSURE_IN_EV     (((UNIT_PRESSURE_IN_CGS)/ELECTRONVOLT_IN_ERGS))
 #define UNIT_VEL_IN_KMS         (((UNIT_VEL_IN_CGS)/1.e5))
 #define UNIT_LUM_IN_SOLAR       (((UNIT_LUM_IN_CGS)/SOLAR_LUM_CGS))
-#define UNIT_FLUX_IN_HABING     (((UNIT_FLUX_IN_CGS)/1.6e-3))
+#define UNIT_FLUX_IN_HABING     (((UNIT_FLUX_IN_CGS)/HABING_FLUX_CGS))
+#define UNIT_EGY_DENSITY_IN_HABING ((UNIT_PRESSURE_IN_CGS)/(HABING_FLUX_CGS / C_LIGHT_CGS))
+
 
 #define U_TO_TEMP_UNITS         ((PROTONMASS_CGS/BOLTZMANN_CGS)*((UNIT_ENERGY_IN_CGS)/(UNIT_MASS_IN_CGS))) /* units to convert specific internal energy to temperature. needs to be multiplied by dimensionless factor=mean_molec_weight_in_amu*(gamma_eos-1) */
 #ifndef C_LIGHT_CODE
@@ -3978,6 +3984,9 @@ enum iofields
   IO_DTENTR,
   IO_TSTP,
   IO_BFLD,
+  IO_AMBIPOLAR,
+  IO_OHMIC,
+  IO_HALL,
   IO_IMF,
   IO_COSMICRAY_ENERGY,
   IO_COSMICRAY_KAPPA,
