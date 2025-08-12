@@ -1280,6 +1280,11 @@ static MPI_Datatype MPI_TYPE_TIME = MPI_INT;
 #endif
 #define GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) ((GET_PARTICLE_INTEGERTIME(i) * UNIT_INTEGERTIME_IN_PHYSICAL(i)))
 
+#ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
+#define GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i) DMAX(GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i), All.Dt_Min_Between_FBCalc_Gyr/UNIT_TIME_IN_GYR)
+#else
+#define GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i) GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)
+#endif
 
 #ifdef AGS_HSML_CALCULATION_IS_ACTIVE
 #define OUTPUT_SOFTENING  /*! output softening to snapshots */
@@ -2636,12 +2641,17 @@ extern struct global_data_all_processes
 
 #endif // GALSF
 
+#ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
+    double Dt_Since_LastFBCalc_Gyr; // time since last feedback event occurred, needs to be set
+    double Dt_Min_Between_FBCalc_Gyr; // minimum timestep to enforce between feedback calculations, for optimization
+#endif
+    
 #if (defined(GALSF) && defined(METALS)) || defined(COOL_METAL_LINES_BY_SPECIES) || defined(GALSF_FB_FIRE_RT_LOCALRP) || defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(GALSF_FB_THERMAL)
 #define INIT_STELLAR_METALS_AGES_DEFINED // convenience flag for later to know these variables exist
     double InitMetallicityinSolar;
     double InitStellarAgeinGyr;
 #endif
-
+    
 #if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
     double BAL_f_accretion;
     double BAL_v_outflow;
