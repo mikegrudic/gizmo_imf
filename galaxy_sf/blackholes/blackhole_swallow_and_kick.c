@@ -866,6 +866,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         else {n_particles_split = n_particles_split - (n_particles_split % SINGLE_STAR_FB_SNE_N_EJECTA);} // we only eject full shells, in practice this will be one shell at a time
     }}
 #endif
+#endif
     if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
