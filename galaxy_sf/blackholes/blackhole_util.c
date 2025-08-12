@@ -174,7 +174,7 @@ void blackhole_properties_loop(void) /* Note, normalize_temp_info_struct is now 
     for(i=0; i<N_active_loc_BHs; i++)
     {
         n = BlackholeTempInfo[i].index;
-        dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(n);
+        dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
         dt = P[n].dt_since_last_gas_search;
 #endif

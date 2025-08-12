@@ -162,6 +162,10 @@ void init(void)
         All.Mass_Accreted_By_SpecialSMBHParticle[i]=0; All.Mass_of_SpecialSMBHParticle[i]=0;
     }
 #endif
+    
+#ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
+    if(RestartFlag != 1) {All.Dt_Since_LastFBCalc_Gyr=0; All.Dt_Min_Between_FBCalc_Gyr=((double)(GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW))/1.e9;}
+#endif
 
 #ifdef BOX_PERIODIC
     if(All.ComovingIntegrationOn) {check_omega();}
