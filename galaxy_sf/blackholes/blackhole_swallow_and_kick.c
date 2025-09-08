@@ -228,6 +228,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 double dpos[3]={0},dvel[3]={0}; for(k=0;k<3;k++) {dpos[k]=P[j].Pos[k]-local.Pos[k]; dvel[k]=Vel_j[k]-local.Vel[k];}
                 NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); /*  find the closest image in the given box size  */
                 NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
+                double r2=0; for(k=0;k<3;k++) {r2+=dpos[k]*dpos[k];}
 
                 
 #if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
@@ -265,7 +266,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 
                 
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
-                if(P[j].SwallowID == local.ID && Mass_j > 0)
+                if(P[j].SwallowID == local.ID && Mass_j > 0 && r2 > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
                     f_accreted = 1; /* default to accreting entire particle */
 #ifdef BH_WIND_KICK
@@ -295,7 +296,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 		            if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
 			        double photon_energy = 0; int kfreq;
 			        for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
-				out.accreted_photon_energy += photon_energy;
+                    out.accreted_photon_energy += photon_energy;
 		            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
