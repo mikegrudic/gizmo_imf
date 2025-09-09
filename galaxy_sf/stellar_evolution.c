@@ -931,7 +931,11 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
-                if(P[n].BH_Mass <= 1.4/UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // should collapse to WD, no explosion
+                double n_stars_within_star_particle = 1; // allow for compact binary representations that might evolve differently
+#if defined(BH_COUNTPROGS) && defined(SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES)
+                n_stars_within_star_particle = (double)P[i].BH_CountProgs; // this was our tracker of binary consolidation events
+#endif
+                if(P[n].BH_Mass/n_stars_within_star_particle <= 1.4/UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // should collapse to WD, no explosion
 #ifdef SINGLE_STAR_RELICS
                 // if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6 -- handled in SNe routines now, at -end- of SNe
                 if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH), skipping SNe entirely
