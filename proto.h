@@ -678,6 +678,7 @@ double ps_radius_MS_in_solar(double m);
 double ps_lum_Hayashi_BB(double m, double r);
 #endif
 double stellar_lifetime_in_Gyr(int n);
+double single_star_relic_SN_mass(int n);
 #if defined(SINGLE_STAR_FB_WINDS)
 double single_star_wind_mdot(int n, int set_mode);
 double single_star_wind_velocity(int n);

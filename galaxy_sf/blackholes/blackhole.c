@@ -851,10 +851,12 @@ void blackhole_final_operations(void)
             dm_wind = DMIN(SN_mdot*dt, BPP(n).BH_Mass); // We will spawn particles to model the SN ejecta, but not more than what we can handle at the same time, these particles will have the same mass as gas particles, not like wind particles
             printf("Adding SN ejecta of mass %g from star %llu at time %g, unspawned mass at %g\n", dm_wind, (unsigned long long) P[n].ID, All.Time, (BPP(n).unspawned_wind_mass+dm_wind));
             BPP(n).BH_Mass -= dm_wind; // remove amount of mass lost via winds
-            if (BPP(n).BH_Mass < 0.5*m_ejecta_unit) { // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
-                dm_wind += BPP(n).BH_Mass; BPP(n).BH_Mass = 0; // add leftover mass to be spawned and zero-out mass
+            double m_relic = single_star_relic_SN_mass(n); // get the relic mass that should be left behind after the SNe
+            if(BPP(n).BH_Mass < m_relic + 0.5*m_ejecta_unit) { // less than half a shell mass left in the star: instead of spawning the last shell with very low mass particles we will make the one before slightly more massive
+                dm_wind += BPP(n).BH_Mass; // add leftover mass to be spawned and zero-out mass
+                BPP(n).BH_Mass = DMAX(0, m_relic); // zero out mass if nothing is left-over
             }
-            if (BPP(n).BH_Mass == 0){
+            if(BPP(n).BH_Mass <= m_relic) {
                 TreeReconstructFlag = 1; //rebuild the tree after the SN finished
                 Max_Unspawned_MassUnits_fromSink = DMAX(2, Max_Unspawned_MassUnits_fromSink); // a high enough number to ensure that we do spawn winds
             }

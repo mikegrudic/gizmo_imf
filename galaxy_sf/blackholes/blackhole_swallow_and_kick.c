@@ -856,15 +856,18 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     int k=0; long j;
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6){
-        n_particles_split = (int) floor( total_mass_in_winds / (P[i].Sink_Formation_Mass) );
-        if(P[i].BH_Mass == 0) { // last batch to be spawned
-            n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
-            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
-            P[i].Mass = 0; // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
+    if(P[i].Type==5) {
+        if(P[i].ProtoStellarStage == 6) {
+            n_particles_split = (int) floor( total_mass_in_winds / (P[i].Sink_Formation_Mass) );
+            double m_relic = single_star_relic_SN_mass(i); // get the intended relic mass //
+            if(P[i].BH_Mass <= m_relic) { // last batch to be spawned
+                n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
+                printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
+                P[i].Mass = DMAX(0, m_relic); // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
-            P[i].BH_Mass_AlphaDisk = 0; // just to be safe
+                P[i].BH_Mass_AlphaDisk = 0; // just to be safe
 #endif
+                if(BPP(i).BH_Mass > 0 && BPP(i).BH_Mass > P[i].Sink_Formation_Mass) {P[i].ProtoStellarStage == 7;} // this is a relic now, move it to the next stage
         }
 #if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6)
