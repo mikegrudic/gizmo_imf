@@ -931,6 +931,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
+                if(P[n].BH_Mass <= 1.4/UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // should collapse to WD, no explosion
 #ifdef SINGLE_STAR_RELICS
                 if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6
                 if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)

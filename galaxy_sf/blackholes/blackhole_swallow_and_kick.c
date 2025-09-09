@@ -356,6 +356,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                             TimeBin_BH_Medd[bin] -= BPP(j).BH_Mdot / BPP(j).BH_Mass;
                         }
                         Mass_j = 0;
+                        #pragma omp atomic write
+                        BPP(j).BH_Mass_AlphaDisk = 0; // make sure the mass is -actually- zero'd here
+                        #pragma omp atomic write
+                        BPP(j).BH_Mdot = 0; // make sure the mass is -actually- zero'd here
+                        #pragma omp atomic write
+                        BPP(j).BH_Mass = 0; // make sure the mass is -actually- zero'd here
 #ifdef GALSF
                         out.Accreted_Age = P[j].StellarAge;
 #endif
@@ -605,7 +611,7 @@ void spawn_bh_wind_feedback(void)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
             if(P[i].Type==5) {if((P[i].Mass <= 3.5*BPP(i).Sink_Formation_Mass) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-            if(P[i].Type==5) {if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;}} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
+            if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {sink_eligible_to_spawn=1;}} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif
 #endif
             if(sink_eligible_to_spawn)
@@ -781,10 +787,10 @@ double get_spawned_cell_launch_speed(int i)
     v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
-    if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
+    if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
-    if(P[i].ProtoStellarStage==6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
+    if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
 #endif
     return v_magnitude;
 }
@@ -1114,10 +1120,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
-        if(P[i].Type==5) {if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);}} // get abundances in wind
+        if(P[i].Type==5) {if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);}} // get abundances in wind
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
-        if(P[i].Type==5) {if(P[i].ProtoStellarStage==6) {double Msne; get_SNe_yields(yields,i,stellar_lifetime_in_Gyr(i),0,&Msne);}} // get sne yields
+        if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {double Msne; get_SNe_yields(yields,i,stellar_lifetime_in_Gyr(i),0,&Msne);}} // get sne yields
 #endif
         for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];}  // update metallicity of spawned cell modules
 #endif
