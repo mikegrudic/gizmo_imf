@@ -108,7 +108,7 @@ double get_drift_factor(integertime time0, integertime time1, int i, int mode)
     }
     else
     {
-        if(time0 == last_time0 && time1 == last_time1) {return 0;}
+        if(time0 == last_time0 && time1 == last_time1) {return last_value;}
         /* note: will only be called for cosmological integration */
         a1 = logTimeBegin + time0 * All.Timebase_interval;
         a2 = logTimeBegin + time1 * All.Timebase_interval;
@@ -162,7 +162,7 @@ double get_gravkick_factor(integertime time0, integertime time1, int i, int mode
     else
     {
         
-        if(time0 == last_time0 && time1 == last_time1) {return 0;}
+        if(time0 == last_time0 && time1 == last_time1) {return last_value;}
         
         /* note: will only be called for cosmological integration */
         
