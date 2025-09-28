@@ -868,7 +868,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
                 P[i].BH_Mass_AlphaDisk = 0; // just to be safe
 #endif
                 if(BPP(i).BH_Mass > 0 && BPP(i).BH_Mass > P[i].Sink_Formation_Mass) {P[i].ProtoStellarStage == 7;} // this is a relic now, move it to the next stage
-        }
+	    }
+	}
+    }
 #if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6)
     {
@@ -877,7 +879,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     }}
 #endif
 #endif
-    if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */
+    if((((int)BH_WIND_SPAWN) % 2) == 0) {if(( n_particles_split % 2 ) != 0) {n_particles_split -= 1;}} /* n_particles_split was not even. we'll wait to spawn this last particle, to keep an even number, rather than do it right now and break momentum conservation */	
     if( (n_particles_split == 0) || (n_particles_split < 1) ) {return 0;}
     int n0max = DMAX(20 , (int)(3.*(BH_WIND_SPAWN)+0.1));
 #if defined(SNE_NONSINK_SPAWN)
