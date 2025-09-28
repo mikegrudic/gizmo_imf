@@ -783,7 +783,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     if(m_solar > 0.012) // below this limit, negligible luminosity //
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;} else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
-          else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);} else {lum_sol = 32000. * m_solar;}
+        else if(m_solar < 53.9) {lum_sol = 1.5 * m_solar*m_solar*m_solar * sqrt(m_solar);} else {lum_sol = 32000. * m_solar;}
     }
     double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
     double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
@@ -803,7 +803,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     {
         BPP(n).ProtoStellarRadius_inSolar = R_main_sequence_ignition; BPP(n).ProtoStellarStage = 5; // using same notation for MS as SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1
     }
-
+    
 #elif (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     double fk = 1.; // fraction of kinetic energy accreta has when it arrives at the accretion shock, relative to freefall from infinity
     double f_acc = 1.; // fraction of accretion power that is radiated away (the rest is advected into the star)
@@ -842,10 +842,10 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 // Get properties for stellar evolution
                 lum_Hayashi = ps_lum_Hayashi_BB(mass, r); // blackbody radiation assuming the star follows the Hayashi track
                 lum_MS = ps_lum_MS(mass); // luminosity of main sequence star of m mass
-		lum_int = DMAX(lum_Hayashi, lum_MS); // luminosity from the stellar interior
-		lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
-		t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
-		t_acc = mass/(mdot + MIN_REAL_NUMBER);
+                lum_int = DMAX(lum_Hayashi, lum_MS); // luminosity from the stellar interior
+                lum_acc = f_acc*fk*All.G*mass*mdot/r; // accretion luminosity
+                t_KH = All.G*mass*mass/r/lum_int; // Kelvin-Helmholtz time
+                t_acc = mass/(mdot + MIN_REAL_NUMBER);
                 n_ad = ps_polytropic_index(stage, mdot, mass); // get polytropic index. Note: ORION does not seem to update this, but I think it is worthwhile as mdot can vary over time
                 ag = 3.0/(5.0-n_ad); //shorthand
                 rhoc = ps_rhoc(mass, n_ad, r); // central density
@@ -861,20 +861,20 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                     lum_D = lum_int + lum_acc + lum_I + (All.G*mass*mdot/r) * ( 1.-fk-0.5*ag*beta * (1.+dlogbetaperbetac_dlogm) ); // Eq B8 of Offner 2009
                     // Change in available deuterium mass
                     dm_D = dm_curr - dt_curr * (lum_D*UNIT_LUM_IN_SOLAR/15.) * (1e-5) / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR) ;
-                } else if(stage>2){ 
+                } else if(stage>2){
                     // burning all accreted D for stages above 2
-			lum_D = (15./UNIT_LUM_IN_SOLAR) * (mdot_m_solar_per_year/(1e-5));
-			dm_D = 0; // all new D is burned
-			mass_D = 0; // no D left in protostar
+                    lum_D = (15./UNIT_LUM_IN_SOLAR) * (mdot_m_solar_per_year/(1e-5));
+                    dm_D = 0; // all new D is burned
+                    mass_D = 0; // no D left in protostar
                 }
                 // Let's evolve the stellar radius
-//		double dlogr_dlogm = 2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm - 2*r/(ag*beta*All.G*mass*mdot) * (lum_int+lum_acc+lum_I-lum_D); // Nakano 2000 Eq (8); this gives the slope of the M vs. R diagram 
-//		rel_dr = dlogr_dlogm * dm_rel; // multiply by dlogm = dm/m to get dlogr
-		double rel_dr = (2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm) * dm_rel - 2*r*dt_curr/(ag*beta*All.G*mass*mass) * (lum_int+lum_acc+lum_I-lum_D);
-		r *= exp(rel_dr); // interpolates properly to large timestep, but subcycling should limit it
-		mass_D += dm_D;
+                //		double dlogr_dlogm = 2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm - 2*r/(ag*beta*All.G*mass*mdot) * (lum_int+lum_acc+lum_I-lum_D); // Nakano 2000 Eq (8); this gives the slope of the M vs. R diagram
+                //		rel_dr = dlogr_dlogm * dm_rel; // multiply by dlogm = dm/m to get dlogr
+                double rel_dr = (2 - 2/(ag*beta)*(1-fk) + dlogbeta_dlogm) * dm_rel - 2*r*dt_curr/(ag*beta*All.G*mass*mass) * (lum_int+lum_acc+lum_I-lum_D);
+                r *= exp(rel_dr); // interpolates properly to large timestep, but subcycling should limit it
+                mass_D += dm_D;
             }
-
+            
             // Update stellar properties
             BPP(n).ProtoStellarRadius_inSolar = r * UNIT_LENGTH_IN_SOLAR;
             BPP(n).Mass_D = mass_D;
@@ -910,7 +910,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
         else{ // the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
             BPP(n).Mass_D = BPP(n).BH_Mass; //no D burned so far
             if (m_solar >= 0.01){
-            stage_increase = 1; // particle qualifies to the "no burning stage"
+                stage_increase = 1; // particle qualifies to the "no burning stage"
             }
         }
         if(stage_increase) {
@@ -931,11 +931,16 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
                 BPP(n).ProtoStellarStage = 6; // time to explode
                 P[n].Mass_final = P[n].BH_Mass; // record the final mass the star had
-#ifdef SINGLE_STAR_RELICS
-                if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6
-                if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH)
+                double n_stars_within_star_particle = 1; // allow for compact binary representations that might evolve differently
+#if defined(BH_COUNTPROGS) && defined(SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES)
+                n_stars_within_star_particle = (double)P[i].BH_CountProgs; // this was our tracker of binary consolidation events
 #endif
-#if defined(BH_ALPHADISK_ACCRETION) && !defined(SINGLE_STAR_RELICS)
+                if(P[n].BH_Mass/n_stars_within_star_particle <= 1.4/UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // should collapse to WD, no explosion
+#ifdef SINGLE_STAR_RELICS
+                // if(P[n].BH_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].BH_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6 -- handled in SNe routines now, at -end- of SNe
+                if(P[n].BH_Mass >= 20./UNIT_MASS_IN_SOLAR) {BPP(n).ProtoStellarStage = 7;} // direct-collapse to relic (BH), skipping SNe entirely
+#endif
+#if defined(BH_ALPHADISK_ACCRETION)
                 BPP(n).BH_Mass_AlphaDisk = 0; // probably does not matter, but let's make sure these don't cause issues
                 P[n].Mass = P[n].BH_Mass;
 #endif
@@ -949,7 +954,6 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             }
 #endif
         }
-        if(BPP(n).ProtoStellarStage == 7) {BPP(n).ProtoStellarRadius_inSolar = 6. * (2.12e-6 * P[n].BH_Mass*UNIT_MASS_IN_SOLAR);} // relics 'radius' = 6 * (G*Mbh/c^2), for ISCO
     }
     // Calculate the luminosity of the star
     /*********************************************/
@@ -958,11 +962,20 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     // lum_disk = (1.-fk) * All.G*mass*mdot/r; // luminosity released by material that traverses the inner disk
     // BPP(n).StarLuminosity_Solar = (lum_acc + lum_disk + lum_int) * UNIT_LUM_IN_SOLAR ; //luminosity of the star
     /*********************************************/
-
+    
     BPP(n).StarLuminosity_Solar = ((f_acc*fk + (1-fk)) * All.G*mass*mdot/r + lum_int) * UNIT_LUM_IN_SOLAR; // disk + accretion shock + internal luminosity (=MAX(L_MS,L_Hayashi))
-
-    if(BPP(n).ProtoStellarStage == 0) {BPP(n).StarLuminosity_Solar = 0;} // no luminosity yet 
-    if(BPP(n).ProtoStellarStage == 7) {BPP(n).StarLuminosity_Solar = evaluate_blackhole_radiative_efficiency(mdot,mass,n) * (1.44e13 * mdot_m_solar_per_year);} // radiative efficiency of ~10%, times Mdot*c^2, in units of Lsolar //
+    
+    if(BPP(n).ProtoStellarStage == 0) {BPP(n).StarLuminosity_Solar = 0;} // no luminosity yet
+    if(BPP(n).ProtoStellarStage == 7) {
+        BPP(n).StarLuminosity_Solar = 0; // default to no luminosity for safety
+#ifdef SINGLE_STAR_RELICS
+        if(P[n].Mass_final > 1.4) { // only interested here in the systems with -compact- remnants, for this calculation
+            BPP(n).ProtoStellarRadius_inSolar = 6. * (2.12e-6 * P[n].BH_Mass*UNIT_MASS_IN_SOLAR); // relics 'radius' = 6 * (G*Mbh/c^2), for ISCO
+            double eps_r = evaluate_blackhole_radiative_efficiency(mdot,mass,n); // get compact remnant radiative efficiency
+            BPP(n).StarLuminosity_Solar = eps_r * (1.44e13 * mdot_m_solar_per_year); // radiative efficiency times Mdot*c^2, in units of Lsolar
+        }
+#endif
+    }
 #endif //end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
     
 #if defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
@@ -1131,6 +1144,13 @@ double stellar_lifetime_in_Gyr(int n) { //Estimate lifetime of star, using simpl
     return 9.6*(m_solar/lum) + 0.0034; // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3.7 Myr at high mass [assuming those stars are near-Eddington-limited, where the 9.6*(M/L) term becomes -> 0.3 Myr
 }
 
+
+double single_star_relic_SN_mass(int n) { // Estimate mass of the relic that should be left behind after a SNe or other ejecta event
+#ifdef SINGLE_STAR_RELICS
+    return 1.4 / UNIT_MASS_IN_SOLAR;
+#endif
+    return 0;
+}
 
 
 #if defined(SINGLE_STAR_FB_SNE)

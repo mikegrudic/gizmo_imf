@@ -218,7 +218,7 @@ int blackhole_feed_evaluate(int target, int mode, int *exportflag, int *exportno
 #if !defined(BH_DEBUG_DISABLE_MERGERS)
                         if(P[j].Type == 5)  /* we may have a black hole merger -- check below if allowed */
                         {
-                            if(((local.ID != P[j].ID) && (r2>0)) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
+                            if(((local.ID != P[j].ID) || (r2>0)) && (SwallowID_j == 0) && (BPP(j).BH_Mass < local.BH_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
                             {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                                 int allow_bh_merger = 1; /* flag here b/c we have different options */

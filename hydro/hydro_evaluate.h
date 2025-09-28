@@ -155,7 +155,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 dt_hydrostep_j = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j);
                 dt_hydrostep = DMAX(dt_hydrostep_i , dt_hydrostep_j); // this is used for flux-limiting, so we always want to be more conservative and use the larger timestep //
                 double FluxCorrectionFactor_to_i = 1, FluxCorrectionFactor_to_j = 1; // these, by default, won't do anything, but will be used below in final flux assignment
-#ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
+#if 0 //def USE_TIMESTEP_DILATION_FOR_ZOOMS
                 double DilationFactor_j = return_timestep_dilation_factor(j, 0);
                 FluxCorrectionFactor_to_i = sqrt(DilationFactor_j / local.DilationFactor); /* flux correction factor needed to restore energy conservation here */
                 FluxCorrectionFactor_to_j = (local.DilationFactor / DilationFactor_j) * FluxCorrectionFactor_to_i; /* want this relationship in general to hold */

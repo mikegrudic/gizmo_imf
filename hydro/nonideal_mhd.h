@@ -118,6 +118,7 @@ if((local.Mass > 0) && (P[j].Mass > 0) && (dt_hydrostep > 0))
         }
         
         // finally add one more flux-limiter to prevent the change in B from exceeding a large threshold in a single timestep //
+#if 0
         double cmag_B2 = bhat_mag * (bhat[0]*bflux_from_nonideal_effects[0]+bhat[1]*bflux_from_nonideal_effects[1]+bhat[2]*bflux_from_nonideal_effects[2]);
         if(dt_hydrostep > 0)
         {
@@ -128,6 +129,7 @@ if((local.Mass > 0) && (P[j].Mass > 0) && (dt_hydrostep > 0))
                 bflux_from_nonideal_effects[0]*=corr_visc; bflux_from_nonideal_effects[1]*=corr_visc; bflux_from_nonideal_effects[2]*=corr_visc;
             }
         }
+#endif
         // -now- we can finally add this to the numerical fluxes //
         for(k=0;k<3;k++) {Fluxes.B[k] += bflux_from_nonideal_effects[k];}
     }

@@ -228,6 +228,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 double dpos[3]={0},dvel[3]={0}; for(k=0;k<3;k++) {dpos[k]=P[j].Pos[k]-local.Pos[k]; dvel[k]=Vel_j[k]-local.Vel[k];}
                 NEAREST_XYZ(dpos[0],dpos[1],dpos[2],-1); /*  find the closest image in the given box size  */
                 NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
+                double r2=0; for(k=0;k<3;k++) {r2+=dpos[k]*dpos[k];}
 
                 
 #if defined(BH_RETURN_ANGMOM_TO_GAS) || defined(BH_RETURN_BFLUX)
@@ -265,7 +266,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                 
                 
                 /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
-                if(P[j].SwallowID == local.ID && Mass_j > 0)
+                if(P[j].SwallowID == local.ID && Mass_j > 0 && r2 > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
                     f_accreted = 1; /* default to accreting entire particle */
 #ifdef BH_WIND_KICK
@@ -295,7 +296,7 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
 		            if(P[j].Type == 0) { // we have to keep track of how much radiation energy is lost when we accrete this gas cell, and reinject it later
 			        double photon_energy = 0; int kfreq;
 			        for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {photon_energy += SphP[j].Rad_E_gamma[kfreq];}
-				out.accreted_photon_energy += photon_energy;
+                    out.accreted_photon_energy += photon_energy;
 		            }
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
@@ -355,6 +356,12 @@ int blackhole_swallow_and_kick_evaluate(int target, int mode, int *exportflag, i
                             TimeBin_BH_Medd[bin] -= BPP(j).BH_Mdot / BPP(j).BH_Mass;
                         }
                         Mass_j = 0;
+                        #pragma omp atomic write
+                        BPP(j).BH_Mass_AlphaDisk = 0; // make sure the mass is -actually- zero'd here
+                        #pragma omp atomic write
+                        BPP(j).BH_Mdot = 0; // make sure the mass is -actually- zero'd here
+                        #pragma omp atomic write
+                        BPP(j).BH_Mass = 0; // make sure the mass is -actually- zero'd here
 #ifdef GALSF
                         out.Accreted_Age = P[j].StellarAge;
 #endif
@@ -604,7 +611,7 @@ void spawn_bh_wind_feedback(void)
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
             if(P[i].Type==5) {if((P[i].Mass <= 3.5*BPP(i).Sink_Formation_Mass) || (P[i].BH_Mass*UNIT_MASS_IN_SOLAR < 0.01)) {sink_eligible_to_spawn=0;}}  // spawning causes problems in these modules for low-mass sinks, so arbitrarily restrict to this, since it's roughly a criterion on the minimum particle mass. and for <0.01 Msun, in pre-collapse phase, no jets
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-            if(P[i].Type==5) {if(P[i].ProtoStellarStage==6) {sink_eligible_to_spawn=1;}} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
+            if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {sink_eligible_to_spawn=1;}} // spawn the SNe ejecta no matter what the sink or 'unspawned' mass flag actually is
 #endif
 #endif
             if(sink_eligible_to_spawn)
@@ -780,10 +787,10 @@ double get_spawned_cell_launch_speed(int i)
     v_magnitude = single_star_jet_velocity(i); // get velocity from our more detailed function
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
-    if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
+    if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {v_magnitude = single_star_wind_velocity(i);} // only MS stars launch winds: get velocity from fancy model
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
-    if(P[i].ProtoStellarStage==6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
+    if(P[i].ProtoStellarStage == 6) {v_magnitude = single_star_SN_velocity(i);} // this star is about to go SNe: get velocity from fancy model
 #endif
     return v_magnitude;
 }
@@ -849,15 +856,18 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     int k=0; long j;
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6){
-        n_particles_split = (int) floor( total_mass_in_winds / (P[i].Sink_Formation_Mass) );
-        if(P[i].BH_Mass == 0) { // last batch to be spawned
-            n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
-            printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
-            P[i].Mass = 0; // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
+    if(P[i].Type==5) {
+        if(P[i].ProtoStellarStage == 6) {
+            n_particles_split = (int) floor( total_mass_in_winds / (P[i].Sink_Formation_Mass) );
+            double m_relic = single_star_relic_SN_mass(i); // get the intended relic mass //
+            if(P[i].BH_Mass <= m_relic) { // last batch to be spawned
+                n_particles_split = SINGLE_STAR_FB_SNE_N_EJECTA; // we are going to spawn a bunch of low mass particles to take the last bit of mass away
+                printf("Spawning last SN ejecta of star %llu with %g mass and %d particles \n",(unsigned long long) P[i].ID,total_mass_in_winds,n_particles_split);
+                P[i].Mass = DMAX(0, m_relic); // set mass to zero so that this sink will get cleaned up (TreeReconstructFlag = 1 should be already set in blackhole.c)
 #ifdef BH_ALPHADISK_ACCRETION
-            P[i].BH_Mass_AlphaDisk = 0; // just to be safe
+                P[i].BH_Mass_AlphaDisk = 0; // just to be safe
 #endif
+                if(BPP(i).BH_Mass > 0 && BPP(i).BH_Mass > P[i].Sink_Formation_Mass) {P[i].ProtoStellarStage == 7;} // this is a relic now, move it to the next stage
         }
 #if (defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)) || defined(SINGLE_STAR_FB_SNE_N_EJECTA_QUADRANT)
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6)
@@ -1113,10 +1123,10 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4))
         double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_jet_yields(yields,i); // default to jet-type
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_WINDS)
-        if(P[i].Type==5) {if((P[i].ProtoStellarStage==5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);}} // get abundances in wind
+        if(P[i].Type==5) {if((P[i].ProtoStellarStage == 5) && (P[i].wind_mode==1)) {get_wind_yields(yields,i);}} // get abundances in wind
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE)
-        if(P[i].Type==5) {if(P[i].ProtoStellarStage==6) {double Msne; get_SNe_yields(yields,i,stellar_lifetime_in_Gyr(i),0,&Msne);}} // get sne yields
+        if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {double Msne; get_SNe_yields(yields,i,stellar_lifetime_in_Gyr(i),0,&Msne);}} // get sne yields
 #endif
         for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k]=yields[k];}  // update metallicity of spawned cell modules
 #endif

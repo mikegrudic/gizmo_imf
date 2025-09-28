@@ -114,7 +114,6 @@ void find_timesteps(void)
         ti_step = get_timestep(i, &aphys, 0);
 #endif
         ti_step = (integertime)(((double)ti_step) / TIMESTEP_DILATION_FACTOR(i,0));
-        //ti_step /= TIMESTEP_DILATION_FACTOR(i,0);
         
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
         if(ti_step < 0) {ti_step = ti_min_glob;}

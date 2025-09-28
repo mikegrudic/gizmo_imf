@@ -318,7 +318,7 @@ struct INPUT_STRUCT_NAME
     int NodeList[NODELISTLENGTH];
 #endif
 
-#ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
+#if 0 //def USE_TIMESTEP_DILATION_FOR_ZOOMS
     double DilationFactor;
 #endif
     
@@ -574,7 +574,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->DelayTime = SphP[i].DelayTime;
 #endif
 
-#ifdef USE_TIMESTEP_DILATION_FOR_ZOOMS
+#if 0 //def USE_TIMESTEP_DILATION_FOR_ZOOMS
     in->DilationFactor = return_timestep_dilation_factor(i,0);
 #endif
 
