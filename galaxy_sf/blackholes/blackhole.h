@@ -22,11 +22,11 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat Jgas_in_Kernel[3];
     MyFloat Jstar_in_Kernel[3];
     MyFloat Jalt_in_Kernel[3]; // mass/angular momentum for GAS/STAR/TOTAL components computed always now
-    MyLongDouble accreted_Mass;
-    MyLongDouble accreted_BH_Mass;
-    MyLongDouble accreted_BH_Mass_alphadisk;
+    MyDouble accreted_Mass;
+    MyDouble accreted_BH_Mass;
+    MyDouble accreted_BH_Mass_alphadisk;
 #if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
-    MyLongDouble BH_AccretionDeficit;
+    MyDouble BH_AccretionDeficit;
 #endif
 #ifdef GRAIN_FLUID
     MyFloat accreted_dust_Mass;
@@ -60,16 +60,16 @@ extern struct blackhole_temp_particle_data       // blackholedata_topass
     MyFloat hubber_mdot_vr_estimator, hubber_mdot_disk_estimator, hubber_mdot_bondi_limiter;
 #endif
 #if defined(BH_FOLLOW_ACCRETED_MOMENTUM)
-    MyLongDouble accreted_momentum[3];        /*!< accreted linear momentum */
+    MyDouble accreted_momentum[3];        /*!< accreted linear momentum */
 #endif
 #if defined(BH_RETURN_BFLUX)
-    MyLongDouble accreted_B[3]; 
+    MyDouble accreted_B[3]; 
 #endif    
 #if defined(BH_FOLLOW_ACCRETED_COM)
-    MyLongDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
+    MyDouble accreted_centerofmass[3];    /*!< accreted center-of-mass */
 #endif    
 #if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-    MyLongDouble accreted_J[3];               /*!< accreted angular momentum */
+    MyDouble accreted_J[3];               /*!< accreted angular momentum */
 #endif
 #if defined(BH_GRAVCAPTURE_GAS)
     MyFloat mass_to_swallow_edd;        /*!< gives the mass we want to swallow that contributes to eddington */

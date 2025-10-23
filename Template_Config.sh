@@ -142,7 +142,7 @@
                                 # enclosing a neighbor number set in the parameter file. flag value = bitflag like PM_PLACEHIGHRESREGION, which determines which particle types are adaptive (others use fixed softening). cite Hopkins et al., arXiv:1702.06148
 #ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION=2 # enable adaptive gravitational softening lengths for designated particle types (value = bitflag like ADAPTIVE_GRAVSOFT_FORALL), but setting the softening to the tidal-tensor based value instead of nearest-neighbor values, following Hopkins et al. (arXiv:2212.06851). this is cross-compatible with ADAPTIVE_GRAVSOFT_FORGAS, or even ADAPTIVE_GRAVSOFT_FORALL so long as the same particle type does not appear in both.
 ## -----------------------------------------------------------------------------------------------------
-#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
+#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC)
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
 ## -----------------------------------------------------------------------------------------------------
 #GRAVITY_ANALYTIC               # specific analytic gravitational force to use instead of or with self-gravity. If set to a numerical value
@@ -156,7 +156,7 @@
 #DM_FUZZY=0                     # DM particles (Type=1) are described by Bose-Einstein Condensate: within gravity kernel (adaptive), solves quantum pressure tensor for non-linear terms arising from Schroedinger equation for a given particle mass. Still some testing recommended, while this is public we encourage discussion with PFH over different use cases and applications of the method. The value here is: 0=fully-conservative Madelung method. 1=mass-conserving direct SPE integration. 2=direct SPE (non mass-conserving). Cite Hopkins et al., 2019MNRAS.489.2367H if used.
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- Pure-Tree Options for Direct N-body of small-N groups (recommended for hard binaries, etc)
-#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, LONG_INTEGER_TIME, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
+#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
 ## ----------------------------------------------------------------------------------------------------
 # -------------------------------------- arbitrary time-dependent dark energy equations-of-state, expansion histories, or gravitational constants
 #GR_TABULATED_COSMOLOGY         # enable reading tabulated cosmological/gravitational parameters (top-level switch)
@@ -454,7 +454,6 @@
 # --------------------------------------- Multi-Threading and Parallelization options
 ####################################################################################################
 #OPENMP=2                       # top-level switch for explicit OpenMP implementation
-#PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
 #MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
 ####################################################################################################
 
@@ -466,7 +465,6 @@
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
-#OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
 #INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
 #OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
 #OUTPUT_TIDAL_TENSOR            # writes tidal tensor (computed in gravity) to snapshots
@@ -498,7 +496,6 @@
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
 #INPUT_READ_SINKPROPS           # force reading sink properties including sink radius, zams mass, luminosity, age, etc, from ICs file if it includes sink particles and the IC is designed for use with the single-star modules
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
-#IO_DISABLE_HDF5                # disable HDF5 I/O support (for both reading/writing; use only if HDF5 not install-able)
 #IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
 #IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
@@ -518,7 +515,6 @@
 # --------------------
 # ----- General De-Bugging and Special Behaviors
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-#LONG_INTEGER_TIME              # total number of integer time step = 1<<39
 #FORCE_EQUAL_TIMESTEPS          # force the code to use a single universal timestep (can change in time, but all particles advance together). chosen as minimum of any particle that step.
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
@@ -527,14 +523,11 @@
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
 #HYDRO_REPLACE_RIEMANN_KT       # replaces the hydro Riemann solver (HLLC) with a Kurganov-Tadmor flux derived in Panuelos, Wadsley, and Kevlahan, 2019. works with MFM/MFV/fixed-grid methods [-without- MHD active, but other modules are fine]. more diffusive, but smoother, and more stable convergence results
-#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
-#AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
-                                # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
+#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
 #HYDRO_RIEMANN_KT_UNLIMITED     # removes the limiter otherwise used to reduce dissipation in the Kurganov-Tadmor flux : more diffusive but smoother solutions
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
-#DISABLE_GAS_CELL_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
 #DO_UPWIND_TIME_CENTERING       # this (and DO_HALFSTEP_FOR_MESHLESS_METHODS) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing)
 #HYDRO_KERNEL_SURFACE_VOLCORR   # attempt to correct SPH/MFM/MFV cell volumes for free-surface effects, using the estimated boundary correction for the Wendland C2 kernel (works with others but most accurate for this) based on asymmetry of neighbors within kernel, as calibrated in Reinhardt & Stadel 2017 (arXiv:1701.08296), see e.g. their Fig 3
 #DISABLE_SURFACE_VOLCORR        # disables HYDRO_KERNEL_SURFACE_VOLCORR if it would be set by default (e.g. if EOS_ELASTIC is enabled)
@@ -624,10 +617,6 @@
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging: slower, but fixes memory errors during exchange in the domain decomposition (ANY RUN with >2e9 particles MUST SET THIS OR FAIL!)
-#FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging
-#MPISENDRECV_SIZELIMIT=100      # MPI debugging: force all MPI_Sendrecv calls to use the "size-limited" version which checks for the minimum of int, buffersize, or this value in MB as the maximum number of bytes it can send/receive (otherwise it breaks it into chunks). should never hurt, just gives slightly slower communication calls because of the extra checks.
-#MPISENDRECV_CHECKSUM           # MPI debugging: force all MPI_Sendrecv calls to use the "checksummed" version which checks for communication and appropriate values. useful for debugging but not normally desired (adds a significant cost multiplier)
-#DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
 #USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW). Thanks to Takashi Okamoto.
 #DOUBLEPRECISION_FFTW           # FFTW in double precision to match libraries
@@ -635,7 +624,6 @@
 # --------------------
 # ----- Load-Balancing
 #ALLOW_IMBALANCED_GASPARTICLELOAD # increases All.MaxPartGas to All.MaxPart: can allow better load-balancing in some cases, but uses more memory. But use me if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason)
-#SEPARATE_STELLARDOMAINDECOMP   # separate stars (ptype=4+5) and other non-gas particles in domain decomposition (may help load-balancing)
 ####################################################################################################
 
 
@@ -660,18 +648,6 @@
 ####################################################################################################-
 
 ####################################################################################################-
-#------------------------------- on the fly analysis of phase structure and potentials in DM simulations
-#--------------------------------- (this code works, but requires additional modules not part of GIZMO but from GADGET-3, where they were developed. users who wish to incorporate a new version/fix this are welcome)
-#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger): use of these routines requires explicit pre-approval by developer M. Vogelsberger
-#GDE_DISTORTIONTENSOR           #- main switch: integrate phase-space distortion tensor
-#GDE_TYPES=2+4+8+16+32          #- track GDE for these types
-#GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
-#GDE_LEAN                       #- lean version of GDE
-#OUTPUT_GDE_DISTORTIONTENSOR    #- write phase-space distortion tensor to snapshot
-#OUTPUT_GDE_LASTCAUSTIC         #- write info on last passed caustic to snapshot
-####################################################################################################-
-
-####################################################################################################-
 #-------------------------------- misc dev flags needing to be incorporated here (in testing)
 #GALSF_USE_SNE_FIRE3LEGACY_SCHEME           #- use the FIRE-3 methods paper version of the sne coupling, as opposed to the experimental ("3.1") newer module
 #GALSF_FB_FIRE_PROTOSTELLARJETS             #- simple model for prompt recycling of protostellar jet material based on scalings in Grudic et al., arXiv:2201.00882. developed by PFH
@@ -685,8 +661,10 @@
 #BH_TEST_WIND_MIXED_FASTSLOW=(1.e5)         #- BH has a slow outflow and fast jet, where fast jet has 1/50th the mass-loading and this speed in kms by default
 #MHD_CONSERVE_B_ON_REFINEMENT               #- redefine B after density step after a refinement/de-refinement operation so as to exactly conserve "B" between the steps, as compared to conserving the code "VB" between the steps [the default conserved integrated quantity]
 #BOX_SHEARING_QB=(-4.0/3.0)                 #- shearing box with shear-periodic boundaries for By to represent toroidally magnetized disks. here the value is the logarithmic slope of dln{B_phi}/dlnR.
+#RT_SPEEDOFLIGHT_REDUCTION_VARIABLE_RSL     #- allow variable RSL with different strategies for setting it
+#USE_TIMESTEP_DILATION_FOR_ZOOMS            #- enable time dilation modules, need to customize for applications, cannot be simply generically turned on without coding how they will work
+#DILATION_FOR_STELLAR_KINEMATICS_ONLY       #- special version of time dilation designed for stellar kinematics in e.g. dense star clusters or galaxy centers
 ####################################################################################################-
-
 
 ############################################################################################################################-
 #------------------ ISM Dust Chemical Evolution Models (follow growth and destruction of different grain types)

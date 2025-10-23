@@ -1,6 +1,6 @@
 #ifndef FOF_H
 #define FOF_H
-#include "../allvars.h"
+#include "../declarations/allvars.h"
 
 /* variables for fof.c code */
 /*

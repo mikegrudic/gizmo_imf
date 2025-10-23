@@ -1,12 +1,8 @@
 if(P[p].Ti_current != ti_Current)
 drift_particle(p, ti_Current);
 
-#ifndef REDUCE_TREEWALK_BRANCHING
 #if (SEARCHBOTHWAYS==1)
-dist = DMAX(PPP[p].Hsml, hsml);
-#else
-dist = hsml;
-#endif
+dist = DMAX(P[p].Hsml, hsml);
 dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 if(dx > dist) continue;
 dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
@@ -64,11 +60,7 @@ else
         if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
         {
             *startnode = -1;
-#ifndef REDUCE_TREEWALK_BRANCHING
             return numngb;
-#else
-            return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);
-#endif
         }
     }
     
@@ -96,9 +88,4 @@ else
 }
 
 *startnode = -1;
-#ifndef REDUCE_TREEWALK_BRANCHING
 return numngb;
-#else
-return ngb_filter_variables(numngb, Ngblist, &vcenter, &box, &hbox, hsml, SEARCHBOTHWAYS);
-#endif
-

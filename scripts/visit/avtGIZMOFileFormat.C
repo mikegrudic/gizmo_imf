@@ -527,7 +527,7 @@ avtGIZMOFileFormat::GetVar(const char *varname)
   char mesh_name[GIZMO_STRLEN];
   char field_name[GIZMO_STRLEN];
   sscanf(varname, "PartType%d/%s", &ptype, field_name);
-  sprintf(mesh_name, "PartType%d", ptype);
+  snprintf(mesh_name, GIZMO_STRLEN, "PartType%d", ptype);
 
   hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     MYH5CHECK(file_id);
@@ -581,7 +581,7 @@ avtGIZMOFileFormat::GetVectorVar(const char *varname)
   char mesh_name[GIZMO_STRLEN];
   char field_name[GIZMO_STRLEN];
   sscanf(varname, "PartType%d/%s", &ptype, field_name);
-  sprintf(mesh_name, "PartType%d", ptype);
+  snprintf(mesh_name, GIZMO_STRLEN, "PartType%d", ptype);
 
   hid_t file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     MYH5CHECK(file_id);

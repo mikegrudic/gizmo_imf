@@ -197,15 +197,12 @@ endif
 
 
 
-
+#----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Frontera")
 CC       =  mpicc
-CXX      =  mpic++
+CXX      =  mpicxx -std=c++11
 FC       =  mpif90 -nofor_main
-OPTIMIZE = -O2 -xCORE-AVX2 -Wno-unknown-pragmas
-#OPTIMIZE = -O3 $(TACC_VEC_FLAGS) -ipo -funroll-loops -no-prec-div -fp-model fast=2
-#OPTIMIZE = -O3 -xCORE-AVX512 -ipo -funroll-loops -no-prec-div -fp-model fast=2
-## above is preferred, $(TACC_VEC_FLAGS) automatically incorporates the TACC preferred flags for both KNL or SKX nodes, but gives tiny performance hit
+OPTIMIZE = -ggdb -O2 -xCORE-AVX2 -Wno-unknown-pragmas -Wall -Wno-format-security
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -qopenmp
 endif
@@ -218,14 +215,9 @@ GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
 MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
 GSL_INCL = -I$(TACC_GSL_INC)
-GSL_LIBS = -L$(TACC_GSL_LIB)
-# Note: (9/22) Deprecating the old option to use FFTW2 on this machine, as it is no longer supported unless via custom installations
-#FFTW_INCL= -I$(TACC_FFTW2_INC)
-#FFTW_LIBS= -L$(TACC_FFTW2_LIB)
-#ifeq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
+GSL_LIBS = -L$(TACC_GSL_LIB) -lgsl -lgslcblas
 FFTW_INCL= -I$(TACC_FFTW3_INC)
 FFTW_LIBS= -L$(TACC_FFTW3_LIB)
-#endif
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =
@@ -233,48 +225,9 @@ OPT     += -DUSE_MPI_IN_PLACE -DNO_ISEND_IRECV_IN_DOMAIN -DHDF5_DISABLE_VERSION_
 ifneq (USE_FFTW3, $(findstring USE_FFTW3, $(CONFIGVARS)))
 OPT += -DUSE_FFTW3
 endif
-##
-# UPDATE (9/19): Intel/19.0.5 is now working, and Intel/18 is actually sometimes running slower now because of some of the changes made to the impi installation.
-#          Depending on when your code was compiled and exactly which flags you used, you may notice a performance drop with intel/18, and should switch to 19.
-#          For intel/19: module load intel/19 impi hdf5 fftw3 gsl
-#
-# Previous: presently must use intel/18.x versions. 19.x versions compile and work, but lots of problems (+slower), esp. for high Ntasks or OpenMP
-#  e.g.: module load intel/18.0.5 impi hdf5 fftw3 gsl
-#  until recently, GSL module did -not- support intel/18.x, so needed to build it yourself (see update below). example instructions below:
-#    -- 1. get newest GSL: ftp://ftp.gnu.org/gnu/gsl/gsl-latest.tar.gz
-#       2. unpack, 3. then in folder run: "./configure --prefix=$HOME/gsl-2.5 CC=icc" followed by 4. "make" and 5. "make all"
-#           (here I'm setting "$HOME/gsl-2.5" as the local install directory, you set yours appropriately)
-#       6. in your .bashrc file, add "export HOME_GSL_DIR=$HOME/gsl-2.5" and
-#           "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME_GSL_DIR:$HOME_GSL_DIR/.libs:$HOME_GSL_DIR/cblas/.libs"
-#           (obviously if you use a different parent install directory, change the directory name here accordingly).
-#       7. when you submit jobs, make sure you include a "source $HOME/.bashrc" in your run script or the export flags above, to link the libraries. I was using
-#			GSL_INCL = -I$(HOME_GSL_DIR)
-#			GSL_LIBS = -L$(HOME_GSL_DIR)/.libs -L$(HOME_GSL_DIR)/cblas/.libs
-# [update: GSL module is now installed for intel/18.0.5, so you can simply load the module. but I'll keep the install instructions above, they can be useful]
-#
-# As usual include "umask 022" and "ulimit -s unlimited" in your .bashrc file to save headaches later
-# fftw2/3 work equally well. usual intuition re: multipledomains, pmgrid, treedomainfreq, etc, apply.
-# The different code optimizations above make very tiny differences. for stability I am for now using -O2 -xCORE-AVX2, nothing 'fancy' but this doesn't cost us
-# Run scripts are simple SBATCH, like on Stampede and many other machines. Examples of several appear in this file. Example run script:
-#                    #!/bin/bash
-#                    #SBATCH -J (NAME) -p normal -N (NUMBER_OF_NODES) --ntasks-per-node (56/OPENMP_NUMBER) -t (RUNTIME_REQUEST) -A (ACCOUNT_NAME_TO_CHARGE)
-#                    export OMP_NUM_THREADS=(OPENMP_NUMBER)
-#                    source $HOME/.bashrc
-#                    ibrun ./GIZMO ./params.txt (GIZMO_STARTUP_FLAG) 1>gizmo.out 2>gizmo.err
-#     where quantities in (X) are the things you want to set.
-# With these options, hybrid MPI+OpenMP works well. Because of the node configuration, optimal hybrid performance will typically use either
-#   OPENMP=4 (ntasks-per-node=14) or OPENMP=7 (ntasks-per-node=8). Small jobs (<200 cores) might be better with smaller/no OPENMP, very large jobs higher,
-#   (OPENMP can be any integer, ntasks-per-node must be even or severe performance hits apply).
-#   Intel/19 now functional seems to favor slightly lower OPENMP number, shifting to perhaps OPENMP=2 (ntasks-per-node=28) for small jobs, =4 for medium, =7 for very large
-#
-# Note that the Frontera setup is NOT built for hyperthreading, even though the CLX nodes are supposed to support it. If you ask for 112 threads/node (insteady of 56),
-#   the code will actually work, but very slowly. Stick to 56 for now.
-#
-# [old: There are still odd memory issues. The machine should have 3.3gb/core available after OS, etc, but in practice we need to allocate less than this. MPI errors
-#   have also been appearing in large runs (for almost all users) related to memory. Be careful for now, and communicate to TACC support staff re: memory issues.]
-#   I am using ~3gb/core for low task numbers, lower still for higher task numbers. 
-##
 endif
+# compiles with module set: intel/19 impi hdf5 fftw3 gsl valgrind python3
+
 
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"CaltechHPC")
@@ -1089,7 +1042,7 @@ FFTW_LIBS= -L$(MIRA_FFTW2_LIB)
 HDF5INCL = -I$(MIRA_HDF5_INC) -DH5_USE_16_API -I$(MIRA_SZIP_INC) -I$(MIRA_LZIP_INC)
 HDF5LIB  = -L$(MIRA_SZIP_LIB) -lszip -L$(MIRA_LZIP_LIB) -lz -L$(MIRA_HDF5_LIB) -lhdf5 -lz -lszip
 MPICHLIB = #
-OPT     += -DUSE_MPI_IN_PLACE -DREDUCE_TREEWALK_BRANCHING
+OPT     += -DUSE_MPI_IN_PLACE
 ##
 ## in .bashrc, need to define environmental variables:
 ##   export MIRA_HDF5_INC=/soft/libraries/hdf5/current/cnk-xl/current/include
@@ -1139,7 +1092,6 @@ FFTW_LIBS= -L$(TACC_FFTW2_LIB)
 HDF5INCL = -I$(TACC_HDF5_INC)
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
 MPICHLIB =      # must be empty if using openmpi
-OPT     += -DFIX_PATHSCALE_MPI_STATUS_IGNORE_BUG
 ##
 ## Notes:
 ## 
@@ -1172,7 +1124,6 @@ FFTW_INCL= -I$(TACC_FFTW2_INC)
 FFTW_LIBS= -L$(TACC_FFTW2_LIB)
 HDF5INCL = -I$(TACC_HDF5_INC)
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
-OPT     += -DFIX_PATHSCALE_MPI_STATUS_IGNORE_BUG
 OPT     += -DNOCALLSOFSYSTEM -DNO_ISEND_IRECV_IN_DOMAIN -DMPICH_IGNORE_CXX_SEEK
 ## 
 ## Notes:
@@ -1296,9 +1247,10 @@ endif
 # they are grouped below for the sake of clarity when adding/removing code
 # blocks in the future
 #
-CORE_OBJS =	main.o accel.o  timestep.o init.o restart.o io.o \
-			predict.o global.o begrun.o run.o allvars.o read_ic.o \
-			domain.o driftfac.o kicks.o ngb.o compile_time_info.o merge_split.o
+CORE_OBJS =	core/main.o core/accel.o core/timestep.o core/init.o file_io/restart.o file_io/io.o \
+			core/predict.o declarations/global.o core/begrun.o core/run.o declarations/allvars.o \
+			file_io/read_ic.o domain/domain.o core/driftfac.o core/kicks.o mesh/ngb.o \
+			compile_time_info.o mesh/merge_split.o
 
 SYSTEM_OBJS =   system/system.o \
 				system/allocate.o \
@@ -1394,13 +1346,13 @@ FOPTIONS = $(OPTIMIZE) $(FOPT)
 FOBJS =
 
 ## include files needed at compile time for the above objects
-INCL    += 	allvars.h \
-			proto.h \
+INCL    += 	declarations/allvars.h \
+			core/proto.h \
 			gravity/forcetree.h \
 			gravity/myfftw3.h \
-			domain.h \
+			domain/domain.h \
 			system/myqsort.h \
-			kernel.h \
+			mesh/kernel.h \
 			eos/eos.h \
 			galaxy_sf/blackholes/blackhole.h \
 			structure/fof.h \
@@ -1436,12 +1388,6 @@ endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 OBJS    += cooling/chimes/chimes.o cooling/chimes/chimes_cooling.o cooling/chimes/init_chimes.o cooling/chimes/rate_equations.o cooling/chimes/update_rates.o 
 INCL    += cooling/chimes/chimes_interpol.h cooling/chimes/chimes_proto.h cooling/chimes/chimes_vars.h 
-endif
-
-# if HDF5 explicitly disabled, remove the linked libraries
-ifeq (IO_DISABLE_HDF5,$(findstring IO_DISABLE_HDF5,$(CONFIGVARS)))
-HDF5INCL =
-HDF5LIB  =
 endif
 
 # if grackle libraries are installed they must be a shared library as defined here
@@ -1503,22 +1449,20 @@ endif
 LIBS = $(HDF5LIB) -g $(MPICHLIB) $(GSL_LIBS) -lgsl -lgslcblas \
 	   $(FFTW_LIBS) $(FFTW_LIBNAMES) -lm $(GRACKLELIBS) $(CHIMESLIBS)
 
-ifeq (PTHREADS_NUM_THREADS,$(findstring PTHREADS_NUM_THREADS,$(CONFIGVARS))) 
-LIBS += -lpthread
-endif
 
-$(EXEC): $(OBJS) $(FOBJS)  
-	$(FC) $(OPTIMIZE) $(OBJS) $(FOBJS) $(LIBS) $(RLIBS) -o $(EXEC)
+$(EXEC): $(OBJS)
+	$(CXX) $(OPTIMIZE) $(OBJS) $(LIBS) -o $(EXEC)
 
-$(OBJS): $(INCL)  $(CONFIG)  compile_time_info.c
+$(OBJS): %.o: %.cc $(INCL) $(CONFIG) compile_time_info.cc
+	$(CXX) $(CFLAGS) -c $< -o $@
 
-$(FOBJS): %.o: %.f90
-	$(FC) $(OPTIMIZE) -c $< -o $@
+#$(FOBJS): %.o: %.f90
+#	$(FC) $(OPTIMIZE) -c $< -o $@
 
-compile_time_info.c: $(CONFIG)
-	$(PERL) prepare-config.perl $(CONFIG)
+compile_time_info.cc: $(CONFIG)
+	$(PERL) file_io/prepare-config.perl $(CONFIG)
 
 clean:
-	rm -f $(OBJS) $(FOBJS) $(EXEC) *.oo *.c~ compile_time_info.c GIZMO_config.h
+	rm -f $(OBJS) $(FOBJS) $(EXEC) *.oo *.c~ compile_time_info.cc GIZMO_config.h
 
 

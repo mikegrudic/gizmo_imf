@@ -546,7 +546,6 @@ But, you ask, what if I want to make GIZMO act more like code X? Well, you shoul
 **GADGET**: Turn on the compiler flags:
 ```bash
 HYDRO_DENSITY_SPH
-DISABLE_GAS_CELL_WAKEUP
 SPH_DISABLE_CD10_ARTVISC
 SPH_DISABLE_PM_CONDUCTIVITY
 ```
@@ -636,7 +635,7 @@ To start a simulation, invoke the executable with a command like
 
 This will have to be modified for the machine you're using ("mpirun" may have a different syntax, but should be a completely standard MPI call: see the users' guide for whatever system you're on for the details). This example would run the simulation with 32 processors, and with simulation parameters as specified in the parameter file of name myparameterfile.param (discussed in detail on its own page). 
 
-The code does not need to be recompiled for a different number of processors, or for a different problem size. It is necessary to recompile if you are using the code in hybrid OPENMP/MPI or PTHREADS/MPI (multi-threaded) mode, and want to change the number of threads (processors) per MPI process. Note that there is no formal requirement for the processor number to be a power of two (though that can sometimes be most efficient for communication). While GIZMO runs, it will print out various log-messages that inform you about the code activity. If you run a simulation interactively (as in the above call), these log-messages will appear on the screen, but you can also re-direct them to a file. 
+The code does not need to be recompiled for a different number of processors, or for a different problem size. It is necessary to recompile if you are using the code in hybrid OPENMP/MPI (multi-threaded) mode, and want to change the number of threads (processors) per MPI process. Note that there is no formal requirement for the processor number to be a power of two (though that can sometimes be most efficient for communication). While GIZMO runs, it will print out various log-messages that inform you about the code activity. If you run a simulation interactively (as in the above call), these log-messages will appear on the screen, but you can also re-direct them to a file. 
 
 For normal runs at any cluster computer, you will usually have to put the "mpirun" comment into a script file submitted to the computing queue (again, see your computers users guide) -- in this case, it will automatically pipe standard output/error messages to files, but you may still want to specify filenames in the script. This is required for the queue systems to organize the jobs, though you can usually put in special requests to run jobs in interactive mode.
 
@@ -919,7 +918,7 @@ Note that these are not the only available equations-of-state in GIZMO, but just
 
 **CONDUCTION\_SPITZER**: Calculate the thermal conductivities of the gas self-consistently following Spitzer, accounting for saturation (when the gradient scale lengths approach the electron mean free paths). This module requires `COOLING` is active or some other chemical module is active, because the coefficients depend on thermodynamic variables such as temperature, ionization state, etc (otherwise fully-ionized monatomic primordial gas assumed). If this is off, the coefficients are simply constants set by hand. In addition to the conduction methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed. 
 
-**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. For material simulations, one can simulate visco-elastic materials by setting the appropriate shear and bulk viscosity modulus, and these can be made to depend on local material properties by editing the lines in `gradients.c` where the particle-carried local coefficients `SphP[i].Eta_ShearViscosity` and `SphP[i].Zeta_BulkViscosity` are set (if `EOS_TILLOTSON` is set, one can assign different properties to different materials specified in the `CompositionType` flag). The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
+**VISCOSITY**: Turn on physical, isotropic or anisotropic viscosity. By default this enables Navier-Stokes viscosity, with shear and bulk viscosities set in the parameterfile. The operator-splitting is similar to that for conduction. Again this is implemented for both SPH and MFM/MFV modes; but the MFM/MFV mode is much more accurate and highly recommended. If you are going to use SPH, be sure to use a very large kernel. Timesteps are again appropriately limited for solving the physical equations here. As with conduction, in the pure-hydro case, isotropic viscosity is assumed. If MAGNETIC is on, then the physically correct anisotropic tensor viscosity is used. For material simulations, one can simulate visco-elastic materials by setting the appropriate shear and bulk viscosity modulus, and these can be made to depend on local material properties by editing the lines in `gradients.c` where the particle-carried local coefficients `CellP[i].Eta_ShearViscosity` and `CellP[i].Zeta_BulkViscosity` are set (if `EOS_TILLOTSON` is set, one can assign different properties to different materials specified in the `CompositionType` flag). The methods paper for these implementations is Hopkins 2017, MNRAS, 466, 3387; please cite this if these modules are used.
 
 **VISCOSITY\_BRAGINSKII**: Calculates the leading-order coefficients for viscosity in ideal MHD for an ionized plasma following Braginskii. This module requires `COOLING` is active or some other chemical module is active, because the coefficients depend on thermodynamic variables such as temperature, ionization state, etc (otherwise fully-ionized monatomic primordial gas assumed). If this is off, the viscosity coefficients are simply set by hand. In addition to the conduction/viscosity methods paper, cite Su et al., 2017, MNRAS, 471, 144, where these calculations were presented and the numerical calculation of said terms was developed.
 
@@ -1158,7 +1157,7 @@ These options all pertain to the gravity solver in the code. They determine how 
 #PM_HIRES_REGION_CLIPDM         # split low-res DM particles that enter high-res region (completely surrounded by high-res)
 ## -----------------------------------------------------------------------------------------------------
 # --------------------------------------- Pure-Tree Options for Direct N-body of small-N groups (recommended for hard binaries, etc)
-#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, LONG_INTEGER_TIME, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
+#GRAVITY_ACCURATE_FEWBODY_INTEGRATION # enables a suite: GRAVITY_HYBRID_OPENING_CRIT, TIDAL_TIMESTEP_CRITERION, to more accurately follow few-body point-like dynamics in the tree. currently compatible only with pure-tree gravity.
 ##-----------------------------------------------------------------------------------------------------
 ```
 
@@ -1206,7 +1205,7 @@ When either `ADAPTIVE_GRAVSOFT_FORGAS` or `ADAPTIVE_GRAVSOFT_FORALL` or `ADAPTIV
 
 ```bash
 ## -----------------------------------------------------------------------------------------------------
-#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC); setting NOGRAVITY gives identical functionality
+#SELFGRAVITY_OFF                # turn off self-gravity (compatible with GRAVITY_ANALYTIC)
 #GRAVITY_NOT_PERIODIC           # self-gravity is not periodic, even though the rest of the box is periodic
 ## -----------------------------------------------------------------------------------------------------
 #GRAVITY_ANALYTIC               # Specific analytic gravitational force to use instead of or with self-gravity. If set to a numerical value
@@ -1253,23 +1252,6 @@ When either `ADAPTIVE_GRAVSOFT_FORGAS` or `ADAPTIVE_GRAVSOFT_FORALL` or `ADAPTIV
 
 **GR\_TABULATED\_COSMOLOGY**: Top-level switch to enable cosmological integrations or regular simulations with non-standard, time-dependent dark energy equations-of-state, expansion histories, or gravitational constants. In this mode, the local gravitational forces will still be Newtonian, but the cosmological history will be different (and the gravitational constant G can, in principle, vary with time). This then allows the sub-switches **GR\_TABULATED\_COSMOLOGY\_W** which will read the dark energy equation of state w(z) from a pre-tabulated file (specified in the parameterfile by "TabulatedCosmologyFile"). For a constant $w(z)=w$, this just amounts to replacing the constant $\Lambda \rightarrow \Lambda_{0}\,a^{-3\,(1+w)}$ in the Hubble function. For a time-varying $w$, the expression used is the integral expression $\Lambda \rightarrow \Lambda_{0}\,\exp{\{ \int_{1}^{a}\,\frac{3\,(1+w[a^{\prime}])}{a^{\prime}}\,d a^{\prime} \}}$. The parameter **GR\_TABULATED\_COSMOLOGY\_H** will read the Hubble function H(z) itself from this file. **GR\_TABULATED\_COSMOLOGY\_G** will also read the value of G(z), the gravitational constant (i.e. allows for time-varying gravitational constant, albeit with an "instantaneously" Newton force). Note that these options will not self-consistently alter the power spectrum of initial conditions. To use the same cosmological initial conditions (assuming these are chosen early enough so that linear growth theory applies) intending to get roughly the same $z=0$ power spectrum, for example, one should change the starting scale factor (or redshift) in the parameterfile so that the linear growth factors match appropriately for the intended "initial time" -- i.e. so $g^{0}(z=0)/g^{0}(z_{\rm ICs}^{\rm original}) = g^{\prime}(z=0)/g^{\prime}(z_{\rm ICs}^{\rm new})$, where $g^{0}$ is the growth factor in the "original" cosmology for which the ICs were built to be used starting at redshift $z_{\rm ICs}^{\rm original}$ and $g^{\prime}$ is the growth factor in the new, modified cosmology and $z_{\rm ICs}^{\rm new}$ is the new starting redshift. Similarly, the initial velocity field should be re-scaled by the factor $[H^{\prime}(z_{\rm ICs}^{\rm new})\,\Omega^{\prime}(z_{\rm ICs}^{\rm new})^{0.6}]/[H^{0}(z_{\rm ICs}^{\rm original})\,\Omega^{0}(z_{\rm ICs}^{\rm original})^{0.6}]$. See the parameters description below for more details. 
 
-
-<a name="config-gravity-analysis"></a>
-### _On-the-Fly Analysis_ 
-
-```bash
-#------------------------------- Fine-grained phase space structure analysis (M. Vogelsberger)
-#-------------------------------- use of these routines requires explicit pre-approval by developer M. Vogelsberger
-#GDE_DISTORTIONTENSOR           #- main switch: integrate phase-space distortion tensor
-#GDE_TYPES=2+4+8+16+32          #- track GDE for these types
-#GDE_READIC                     #- read initial sheet orientation/initial density/initial caustic count from ICs
-#GDE_LEAN                       #- lean version of GDE
-#OUTPUT_GDE_DISTORTIONTENSOR        #- write phase-space distortion tensor to snapshot
-#OUTPUT_GDE_LASTCAUSTIC            #- write info on last passed caustic to snapshot
-##-----------------------------------------------------------------------------------------------------
-```
-
-**GDE\_DISTORTIONTENSOR**: Fine-grained phase-space structure of the dark matter is tracked on the fly, according to the algorithm developed and originally implemented in GADGET by M. Vogelsberger. This is useful for on-the-fly studies of dark matter annihilation, and weak lensing (basically looking for caustics). The sub-options allow different outputs to track the various quantities computed. Users who wish to use these modules should contact Mark Vogelberger for permissions, who wrote them for GADGET -- they are in GIZMO as legacy code and are not developed by PFH. 
 
 
 <a name="config-gravity-pressure"></a>
@@ -2152,7 +2134,6 @@ Flags governing the radiation pressure terms (photon momentum transfer to gas), 
 # --------------------------------------- Multi-Threading and Parallelization options
 ####################################################################################################
 #OPENMP=2                       # top-level switch for explicit OpenMP implementation
-#PTHREADS_NUM_THREADS=4         # custom PTHREADs implementation (don't enable with OPENMP)
 #MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
 ####################################################################################################
 ```
@@ -2160,8 +2141,6 @@ Flags governing the radiation pressure terms (photon momentum transfer to gas), 
 These flags govern the implementation of multi-threading in the code. Must be enabled and set appropriately to run multi-threaded code.
      
 **OPENMP**: This enables the code to run in hybrid OpenMP-MPI (multi-threaded) mode. If you enable this, you need to edit the makefile compile command appropriately to be sure you are actually compiling with the required flags for OPENMP (on many machines the code will still compile and appear to be working normally, but you wont actually be multi-threading!). For example, on the XSEDE Stampede machine "-parallel -openmp" are added to the intel compiler OPT line. Set the value of OPENMP equal to the number of threads per MPI process. This can be anything from 1 (which is not useful, so make it at least 2 if you enable it at all) to the number of MPI cores on the node (some systems allow more threads than cores, but you should read up on your machine before you attempt anything like that). In the submission script for the job, you will also usually need to specify a flag for the number of threads you are using -- again, consult the guide for your local machine for running in hybrid OpenMP+MPI mode. The OpenMP threads use shared memory, so they must be on the same node; but only certain parts of the code can be multi-threaded. In general, this option is here to both allow larger parallelization and better code scaling for large simulations, and to help deal with memory errors (since OpenMP is shared memory, two threads on two cores will have effectively double the memory of two MPI processes on two cores). However, the gains (or losses) are highly dependent on both the specific problem, resolution, processor number, and machine configuration. You should experiment with this setting to get an idea of which values may be useful.
-
-**PTHREADS\_NUM\_THREADS**: This functions like OPENMP, but implements a custom PTHREADS multi-threading implementation. While more highly customized, the compilers for OpenMP have improved to the point where, for the same hybrid configurations, OPENMP is usually faster. That said, this can still be useful for some machines (particularly older ones) and certain highly customized applications.
 
 **MULTIPLEDOMAINS**: This subdivides the tree into smaller sub-domains which can be independently moved to different processors. This makes domain de-composition dramatically less dependent on spatial co-location, at the cost of increased communication and less ability to take advantage of multi-threading. Experiment with values here to see what works best -- in general, for problems with greater degrees of inhomogeneity, a higher value of this parameter can help.
 
@@ -2179,7 +2158,6 @@ These flags govern snapshot outputs (what is saved and how it is saved).
 #OUTPUT_ADDITIONAL_RUNINFO      # enables extended simulation output data (can slow down machines significantly in massively-parallel runs)
 #OUTPUT_IN_DOUBLEPRECISION      # snapshot files will be written in double precision
 #INPUT_IN_DOUBLEPRECISION       # input files assumed to be in double precision (otherwise float is assumed)
-#OUTPUT_POSITIONS_IN_DOUBLE     # input/output files in single, but positions in double (used in hires, hi-dynamic range sims when positions differ by < float accuracy)
 #INPUT_POSITIONS_IN_DOUBLE      # as above, but specific to the ICs file
 #OUTPUT_POTENTIAL               # forces code to compute+output potentials in snapshots
 #OUTPUT_TIDAL_TENSOR            # writes tidal tensor (computed in gravity) to snapshots
@@ -2206,7 +2184,6 @@ These flags govern snapshot outputs (what is saved and how it is saved).
 #OUTPUT_TURB_DIFF_DYNAMIC_ERROR # save error terms from localized dynamic Smagorinsky model to snapshots
 #OUTPUT_TWOPOINT_ENABLED        # allows user to calculate mass 2-point function by enabling and setting restartflag=5
 #INPUT_READ_HSML                # force reading hsml from IC file (instead of re-computing them; in general this is redundant but useful if special guesses needed)
-#IO_DISABLE_HDF5                # disable HDF5 I/O support (for reading/writing; use only if HDF5 not install-able)
 #IO_COMPRESS_HDF5     		    # write HDF5 in compressed form (will slow down snapshot I/O and may cause issues on old machines, but reduce snapshots 2x)
 #IO_SUPPRESS_TIMEBIN_STDOUT=10  # only prints timebin-list to log file if highest active timebin index is within N (value set) of the highest timebin (dt_bin=2^(-N)*dt_bin,max)
 #IO_SUBFIND_IN_OLD_ASCII_FORMAT # write sub-find outputs in the old massive ascii-table format (unweildy and can cause lots of filesystem issues, but here for backwards compatibility)
@@ -2319,7 +2296,6 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 # --------------------
 # ----- General De-Bugging and Special Behaviors
 #DEVELOPER_MODE                 # allows you to modify various numerical parameters (courant factor, etc) at run-time
-#LONG_INTEGER_TIME              # total number of integer time step = 1<<39
 #FORCE_EQUAL_TIMESTEPS          # force the code to use a single universal timestep (can change in time, but all particles advance together). chosen as minimum of any particle that step.
 #STOP_WHEN_BELOW_MINTIMESTEP    # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 #DEBUG                          # enables core-dumps and FPU exceptions
@@ -2328,14 +2304,11 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 #FREEZE_HYDRO                   # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 #EOS_ENFORCE_ADIABAT=(1.0)      # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
 #HYDRO_REPLACE_RIEMANN_KT       # replaces the hydro Riemann solver (HLLC) with a Kurganov-Tadmor flux derived in Panuelos, Wadsley, and Kevlahan, 2019. works with MFM/MFV/fixed-grid methods. more diffusive, but smoother, and more stable convergence results
-#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=same as AGGRESSIVE_SLOPE_LIMITERS below
-#AGGRESSIVE_SLOPE_LIMITERS      # use the original GIZMO paper (more aggressive) slope-limiters. more accurate for smooth problems, but
-                                # these can introduce numerical instability in problems with poorly-resolved large noise or density contrasts (e.g. multi-phase, self-gravitating flows)
+#SLOPE_LIMITER_TOLERANCE=1      # sets the slope-limiters used. higher=more aggressive (less diffusive, but less stable). 1=default. 0=conservative. use on problems where sharp density contrasts in poor particle arrangement may cause errors. 2=original (more aggressive) slope limiters
 #HYDRO_RIEMANN_KT_UNLIMITED     # removes the limiter otherwise used to reduce dissipation in the Kurganov-Tadmor flux : more diffusive but smoother solutions
 #ENERGY_ENTROPY_SWITCH_IS_ACTIVE # enable energy-entropy switch as described in GIZMO methods paper. This can greatly improve performance on some problems where the
                                 # the flow is very cold and highly super-sonic. it can cause problems in multi-phase flows with strong cooling, though, and is not compatible with non-barytropic equations of state
 #FORCE_ENTROPIC_EOS_BELOW=(0.01) # set (manually) the alternative energy-entropy switch which is enabled by default in MFM/MFV: if relative velocities are below this threshold, it uses the entropic EOS
-#DISABLE_GAS_CELL_WAKEUP    # don't let gas particles move to lower timesteps based on neighbor activity (use for debugging)
 #DO_UPWIND_TIME_CENTERING       # this (and DO_HALFSTEP_FOR_MESHLESS_METHODS) use alternative methods for up-winding the fluxes in the MFM/MFV schemes. this up-weighting can be more accurate in hydrostatic problems with a large sound-speed discontinuity -if- the pressure gradient is steady-state, but if they are moving or unstable, it is less accurate (and can suppress mixing)
 #DISABLE_SURFACE_VOLCORR        # disables HYDRO_KERNEL_SURFACE_VOLCORR if it would be set by default (e.g. if EOS_ELASTIC is enabled)
 #HYDRO_EXPLICITLY_INTEGRATE_VOLUME # explicitly integrate the kernel continuity equation for cell volumes (giving e.g. densities), as in e.g. Monaghan 2000, but with a term that relaxes the integrated cell volume back to the explicitly evaluated kernel calculation on a timescale ~10 t_cross where t_cross ~ MAX(H_kernel , L_grad) / MIN(cs_eff) where L_grad is the density gradient scale length and cs_eff the minimum sound/torsion/tension wave speed. This module ONLY makes sense for strictly fixed-mass (SPH/MFM) methods
@@ -2417,10 +2390,6 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 # ----- MPI & Parallel-FFTW De-Bugging
 #USE_MPI_IN_PLACE               # MPI debugging: makes AllGatherV compatible with MPI_IN_PLACE definitions in some MPI libraries
 #NO_ISEND_IRECV_IN_DOMAIN       # MPI debugging: slower, but fixes memory errors during exchange in the domain decomposition (ANY RUN with >2e9 particles MUST SET THIS OR FAIL!)
-#FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG # MPI debugging
-#MPISENDRECV_SIZELIMIT=100      # MPI debugging
-#MPISENDRECV_CHECKSUM           # MPI debugging
-#DONOTUSENODELIST               # MPI debugging
 #NOTYPEPREFIX_FFTW              # FFTW debugging (fftw-header/libraries accessed without type prefix, adopting whatever was
                                 #   chosen as default at compile of fftw). Otherwise, the type prefix 'd' for double is used.
 #USE_FFTW3                      # enables FFTW3 (can be used with DOUBLEPRECISION_FFTW) 
@@ -2429,7 +2398,6 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 # --------------------
 # ----- Load-Balancing
 #ALLOW_IMBALANCED_GASPARTICLELOAD # increases All.MaxPartSph to All.MaxPart: can allow better load-balancing in some cases, but uses more memory. But use me if you run into errors where it can't fit the domain (where you would increase PartAllocFac, but can't for some reason)
-#SEPARATE_STELLARDOMAINDECOMP   # separate stars (ptype=4) and other non-gas particles in domain decomposition (may help load-balancing)
 ####################################################################################################
 ```
 
@@ -2594,7 +2562,7 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 <a name="config-debug-mpi"></a>
 ### _MPI & Parallel-FFTW De-Bugging_
 
-**USE\_MPI\_IN\_PLACE**/**NO\_ISEND\_IRECV\_IN\_DOMAIN**/**MPISENDRECV\_SIZELIMIT**/**MPISENDRECV\_CHECKSUM**/**DONOTUSENODELIST**: These are very specific flags used to deal with certain non-standard MPI installations and very specific version issues. They may be required on some machines (see the code Makefile). If you are having MPI problems, first check the code on other machines, then (if it works) check various mpi installations on the problem machine, then (if youre still stuck) search these terms in the code to see if one of them might help. Frankly if you arent sure how they interact with your MPI library, you shouldnt be altering them.
+**USE\_MPI\_IN\_PLACE**/**NO\_ISEND\_IRECV\_IN\_DOMAIN**/**MPISENDRECV\_SIZELIMIT**: These are very specific flags used to deal with certain non-standard MPI installations and very specific version issues. They may be required on some machines (see the code Makefile). If you are having MPI problems, first check the code on other machines, then (if it works) check various mpi installations on the problem machine, then (if youre still stuck) search these terms in the code to see if one of them might help. Frankly if you arent sure how they interact with your MPI library, you shouldnt be altering them.
 
 **NOTYPEPREFIX\_FFTW**: If this is set, the fftw-header/libraries are accessed without type prefix (adopting whatever was chosen as default at compile-time of fftw). Otherwise, the type prefix 'd' for double-precision is used. This is needed on some machines depending on the compilation of FFTW.
 
@@ -4639,7 +4607,7 @@ There are also a couple of `Config.sh` parameters which can be **required** for 
 <a name="faqs-timebin"></a>
 ## Why Did Everything Drop to TimeBin=1?
 
-This is a peculiar manifestation of a certain class of errors. In the stdout file, where it shows the number of particles in a given timebin, suddenly (in one or a few timesteps), a huge number of cells end up in `bin= 1`. This is the smallest allowed timebin. First check that your minimum timestep is not too large (i.e. that this isn't just the code doing what it should do, but you aren't allowing it to use small enough timebins). If you need more dynamic range for timesteps, turn on `LONG_INTEGER_TIME`. 
+This is a peculiar manifestation of a certain class of errors. In the stdout file, where it shows the number of particles in a given timebin, suddenly (in one or a few timesteps), a huge number of cells end up in `bin= 1`. This is the smallest allowed timebin. First check that your minimum timestep is not too large (i.e. that this isn't just the code doing what it should do, but you aren't allowing it to use small enough timebins).
 
 Assuming this is a real issue, what has usually happened is that somewhere (usually in a neighbor interaction involving terms in a more experimental module), the code divided by zero (or nearly-zero) or otherwise inserted a `nan` or extremely large or small number. This can happen under some circumstances when un-addressed memory is called (instead of the code just immediately crashing). This assigns a huge value to something like acceleration or velocity or energy, which drops the timebin down. This might only occur in one interaction, but that infinity or nan then propagates through the grid rapidly as elements interact. 
 
@@ -4657,7 +4625,7 @@ Yes, lots of them! See the sections of this User Guide on [Initial Conditions (M
 
 Read the [Snapshot & Initial Condition Files](#snaps) section, as well as the description of the relevant `Config.sh` flags you have enabled in [Config.sh (Setting compile-time options)](#config), where most of the outputs are described. If you cannot find it, search the source code, in `io.c` you can find the map between the HDF5 variable name and what is actually written out. 
 
-Example: if you are using radiation-hydrodynamics, and see the variable `PhotonEnergy` in your HDF5 file, search this in `io.c` to see it is associated with the case `IO_RADGAMMA` (the switch for whether or not this variable is written out to a file), so search that and you see it is writing out a vector with `N_RT_FREQ_BINS` entries per particle, representing the different radiation frequency bins followed in the code in the same order, and writing out the variable `SphP[pindex].Rad_E_gamma[k]` -- the absolute energy of the radiation field (in code units) at frequency `k` associated with gas resolution element `pindex`. 
+Example: if you are using radiation-hydrodynamics, and see the variable `PhotonEnergy` in your HDF5 file, search this in `io.c` to see it is associated with the case `IO_RADGAMMA` (the switch for whether or not this variable is written out to a file), so search that and you see it is writing out a vector with `N_RT_FREQ_BINS` entries per particle, representing the different radiation frequency bins followed in the code in the same order, and writing out the variable `CellP[pindex].Rad_E_gamma[k]` -- the absolute energy of the radiation field (in code units) at frequency `k` associated with gas resolution element `pindex`. 
 
 <a name="faqs-units"></a>
 ## What are the Code Units?
