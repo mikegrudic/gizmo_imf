@@ -244,11 +244,6 @@ void calculate_non_standard_physics(void)
 #endif
 
 
-#ifdef GALSF /* PFH set of feedback routines; here because for e.g. strong SNe, obtain better stability if they are coupled discretely just -before- the hydro force is computed */
-    //compute_stellar_feedback();
-#endif
-
-    
 #ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
 #ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
@@ -305,13 +300,13 @@ void calculate_non_standard_physics(void)
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_RTNONFLUXOPS] += measure_time();
 #endif // RADTRANSFER block
 
-#ifdef COOLING	/**** radiative cooling and chemistry  *****/
+#ifdef COOLING	/* radiative cooling and chemistry  */
     cooling_parent_routine(); // top-level cooling and chemistry subroutine //
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
 
 
-#ifdef GALSF /**** star/sink particle formation *****/
+#ifdef GALSF /* star/sink particle formation */
     star_formation_parent_routine(); // top-level star formation routine (because this involves common particle conversions, want to keep this at end of this subroutine) //
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif

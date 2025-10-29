@@ -664,7 +664,7 @@ void density(void)
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		        if(P[i].Type == 5) {minsoft = SinkParticle_GravityKernelRadius;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
 #ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
-                if(P[i].Type == 5) {minsoft = DMAX(minsoft, P[i].SinkRadius);}
+                if(P[i].Type == 5) {minsoft = DMAX(minsoft, DMIN(P[i].SinkRadius , 0.1*SinkParticle_GravityKernelRadius));}
 #endif
 #endif
 #endif
