@@ -941,6 +941,7 @@ int check_if_absorbed_photons_can_be_reemitted_into_same_band(int kfreq);
 double rt_absorb_frac_albedo(int j, int k_freq);
 double rt_absorption_rate(int i, int k_freq);
 double rt_diffusion_coefficient(int i, int k_freq);
+MyFloat dust_planck_mean_opacity(MyFloat Trad, MyFloat Tdust);
 void rt_eddington_update_calculation(int j);
 void rt_update_driftkick(int i, double dt_entr, int mode);
 #endif

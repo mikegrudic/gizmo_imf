@@ -1722,29 +1722,8 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
          the deviations from the fit functions are much smaller than the deviations owing
          to different grain composition choices (porous/non, composite/non, 5-layer/aggregated/etc)
          in Semenov et al's paper */
-        
-#if defined(RT_INFRARED) || defined(COOL_LOW_TEMPERATURES)
-        T_dust_opacitytable = DMIN(T_dust , 1499.9); // limit to <1500 so always use opacities for 'capped' value at 1500 below, but don't ignore, because we're assuming the dust destruction above 1500K is accounted for in the self-consistent calculation of the dust-to-metals ratio, NOT in the opacities here //
-#endif
-        if(T_dust_opacitytable < 160.) // Tdust < 160 K (all dust constituents present)
-        {
-            kappa = exp(0.72819004 + 0.75142468*x - 0.07225763*x*x - 0.01159257*x*x*x + 0.00249064*x*x*x*x);
-        } else if(T_dust_opacitytable < 275.) { // 160 < Tdust < 275 (no ice present)
-            kappa = exp(0.16658241 + 0.70072926*x - 0.04230367*x*x - 0.01133852*x*x*x + 0.0021335*x*x*x*x);
-        } else if(T_dust_opacitytable < 425.) { // 275 < Tdust < 425 (no ice or volatile organics present)
-            kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);
-        } else if(T_dust_opacitytable < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
-            kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
-        } else if(T_dust < MAX_DUST_TEMP) { // 680 < Tdust < 1500 (silicates & iron present)
-            kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
-        } else {
-            kappa = MIN_REAL_NUMBER; // dust completely absent above MAX_DUST_TEMP
-        }
-        if(dx_excess > 0) {kappa *= exp(0.57*dx_excess);} // assumes kappa scales linearly with temperature (1/lambda) above maximum in fit; pretty good approximation //
-    	kappa = DMIN(1.e-3 * Trad * Trad, kappa); // ensure that we extrapolate to low temperatures with a beta=2 law, like in the S03 paper fiducial model
-#else
-        kappa = DMIN(1.e-3 * Trad * Trad, 5.); // beta=2 law capped at 5 cm^2/g, rough approximation of Semenov model neglecting jumps in composition
-#endif
+        kappa = dust_planck_mean_opacity(Trad, T_dust_opacitytable);
+#endif	
 #ifdef RADTRANSFER
         if((do_emission_absorption_scattering_opacity==1) || (do_emission_absorption_scattering_opacity==-1)) {
             kappa *= (1.-0.5/(1.+((725.*725.)/(1.+Trad*Trad)))); /* rough interpolation for dust depending on the radiation temperature: high Trad, this is 1/2, low Trad, gets closer to unity */
