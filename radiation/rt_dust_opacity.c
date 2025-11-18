@@ -7,8 +7,7 @@
 
 #define N_TRAD 15 // number of T_rad samples
 #define N_TDUST 5 // number of T_dust zones
-MyFloat Tdust_zones[N_TDUST] = {160, 275, 425, 680,
-                                1500}; // demarcation of T_dust zones
+MyFloat Tdust_zones[N_TDUST] = {160, 275, 425, 680, 1500}; // demarcation of T_dust zones
 MyFloat logTrad_table[N_TRAD] = {0.0,
                                  0.2857142857142857,
                                  0.5714285714285714,
@@ -74,8 +73,8 @@ MyFloat dust_planck_mean_opacity(MyFloat Trad, MyFloat Tdust) {
             break;
         }
     }
-    if (Tdust_idx == N_TDUST + 1) {
-        return 1e-37;
+    if (Tdust_idx == N_TDUST + 1) { // Tdust is hot so dust is sublimated; return smol value
+        return MIN_REAL_NUMBER;
     }
 
     if (logT >= logTmax) {

@@ -7,7 +7,6 @@
 #include "../allvars.h"
 #include "../proto.h"
 #include "../kernel.h"
-#include "./dust_opacity.c"
 #ifdef PTHREADS_NUM_THREADS
 #include <pthread.h>
 #endif
