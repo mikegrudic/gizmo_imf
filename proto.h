@@ -826,6 +826,7 @@ void gravity_tree(void);
 void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
+void jaco_do_cooling(int i);
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg, double T);
 double gas_dust_heating_coeff(int i, double T, double Tdust);
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate);

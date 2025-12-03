@@ -215,7 +215,7 @@ void run(void)
 
 void set_non_standard_physics_for_current_time(void)
 {
-#if defined(COOLING) && !defined(CHIMES)
+#if defined(COOLING) && !(defined(CHIMES) || defined(JACO))
     /* set UV background for the current time */
     IonizeParams();
 #endif

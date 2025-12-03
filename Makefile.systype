@@ -6,14 +6,14 @@
 #
 #############
 
-SYSTYPE="Frontera"
+#SYSTYPE="Frontera"
 #SYSTYPE="Stampede2"
 #SYSTYPE="Bridges2"
 #SYSTYPE="Anvil"
 #SYSTYPE="Wheeler"
 #SYSTYPE="CaltechHPC"
 #SYSTYPE="MacBookPro"
-#SYSTYPE="MacBookCellar"
+SYSTYPE="MacBookCellar"
 #SYSTYPE="Quest"
 #SYSTYPE="Quest-intel"
 #SYSTYPE="TSCC"

@@ -97,7 +97,6 @@ void cooling_parent_routine(void)
 void do_the_cooling_for_particle(int i)
 {
     double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i), ne_in, ne_out;
-
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, SphP[i].InternalEnergy); int k; k=0; ne_in=0; ne_out=0;
@@ -150,6 +149,18 @@ void do_the_cooling_for_particle(int i)
         DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS_CGS/HYDROGEN_MASSFRAC);
         if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
 #endif
+#ifdef JACO
+	//	if(nH_CGS(i)<1){printf("u=%g\n",SphP[i].InternalEnergy);}
+	jaco_do_cooling(i);
+	//	if(nH_CGS(i)<1){printf("u=%g\n",SphP[i].InternalEnergy);}
+	//        SphP[i].InternalEnergy = unew;
+        SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
+        set_eos_pressure(i);
+#ifndef COOLING_OPERATOR_SPLIT
+        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here                     
+#endif	
+	return;
+#endif    
 
 
 #if !defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) /* standard behavior, call the actual cooling subroutine */
@@ -1660,7 +1671,9 @@ void InitCool(void)
 
     All.Time = All.TimeBegin;
     set_cosmo_factors_for_current_time();
-
+#ifdef JACO
+    return;
+#endif    
 #ifdef COOL_GRACKLE
     InitGrackle();
 #endif
@@ -2109,6 +2122,7 @@ double gas_dust_heating_coeff(int i, double T, double Tdust)
     return 1.116e-32 * sqrt(T)*(1.-0.8*exp(-75./T)) * Z_sol * fdust;  // Meijerink & Spaans 2005; Hollenbach & McKee 1979,1989. Assumes 10 Angstrom minimum grain size.
 }
 
+#ifdef COOL_LOW_TEMPERATURES
 /* Computes the normalized FUV flux in Habing units G0 
 
 Mode 0: Account only for dust-shielded FUV flux
@@ -2143,6 +2157,7 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac, int mode)
     G0 = DMAX(MIN_REAL_NUMBER, DMIN(G0,1e4));
     return G0;
 }
+#endif 
 
 /* this function estimates the free electron fraction from heavy ions, assuming a simple mix of cold molecular gas, Mg, and dust, with the ions from singly-ionized Mg, to prevent artificially low free electron fractions */
 double return_electron_fraction_from_heavy_ions(int target, double temperature, double density_cgs, double n_elec_HHe)
