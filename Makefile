@@ -562,8 +562,8 @@ GSL_INCL = -I/opt/homebrew/Cellar/gsl/2.8/include #-I$(PORTINCLUDE)
 GSL_LIBS = -L/opt/homebrew/Cellar/gsl/2.8/lib #-L$(PORTLIB)
 FFTW_INCL= -I/usr/local/include
 FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I/opt/homebrew/Cellar/hdf5/1.14.3_1/include -DH5_USE_16_API  #-I$(PORTINCLUDE) -DH5_USE_16_API
-HDF5LIB  = -L/opt/homebrew/Cellar/hdf5/1.14.3_1/lib -lhdf5 -lz  #-L$(PORTLIB)
+HDF5INCL = -I/opt/homebrew/Cellar/hdf5/1.14.6/include -DH5_USE_16_API  #-I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/opt/homebrew/Cellar/hdf5/1.14.6/lib -lhdf5 -lz  #-L$(PORTLIB)
 MPICHLIB = #
 OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION #
 
@@ -1329,6 +1329,8 @@ HYDRO_OBJS = 	hydro/hydro_toplevel.o \
 				turb/turb_powerspectra.o
 
 EOSCOOL_OBJS =  cooling/cooling.o \
+                                cooling/jaco.o \
+	                        cooling/microphysics_func_jac.o \
 				cooling/grackle.o \
 				cooling/simple_chemistry.o \
 				eos/eos.o \
@@ -1358,8 +1360,7 @@ RHD_OBJS =  radiation/rt_utilities.o \
 			radiation/rt_CGmethod.o \
 			radiation/rt_source_injection.o \
 			radiation/rt_chem.o \
-			radiation/rt_cooling.o \
-	                radiation/rt_dust_opacity.o
+			radiation/rt_cooling.o
 
 FOF_OBJS =	structure/fof.o \
 			structure/subfind/subfind.o \
