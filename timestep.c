@@ -348,16 +348,20 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if(ac == 0) {ac = 1.0e-30;}
 
+    MyFloat eps_dt = All.cf_atime * 2 * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p); // kernel size to insert in the dt~sqrt(eps/acc) limiter
+    #ifdef SELFGRAVITY_OFF
+    if(P[p].Type == 0){eps_dt = Get_Particle_Size(p);} // ForceSoftening_KernelRadius irrelevant when no gravity - just use the kernel radius
+    #endif
 
     if(flag > 0)
     {
         /* this is the non-standard mode; use timestep to get the maximum acceleration tolerated */
         dt = flag * UNIT_INTEGERTIME_IN_PHYSICAL(p); /* convert dloga to physical timestep  */
-        ac = 2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p) / (dt * dt);
+        ac = All.ErrTolIntAccuracy * eps_dt / (dt * dt);
         *aphys = ac;
         return flag;
     }
-    dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * ForceSoftening_KernelRadius(p) / ac);
+    dt = sqrt(All.ErrTolIntAccuracy * eps_dt / ac);
 
 #if (defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)) && defined(GALSF) && defined(GALSF_FB_MECHANICAL)
     if(((P[p].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[p].Type == 2)||(P[p].Type==3))))&&(P[p].Mass>0))
