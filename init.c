@@ -276,7 +276,7 @@ void init(void)
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
         P[i].Potential = 0;
 #endif
-#ifdef GALSF
+#if defined(GALSF) && !defined(INPUT_READ_SINKPROPS)
         if(RestartFlag == 0) {P[i].StellarAge = 0;}
 #ifdef GALSF_SFR_IMF_VARIATION
         if(RestartFlag == 0) {P[i].IMF_Mturnover = 2.0;} /* gives a solar-type IMF for our calculations in current code */
@@ -289,7 +289,7 @@ void init(void)
 #endif
 #endif
         
-#ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
+#if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && !defined(INPUT_READ_SINKPROPS)
         if(RestartFlag == 0) {P[i].ProtoStellarStage = 0;}
 #endif
 
@@ -333,7 +333,7 @@ void init(void)
 #endif
         }
 
-#if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF)
+#if defined(INIT_STELLAR_METALS_AGES_DEFINED) && defined(GALSF) && !defined(INPUT_READ_SINKPROPS)
         if(RestartFlag == 0) {P[i].StellarAge = -2.0 * All.InitStellarAgeinGyr / (UNIT_TIME_IN_GYR) * get_random_number(P[i].ID + 3);}
 #endif
 

@@ -605,6 +605,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #define LONGIDS
 #define OUTPUT_POSITIONS_IN_DOUBLE
 #define INPUT_POSITIONS_IN_DOUBLE
+#define INPUT_READ_SINKPROPS
 #define OUTPUT_POTENTIAL
 #ifndef SINGLE_STAR_AND_SSP_HYBRID_MODEL
 #define IO_GRADUAL_SNAPSHOT_RESTART

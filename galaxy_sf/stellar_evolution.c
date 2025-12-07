@@ -1173,7 +1173,7 @@ double ps_beta(double m, double n_ad, double rhoc, double Pc) {
           if(fmid <= 0.0) rtb=xmid;
           if(fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
         }
-        printf("ps_beta: bisection solve failed to converge"); return(-1);
+        printf("ps_beta: bisection solve failed to converge for m=%g n_ad=%g rhoc=%g Pc=%g\n", m,n_ad,rhoc,Pc); terminate("Something is going wrong with protostellar evolution\n");
     } else {
         // For n != 3, we use a table lookup. The values of beta have been pre-computed with mathematica. The table goes from M=5 to 50 solar masses in steps of 2.5 M_sun, and from n=1.5 to n=3 in steps of 0.5. We should never call this routine with M > 50 Msun, since by then the star should be fully on the main sequence.
         double MTABMIN=5.0, MTABMAX=50.0, MTABSTEP=2.5, NTABMIN=1.5, NTABMAX=3.0, NTABSTEP=0.5;
@@ -1232,7 +1232,7 @@ double ps_Tc(double rhoc, double Pc) {
         if (fmid <= 0.0) rtb=xmid;
         if (fabs(dx) < TOL*fabs(xmid) || fmid == 0.0) return rtb;
     }
-    printf("ps_Tc: bisection solve didn't converge, P_c = %e, rho_c = %e, Tgas = %e Trad = %e",Pc_cgs, rhoc_cgs, Tgas, Trad); return(-1);
+    printf("ps_Tc: bisection solve didn't converge, rhoc=%g Pc=%g P_c_cgs = %e, rho_c_cgs = %e, Tgas = %e Trad = %e",rhoc,Pc, Pc_cgs, rhoc_cgs, Tgas, Trad); terminate("Something is going wrong with protostellar evolution");
 }
 /* Calculate central density for protostar using a pre-computed table for fixed mass, radius and polytropic index, based on Offner 2009, table and code taken from ORION */
 double ps_rhoc(double m, double n_ad, double r) { /* Use Tabulated values of rho_c/rho_mean for n=1.5 to 3.1 in intervals of 0.1*/

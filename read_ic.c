@@ -974,6 +974,7 @@ void read_file(char *fname, int readTask, int lastTask)
                    && blocknr != IO_STAGE_PROTOSTAR
                    && blocknr != IO_AGE_PROTOSTAR
                    && blocknr != IO_LUM_SINGLESTAR
+                   && blocknr != IO_AGE
 #endif
                    )
 #if defined(GDE_DISTORTIONTENSOR) && defined(GDE_READIC)
@@ -1059,7 +1060,7 @@ void read_file(char *fname, int readTask, int lastTask)
 #ifdef TURB_DIFF_DYNAMIC
             if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {continue;}
 #endif
-
+            
             if(ThisTask == readTask)
             {
                 get_dataset_name(blocknr, buf);
