@@ -298,7 +298,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_NE:		/* electron abundance */
-#if (defined(COOLING) || defined(RT_CHEM_PHOTOION)) && !defined(CHIMES)
+#if (defined(COOLING) || defined(RT_CHEM_PHOTOION)) && !(defined(CHIMES) || defined(JACO))
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -309,7 +309,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_NH:		/* neutral hydrogen fraction */
-#if (defined(COOLING) || defined(RT_CHEM_PHOTOION)) && !defined(CHIMES)
+#if (defined(COOLING) || defined(RT_CHEM_PHOTOION)) && !(defined(CHIMES) || defined(JACO))
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {

@@ -97,7 +97,7 @@ void init(void)
     set_cosmo_factors_for_current_time();
 
 
-#if defined(COOLING) && !defined(CHIMES)
+#if defined(COOLING) && !defined(CHIMES) && !defined(JACO)
     IonizeParams();
 #endif
 
@@ -624,7 +624,7 @@ void init(void)
 #endif
             SphP[i].Density = -1;
 #ifdef COOLING
-#ifndef CHIMES
+#if !(defined(CHIMES) || defined(JACO))
             SphP[i].Ne = 1.0;
 #endif
 #if defined(COOL_MOLECFRAC_NONEQM)
