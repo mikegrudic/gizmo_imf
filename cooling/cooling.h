@@ -31,7 +31,7 @@ void   SetZeroIonization(void);
 #endif 
 void   TestCool(void);
 
-#ifndef CHIMES 
+#ifndef CHIMES
 double find_abundances_and_rates(double logT, double rho, int target, double shieldfac, int return_cooling_mode,
                                  double *ne_guess, double *nH0_guess, double *nHp_guess, double *nHe0_guess, double *nHep_guess, double *nHepp_guess, double *mu_guess,
                                  double *LambdaExc_return, double *LambdaIon_return, double *LambdaRec_return, double *LambdaFF_return);

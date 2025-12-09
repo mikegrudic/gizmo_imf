@@ -1052,7 +1052,6 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
         double v_wind = single_star_wind_velocity(n);
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / target_mass_for_wind_spawning(n);
-	printf("N_wind=%g v_wind=%g\n", N_wind, v_wind);
         int old_wind_mode = P[n].wind_mode;
         if (N_wind >= n_particles_for_discrete_wind_spawn){
             P[n].wind_mode = 1; // we can spawn enough particles per wind time

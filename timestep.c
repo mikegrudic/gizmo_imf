@@ -1080,7 +1080,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if((dt < All.MinSizeTimestep)||(((integertime) (dt / All.Timebase_interval)) <= 1))
     {
-        PRINT_WARNING("Timestep wants to be below the limit `MinSizeTimestep'");
+        PRINT_WARNING("Timestep of particle %lld wants to be below the limit `MinSizeTimestep'", P[p].ID);
         double agrav_pm=0, agrav = sqrt(P[p].GravAccel[0]*P[p].GravAccel[0] + P[p].GravAccel[1]*P[p].GravAccel[1] + P[p].GravAccel[2]*P[p].GravAccel[2]) * All.cf_a2inv;
 #ifdef PMGRID
         agrav_pm = sqrt(P[p].GravPM[0]*P[p].GravPM[0] + P[p].GravPM[1]*P[p].GravPM[1] + P[p].GravPM[2]*P[p].GravPM[2]) * All.cf_a2inv;

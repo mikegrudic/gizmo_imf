@@ -689,7 +689,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #if (defined(COOLING) && !defined(COOL_LOWTEMP_THIN_ONLY) && !defined(RT_INFRARED) && !defined(NOGRAVITY))
 #define RT_USE_TREECOL_FOR_NH 6 
 #endif
-#ifdef COOLING
+#if defined(COOLING) && !defined(JACO)
 #define SIMPLE_STEADYSTATE_CHEMISTRY
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
@@ -793,7 +793,7 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 #endif
 #endif
 
-#if defined(COOLING) && !defined(COOL_GRACKLE) // if not using grackle modules, need to make sure appropriate cooling is enabled
+#if defined(COOLING) && !(defined(COOL_GRACKLE) || defined(JACO))  // if not using grackle modules, need to make sure appropriate cooling is enabled
 #ifndef COOL_LOW_TEMPERATURES
 #define COOL_LOW_TEMPERATURES // make sure low-temperature cooling is enabled!
 #endif

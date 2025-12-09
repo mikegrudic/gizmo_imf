@@ -90,12 +90,45 @@ void cooling_parent_routine(void)
 #endif
 }
 
-
+void set_PdV_work_heatingrate(int i, double dtime){
+    double DtInternalEnergyEffCGS = SphP[i].DtInternalEnergy;
+    /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+    /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
+    double grav_acc;
+    for(k = 0; k < 3; k++)
+    {
+        grav_acc = All.cf_a2inv * P[i].GravAccel[k];
+#ifdef PMGRID
+        grav_acc += All.cf_a2inv * P[i].GravPM[k];
+#endif
+        DtInternalEnergyEffCGS -= SphP[i].GravWorkTerm[k] * All.cf_atime * grav_acc;
+    }
+#endif
+    /* limit the magnitude of the hydro dtinternalenergy */
+    if(DtInternalEnergyEffCGS < 0) {
+        double qfac = DMIN(0,DMAX(DMAX(-0.9, exp(DtInternalEnergyEffCGS*dtime/SphP[i].InternalEnergy)-1.), All.MinEgySpec/SphP[i].InternalEnergy-1.)); // equivalent to saying this wouldn't lower internal energy to below 10% in one timestep
+        DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , qfac*SphP[i].InternalEnergy/dtime );
+        double u_gamma_minus_1 = (GAMMA(i)-1.) * SphP[i].InternalEnergy, rho = SphP[i].Density*All.cf_a3inv, pressure_thermalonly = u_gamma_minus_1 * rho;
+        double vA = Get_Gas_Alfven_speed_i(i), pressure_total = 0.5*vA*vA*rho + SphP[i].Pressure*All.cf_a3inv;
+        if(pressure_thermalonly < 0.05*pressure_total) {
+            double DtInternalEnergyPdV = - u_gamma_minus_1 * (P[i].Particle_DivVel*All.cf_a2inv); /* change from expansion in PdV term */
+            DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , DMIN(DtInternalEnergyPdV, 0)); /* limit to PdV expansion change in limit where the thermal energy is small compared to the total */
+        }
+    }
+    DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
+    /* and convert to cgs before use in the cooling sub-routine */
+    DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS_CGS/HYDROGEN_MASSFRAC);
+    if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
+}
 
 
 /* subroutine which actually sends the particle data to the cooling routine and updates the entropies */
 void do_the_cooling_for_particle(int i)
 {
+#ifdef JACO
+    call_jaco(i); return; // all updateds are performed within the module
+#endif
     double unew, dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i), ne_in, ne_out;
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
@@ -119,50 +152,8 @@ void do_the_cooling_for_particle(int i)
 #endif
 
 #ifndef COOLING_OPERATOR_SPLIT
-        double DtInternalEnergyEffCGS = SphP[i].DtInternalEnergy;
-        /* do some prep operations on the hydro-step determined heating/cooling rates before passing to the cooling subroutine */
-#ifdef HYDRO_MESHLESS_FINITE_VOLUME
-        /* calculate the contribution to the energy change from the mass fluxes in the gravitation field */
-        double grav_acc;
-        for(k = 0; k < 3; k++)
-        {
-            grav_acc = All.cf_a2inv * P[i].GravAccel[k];
-#ifdef PMGRID
-            grav_acc += All.cf_a2inv * P[i].GravPM[k];
+        set_PdV_work_heatingrate(i,dtime);
 #endif
-            DtInternalEnergyEffCGS -= SphP[i].GravWorkTerm[k] * All.cf_atime * grav_acc;
-        }
-#endif
-        /* limit the magnitude of the hydro dtinternalenergy */
-        if(DtInternalEnergyEffCGS < 0) {
-            double qfac = DMIN(0,DMAX(DMAX(-0.9, exp(DtInternalEnergyEffCGS*dtime/SphP[i].InternalEnergy)-1.), All.MinEgySpec/SphP[i].InternalEnergy-1.)); // equivalent to saying this wouldn't lower internal energy to below 10% in one timestep
-            DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , qfac*SphP[i].InternalEnergy/dtime );
-            double u_gamma_minus_1 = (GAMMA(i)-1.) * SphP[i].InternalEnergy, rho = SphP[i].Density*All.cf_a3inv, pressure_thermalonly = u_gamma_minus_1 * rho;
-            double vA = Get_Gas_Alfven_speed_i(i), pressure_total = 0.5*vA*vA*rho + SphP[i].Pressure*All.cf_a3inv;
-            if(pressure_thermalonly < 0.05*pressure_total) {
-                double DtInternalEnergyPdV = - u_gamma_minus_1 * (P[i].Particle_DivVel*All.cf_a2inv); /* change from expansion in PdV term */
-                DtInternalEnergyEffCGS = DMAX(DtInternalEnergyEffCGS , DMIN(DtInternalEnergyPdV, 0)); /* limit to PdV expansion change in limit where the thermal energy is small compared to the total */
-            }
-        }
-        DtInternalEnergyEffCGS = DMIN(DtInternalEnergyEffCGS ,  1.e4*SphP[i].InternalEnergy/dtime ); // equivalent to saying we cant massively enhance internal energy in a single timestep from the hydro work terms: should be big, since just numerical [shocks are real!]
-        /* and convert to cgs before use in the cooling sub-routine */
-        DtInternalEnergyEffCGS *= (UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS) * (PROTONMASS_CGS/HYDROGEN_MASSFRAC);
-        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
-#endif
-#ifdef JACO
-	//	if(nH_CGS(i)<1){printf("u=%g\n",SphP[i].InternalEnergy);}
-	jaco_do_cooling(i);
-	//	if(nH_CGS(i)<1){printf("u=%g\n",SphP[i].InternalEnergy);}
-	//        SphP[i].InternalEnergy = unew;
-        SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
-        set_eos_pressure(i);
-#ifndef COOLING_OPERATOR_SPLIT
-        if(SphP[i].CoolingIsOperatorSplitThisTimestep==0) {SphP[i].DtInternalEnergy=0;} // if unsplit, zero the internal energy change here                     
-#endif	
-	return;
-#endif    
-
-
 #if !defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) /* standard behavior, call the actual cooling subroutine */
 #if !defined(CHIMES)
         ne_in = SphP[i].Ne; ne_out = ne_in; /* this variable is not defined if chimes is on */
