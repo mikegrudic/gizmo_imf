@@ -144,6 +144,8 @@ extern struct Chimes_depletion_data_structure *ChimesDepletionData;
 
 extern int FirstActiveParticle;
 extern int *NextActiveParticle;
+extern int *ActiveParticleList;
+extern int ActiveParticleNumber;
 extern unsigned char *ProcessedFlag;
 extern int TimeBinCount[TIMEBINS];
 extern int TimeBinCountGas[TIMEBINS];

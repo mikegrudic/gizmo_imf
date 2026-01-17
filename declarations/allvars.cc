@@ -58,6 +58,8 @@ int TakeLevel;
 
 int FirstActiveParticle;
 int *NextActiveParticle;
+int *ActiveParticleList;
+int ActiveParticleNumber;
 unsigned char *ProcessedFlag;
 
 int TimeBinCount[TIMEBINS];

@@ -474,6 +474,7 @@ void make_list_of_active_particles(void)
     int i, n, prev;
     /* make a link list with the particles in the active time bins */
     FirstActiveParticle = -1;
+    ActiveParticleNumber = 0;
 
     for(n = 0, prev = -1; n < TIMEBINS; n++)
     {
@@ -485,6 +486,8 @@ void make_list_of_active_particles(void)
                 if(prev == -1) {FirstActiveParticle = i;}
                 if(prev >= 0) {NextActiveParticle[prev] = i;}
                 prev = i;
+                ActiveParticleList[ActiveParticleNumber] = i;
+                ActiveParticleNumber++;
             }
         }
     }

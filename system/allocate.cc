@@ -43,6 +43,9 @@ void allocate_memory(void)
   NextActiveParticle = (int *) mymalloc("NextActiveParticle", bytes = All.MaxPart * sizeof(int));
   bytes_tot += bytes;
 
+  ActiveParticleList = (int *) mymalloc("ActiveParticleList", bytes = All.MaxPart * sizeof(int));
+  bytes_tot += bytes;
+
   NextInTimeBin = (int *) mymalloc("NextInTimeBin", bytes = All.MaxPart * sizeof(int));
   bytes_tot += bytes;
 

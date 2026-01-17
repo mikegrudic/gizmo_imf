@@ -648,6 +648,8 @@ void star_formation_parent_routine(void)
 #endif
                             NextActiveParticle[NumPart + stars_spawned] = FirstActiveParticle;
                             FirstActiveParticle = NumPart + stars_spawned;
+                            ActiveParticleList[ActiveParticleNumber] = NumPart + stars_spawned;
+                            ActiveParticleNumber++;
                             NumForceUpdate++;
                             
                             TimeBinCount[P[NumPart + stars_spawned].TimeBin]++;

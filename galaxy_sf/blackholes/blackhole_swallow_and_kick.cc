@@ -1025,7 +1025,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
 
         /* now we need to make sure everything is correctly placed in timebins for the tree */
         P[j].TimeBin = bin; // get the timebin, and put this particle into the appropriate timebin
-        NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j; NumForceUpdate++;
+        NextActiveParticle[j] = FirstActiveParticle; FirstActiveParticle = j;
+        ActiveParticleList[ActiveParticleNumber] = j; ActiveParticleNumber++;
+        NumForceUpdate++;
         TimeBinCount[bin]++; TimeBinCountGas[bin]++; PrevInTimeBin[j] = i0; /* likewise add it to the counters that register how many particles are in each timebin */
 #ifndef BH_DEBUG_SPAWN_JET_TEST
         NextInTimeBin[j] = NextInTimeBin[i0]; if(NextInTimeBin[i0] >= 0) {PrevInTimeBin[NextInTimeBin[i0]] = j;} NextInTimeBin[i0] = j; if(LastInTimeBin[bin] == i0) {LastInTimeBin[bin] = j;}
