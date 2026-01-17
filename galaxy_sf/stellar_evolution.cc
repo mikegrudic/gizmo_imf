@@ -704,7 +704,7 @@ void update_stellarnumber_and_timedistribofstarformation(void)
 {
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-        if(P[i].Type == 4)
+        if(P[i].Type == 4 && P[i].Mass > 0)
         {
             double dt_since_form_code = evaluate_time_since_t_initial_in_Gyr(P[i].StellarAge) / UNIT_TIME_IN_GYR; // time since spawn in code [physical] units
             if((dt_since_form_code < P[i].TimeDistribOfStarFormation) && (P[i].TimeDistribOfStarFormation > 0)) // candidate for 'spawning'
