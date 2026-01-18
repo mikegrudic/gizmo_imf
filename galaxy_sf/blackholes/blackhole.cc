@@ -410,6 +410,45 @@ void set_blackhole_mdot(int i, int n, double dt)
 #endif
 #endif
 
+#if defined(BH_RIAF_SUBEDDINGTON_MODEL)
+        /* subgrid model for convective vs disk regimes, with accretion rates from the high-res simulations */
+        double psi_magdisk = 0.1;
+        double r_kernel = P[n].Hsml * All.cf_atime;
+        double m_bh = P[n].BH_Mass,
+        double m_kernel = BlackholeTempInfo[i].Malt_in_Kernel + P[n].Mass;
+        double m_kernel_nonBH = m_kernel - m_bh;
+        double mdot_ROI = BlackholeTempInfo[i].mdot_alphadisk;
+        double sigma2_eff = All.G * m_kernel_nonBH / r_kernel;
+        double r_grav = 2. * All.G * m_bh / (C_LIGHT_CODE*C_LIGHT_CODE);
+        double r_roi = All.G * m_bh / sigma2_eff;
+        if(r_roi < r_grav) {r_roi = r_grav;}
+        int ROI_resolved = 0;
+        if(r_roi > r_kernel) {ROI_resolved = 1;}
+        if(ROI_resolved)
+        {
+            double mgas_enc = BlackholeTempInfo[i].Mgas_in_Kernel + P[n].BH_Mass_AlphaDisk;
+            double omega_enc = sqrt(All.G * m_kernel / (r_kernel*r_kernel*r_kernel));
+            mdot_ROI = psi_magdisk * mgas_enc * omega_enc;
+            BlackholeTempInfo[i].mdot_alphadisk = mdot_ROI;
+        } else {
+            double omega_enc = sqrt(All.G * P[n].Mass / (r_roi*r_roi*r_roi));
+            double mdot_ROI_alt = psi_magdisk * P[n].BH_Mass_AlphaDisk * omega_enc;
+            if(mdot_ROI_alt > mdot_ROI) {mdot_ROI = mdot_ROI_alt;}
+        }
+        double mdot_Edd = m_bh / (5.e7 / UNIT_TIME_IN_YR);
+        double mdot_crit_ROI = (2.*psi_magdisk) * mdot_Edd;
+        double mdot = 0;
+        if(mdot_ROI > mdot_crit_ROI)
+        {
+            mdot = pow(r_grav/r_roi, 0.15) * mdot_ROI;
+        } else {
+            mdot = pow(r_grav/r_roi, 0.5) * mdot_ROI;
+        }
+        t_acc_disk = P[n].BH_Mass_AlphaDisk / mdot;
+        P[n].BH_Mdot_ROI = mdot_ROI;
+        P[n].BH_ROI = r_roi;
+#endif
+        
 #if defined(BH_GRAVCAPTURE_GAS)
         t_acc_disk /= All.BlackHoleAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
@@ -775,7 +814,7 @@ void blackhole_final_operations(void)
         /* always substract the radiation energy from P[n].BH_Mass && P[n].Mass */
         dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(n);
 #ifdef BH_INTERACT_ON_GAS_TIMESTEP
-	dt = P[n].dt_since_last_gas_search;
+        dt = P[n].dt_since_last_gas_search;
 #endif
         double dm = P[n].BH_Mdot * dt;
 #ifdef BH_DEBUG_FIX_MDOT_MBH
@@ -816,7 +855,10 @@ void blackhole_final_operations(void)
 
 #ifdef BH_WIND_SPAWN
         /* DAA: for wind spawning, we only need to subtract the BAL wind mass from BH_Mass (or BH_Mass_AlphaDisk) --> wind mass subtracted from P.Mass in blackhole_spawn_particle_wind_shell()  */
-        double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm;
+        double dm_wind = (1.-All.BAL_f_accretion) / All.BAL_f_accretion * dm; /* this is the 'expected' wind mass, will go into reservoir designated for spawning in the next timestep */
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+        dm_wind = DMAX(P[n].BH_Mdot_ROI - P[n].BH_Mdot, 0.) * dt; /* wind mass loss rate from the alpha disk */
+#endif
 #ifdef SINGLE_STAR_FB_JETS
         if((P[n].BH_Mass * UNIT_MASS_IN_SOLAR < 0.01) || P[n].Mass < 3.5*P[n].Sink_Formation_Mass) {dm_wind = 0;} // no jets launched yet if <0.01 msun or if we haven't accreted enough to get a reliable jet direction
 #endif

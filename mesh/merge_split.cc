@@ -1313,14 +1313,15 @@ double evaluate_starstar_merger_for_starcluster_particle_pair(int i, int j)
 {
     if(evaluate_starstar_merger_for_starcluster_eligibility(j)) // already evaluated i, make sure j is also eligible
     {
-        double eta_position = 0.1, eta_velocity2 = 2.; // variables for below, defined for convenience here
+        double eta_position = 1., eta_velocity2 = 2.; // variables for below, defined for convenience here
         
         // consider separation and relative velocities
         int k; double dp[3], r2=0; for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-P[i].Pos[k];} // calculate separation
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1); // correct for box appropriately
         for(k=0;k<3;k++) {r2+=dp[k]*dp[k];} // squared position difference
         
-        double threshold_separation = eta_position * All.ForceSoftening[4]; // threshold separation to consider
+        double eps_i = ForceSoftening_KernelRadius(i), eps_j = ForceSoftening_KernelRadius(j), eps_ij = DMAX(eps_i,eps_j);
+        double threshold_separation = eta_position * eps_ij; // threshold separation to consider
         if(r2 > threshold_separation*threshold_separation) {return -1;} // only allow if sufficiently close
         
         double dv[3], v2=0; for(k=0;k<3;k++) {dv[k]=P[j].Vel[k]-P[i].Vel[k];} // calculate separation
@@ -1345,7 +1346,7 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
     if(evaluate_stellar_age_Gyr(i) < 0.05) {return 0;} // sufficiently old (don't want to do this for extremely young stars as messes up feedback and early dynamics)
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION // need to figure out if the new version of this makes sense
     double r_NGB = 1.25 * pow((All.DesNumNgb*All.G*P[i].Mass)/P[i].tidal_tensor_mag_prev , 1./3.); // kernel size enclosing some target neighbor number in a constant-density medium
-    if(r_NGB > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+    if(r_NGB > 0.5*ForceSoftening_KernelRadius(i)) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
 #else
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
     double h_i=ForceSoftening_KernelRadius(i), tidal_mag=0., fac_self=-P[i].Mass*kernel_gravity(0.,1.,1.,1)/(h_i*h_i*h_i); int k,j; // get what's needed for tidal tensor computation
@@ -1355,7 +1356,7 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i)
     if(tidal_mag > 0) {
         //tidal_mag = sqrt(tidal_mag); // squared norm. note this is in code units
         double ngb_dist = 1.25 * pow( (All.DesNumNgb * All.G * P[i].Mass / tidal_mag) , 1./3. ); // distance to the N'th nearest-neighbor
-        if(ngb_dist > All.ForceSoftening[4]) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
+        if(ngb_dist > h_i) {return 0;} // sufficiently dense region (need to have effective nearest-neighbor spacing approaching the minimum softening, with some arbitrary threshold we set)
     }
 #endif
 #endif

@@ -774,6 +774,17 @@ double get_spawned_cell_launch_speed(int i)
 #endif
 
 #ifdef BH_RIAF_SUBEDDINGTON_MODEL
+    double Mdot_wind = P[i].BH_Mdot_ROI - P[i].BH_Mdot;
+    if(Mdot_wind < 0) {return MIN_REAL_NUMBER;} // should be invalid
+    double mdot = P[i].BH_Mdot / (P[i].BH_Mass / (4.e7 / UNIT_TIME_IN_YR));
+    double L_over_c = evaluate_blackhole_radiative_efficiency(P[i].BH_Mdot,P[i].BH_Mass,i) * P[i].BH_Mdot * C_LIGHT_CODE;
+    double Pdot_rad = 0.;
+    if(mdot > 0.01) {Pdot_rad = L_over_c * DMIN(DMAX(mdot,1.),10.);}
+    double sigma_ROI = sqrt(All.G * P[i].BH_Mass / P[i].BH_ROI);
+    double Pdot_turb = 3. * Mdot_wind * sigma_ROI;
+    double Pdot_wind = Pdot_rad + Pdot_turb;
+    v_magnitude = Pdot_wind / Mdot_wind; 
+    /* // (older deprecated model here)
     double MBH_4 = P[i].BH_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
     double lambda_edd_eff = DMAX( P[i].BH_Mdot / bh_eddington_mdot(P[i].BH_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
     if(lambda_edd_eff > (BH_RIAF_SUBEDDINGTON_MODEL))
@@ -783,6 +794,7 @@ double get_spawned_cell_launch_speed(int i)
     } else {
         v_magnitude = DMAX(v_magnitude , 1.e5 / UNIT_VEL_IN_KMS); // fast jet speed
     }
+    */
 #endif
     
 #ifdef SINGLE_STAR_FB_JETS
@@ -1008,15 +1020,45 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
     {   /* first, clone the 'dummy' particle so various fields are set appropriately */
         P[j] = P[dummy_cell_i_to_clone]; CellP[j] = CellP[dummy_cell_i_to_clone]; /* set the pointers equal to one another -- all quantities get copied, we only have to modify what needs changing */
 
-#if defined(BH_TEST_WIND_MIXED_FASTSLOW)
+#if defined(BH_TEST_WIND_MIXED_FASTSLOW) || defined(BH_RIAF_SUBEDDINGTON_MODEL)
         if(P[i].Type==5) {
-            double masscorrfac_fast = 100.; mode = mode_default; mass_of_new_particle=mass_of_new_particle_default; v_magnitude_physical=v_magnitude_physical_default;
+            double masscorrfac_fast = 100.; /* ratio of spawned jet cell mass to non-jet cell mass */
+            double fraction_to_spawn_in_jet = 0.5; /* fraction of spawned cells by number in jet */
+            double frac_clight_jet = 0.3; /* default fraction of C for jet speed */
+#ifdef BH_TEST_WIND_MIXED_FASTSLOW
+            frac_clight_jet = (BH_TEST_WIND_MIXED_FASTSLOW/UNIT_VEL_IN_KMS) / C_LIGHT_CODE;
+#endif
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+            double Mdot_wind = P[i].BH_Mdot_ROI - P[i].BH_Mdot;
+            if(Mdot_wind > 0)
+            {
+                double a_spin = 0.33;
+                double HR = 0.33;
+                double mdot = P[i].BH_Mdot / (P[i].BH_Mass / (5.e7/UNIT_TIME_IN_YR));
+                if(mdot < 0.01) {HR = 1;}
+                double eff_jet = pow(a_spin*HR,2);
+                double Mdot_jet = (fraction_to_spawn_in_jet/masscorrfac_fast) * Mdot_wind;
+                double eta_jet = Mdot_jet / P[i].BH_Mdot;
+                frac_clight_jet = sqrt(2.*eff_jet/eta_jet); /* scaling so that KE of jet = desired */
+                if(frac_clight_jet > 1.) { /* superluminal - need more mass in jet to make this make sense */
+                    frac_clight_jet = 1.; // cap this at luminal
+                    masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].BH_Mdot); // boost this term to make up the difference
+                }
+                double frac_clight_jet = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
+                if(frac_clight_jet < frac_clight_jet_min) {
+                    frac_clight_jet = frac_clight_jet_min; // cap this at minimum
+                    masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].BH_Mdot); // boost this term to make up the difference
+                }
+            }
+#endif
+            double m0_newparticlemass_for_target_spawnedmass = mass_of_new_particle_default / (1. - fraction_to_spawn_in_jet * (1.-1./masscorrfac_fast));
+            mode = mode_default; mass_of_new_particle=m0_newparticlemass_for_target_spawnedmass; v_magnitude_physical=v_magnitude_physical_default;
             if((j - (NumPart + num_already_spawned)) % 2) {mode=mode_prev; v_magnitude_physical=v_magnitude_physical_prev; mass_of_new_particle=mass_of_new_particle_prev;  /* for every-other particle, need to match previous for conservation */
-            } else {
-                if(get_random_number(j)<0.5) {
-                    mode=1; mass_of_new_particle=mass_of_new_particle_default/masscorrfac_fast; v_magnitude_physical=(BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS; /* collimated jet */
-                } else {
-                    mode=0; mass_of_new_particle=mass_of_new_particle_default*(1.-1./masscorrfac_fast); v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
+            } else { /* collimated jet */
+                if(get_random_number(j) < fraction_to_spawn_in_jet) {
+                    mode=1; mass_of_new_particle=m0_newparticlemass_for_target_spawnedmass/masscorrfac_fast; v_magnitude_physical = frac_clight_jet * C_LIGHT_CODE;
+                } else { /* isotropic/broad-angle wind */
+                    mode=0; mass_of_new_particle=m0_newparticlemass_for_target_spawnedmass; v_magnitude_physical=v_magnitude_physical_default; /* isotropic slow wind */
                 }
             }
         }
@@ -1194,11 +1236,17 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         CellP[j].InternalEnergyPred = CellP[j].InternalEnergy;
 
 #if defined(COSMIC_RAY_FLUID) && defined(BH_COSMIC_RAYS) /* inject cosmic rays alongside wind injection */
-        double dEcr = evaluate_blackhole_cosmicray_efficiency(P[i].BH_Mdot,P[i].BH_Mass,i) * P[j].Mass * (All.BAL_f_accretion/(1.-All.BAL_f_accretion)) * C_LIGHT_CODE*C_LIGHT_CODE;
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-#ifdef BH_TEST_WIND_MIXED_FASTSLOW
+        double eps_cr = evaluate_blackhole_cosmicray_efficiency(P[i].BH_Mdot,P[i].BH_Mass,i);
+        double fac_wind_corr = All.BAL_f_accretion / (1.-All.BAL_f_accretion);
+        double dEcr = eps_cr * P[j].Mass * fac_wind_corr * C_LIGHT_CODE*C_LIGHT_CODE;
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+        dEcr = eps_cr * 0.5 * v_magnitude_physical*v_magnitude_physical * P[j].Mass; /* in this case, eps_cr refers to fraction relative to KE going into jet spawns */
+        if(mass_of_new_particle > 2.*mass_of_new_particle_default/masscorrfac_fast) {dEcr=0;} /* only the jet cells carry CR energy */
+#endif
+#if defined(BH_TEST_WIND_MIXED_FASTSLOW)
         if(mass_of_new_particle < 2.*mass_of_new_particle_default/masscorrfac_fast) {dEcr*=masscorrfac_fast;} else {dEcr=0;}
 #endif
+#if defined(BH_CR_INJECTION_AT_TERMINATION)
         CellP[j].BH_CR_Energy_Available_For_Injection = dEcr;     /* store energy for later injection */
 #else
         inject_cosmic_rays(dEcr, v_magnitude_physical, 5, j, veldir); /* inject directly */

@@ -154,6 +154,10 @@ extern ALIGN(32) struct particle_data
 #endif
     MyFloat BH_Mass;
     MyFloat Sink_Formation_Mass; /* initial mass of sink (total particle) when it formed */
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+    MyFloat BH_Mdot_ROI;
+    MyFloat BH_ROI;
+#endif
 #if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif

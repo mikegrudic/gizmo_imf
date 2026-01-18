@@ -459,6 +459,10 @@ void init(void)
             {
                 P[i].BH_Mass = All.SeedBlackHoleMass;
                 P[i].Sink_Formation_Mass = P[i].Mass;
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+                P[i].BH_Mdot_ROI = 0;
+                P[i].BH_ROI = 0;
+#endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                 P[i].BH_Mass = P[i].Mass;
 #endif

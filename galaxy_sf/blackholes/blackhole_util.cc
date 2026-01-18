@@ -159,8 +159,10 @@ double evaluate_blackhole_cosmicray_efficiency(double mdot, double mass, long pi
 {
 #ifdef BH_COSMIC_RAYS
 #ifdef BH_RIAF_SUBEDDINGTON_MODEL /* experiment with functions here to explore more/less efficient CR injection at lower/higher eddington ratios, reflecting hard/soft-type transition */
-    double lambda_0 = (BH_RIAF_SUBEDDINGTON_MODEL), enhancement_fac=10., m_exp=1., lambda_eff = mdot/bh_eddington_mdot(mass), qfac = 1.+pow(lambda_eff/lambda_0, m_exp); // eddington accretion ratio in units of 0.01
-    return All.BH_CosmicRay_Injection_Efficiency * (1. + enhancement_fac/qfac);
+    /* current version with this flag scales this relative to the jet kinetic power */
+    if(mdot/bh_eddington_mdot(mass) < 0.01) {return 0.5;} else {return 0.1;} /* high-Mdot uses standard SNe kinetic power, otherwise give unity power here */
+    // double lambda_0 = (BH_RIAF_SUBEDDINGTON_MODEL), enhancement_fac=10., m_exp=1., lambda_eff = mdot/bh_eddington_mdot(mass), qfac = 1.+pow(lambda_eff/lambda_0, m_exp); // eddington accretion ratio in units of 0.01
+    // return All.BH_CosmicRay_Injection_Efficiency * (1. + enhancement_fac/qfac); // older deprecated experiment
 #endif
     return All.BH_CosmicRay_Injection_Efficiency; // default to constant
 #endif

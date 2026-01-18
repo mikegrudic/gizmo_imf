@@ -187,21 +187,23 @@
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
 #endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1/UNIT_LENGTH_IN_KPC)
+#define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
+#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
 #endif // defaults = 3
 #endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
 
 #if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
-#define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
+//#define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
 #define GALSF_FB_FIRE_PROTOSTELLARJETS /* use jet feedback per mike grudic's simple parameterization; zero cost, easy to add, not big large-scale effects */
 #define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0) /* spread SF over a couple free-fall times when a cell becomes a star, as compared to doing it instantly when the probability roll comes up */
-#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
+//#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
 #if !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION (2) /* use tidal softening for dark matter, where its well-defined, more accurate subhalo/center/caustic evolution, minimal cost */
 #endif
 #if defined(FIRE_BHS)
-#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
+//#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
 #define MAINTAIN_TREE_IN_REARRANGE /* optimization when using cell-spawning */
-#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
+//#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
 #endif
 /* more aggressive module experiments here, only enabled if this module is active and set to a numerical value >= 3 */
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_MODULE_TESTS)
@@ -272,11 +274,14 @@
 #define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
 #define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
 #define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
-#if defined(GALSF_SFR_IMF_SAMPLING) && !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE)
-#define BH_DYNFRICTION_FROMTREE     /* use this module as a default in sufficiently high-resolution simulations*/
+#if (defined(GALSF_SFR_IMF_SAMPLING) || (FIRE_PHYSICS_DEFAULTS > 2)) && !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE)
+#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
 #endif
 #if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
 #define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#endif
+#if (FIRE_PHYSICS_DEFAULTS > 2)
+#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
 #endif
 #define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
 #if !defined(BH_GRAVACCRETION)

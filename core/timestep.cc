@@ -1134,7 +1134,7 @@ integertime get_timestep(int p,		/*!< particle index */
         }
         fflush(stdout); fprintf(stderr, "\n @ fflush \n");
 #ifdef STOP_WHEN_BELOW_MINTIMESTEP
-        endrun(888);
+        if(P[p].Mass > 0) {endrun(888);}
 #endif
         dt = All.MinSizeTimestep;
     }
