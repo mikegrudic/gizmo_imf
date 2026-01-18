@@ -147,7 +147,8 @@ double bh_lum_bol(double mdot, double mass, long pindex)
 double evaluate_blackhole_radiative_efficiency(double mdot, double mass, long pindex)
 {
 #ifdef BH_RIAF_SUBEDDINGTON_MODEL /* simple classic model where radiative efficiency declines linearly below critical eddington ratio of order 1% eddington, and super-Eddington accretion is also radiatively inefficient  */
-    double lambda_0 = (BH_RIAF_SUBEDDINGTON_MODEL), lambda_1 = 2., lambda_eff = mdot/bh_eddington_mdot(mass), qfac = lambda_eff/lambda_0, qfac_he = lambda_eff/lambda_1;
+    double lambda_0 = 0.01, lambda_1 = 2., lambda_eff = mdot/bh_eddington_mdot(mass), qfac = lambda_eff/lambda_0, qfac_he = lambda_eff/lambda_1;
+    //double lambda_0 = (BH_RIAF_SUBEDDINGTON_MODEL), lambda_1 = 2., lambda_eff = mdot/bh_eddington_mdot(mass), qfac = lambda_eff/lambda_0, qfac_he = lambda_eff/lambda_1;
     return All.BlackHoleRadiativeEfficiency * (qfac/(1.+qfac)) * (1./(1.+qfac_he));
 #endif
     return All.BlackHoleRadiativeEfficiency; // default to constant
