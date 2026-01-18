@@ -414,7 +414,7 @@ void set_blackhole_mdot(int i, int n, double dt)
         /* subgrid model for convective vs disk regimes, with accretion rates from the high-res simulations */
         double psi_magdisk = 0.1;
         double r_kernel = P[n].Hsml * All.cf_atime;
-        double m_bh = P[n].BH_Mass,
+        double m_bh = P[n].BH_Mass;
         double m_kernel = BlackholeTempInfo[i].Malt_in_Kernel + P[n].Mass;
         double m_kernel_nonBH = m_kernel - m_bh;
         double mdot_ROI = BlackholeTempInfo[i].mdot_alphadisk;
