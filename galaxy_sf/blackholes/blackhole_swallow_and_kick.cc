@@ -1044,7 +1044,7 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
                     frac_clight_jet = 1.; // cap this at luminal
                     masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].BH_Mdot); // boost this term to make up the difference
                 }
-                double frac_clight_jet = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
+                double frac_clight_jet_min = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
                 if(frac_clight_jet < frac_clight_jet_min) {
                     frac_clight_jet = frac_clight_jet_min; // cap this at minimum
                     masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].BH_Mdot); // boost this term to make up the difference
