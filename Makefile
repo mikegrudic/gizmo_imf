@@ -203,9 +203,9 @@ CC       =  mpicc
 CXX      =  mpicxx -std=c++11
 FC       =  mpif90 -nofor_main
 OPTIMIZE = -ggdb -O2 -xCORE-AVX2 -Wno-unknown-pragmas -Wall -Wno-format-security
-ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+#ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -qopenmp
-endif
+#endif
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CHIMESINCL = -I$(TACC_SUNDIALS_INC)
 CHIMESLIBS = -L$(TACC_SUNDIALS_LIB) -lsundials_cvode -lsundials_nvecserial

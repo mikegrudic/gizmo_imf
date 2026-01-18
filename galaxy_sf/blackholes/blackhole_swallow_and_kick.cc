@@ -1229,6 +1229,9 @@ int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int n
         } /* complete CR initialization to null */
 #endif
         CellP[j].InternalEnergy = All.BAL_internal_temperature / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ); /* internal energy, determined by desired wind temperature (assume fully ionized primordial gas with gamma=5/3) */
+#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+        CellP[j].InternalEnergy = 0.01 * (0.5*v_magnitude_physical*v_magnitude_physical); /* set to be 1% of the kinetic energy of the ejecta, here */
+#endif
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         double sne_energy_fraction_in_thermal = 1.e-3;
         if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {CellP[j].InternalEnergy = All.MinGasTemp / (  0.59 * (5./3.-1.) * U_TO_TEMP_UNITS ) + sne_energy_fraction_in_thermal/(1.-sne_energy_fraction_in_thermal) * pow(single_star_SN_velocity(i),2.0);}}

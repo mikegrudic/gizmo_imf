@@ -453,7 +453,7 @@
 ####################################################################################################
 # --------------------------------------- Multi-Threading and Parallelization options
 ####################################################################################################
-#OPENMP=2                       # top-level switch for explicit OpenMP implementation
+#OPENMP                         # top-level switch for explicit OpenMP implementation (can turn on here, or enable in Makefile for your machine)
 #MULTIPLEDOMAINS=16             # Multi-Domain option for the top-tree level (alters load-balancing)
 ####################################################################################################
 
