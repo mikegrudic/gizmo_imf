@@ -7,8 +7,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "../../declarations/allvars.h"
-#include "../../core/proto.h"
+#include "../declarations/allvars.h"
+#include "../core/proto.h"
 
 /*! \file sink_util.c
  *  \brief util routines for memory (de)allocation and array setting for sink particles

@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../declarations/allvars.h"
-#include "../../core/proto.h"
-#include "../../mesh/kernel.h"
+#include "../declarations/allvars.h"
+#include "../core/proto.h"
+#include "../mesh/kernel.h"
 /*
 * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
 * see notes in sink.c for details on code history.
