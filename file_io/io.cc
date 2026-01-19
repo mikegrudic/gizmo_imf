@@ -346,7 +346,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_INIB:
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -357,7 +357,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_IDEN:
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -368,7 +368,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
             
         case IO_UNSPMASS:
-#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -433,11 +433,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_HSML:		/* gas kernel length */
+        case IO_KERNELRADIUS:		/* gas kernel length */
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].Hsml;
+                    *fp++ = (MyOutputFloat) P[pindex].KernelRadius;
                     n++;
                 }
             break;
@@ -546,7 +546,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].DM_Hsml;
+                    *fp++ = (MyOutputFloat) P[pindex].DM_KernelRadius;
                     n++;
                 }
 #endif
@@ -652,7 +652,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].Hsml,CellP[pindex].Density,P[pindex].NumNgb,1,pindex) * UNIT_SURFDEN_IN_CGS * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS_CGS);
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].KernelRadius,CellP[pindex].Density,P[pindex].NumNgb,1,pindex) * UNIT_SURFDEN_IN_CGS * shielding_length_factor * (1.0 - (P[pindex].Metallicity[0] + P[pindex].Metallicity[1])) / PROTONMASS_CGS);
                     n++;
                 }
 #endif
@@ -663,7 +663,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].Hsml,P[pindex].DensAroundStar,P[pindex].NumNgb,0,pindex) * UNIT_SURFDEN_IN_CGS);  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].KernelRadius,P[pindex].DensAroundStar,P[pindex].NumNgb,0,pindex) * UNIT_SURFDEN_IN_CGS);  // g cm^-2
                     n++;
                 }
 #endif
@@ -753,12 +753,12 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_BH_DIST:
-#if defined(BH_CALC_DISTANCES) && defined(OUTPUT_BH_DISTANCES)
+        case IO_SINK_DIST:
+#if defined(SINK_CALC_DISTANCES) && defined(OUTPUT_SINK_DISTANCES)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].min_dist_to_bh;
+                    *fp++ = (MyOutputFloat) P[pindex].Min_Distance_to_Sink;
                     n++;
                 }
 #endif
@@ -1078,57 +1078,57 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_BHMASS:
-#ifdef BLACK_HOLES
+        case IO_SINKMASS:
+#ifdef SINK_PARTICLES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].BH_Mass;
+                    *fp++ = (MyOutputFloat) P[pindex].Sink_Mass;
                     n++;
                 }
 #endif
             break;
 
         case IO_SINKDUSTMASSACC:
-#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+#if defined(SINK_PARTICLES) && defined(GRAIN_FLUID)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].BH_Dust_Mass;
+                    *fp++ = (MyOutputFloat) P[pindex].Sink_Dust_Mass;
                     n++;
                 }
 #endif
             break;
 
-        case IO_BHMASSALPHA:
-#ifdef BH_ALPHADISK_ACCRETION
+        case IO_SINKMASSALPHA:
+#ifdef SINK_ALPHADISK_ACCRETION
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].BH_Mass_AlphaDisk;
+                    *fp++ = (MyOutputFloat) P[pindex].Sink_Mass_Reservoir;
                     n++;
                 }
 #endif
             break;
 
-        case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM
+        case IO_SINK_ANGMOM:
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    for(k = 0; k < 3; k++) {fp[k] = (MyOutputFloat) P[pindex].BH_Specific_AngMom[k];}
+                    for(k = 0; k < 3; k++) {fp[k] = (MyOutputFloat) P[pindex].Sink_Specific_AngMom[k];}
                     fp += 3;
                     n++;
                 }
 #endif
             break;
 
-        case IO_BHMDOT:
-#ifdef BLACK_HOLES
+        case IO_SINKMDOT:
+#ifdef SINK_PARTICLES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].BH_Mdot;
+                    *fp++ = (MyOutputFloat) P[pindex].Sink_Mdot;
                     n++;
                 }
 #endif
@@ -1200,30 +1200,30 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
 #endif
             break;
 
-        case IO_BHPROGS:
-#ifdef BH_COUNTPROGS
+        case IO_SINKPROGS:
+#ifdef SINK_COUNTPROGS
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *ip_int++ = (int) P[pindex].BH_CountProgs;
+                    *ip_int++ = (int) P[pindex].Sink_CountProgs;
                     n++;
                 }
 #endif
             break;
 
         case IO_ACRB:
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].Hsml;
+                    *fp++ = (MyOutputFloat) P[pindex].KernelRadius;
                     n++;
                 }
 #endif
             break;
 
         case IO_SINKRAD:
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1234,7 +1234,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1488,18 +1488,18 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AGS_HKERN:        /* neighbor search radius for various particle types */
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].AGS_Hsml;
+                    *fp++ = (MyOutputFloat) P[pindex].AGS_KernelRadius;
                     n++;
                 }
 #endif
             break;
 
         case IO_AGS_RHO:        /* Adaptive Gravitational Softening: density */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1510,7 +1510,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AGS_QPT:        /* quantum potential (Q) */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1524,7 +1524,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AGS_PSI_RE:        /* real part of wavefunction */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1537,7 +1537,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AGS_PSI_IM:        /* imaginary part of wavefunction */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
 #if (DM_FUZZY > 0)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
@@ -1550,7 +1550,7 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_AGS_ZETA:		/* Adaptive Gravitational Softening: zeta */
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1755,7 +1755,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_GRADRHO:
         case IO_RAD_ACCEL:
         case IO_VORT:
-        case IO_BH_ANGMOM:
+        case IO_SINK_ANGMOM:
             if(mode)
                 bytes_per_blockelement = 3 * sizeof(MyInputFloat);
             else
@@ -1768,7 +1768,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             bytes_per_blockelement = sizeof(MyIDType);
             break;
 
-        case IO_BHPROGS:
+        case IO_SINKPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
@@ -1777,7 +1777,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
             
         case IO_AGE_PROTOSTAR:
         case IO_MASS:
-        case IO_BH_DIST:
+        case IO_SINK_DIST:
         case IO_U:
         case IO_RHO:
         case IO_NE:
@@ -1794,7 +1794,7 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_NHRATE:
         case IO_HHRATE:
         case IO_MCRATE:
-        case IO_HSML:
+        case IO_KERNELRADIUS:
         case IO_SFR:
         case IO_AGE:
         case IO_OSTAR:
@@ -1812,13 +1812,13 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AMDC:
         case IO_PHI:
         case IO_COOLRATE:
-        case IO_BHMASS:
+        case IO_SINKMASS:
         case IO_SINKDUSTMASSACC:
-        case IO_BHMASSALPHA:
+        case IO_SINKMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_SINK_FORM_MASS:
-        case IO_BHMDOT:
+        case IO_SINKMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
@@ -2039,7 +2039,7 @@ int get_datatype_in_block(enum iofields blocknr)
 #endif
             break;
 
-        case IO_BHPROGS:
+        case IO_SINKPROGS:
         case IO_GRAINTYPE:
         case IO_EOSCOMP:
         case IO_STAGE_PROTOSTAR:
@@ -2072,7 +2072,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_GRADRHO:
         case IO_RAD_ACCEL:
         case IO_VORT:
-        case IO_BH_ANGMOM:
+        case IO_SINK_ANGMOM:
             values = 3;
             break;
 
@@ -2080,7 +2080,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
         case IO_MASS:
-        case IO_BH_DIST:
+        case IO_SINK_DIST:
         case IO_U:
         case IO_RHO:
         case IO_NE:
@@ -2097,7 +2097,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_NHRATE:
         case IO_HHRATE:
         case IO_MCRATE:
-        case IO_HSML:
+        case IO_KERNELRADIUS:
         case IO_SFR:
         case IO_AGE:
         case IO_OSTAR:
@@ -2119,20 +2119,20 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_AMDC:
         case IO_PHI:
         case IO_COOLRATE:
-        case IO_BHMASS:
+        case IO_SINKMASS:
         case IO_SINKDUSTMASSACC:
-        case IO_BHMASSALPHA:
+        case IO_SINKMASSALPHA:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_SINK_FORM_MASS:
-        case IO_BHMDOT:
+        case IO_SINKMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
         case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
-        case IO_BHPROGS:
+        case IO_SINKPROGS:
         case IO_EOSTEMP:
         case IO_EOSABAR:
         case IO_EOSCS:
@@ -2292,7 +2292,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
     nall = 0; nsel = 0; ntot_withmasses = 0; nstars_tot=0;
 
     int valid_star_types=16; if(All.ComovingIntegrationOn==0) {valid_star_types+=4+8;} /* used in e.g. ages block below, not for all, but easier to define here */
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
     valid_star_types += 32;
 #endif
     for(i = 0; i < 6; i++)
@@ -2327,7 +2327,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
         case IO_AGS_ZETA:
-        case IO_BH_DIST:
+        case IO_SINK_DIST:
         case IO_CBE_MOMENTS:
         case IO_TIDALTENSORPS:
         case IO_DUST_TO_GAS:
@@ -2427,7 +2427,7 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return ngas;
             break;
 
-        case IO_HSML:
+        case IO_KERNELRADIUS:
 #if defined(GRAIN_FLUID)
             return nall;
 #endif
@@ -2477,22 +2477,22 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
             return header.npart[1]+header.npart[2]+header.npart[3]+header.npart[4]+header.npart[5];
             break;
 
-        case IO_BHMASS:
+        case IO_SINKMASS:
         case IO_SINKDUSTMASSACC:
-        case IO_BHMASSALPHA:
-        case IO_BH_ANGMOM:
+        case IO_SINKMASSALPHA:
+        case IO_SINK_ANGMOM:
         case IO_UNSPMASS:
         case IO_ACRB:
         case IO_SINKRAD:
         case IO_SINK_FORM_MASS:
-        case IO_BHMDOT:
+        case IO_SINKMDOT:
         case IO_R_PROTOSTAR:
         case IO_MASS_D_PROTOSTAR:
         case IO_ZAMS_MASS:
         case IO_STAGE_PROTOSTAR:
         case IO_AGE_PROTOSTAR:
         case IO_LUM_SINGLESTAR:
-        case IO_BHPROGS:
+        case IO_SINKPROGS:
             for(i = 0; i < 6; i++) {if(i != 5) {typelist[i] = 0;}}
             return header.npart[5];
             break;
@@ -2522,7 +2522,7 @@ int blockpresent(enum iofields blocknr)
         case IO_MASS:
         case IO_U:
         case IO_RHO:
-        case IO_HSML:
+        case IO_KERNELRADIUS:
             return 1;			/* always present */
             break;
 
@@ -2707,13 +2707,13 @@ int blockpresent(enum iofields blocknr)
             
         case IO_IDEN:
         case IO_INIB:
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
             return 1;
 #endif         
             break;
 
         case IO_UNSPMASS:
-#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
             return 1;
 #endif   
             break;
@@ -2887,46 +2887,46 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM
+        case IO_SINK_ANGMOM:
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
             return 1;
 #endif
             break;
 
         case IO_ACRB:
         case IO_SINKRAD:
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
             return 1;
 #endif
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             return 1;
 #endif
             break;
 	    
 
-        case IO_BHMASS:
-#ifdef BLACK_HOLES
+        case IO_SINKMASS:
+#ifdef SINK_PARTICLES
             return 1;
 #endif
             break;
 
         case IO_SINKDUSTMASSACC:
-#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
+#if defined(SINK_PARTICLES) && defined(GRAIN_FLUID)
             return 1;
 #endif
             break;
 
-        case IO_BHMASSALPHA:
-#ifdef BH_ALPHADISK_ACCRETION
+        case IO_SINKMASSALPHA:
+#ifdef SINK_ALPHADISK_ACCRETION
             return 1;
 #endif
             break;
 
-        case IO_BHMDOT:
-#ifdef BLACK_HOLES
+        case IO_SINKMDOT:
+#ifdef SINK_PARTICLES
             return 1;
 #endif
             break;
@@ -2967,14 +2967,14 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
 
-        case IO_BH_DIST:
-#if defined(BH_CALC_DISTANCES) && defined(OUTPUT_BH_DISTANCES)
+        case IO_SINK_DIST:
+#if defined(SINK_CALC_DISTANCES) && defined(OUTPUT_SINK_DISTANCES)
             return 1;
 #endif
             break;
 
-        case IO_BHPROGS:
-#ifdef BH_COUNTPROGS
+        case IO_SINKPROGS:
+#ifdef SINK_COUNTPROGS
             return 1;
 #endif
             break;
@@ -3049,27 +3049,27 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_AGS_HKERN:
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
             return 1;
 #endif
             break;
 
         case IO_AGS_RHO:
         case IO_AGS_QPT:
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY)
             return 1;
 #endif
             break;
 
         case IO_AGS_PSI_RE:
         case IO_AGS_PSI_IM:
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY) && (DM_FUZZY > 0)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(DM_FUZZY) && (DM_FUZZY > 0)
             return 1;
 #endif
             break;
 
         case IO_AGS_ZETA:
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             return 1;
 #endif
             break;
@@ -3194,7 +3194,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_MCRATE:
             strncpy(label, "MCRATE", 4);
             break;
-        case IO_HSML:
+        case IO_KERNELRADIUS:
             strncpy(label, "HSML", 4);
             break;
         case IO_SFR:
@@ -3341,19 +3341,19 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_COOLRATE:
             strncpy(label, "COOR", 4);
             break;
-        case IO_BHMASS:
+        case IO_SINKMASS:
             strncpy(label, "BHMA", 4);
             break;
         case IO_SINKDUSTMASSACC:
             strncpy(label, "BHDM", 4);
             break;
-        case IO_BH_DIST:
+        case IO_SINK_DIST:
             strncpy(label, "BHR ", 4);
             break;
-        case IO_BHMASSALPHA:
+        case IO_SINKMASSALPHA:
             strncpy(label, "BHMa", 4);
             break;
-        case IO_BH_ANGMOM:
+        case IO_SINK_ANGMOM:
             strncpy(label, "BHmJ", 4);
             break;
         case IO_ACRB:
@@ -3365,7 +3365,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_SINK_FORM_MASS:
             strncpy(label, "SMAS", 4);
             break;	    
-        case IO_BHMDOT:
+        case IO_SINKMDOT:
             strncpy(label, "BHMD", 4);
             break;
         case IO_R_PROTOSTAR:
@@ -3386,7 +3386,7 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_LUM_SINGLESTAR:
             strncpy(label, "LUMS", 4);
             break;
-        case IO_BHPROGS:
+        case IO_SINKPROGS:
             strncpy(label, "BHPC", 4);
             break;
         case IO_TIDALTENSORPS:
@@ -3610,8 +3610,8 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_DELAYTIME:
             strcpy(buf, "DelayTime");
             break;
-        case IO_HSML:
-            strcpy(buf, "SmoothingLength");
+        case IO_KERNELRADIUS:
+            strcpy(buf, "KernelMaxRadius");
             break;
         case IO_SFR:
             strcpy(buf, "StarFormationRate");
@@ -3629,7 +3629,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "PICParticleType");
             break;
         case IO_HSMS:
-            strcpy(buf, "StellarSmoothingLength");
+            strcpy(buf, "StellarKernelMaxRadius");
             break;
         case IO_Z:
             strcpy(buf, "Metallicity");
@@ -3754,23 +3754,23 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_COOLRATE:
             strcpy(buf, "CoolingRate");
             break;
-        case IO_BHMASS:
-            strcpy(buf, "BH_Mass");
+        case IO_SINKMASS:
+            strcpy(buf, "Sink_Mass");
             break;
         case IO_SINKDUSTMASSACC:
-            strcpy(buf, "BH_Dust_Mass");
+            strcpy(buf, "Sink_Dust_Mass");
             break;
-        case IO_BH_DIST:
-            strcpy(buf, "BH_Dist");
+        case IO_SINK_DIST:
+            strcpy(buf, "SINK_Dist");
             break;
-        case IO_BHMASSALPHA:
-            strcpy(buf, "BH_Mass_AlphaDisk");
+        case IO_SINKMASSALPHA:
+            strcpy(buf, "Sink_Mass_Reservoir");
             break;
-        case IO_BH_ANGMOM:
-            strcpy(buf, "BH_Specific_AngMom");
+        case IO_SINK_ANGMOM:
+            strcpy(buf, "Sink_Specific_AngMom");
             break;
         case IO_ACRB:
-            strcpy(buf, "BH_AccretionLength");
+            strcpy(buf, "SINK_AccretionLength");
             break;
         case IO_SINKRAD:
             strcpy(buf, "SinkRadius");
@@ -3778,8 +3778,8 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_SINK_FORM_MASS:
             strcpy(buf, "SinkInitialMass");
             break;	    
-        case IO_BHMDOT:
-            strcpy(buf, "BH_Mdot");
+        case IO_SINKMDOT:
+            strcpy(buf, "Sink_Mdot");
             break;
         case IO_R_PROTOSTAR:
             strcpy(buf, "ProtoStellarRadius_inSolar");
@@ -3799,8 +3799,8 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_LUM_SINGLESTAR:
             strcpy(buf, "StarLuminosity_Solar");
             break;
-        case IO_BHPROGS:
-            strcpy(buf, "BH_NProgs");
+        case IO_SINKPROGS:
+            strcpy(buf, "SINK_NProgs");
             break;
         case IO_TIDALTENSORPS:
             strcpy(buf, "TidalTensor");
@@ -4556,9 +4556,9 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.PhotonMomentum_Coupled_Fraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
-#ifdef BH_PHOTONMOMENTUM
+#ifdef SINK_PHOTONMOMENTUM
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "LEBRON_Sink_PhotonMomentum_Coupled_Fraction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BH_Rad_MomentumFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_Rad_MomentumFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
 #ifdef GRAIN_FLUID
@@ -4732,21 +4732,21 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.InterstellarRadiationFieldStrength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
     
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_accretion", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_f_accretion); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_v_outflow", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_v_outflow); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_accreted_fraction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_accreted_fraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_outflow_velocity", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_outflow_velocity); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_f_launch_v", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_f_launch_v); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_outflow_jetlaunchvelscaling", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_outflow_jetlaunchvelscaling); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
-#if defined(BH_COSMIC_RAYS)
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BH_CosmicRay_Injection_Efficiency", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BH_CosmicRay_Injection_Efficiency); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#if defined(SINK_COSMIC_RAYS)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_CosmicRay_Injection_Efficiency", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_CosmicRay_Injection_Efficiency); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
 #ifdef GR_TABULATED_COSMOLOGY
@@ -4777,7 +4777,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BulkViscosityCoeff); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Effective_Kernel_NeighborNumber_CollisionlessParticles", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.AGS_DesNumNgb); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
@@ -4812,48 +4812,48 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, All.Tillotson_EOS_params); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 
-#ifdef BLACK_HOLES
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleAccretionFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleAccretionFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleFeedbackFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleFeedbackFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedBlackHoleMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedBlackHoleMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleNgbFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleNgbFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleMaxAccretionRadius", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleMaxAccretionRadius); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleEddingtonFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleEddingtonFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BlackHoleRadiativeEfficiency", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BlackHoleRadiativeEfficiency); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedBlackHoleMassSigma", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedBlackHoleMassSigma); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedBlackHoleMinRedshift", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedBlackHoleMinRedshift); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#ifdef SINK_PARTICLES
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkAccretionFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkAccretionFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkFeedbackFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkFeedbackFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedSinkMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedSinkMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkNgbFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkNgbFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkMaxAccretionRadius", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkMaxAccretionRadius); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkEddingtonFactor", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkEddingtonFactor); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SinkRadiativeEfficiency", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SinkRadiativeEfficiency); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#if defined(SINK_SEED_FROM_FOF) || defined(SINK_SEED_FROM_LOCALGAS)
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedSinkMassSigma", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedSinkMassSigma); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedSinkMinRedshift", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedSinkMinRedshift); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedBlackHolePerUnitMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedBlackHolePerUnitMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#ifdef SINK_SEED_FROM_LOCALGAS
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedSinkPerUnitMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedSinkPerUnitMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedAlphaDiskMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedAlphaDiskMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+#ifdef SINK_ALPHADISK_ACCRETION
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "SeedReservoirMass", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.SeedReservoirMass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_SEED_FROM_FOF
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "MinFoFMassForNewSeed", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.MinFoFMassForNewSeed); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Cell_Spawn_Mass_ratio", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_wind_particle_mass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_outflow_particlemass); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #ifdef SINGLE_STAR_FB_WINDS
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Cell_Spawn_Mass_ratio_MS", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Cell_Spawn_Mass_ratio_MS); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
-    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "BAL_internal_temperature", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.BAL_internal_temperature); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
+    hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_outflow_temperature", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+    H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_outflow_temperature); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     {unsigned long long holder = (unsigned long long) All.AGNWindID; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Spawned_Cell_ID", H5T_NATIVE_ULLONG, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_ULLONG, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif

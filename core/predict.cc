@@ -31,11 +31,11 @@ void reconstruct_timebins(void)
 #ifdef GALSF
         TimeBinSfr[bin] = 0;
 #endif
-#ifdef BLACK_HOLES
-        TimeBin_BH_mass[bin] = 0;
-        TimeBin_BH_dynamicalmass[bin] = 0;
-        TimeBin_BH_Mdot[bin] = 0;
-        TimeBin_BH_Medd[bin] = 0;
+#ifdef SINK_PARTICLES
+        TimeBin_Sink_mass[bin] = 0;
+        TimeBin_Sink_dynamicalmass[bin] = 0;
+        TimeBin_Sink_Mdot[bin] = 0;
+        TimeBin_Sink_Medd[bin] = 0;
 #endif
     }
     
@@ -63,13 +63,13 @@ void reconstruct_timebins(void)
         if(P[i].Type == 0)
             TimeBinSfr[bin] += CellP[i].Sfr;
 #endif
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
         if(P[i].Type == 5)
         {
-            TimeBin_BH_mass[bin] += P[i].BH_Mass;
-            TimeBin_BH_dynamicalmass[bin] += P[i].Mass;
-            TimeBin_BH_Mdot[bin] += P[i].BH_Mdot;
-            TimeBin_BH_Medd[bin] += P[i].BH_Mdot / P[i].BH_Mass;
+            TimeBin_Sink_mass[bin] += P[i].Sink_Mass;
+            TimeBin_Sink_dynamicalmass[bin] += P[i].Mass;
+            TimeBin_Sink_Mdot[bin] += P[i].Sink_Mdot;
+            TimeBin_Sink_Medd[bin] += P[i].Sink_Mdot / P[i].Sink_Mass;
         }
 #endif
     }
@@ -149,8 +149,8 @@ void drift_particle(int i, integertime time1)
 #endif
 
     double divv_fac = P[i].Particle_DivVel * dt_drift;
-    double divv_fac_max = 0.3; //1.5; // don't allow Hsml to change too much in predict-step //
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+    double divv_fac_max = 0.3; //1.5; // don't allow KernelRadius to change too much in predict-step //
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     if(ags_density_isactive(i) && P[i].Type>0) {divv_fac_max=4;} // can [should] allow larger changes when using adapting soft for all
 #endif
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
@@ -159,20 +159,20 @@ void drift_particle(int i, integertime time1)
 #ifdef GRAIN_FLUID
     if((1 << P[i].Type) & (GRAIN_PTYPES))
     {
-        P[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
-        if(P[i].Hsml < All.MinHsml) {P[i].Hsml = All.MinHsml;}
-        if(P[i].Hsml > All.MaxHsml) {P[i].Hsml = All.MaxHsml;}
+        P[i].KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(P[i].KernelRadius < All.MinKernelRadius) {P[i].KernelRadius = All.MinKernelRadius;}
+        if(P[i].KernelRadius > All.MaxKernelRadius) {P[i].KernelRadius = All.MaxKernelRadius;}
     }
 #endif
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     if(ags_density_isactive(i) && (dt_drift>0)) /* particle is AGS-active */
     {
         double minsoft = ags_return_minsoft(i), maxsoft = ags_return_maxsoft(i);
-        P[i].AGS_Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
-        if(P[i].AGS_Hsml < minsoft) {P[i].AGS_Hsml = minsoft;}
-        if(P[i].AGS_Hsml > maxsoft) {P[i].AGS_Hsml = maxsoft;}
-    } else {P[i].AGS_Hsml = ForceSoftening_KernelRadius(i);} /* non-AGS-active particles use fixed softening */
+        P[i].AGS_KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(P[i].AGS_KernelRadius < minsoft) {P[i].AGS_KernelRadius = minsoft;}
+        if(P[i].AGS_KernelRadius > maxsoft) {P[i].AGS_KernelRadius = maxsoft;}
+    } else {P[i].AGS_KernelRadius = ForceSoftening_KernelRadius(i);} /* non-AGS-active particles use fixed softening */
 #endif
     
 #ifdef DM_FUZZY
@@ -228,11 +228,11 @@ void drift_particle(int i, integertime time1)
 #endif
             
 #if (HYDRO_FIX_MESH_MOTION > 0)
-            P[i].Hsml *= exp((double)divv_fac / ((double)NUMDIMS));
-            if(P[i].Hsml < All.MinHsml) {P[i].Hsml = All.MinHsml;}
-            if(P[i].Hsml > All.MaxHsml) {P[i].Hsml = All.MaxHsml;}
+            P[i].KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(P[i].KernelRadius < All.MinKernelRadius) {P[i].KernelRadius = All.MinKernelRadius;}
+            if(P[i].KernelRadius > All.MaxKernelRadius) {P[i].KernelRadius = All.MaxKernelRadius;}
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P[i].AGS_Hsml = P[i].Hsml;} /* gas is AGS-active, so needs to be set here to match updated Hsml */
+            if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P[i].AGS_KernelRadius = P[i].KernelRadius;} /* gas is AGS-active, so needs to be set here to match updated KernelRadius */
 #endif
 #endif
             drift_extra_physics(i, time0, time1, dt_entr);
@@ -388,13 +388,13 @@ double INLINE_FUNC Get_Particle_Size(int i)
         don't have to re-compute it each time. That makes this function fast enough to 
         call -inside- of loops (e.g. hydro computations) */
 #if (NUMDIMS == 1)
-    return 2.00000 * P[i].Hsml / P[i].NumNgb; // (2)^(1/1)
+    return 2.00000 * P[i].KernelRadius / P[i].NumNgb; // (2)^(1/1)
 #endif
 #if (NUMDIMS == 2)
-    return 1.77245 * P[i].Hsml / P[i].NumNgb; // (pi)^(1/2)
+    return 1.77245 * P[i].KernelRadius / P[i].NumNgb; // (pi)^(1/2)
 #endif
 #if (NUMDIMS == 3)
-    return 1.61199 * P[i].Hsml / P[i].NumNgb; // (4pi/3)^(1/3)
+    return 1.61199 * P[i].KernelRadius / P[i].NumNgb; // (4pi/3)^(1/3)
 #endif
 }
 
@@ -415,17 +415,17 @@ double INLINE_FUNC Get_Particle_Expected_Area(double h)
 
 
 /* return the estimated local column (physical units) from a local Sobolev approximation, or using the 'treecol' approximation from the gravity tree if the relevant config flag options are enabled */
-double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target)
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double rkern, double rho, double numngb_ndim, double include_h, int target)
 {
     double gradrho_mag=0;
     if(rho>0)
     {
 #ifdef RT_USE_TREECOL_FOR_NH        
-        gradrho_mag = include_h * rho * hsml / numngb_ndim; if(target>=0) {gradrho_mag += P[target].SigmaEff;}
+        gradrho_mag = include_h * rho * rkern / numngb_ndim; if(target>=0) {gradrho_mag += P[target].SigmaEff;}
 #else             
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
-        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * hsml / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
+        if(include_h > 0) if(numngb_ndim > 0) gradrho_mag += include_h * rho * rkern / numngb_ndim; // quick-and-dirty approximation to the effective neighbor number needed here
 #endif        
     }
     return gradrho_mag * All.cf_a2inv; // (physical units) // *(Z/Zsolar) add metallicity dependence
@@ -463,8 +463,8 @@ double Get_DtB_FaceArea_Limiter(int i)
     double Bmag_max = DMAX(Bmag, DMIN( P_BV_units, 10.*Bmag ));
     /* now check how accurately the cell is 'closed': the face areas are ideally zero */
     double area_sum = fabs(CellP[i].Face_Area[0])+fabs(CellP[i].Face_Area[1])+fabs(CellP[i].Face_Area[2]);
-    /* but this needs to be normalized to the 'expected' area given Hsml */
-    double area_norm = Get_Particle_Expected_Area(P[i].Hsml * All.cf_atime);
+    /* but this needs to be normalized to the 'expected' area given KernelRadius */
+    double area_norm = Get_Particle_Expected_Area(P[i].KernelRadius * All.cf_atime);
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
@@ -507,7 +507,7 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
     // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
     damping_tinv = 0.0;
     
-    if(P[i_particle_id].Hsml > 0)
+    if(P[i_particle_id].KernelRadius > 0)
     {
         double h_eff = Get_Particle_Size(i_particle_id);
         double vsig2 = 0.5 * All.cf_afac3 * fabs(CellP[i_particle_id].MaxSignalVel);
@@ -542,7 +542,7 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
 #endif
         prefac_tinv *= sqrt(1. + CellP[i_particle_id].ConditionNumber/100.);
         double area = fabs(CellP[i_particle_id].Face_Area[0]) + fabs(CellP[i_particle_id].Face_Area[1]) + fabs(CellP[i_particle_id].Face_Area[2]);
-        area /= Get_Particle_Expected_Area(P[i_particle_id].Hsml);
+        area /= Get_Particle_Expected_Area(P[i_particle_id].KernelRadius);
         prefac_tinv *= (1. + area/area_0)*(1. + area/area_0);
         
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );
@@ -576,8 +576,8 @@ void advect_mesh_point(int i, double dt)
 #if (HYDRO_FIX_MESH_MOTION == 2) || (HYDRO_FIX_MESH_MOTION == 3) // cylindrical or spherical coordinates
     // define the location relative to the origin (needed in these coordinate systems)
     double dp[3], dp_offset[3]={0}; for(k=0;k<3;k++) {dp[k]=P[i].Pos[k];} // assume center is at coordinate origin
-#if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) // unless we use a BH anchor, to define the center
-    for(k=0;k<3;k++) {dp_offset[k] = -P[i].min_xyz_to_bh[k] + P[i].Pos[k];}
+#if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) // unless we use a special anchor, to define the center
+    for(k=0;k<3;k++) {dp_offset[k] = -P[i].Min_xyz_to_Sink[k] + P[i].Pos[k];}
 #elif defined(BOX_PERIODIC) // or if periodic, the box mid-point is instead the center
 #if (NUMDIMS==1)
     dp_offset[0] = -boxHalf_X;

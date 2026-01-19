@@ -46,7 +46,7 @@
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // (1/(code volume*code length))
                 grad_dot_x_ij += grad * kernel.dp[k]; // dp = local - j
                 grad = MINMOD_G( grad , grad_direct );
-#if defined(GALSF) || defined(COOLING) || defined(BLACK_HOLES)
+#if defined(GALSF) || defined(COOLING) || defined(SINK_PARTICLES)
                 double grad_direct_vs_abs_fac = 2.0;
 #else
                 double grad_direct_vs_abs_fac = 5.0;
@@ -224,7 +224,7 @@
                 thold_hll = 0.25 * DMAX(fabs(sVi-sVj), DMAX(fabs(sVi), fabs(sVj)));
 #ifdef RT_ENHANCED_NUMERICAL_DIFFUSION
                 thold_hll *= 2.0; // allow this term to be more generous //
-#ifdef BH_WIND_SPAWN // 
+#ifdef SINK_WIND_SPAWN // 
                 if(local.ConditionNumber < 0 || P[j].ID == All.AGNWindID) {thold_hll *= 0.25;}  // be extra conservative if dealing with fluxes involving jet cells - won't be particularly accurate anyway
 #endif
 #endif

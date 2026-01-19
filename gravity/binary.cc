@@ -88,9 +88,9 @@ void kepler_timestep(int i, double dt, double kick_dv[3], double drift_dx[3], in
     true_anomaly = wrap_angle(atan2(y,x));
     ecc_anomaly = wrap_angle(atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly)));
     mean_anomaly = wrap_angle(ecc_anomaly - ecc * sin(ecc_anomaly));
-    //printf("Kepler x %g y %g dr orig %g dv orig %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, dr, dv, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].min_bh_t_orbital * 2 * M_PI),P[i].ID);
+    //printf("Kepler x %g y %g dr orig %g dv orig %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, dr, dv, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].Min_Sink_OrbitalTime * 2 * M_PI),P[i].ID);
     //Changes mean anomaly as time passes
-    mean_anomaly -= dt/P[i].min_bh_t_orbital * 2 * M_PI;
+    mean_anomaly -= dt/P[i].Min_Sink_OrbitalTime * 2 * M_PI;
     mean_anomaly = wrap_angle(mean_anomaly);
     //Get eccentric anomaly for new position
     ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);

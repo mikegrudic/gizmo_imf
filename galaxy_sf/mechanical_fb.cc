@@ -20,9 +20,9 @@ int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 {
     if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
-    if(P[i].Hsml <= 0) {return 0;}
+    if(P[i].KernelRadius <= 0) {return 0;}
     if(P[i].NumNgb <= 0) {return 0;}
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
     if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) {return 0;}
 #endif
     if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) {return 1;}}
@@ -81,7 +81,7 @@ void determine_where_SNe_occur(void)
 #endif
         if(P[i].Mass<=0) {continue;}
         dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
         if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
         if(dt<=0) {continue;} // no time, no events
@@ -155,7 +155,7 @@ void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_itera
 {
     // pre-assign various values that will be used regardless of feedback physics //
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k]; in->Vel[k] = P[i].Vel[k];}
-    double heff = P[i].Hsml / P[i].NumNgb; in->V_i = heff*heff*heff; in->Hsml = P[i].Hsml;
+    double heff = P[i].KernelRadius / P[i].NumNgb; in->V_i = heff*heff*heff; in->KernelRadius = P[i].KernelRadius;
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=0.0;}
 #endif
@@ -181,7 +181,7 @@ void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loo
         } else {
             P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
 #ifdef SINGLE_STAR_FB_WINDS
-            P[i].BH_Mass -= out->M_coupled; if((P[i].BH_Mass<0)||(isnan(P[i].BH_Mass))) {P[i].BH_Mass=0;}
+            P[i].Sink_Mass -= out->M_coupled; if((P[i].Sink_Mass<0)||(isnan(P[i].Sink_Mass))) {P[i].Sink_Mass=0;}
 #endif
         }
     }
@@ -203,8 +203,8 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0;
     if(mode == 0) {particle2in_addFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* Load the data for the particle injecting feedback */
     if(local.Msne<=0) {return 0;} // no SNe for the origin particle! nothing to do here //
-    if(local.Hsml<=0) {return 0;} // zero-extent kernel, no particles //
-    h2 = local.Hsml*local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
+    if(local.KernelRadius<=0) {return 0;} // zero-extent kernel, no particles //
+    h2 = local.KernelRadius*local.KernelRadius; kernel_hinv(local.KernelRadius, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS; // some units (just used below, but handy to define for clarity) //
 
 #if defined(CR_DYNAMICAL_INJECTION_IN_SNE)
@@ -227,7 +227,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
 
             E_coupled = dP_sum = dP_boost_sum = 0;
@@ -235,7 +235,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) {continue;} // require a gas particle //
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                 if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
 #endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
@@ -248,7 +248,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2], 1); // find the closest image in the given box size  //
                 r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
                 if(r2<=0) {continue;} // same particle //
-                double h2j = P[j].Hsml * P[j].Hsml;
+                double h2j = P[j].KernelRadius * P[j].KernelRadius;
                 if((r2>h2)&&(r2>h2j)) {continue;} // outside kernel (in both 'directions') //
 #ifdef FIRE1_SNE_COUPLING
                 if(r2>h2) {continue;} // only search 'one way' for particles seen by the BH
@@ -260,7 +260,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 #pragma omp atomic read
                 rho_j = CellP[j].Density;
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./P[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
+                double hinv_j = 1./P[j].KernelRadius, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = Mass_j / rho_j;
                 if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.dwk=kernel.wk=0;}
                 if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
@@ -387,7 +387,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
                 /* inject actual mass from mass return */
                 int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
-                if(P[j].Hsml<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
+                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
@@ -421,7 +421,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 InternalEnergy_j += e_shock;
                 /* inject momentum */
                 double m_ej_input = pnorm * local.Msne;
-                /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
+                /* appropriate factor for the ejecta being energy-conserving inside the cooling radius (or KernelRadius, if thats smaller) */
                 double m_cooling = 4.18879*pnorm*rho_j*RsneKPC*RsneKPC*RsneKPC;
                 /* apply limiter for energy conservation */
                 double mom_boost_fac = 1 + sqrt(DMIN(mj_preshock , m_cooling) / m_ej_input);
@@ -506,11 +506,11 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Msne<=0) {return 0;} // no SNe for the origin particle! nothing to do here //
-    if(local.Hsml<=0) {return 0;} // zero-extent kernel, no particles //
+    if(local.KernelRadius<=0) {return 0;} // zero-extent kernel, no particles //
     
     // some units (just used below, but handy to define for clarity) //
-    double h2 = local.Hsml*local.Hsml; kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
-    kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
+    double h2 = local.KernelRadius*local.KernelRadius; kernel_main(0.0,1.0,1.0,&kernel_zero,&wk,-1); wk=0; // define the kernel zero-point value, needed to prevent some nasty behavior when no neighbors found
+    kernel_hinv(local.KernelRadius, &kernel.hinv, &kernel.hinv3, &kernel.hinv4); // define kernel quantities
     double unitlength_in_kpc= UNIT_LENGTH_IN_KPC * All.cf_atime, density_to_n=All.cf_a3inv*UNIT_DENSITY_IN_NHCGS, unit_egy_SNe = 1.0e51/UNIT_ENERGY_IN_CGS;
     
     // now define quantities that will be used below //
@@ -560,7 +560,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     
     double Esne51 = Energy_injected_codeunits / unit_egy_SNe;
     double r2max_phys = 2.0/unitlength_in_kpc; // no super-long-range effects allowed! (of course this is arbitrary in code units) //
-    if(local.Hsml >= r2max_phys) {psi_egycon=DMIN(psi_egycon,1); psi_cool=DMIN(psi_cool,1);}
+    if(local.KernelRadius >= r2max_phys) {psi_egycon=DMIN(psi_egycon,1); psi_cool=DMIN(psi_cool,1);}
     r2max_phys *= r2max_phys;
     
     /* Now start the actual FB computation for this particle */
@@ -569,14 +569,14 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             E_coupled = dP_sum = dP_boost_sum = 0;
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(P[j].Type != 0) {continue;} // require a gas particle //
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                 if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
 #endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
@@ -589,7 +589,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); // find the closest image in the given box size  //
                 r2=0; for(k=0;k<3;k++) {r2 += kernel.dp[k]*kernel.dp[k];}
                 if(r2<=0) {continue;} // same particle //
-                double h2j = P[j].Hsml * P[j].Hsml;
+                double h2j = P[j].KernelRadius * P[j].KernelRadius;
                 if((r2>h2)&&(r2>h2j)) {continue;} // outside kernel (in both 'directions') //
                 if(r2 > r2max_phys) {continue;} // outside long-range cutoff //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) {continue;}
@@ -598,7 +598,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #pragma omp atomic read
                 rho_j = CellP[j].Density;
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./P[j].Hsml, hinv3_j = hinv_j*hinv_j*hinv_j;
+                double hinv_j = 1./P[j].KernelRadius, hinv3_j = hinv_j*hinv_j*hinv_j;
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = Mass_j / rho_j;
                 if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.wk=kernel.dwk=0;}
                 if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
@@ -725,7 +725,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* inject actual mass from mass return */
                 int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
-                if(P[j].Hsml<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
+                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
@@ -755,7 +755,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double crdir[3]; for(k=0;k<3;k++) {crdir[k]=-kernel.dp[k]/kernel.r;}
                     inject_cosmic_rays(pnorm * CR_energy_to_inject, local.SNe_v_ejecta, loop_iteration, j, crdir);
 #endif
-                    /* inject momentum: account for ejecta being energy-conserving inside the cooling radius (or Hsml, if thats smaller) */
+                    /* inject momentum: account for ejecta being energy-conserving inside the cooling radius (or KernelRadius, if thats smaller) */
                     double mom_prefactor = All.cf_atime * momentum_to_couple_term_units / Mass_j; // divide by mass to make velocity units used below, include cosmological factor to correctly convert to comoving code units
                     if(mom_prefactor > 0)
                     {

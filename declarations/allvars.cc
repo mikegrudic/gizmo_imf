@@ -108,11 +108,11 @@ size_t HighMark_turbpower;
 double TimeBinSfr[TIMEBINS];
 #endif
 
-#ifdef BLACK_HOLES
-double TimeBin_BH_mass[TIMEBINS];
-double TimeBin_BH_dynamicalmass[TIMEBINS];
-double TimeBin_BH_Mdot[TIMEBINS];
-double TimeBin_BH_Medd[TIMEBINS];
+#ifdef SINK_PARTICLES
+double TimeBin_Sink_mass[TIMEBINS];
+double TimeBin_Sink_dynamicalmass[TIMEBINS];
+double TimeBin_Sink_Mdot[TIMEBINS];
+double TimeBin_Sink_Medd[TIMEBINS];
 #endif
 
 #ifdef RT_CHEM_PHOTOION
@@ -174,7 +174,7 @@ int HermiteOnlyFlag;            /*! Flag used to indicate whether to skip non-He
 
 int NumPart;			/*!< number of particles on the LOCAL processor */
 int N_gas;			/*!< number of gas particles on the LOCAL processor  */
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
 double  Max_Unspawned_MassUnits_fromSink;
 #endif
 
@@ -259,23 +259,23 @@ FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
-#ifdef BLACK_HOLES
-FILE *FdBlackHoles;		/*!< file handle for blackholes.txt log-file. */
+#ifdef SINK_PARTICLES
+FILE *FdSinks;		/*!< file handle for sinks.txt log-file. */
 #ifdef OUTPUT_SINK_ACCRETION_HIST
-FILE *FdBhSwallowDetails;
+FILE *FdSinkSwallowDetails;
 #endif
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-FILE *FdBhSNDetails;
+FILE *FdSinkSNDetails;
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
-FILE *FdBhFormationDetails;
+FILE *FdSinkFormationDetails;
 #endif
-#if defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(BH_OUTPUT_MOREINFO)
-FILE *FdBlackHolesDetails;
-#ifdef BH_OUTPUT_MOREINFO
-FILE *FdBhMergerDetails;
-#ifdef BH_WIND_KICK
-FILE *FdBhWindDetails;
+#if defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(SINK_OUTPUT_MOREINFO)
+FILE *FdSinksDetails;
+#ifdef SINK_OUTPUT_MOREINFO
+FILE *FdSinkMergerDetails;
+#ifdef SINK_WIND_KICK
+FILE *FdSinkWindDetails;
 #endif
 #endif
 #endif
@@ -362,9 +362,9 @@ struct info_block *InfoBlock;
 struct io_header header;	/*!< holds header for snapshot files */
 
 
-#ifdef BLACK_HOLES
-int N_active_loc_BHs=0;       /*!< number of active black holes on the LOCAL processor */
-struct blackhole_temp_particle_data *BlackholeTempInfo; /*! declare this structure, we'll malloc it below */
+#ifdef SINK_PARTICLES
+int N_active_loc_Sink=0;       /*!< number of active sink particles on the LOCAL processor */
+struct sink_temp_particle_data *SinkTempInfo; /*! declare this structure, we'll malloc it below */
 #endif
 
 /*

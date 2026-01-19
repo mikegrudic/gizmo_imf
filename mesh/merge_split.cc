@@ -25,7 +25,7 @@
  */
 
 
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
 #define MASS_THRESHOLD_FOR_WINDPROMO(i) (DMAX(5.*target_mass_for_wind_spawning(i),0.25*All.MaxMassForParticleSplit))
 #endif /* define a mass threshold for this model above which a 'hyper-element' has accreted enough to be treated as 'normal' */
 
@@ -52,12 +52,12 @@ int does_particle_need_to_be_merged(int i)
     if(P[i].Type>0) {return 0;} // don't allow merging of collisionless particles [only splitting, in these runs]
     if(is_particle_a_special_zoom_target(i)) {return 0;}
 #endif
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
     if(P[i].ID==All.AGNWindID && P[i].Type==0)
     {
-#ifdef BH_DEBUG_SPAWN_JET_TEST
+#ifdef SINK_DEBUG_SPAWN_JET_TEST
         MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
-        if(vr2 <= 0.01 * All.BAL_v_outflow*All.BAL_v_outflow) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
+        if(vr2 <= 0.01 * All.Sink_outflow_velocity*All.Sink_outflow_velocity) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
 #else
         if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i,0)) {return 1;}
 #endif
@@ -91,7 +91,7 @@ int does_particle_need_to_be_merged(int i)
 
 
 /*! Here we can insert any desired criteria for particle splitting: by default, this will occur
-    when particles become too massive, but it could also be done when Hsml gets very large, densities are high, etc */
+    when particles become too massive, but it could also be done when KernelRadius gets very large, densities are high, etc */
 int does_particle_need_to_be_split(int i)
 {
     if(P[i].Type != 0) {return 0;} // default behavior: only gas particles split //
@@ -105,7 +105,7 @@ int does_particle_need_to_be_split(int i)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
     if(P[i].Type==4) {return 0;}
 #endif
-#ifdef BH_DEBUG_SPAWN_JET_TEST
+#ifdef SINK_DEBUG_SPAWN_JET_TEST
     if(P[i].ID==All.AGNWindID && P[i].Type==0) {return 0;}
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i,1))) {return 1;}
@@ -141,7 +141,7 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
         int k,j; double dx,r2=0,r2min=MAX_REAL_NUMBER;
         for(j=0;j<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;j++)
         {
-            r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SMBH_SpecialParticle_Position_ForRefinement[j][k])*All.cf_atime; r2+=dx*dx;}
+            r2=0; for(k=0;k<3;k++) {dx=(P[i].Pos[k]-All.SpecialParticle_Position_ForRefinement[j][k])*All.cf_atime; r2+=dx*dx;}
             if(r2<r2min) {r2min=r2;}
         }
         r2 = r2min; // want minimum distance to nearest refinement center
@@ -231,8 +231,8 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
         m_ref_mJ = 0.01 * MJ; // since using real thermal jeans, fully-cold, don't need to be as aggressive here
 #endif
-#if defined(BH_CALC_DISTANCES)
-        double rbh = P[i].min_dist_to_bh * All.cf_atime; // distance to nearest BH
+#if defined(SINK_CALC_DISTANCES)
+        double rbh = P[i].Min_Distance_to_Sink * All.cf_atime; // distance to nearest BH
         if(rbh > 1.e-10 && isfinite(rbh) && rbh < 1.e10)
         {
             double r1=1., r2=10., r3=20.; // boundaries for different distance-based refinement thresholds, in physical kpc
@@ -254,8 +254,8 @@ double target_mass_renormalization_factor_for_mergesplit(int i, int split_key)
 #endif
     
 /*!
- #if defined(BH_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-    ref_factor = DMIN(1.,sqrt(P[i].min_dist_to_bh + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
+ #if defined(SINK_CALC_DISTANCES) && !defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+    ref_factor = DMIN(1.,sqrt(P[i].Min_Distance_to_Sink + 0.0001)); // this is an example of the kind of routine you could use to scale resolution with BH distance //
 #endif
  */
     return ref_factor;
@@ -295,7 +295,7 @@ void merge_and_split_particles(void)
             in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
         if(((P[i].Type == 2)||(P[i].Type == 3)||(P[i].Type == 5))&&(TimeBinActive[P[i].TimeBin]))
         {
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             if(P[i].Type == 5) continue;
 #endif
             /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
@@ -304,8 +304,8 @@ void merge_and_split_particles(void)
             double h_search_max = 10. * ForceSoftening_KernelRadius(i);
             double h_search_min = 0.1 * ForceSoftening_KernelRadius(i);
             double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-            h_guess = P[i].AGS_Hsml; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
+            h_guess = P[i].AGS_KernelRadius; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
 #else
             h_guess = 5.0 * ForceSoftening_KernelRadius(i);
 #endif
@@ -332,7 +332,7 @@ void merge_and_split_particles(void)
                 {
                     j = Ngblist[n];
                     if(j == i) {if(numngb_inbox > 1) continue;}
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
                     if((P[j].Type == 2) || (P[j].Type == 3))
 #else
                     if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))
@@ -363,7 +363,7 @@ void merge_and_split_particles(void)
             {
                 /* if merging: do a neighbor loop ON THE SAME DOMAIN to determine the target */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,P[i].Hsml,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
+                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,P[i].KernelRadius,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -375,7 +375,7 @@ void merge_and_split_particles(void)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
                         if(P[i].Type==4 && P[j].Type==4) {m_eff=evaluate_starstar_merger_for_starcluster_particle_pair(i,j); if(m_eff<=0) {do_allow_merger=0;} else {do_allow_merger=1;}}
 #endif
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                         if(P[i].ID==All.AGNWindID && P[i].Type==0)
                         {
                             if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
@@ -388,7 +388,7 @@ void merge_and_split_particles(void)
                                 if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
                                 if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))*All.cf_afac3) {do_allow_merger = 0;}
 #if !(defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS))
-                                if((v2_tmp > 0.25*All.BAL_v_outflow) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
+                                if((v2_tmp > 0.25*All.Sink_outflow_velocity) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j)*All.cf_afac3)) {do_allow_merger=0;}
 #endif
                             }
                         }
@@ -408,7 +408,7 @@ void merge_and_split_particles(void)
             else if(does_particle_need_to_be_split(i) && (Ptmp[i].flag == 0)) {
                 /* if splitting: do a neighbor loop ON THE SAME DOMAIN to determine the nearest particle (so dont overshoot it) */
                 startnode=All.MaxPart;
-                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,P[i].Hsml,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
+                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,P[i].KernelRadius,-1,&startnode,0,&dummy,&dummy,Pi_BITFLAG); // search for particles of matching type
                 if(numngb_inbox>0)
                 {
                     target_for_merger = -1;
@@ -508,22 +508,22 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     k=0;
     phi = 2.0*M_PI*get_random_number(i+1+ThisTask); // random from 0 to 2pi //
     cos_theta = 2.0*(get_random_number(i+3+2*ThisTask)-0.5); // random between 1 to -1 //
-    double d_r = 0.25 * KERNEL_CORE_SIZE*P[i].Hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
+    double d_r = 0.25 * KERNEL_CORE_SIZE*P[i].KernelRadius; // needs to be epsilon*KernelRadius where epsilon<<1, to maintain stability //
     double dp[3], r_near=0; for(k = 0; k < 3; k++) {dp[k] =P[i].Pos[k] - P[i_nearest].Pos[k];}
     NEAREST_XYZ(dp[0],dp[1],dp[2],1);
     for(k = 0; k < 3; k++) {r_near += dp[k]*dp[k];}
     r_near = sqrt(r_near);
     d_r = DMIN(d_r , 0.35 * r_near); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
 #if defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT) || defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL_DEFAULTS) || defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-    double dx_eff = Get_Particle_Size(i), dx_h = KERNEL_CORE_SIZE * P[i].Hsml; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); dx_h = r_near; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); d_r = 0.39685*dx_eff; // this allows a larger split in order to reduce artefacts in more aggressive splits, at the expense of more diffusion of the original mass //
+    double dx_eff = Get_Particle_Size(i), dx_h = KERNEL_CORE_SIZE * P[i].KernelRadius; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); dx_h = r_near; dx_eff = DMAX(DMIN(dx_eff,3.*dx_h),0.1*dx_h); d_r = 0.39685*dx_eff; // this allows a larger split in order to reduce artefacts in more aggressive splits, at the expense of more diffusion of the original mass //
 #endif
     /*
     double r_near = sqrt(r2_nearest);
-    double hsml = Get_Particle_Size(i);
-    if(hsml < r_near) {hsml = r_near;}
+    double rkern = Get_Particle_Size(i);
+    if(rkern < r_near) {rkern = r_near;}
     r_near *= 0.35;
-    double d_r = 0.25 * hsml; // needs to be epsilon*Hsml where epsilon<<1, to maintain stability //
-    d_r = DMAX( DMAX(0.1*r_near , 0.005*hsml) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
+    double d_r = 0.25 * rkern; // needs to be epsilon*KernelRadius where epsilon<<1, to maintain stability //
+    d_r = DMAX( DMAX(0.1*r_near , 0.005*rkern) , DMIN(d_r , r_near) ); // use a 'buffer' to limit to some multiple of the distance to the nearest particle //
     */ // the change above appears to cause some numerical instability //
 #ifndef SELFGRAVITY_OFF
     d_r = DMAX(d_r , 2.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * ForceSoftening_KernelRadius(i));
@@ -647,8 +647,8 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
         CellP[j].DtCREgyNewInjectionFromShocks = mass_of_new_particle * CellP[i].DtCREgyNewInjectionFromShocks; CellP[i].DtCREgyNewInjectionFromShocks -= CellP[j].DtCREgyNewInjectionFromShocks;
 #endif
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-        CellP[j].BH_CR_Energy_Available_For_Injection = mass_of_new_particle * CellP[i].BH_CR_Energy_Available_For_Injection; CellP[i].BH_CR_Energy_Available_For_Injection -= CellP[j].BH_CR_Energy_Available_For_Injection;
+#if defined(SINK_CR_INJECTION_AT_TERMINATION)
+        CellP[j].Sink_CR_Energy_Available_For_Injection = mass_of_new_particle * CellP[i].Sink_CR_Energy_Available_For_Injection; CellP[i].Sink_CR_Energy_Available_For_Injection -= CellP[j].Sink_CR_Energy_Available_For_Injection;
 #endif
         int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++) {
             CellP[j].CosmicRayEnergy[k_CRegy] = mass_of_new_particle * CellP[i].CosmicRayEnergy[k_CRegy]; CellP[i].CosmicRayEnergy[k_CRegy] -= CellP[j].CosmicRayEnergy[k_CRegy];
@@ -700,7 +700,7 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
             //if(dp[2]==1) {dx=d_r; dy=0; dz=0;} else {double dr2d = sqrt(dp[1]*dp[1] + dp[0]*dp[0]); dx = -d_r*dp[1]/dr2d; dy = d_r*dp[0]/dr2d; dz = d_r*dp[2];}
         }
 #endif
-#ifdef WAKEUP  /* TO: rather conservative. But we want to update Density and Hsml after the particle masses were changed */
+#ifdef WAKEUP  /* TO: rather conservative. But we want to update Density and KernelRadius after the particle masses were changed */
         P[i].wakeup = 1; P[j].wakeup = 1; NeedToWakeupParticles_local = 1;
 #endif
 
@@ -760,7 +760,7 @@ int merge_particles_ij(int i, int j)
     if(((P[i].Type==0)||(P[j].Type==0)) && (P[j].Type!=P[i].Type)) {printf("WARNING: code is trying to merge a gas cell with a non-gas particle. I dont know how to do this. Exiting the merge subroutine."); fflush(stdout); return 0;}
 
     int swap_ids = 0; if(P[i].Mass > P[j].Mass) {swap_ids = 1;} /* retain the IDs of the more massive progenitor */
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
     if(P[i].ID == All.AGNWindID) {swap_ids = 0;} /* don't copy an agn wind id */
     if(P[j].ID == All.AGNWindID) {P[j].ID = All.AGNWindID + 1;} /* offset this to avoid checks through code */
 #endif
@@ -789,7 +789,7 @@ int merge_particles_ij(int i, int j)
             P[j].GravPM[k] = wt_j*P[j].GravPM[k] + wt_i*P[i].GravPM[k]; // force-conserving //
 #endif
         }
-        P[j].Hsml = pow(pow(P[j].Hsml,NUMDIMS)+pow(P[i].Hsml,NUMDIMS),1.0/NUMDIMS); // volume-conserving to leading order //
+        P[j].KernelRadius = pow(pow(P[j].KernelRadius,NUMDIMS)+pow(P[i].KernelRadius,NUMDIMS),1.0/NUMDIMS); // volume-conserving to leading order //
 #ifdef METALS
         for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = wt_j*P[j].Metallicity[k] + wt_i*P[i].Metallicity[k];} // metal-mass conserving //
 #endif
@@ -937,7 +937,7 @@ int merge_particles_ij(int i, int j)
     CellP[j].DtInternalEnergy = de_ij;
     // to be conservative adopt the maximum signal velocity and kernel length //
     CellP[j].MaxSignalVel = sqrt(CellP[j].MaxSignalVel*CellP[j].MaxSignalVel + CellP[i].MaxSignalVel*CellP[i].MaxSignalVel); /* need to be conservative */
-    P[j].Hsml = pow(pow(P[j].Hsml,NUMDIMS)+pow(P[i].Hsml,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
+    P[j].KernelRadius = pow(pow(P[j].KernelRadius,NUMDIMS)+pow(P[i].KernelRadius,NUMDIMS),1.0/NUMDIMS); /* sum the volume of the two particles */
     CellP[j].ConditionNumber = CellP[j].ConditionNumber + CellP[i].ConditionNumber; /* sum to be conservative */
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
     CellP[j].MaxKineticEnergyNgb = DMAX(CellP[j].MaxKineticEnergyNgb,CellP[i].MaxKineticEnergyNgb); /* for the entropy/energy switch condition */
@@ -995,8 +995,8 @@ int merge_particles_ij(int i, int j)
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
     CellP[j].DtCREgyNewInjectionFromShocks += CellP[i].DtCREgyNewInjectionFromShocks;
 #endif
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-    CellP[j].BH_CR_Energy_Available_For_Injection += CellP[i].BH_CR_Energy_Available_For_Injection;
+#if defined(SINK_CR_INJECTION_AT_TERMINATION)
+    CellP[j].Sink_CR_Energy_Available_For_Injection += CellP[i].Sink_CR_Energy_Available_For_Injection;
 #endif
     int k_CRegy; for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     {
@@ -1134,7 +1134,7 @@ void remove_particle_from_treewalk(int i){
 void rearrange_particle_sequence(void)
 {
     int i, j, flag = 0, flag_sum, j_next;
-    int count_elim, count_gaselim, count_bhelim, tot_elim, tot_gaselim, tot_bhelim;
+    int count_elim, count_gaselim, count_sink_elim, tot_elim, tot_gaselim, tot_sink_elim;
     struct particle_data psave;
     struct gas_cell_data gascellsave;
 #ifdef CHIMES
@@ -1197,7 +1197,7 @@ void rearrange_particle_sequence(void)
 
     count_elim = 0;
     count_gaselim = 0;
-    count_bhelim = 0;
+    count_sink_elim = 0;
     /* loop over entire block looking for things with zero mass, which need to be eliminated */
     for(i = 0; i < NumPart; i++)
         if(P[i].Mass <= 0)
@@ -1232,7 +1232,7 @@ void rearrange_particle_sequence(void)
             }
             else
             {
-                if(P[i].Type == 5) {count_bhelim++;} /* record elimination if BH */
+                if(P[i].Type == 5) {count_sink_elim++;} /* record elimination if BH */
                 P[i] = P[NumPart - 1]; /* re-directs pointer for this particle to pointer at final particle -- so we
                                         swap the two; note that ordering -does not- matter among the non-fluid/gas cells
                                         so its fine if this mixes up the list ordering of different particle types */
@@ -1249,16 +1249,16 @@ void rearrange_particle_sequence(void)
 
     MPI_Allreduce(&count_elim, &tot_elim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&count_gaselim, &tot_gaselim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&count_bhelim, &tot_bhelim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&count_sink_elim, &tot_sink_elim, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     if(count_elim) {flag = 1;}
 
-    if(ThisTask == 0) {if(tot_elim > 0) {printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d black holes.\n", tot_gaselim, tot_elim - tot_gaselim - tot_bhelim, tot_bhelim);}}
+    if(ThisTask == 0) {if(tot_elim > 0) {printf("Rearrange: Eliminated %d/%d gas/star particles and merged away %d sink particles.\n", tot_gaselim, tot_elim - tot_gaselim - tot_sink_elim, tot_sink_elim);}}
 
     All.TotNumPart -= tot_elim;
     All.TotN_gas -= tot_gaselim;
-#ifdef BLACK_HOLES
-    All.TotBHs -= tot_bhelim;
+#ifdef SINK_PARTICLES
+    All.TotSinks -= tot_sink_elim;
 #endif
 
     MPI_Allreduce(&flag, &flag_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -1277,16 +1277,16 @@ void apply_pm_hires_region_clipping_selection(int i)
     if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
     if(P[i].Type == 5) {return;} // no clips for sinks
     if(P[i].Type == 0 && density_isactive(i)) {if((CellP[i].Density <= 0) || (P[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
-    if(density_isactive(i)) {if(P[i].Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-    if(ags_density_isactive(i)) {if(P[i].AGS_Hsml >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+    if(density_isactive(i)) {if(P[i].KernelRadius >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
+    if(ags_density_isactive(i)) {if(P[i].AGS_KernelRadius >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
 #endif
 #ifdef GALSF
     if((All.ComovingIntegrationOn) && (P[i].Type==0) && (P[i].Mass>0)) // clip material outside of a hires zoom-in region [unphysically well below cosmic mean density]
-        if((CellP[i].Density>0) && (P[i].Hsml>0))
+        if((CellP[i].Density>0) && (P[i].KernelRadius>0))
         {
             double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
-            double rho_gas = DMAX( CellP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*P[i].Hsml*P[i].Hsml*P[i].Hsml) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
+            double rho_gas = DMAX( CellP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*P[i].KernelRadius*P[i].KernelRadius*P[i].KernelRadius) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
             if(rho_gas < 1.e-6*rho_igm) {clip_flag=1;} // clip
         }
 #endif

@@ -39,7 +39,7 @@ static struct rt_cg_data_in
     MyDouble Pos[3];
     MyFloat Mass;
     MyFloat Density;
-    MyFloat Hsml;
+    MyFloat KernelRadius;
     MyFloat ET[N_RT_FREQ_BINS][6];
     MyDouble RT_DiffusionCoeff[N_RT_FREQ_BINS];
     //MyDouble Lambda[N_RT_FREQ_BINS];
@@ -70,7 +70,7 @@ void particle2in_rt_cg(struct rt_cg_data_in *in, int i)
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
     int kET; for(k=0;k<N_RT_FREQ_BINS;k++) for(kET=0; kET<6; kET++) {in->ET[k][kET] = CellP[i].ET[k][kET];}
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     in->Mass = P[i].Mass;
     in->Density = CellP[i].Density;
     for(k=0; k<N_RT_FREQ_BINS; k++) in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
@@ -419,9 +419,9 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
     memset(&out, 0, sizeof(struct rt_cg_data_out));
 
     /* basic calculations */
-    if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
-    double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
-    kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
+    if(local.KernelRadius<=0) return 0; // zero-extent kernel, no particles //
+    double hinv, hinv3, hinv4, h2=local.KernelRadius*local.KernelRadius;
+    kernel_hinv(local.KernelRadius, &hinv, &hinv3, &hinv4);
     double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * UNIT_INTEGERTIME_IN_PHYSICAL(-1);
 #ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
     /*modify Eddington tensor */
@@ -442,7 +442,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -453,16 +453,16 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size */
                 double r2=0; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) continue; // same particle //
-                if((r2>h2)||(r2>P[j].Hsml*P[j].Hsml)) continue; // outside kernel //
+                if((r2>h2)||(r2>P[j].KernelRadius*P[j].KernelRadius)) continue; // outside kernel //
                 // calculate kernel quantities //
                 double r = sqrt(r2), wk, dwk_i=0, dwk_j=0;
-                if(r<local.Hsml)
+                if(r<local.KernelRadius)
                 {
                     kernel_main(r*hinv, hinv3, hinv4, &wk, &dwk_i, 1);
                 }
-                if(r<P[j].Hsml)
+                if(r<P[j].KernelRadius)
                 {
-                    double hinv_j,hinv3_j,hinv4_j; kernel_hinv(P[j].Hsml, &hinv_j, &hinv3_j, &hinv4_j);
+                    double hinv_j,hinv3_j,hinv4_j; kernel_hinv(P[j].KernelRadius, &hinv_j, &hinv3_j, &hinv4_j);
                     kernel_main(r*hinv_j, hinv3_j, hinv4_j, &wk, &dwk_j, 1);
                 }
                 
@@ -523,7 +523,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
 /* routine for initial loop of particles on local processor (and determination of which need passing) */
 void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
 {
-#define CONDITION_FOR_EVALUATION if((P[i].Type==0)&&(P[i].NumNgb>0)&&(P[i].Hsml>0)&&(P[i].Mass>0))
+#define CONDITION_FOR_EVALUATION if((P[i].Type==0)&&(P[i].NumNgb>0)&&(P[i].KernelRadius>0)&&(P[i].Mass>0))
 #define EVALUATION_CALL rt_diffusion_cg_evaluate(i,0,matrixmult_in,matrixmult_out,matrixmult_sum,exportflag,exportnodecount,exportindex,ngblist)
 #include "../system/code_block_primary_loop_evaluation.h"
 #undef CONDITION_FOR_EVALUATION

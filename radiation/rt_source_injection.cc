@@ -32,7 +32,7 @@
 /*! Structure for communication during the kernel computation. Holds data that is sent to other processors  */
 static struct INPUT_STRUCT_NAME
 {
-    MyDouble Pos[3]; MyFloat Hsml, KernelSum_Around_RT_Source, Luminosity[N_RT_FREQ_BINS], Vel[3];
+    MyDouble Pos[3]; MyFloat KernelRadius, KernelSum_Around_RT_Source, Luminosity[N_RT_FREQ_BINS], Vel[3];
     int NodeList[NODELISTLENGTH];
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     MyDouble Dt;
@@ -46,7 +46,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = CellP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensAroundStar;}
     in->KernelSum_Around_RT_Source = P[i].KernelSum_Around_RT_Source;
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
@@ -55,7 +55,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     double dt = 1; // make this do nothing unless flags below are set:
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
     dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
     if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
 #if defined(RT_EVOLVE_FLUX)
@@ -64,7 +64,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
     for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 #ifdef RT_REINJECT_ACCRETED_PHOTONS // if this is enabled, we track how many photons the sink has accreted from gas cells and reinject them here, resetting the photon count
-    if(P[i].Type==5 && active_check) {in->Luminosity[N_RT_FREQ_BINS-1] += P[i].BH_accreted_photon_energy; P[i].BH_accreted_photon_energy = 0;} // nominally inject into the last, lowest-energy bin, intended for problems where optically-thick IR is getting advected into the sink
+    if(P[i].Type==5 && active_check) {in->Luminosity[N_RT_FREQ_BINS-1] += P[i].Sink_accreted_photon_energy; P[i].Sink_accreted_photon_energy = 0;} // nominally inject into the last, lowest-energy bin, intended for problems where optically-thick IR is getting advected into the sink
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
@@ -93,10 +93,10 @@ int rt_sourceinjection_active_check(int i);
 int rt_sourceinjection_active_check(int i)
 {
     if(P[i].NumNgb <= 0) return 0;
-    if(P[i].Hsml <= 0) return 0;
+    if(P[i].KernelRadius <= 0) return 0;
     if(P[i].Mass <= 0) return 0;
     if(P[i].KernelSum_Around_RT_Source <= 0) return 0;
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
     if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) return 0;
 #endif
     double lum[N_RT_FREQ_BINS];
@@ -136,9 +136,9 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     struct INPUT_STRUCT_NAME local;
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     /* basic calculations */
-    if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
-    double hinv, hinv3, hinv4, h2=local.Hsml*local.Hsml;
-    kernel_hinv(local.Hsml, &hinv, &hinv3, &hinv4);
+    if(local.KernelRadius<=0) return 0; // zero-extent kernel, no particles //
+    double hinv, hinv3, hinv4, h2=local.KernelRadius*local.KernelRadius;
+    kernel_hinv(local.KernelRadius, &hinv, &hinv3, &hinv4);
     
     /* Now start the actual operations for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;/* open it */}
@@ -146,11 +146,11 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
     {
         while(startnode >= 0)
         {
-#ifdef RT_BH_ANGLEWEIGHT_PHOTON_INJECTION // we want the 2-way search to ensure overlapping diffuse gas gets radiation
-            if(All.TimeStep > 0) {numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}
-            else {numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}// we don't have the necessary weights yet on timestep 0, so we will proceed with normal injection weighting and neighbor searching
+#ifdef RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION // we want the 2-way search to ensure overlapping diffuse gas gets radiation
+            if(All.TimeStep > 0) {numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}
+            else {numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);}// we don't have the necessary weights yet on timestep 0, so we will proceed with normal injection weighting and neighbor searching
 #else
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
 #endif            
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
@@ -163,19 +163,19 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); /* find the closest image in the given box size  */
                 double r2=0, r, wk; for(k=0;k<3;k++) {r2 += dp[k]*dp[k];}
                 if(r2<=0) {continue;} // same particle //
-#ifdef RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
-                if((All.TimeStep > 0) && (r2>=h2) && (r2 >= P[j].Hsml*P[j].Hsml)) {continue;} // outside kernel //
+#ifdef RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION
+                if((All.TimeStep > 0) && (r2>=h2) && (r2 >= P[j].KernelRadius*P[j].KernelRadius)) {continue;} // outside kernel //
 #else
                 if(r2>=h2) {continue;} // outside kernel //
 #endif
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                 if(P[j].StellarAge==All.Time) {continue;} // This is a wind cell that was just spawned, and is not yet part of the volume partition, so don't inject // 
 #endif
                 r = sqrt(r2); // useful variables for below
                 
                 /* calculate the kernel weight used to apply photons to the neighbor */
-#ifdef RT_BH_ANGLEWEIGHT_PHOTON_INJECTION // use the angle-weighted coupling
-                if(All.TimeStep > 0) {wk = bh_angleweight_localcoupling(j,0,r,local.Hsml) / local.KernelSum_Around_RT_Source;} else {wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;}
+#ifdef RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION // use the angle-weighted coupling
+                if(All.TimeStep > 0) {wk = sink_fb_angleweight_localcoupling(j,0,r,local.KernelRadius) / local.KernelSum_Around_RT_Source;} else {wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;}
 #else
                 wk = (1 - r2*hinv*hinv) / local.KernelSum_Around_RT_Source;
 #endif
@@ -205,7 +205,7 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION) || defined(RT_REPROCESS_INJECTED_PHOTONS)
                     // add discrete photon momentum from un-resolved absorption //
-                    double x_abs = 2. * CellP[j].Rad_Kappa[k] * (CellP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.Hsml, r))) * All.cf_atime; // effective optical depth through particle
+                    double x_abs = 2. * CellP[j].Rad_Kappa[k] * (CellP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.KernelRadius, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
 #if !defined(RT_DISABLE_RAD_PRESSURE) && defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)

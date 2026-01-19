@@ -48,7 +48,7 @@ struct kernel_DynamicDiff {
 struct DynamicDiffdata_in {
     MyDouble Pos[3];
     MyFloat Mass;
-    MyFloat Hsml;
+    MyFloat KernelRadius;
     MyDouble Density;
     int NodeList[NODELISTLENGTH];
 
@@ -121,7 +121,7 @@ static inline void particle2in_DynamicDiff(struct DynamicDiffdata_in *in, int i,
     in->TD_DynDiffCoeff = CellP[i].TD_DynDiffCoeff;
     in->Density = CellP[i].Density;
     in->MagShear_bar = CellP[i].MagShear_bar;
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     in->Mass = P[i].Mass;
     in->Norm_hat = CellP[i].Norm_hat;
     in->FilterWidth_bar = CellP[i].FilterWidth_bar;
@@ -509,20 +509,20 @@ void dynamic_diff_calc(void) {
                     CellP[i].TD_DynDiffCoeff_error_default = 0;
                     trace_dynamic_fac_const = 0;
 #endif
-                    hhat2 = All.TurbDynamicDiffFac * All.TurbDynamicDiffFac * P[i].Hsml * P[i].Hsml;
+                    hhat2 = All.TurbDynamicDiffFac * All.TurbDynamicDiffFac * P[i].KernelRadius * P[i].KernelRadius;
           
                     /* We must construct grad(v_hat) before moving on */
                     if (dynamic_iteration == 0) {
                         double stol = 0.0;
 
-                        double h_lim = DMAX(P[i].Hsml, CellP[i].MaxDistance_for_grad);
+                        double h_lim = DMAX(P[i].KernelRadius, CellP[i].MaxDistance_for_grad);
                         double a_limiter = 0.25;
                         if (CellP[i].ConditionNumber > 100) {
                             a_limiter = 2.0 * DMIN(0.5, 0.25 + 0.25 * (CellP[i].ConditionNumber - 100) / 100);
                         }
   
 #if (SLOPE_LIMITER_TOLERANCE > 1)
-                        h_lim = P[i].Hsml;
+                        h_lim = P[i].KernelRadius;
                         a_limiter *= 0.5;
                         stol = 0.125;
 #endif
@@ -654,12 +654,7 @@ void dynamic_diff_calc(void) {
 #endif
 
                     /* Contains the actual eddy viscosity like estimate */
-#ifdef TURB_DIFF_HSML
-                    CellP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * CellP[i].TD_DynDiffCoeff * (P[i].Hsml * P[i].Hsml * All.cf_atime * All.cf_atime) * (CellP[i].MagShear * All.cf_a2inv); // Physical
-#else
                     CellP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * CellP[i].TD_DynDiffCoeff * (CellP[i].h_turb * CellP[i].h_turb * All.cf_atime * All.cf_atime) * (CellP[i].MagShear * All.cf_a2inv); // Physical
-#endif
-
                     /* Have to update the other coefficients as well with the new value */
 #ifdef TURB_DIFF_ENERGY
                     CellP[i].Kappa_Conduction = All.ConductionCoeff * CellP[i].TD_DiffCoeff * CellP[i].Density * All.cf_a3inv;
@@ -738,12 +733,12 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
     memset(&kernel, 0, sizeof(struct kernel_DynamicDiff));
     int sph_gradients_flag_i = 0;
     /* check if we should bother doing a neighbor loop */
-    if (local.Hsml <= 0) return 0;
+    if (local.KernelRadius <= 0) return 0;
     if (local.Mass == 0) return 0;
     if (local.Density <= 0) return 0;
 
     /* now set particle-i centric quantities so we don't do it inside the loop */
-    kernel.h_i = All.TurbDynamicDiffFac * local.Hsml;
+    kernel.h_i = All.TurbDynamicDiffFac * local.KernelRadius;
    
     double h2_i = kernel.h_i * kernel.h_i;
 
@@ -758,7 +753,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
     int kernel_mode_i = 0;
     
     /* This is a bit of optimization to save calculating this 9 times for each neighbor */
-    //double prefactor_i = local.Density_bar * local.Hsml * local.Hsml * local.TD_DynDiffCoeff * local.MagShear_bar;
+    //double prefactor_i = local.Density_bar * local.KernelRadius * local.KernelRadius * local.TD_DynDiffCoeff * local.MagShear_bar;
     double prefactor_i = local.FilterWidth_bar * local.FilterWidth_bar * local.TD_DynDiffCoeff * local.MagShear_bar;
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
     double prefactor_const_i = local.FilterWidth_bar * local.FilterWidth_bar * local.MagShear_bar;
@@ -794,7 +789,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
                 NEAREST_XYZ(kernel.dp[0], kernel.dp[1], kernel.dp[2], 1); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                double h_j = All.TurbDynamicDiffFac * P[j].Hsml;
+                double h_j = All.TurbDynamicDiffFac * P[j].KernelRadius;
                 double h_avg = 0.5 * (kernel.h_i + h_j);
                 double mean_weight = 0.5 * (CellP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * CellP[j].Norm_hat);
                 double V_j = P[j].Mass * mean_weight;
@@ -816,8 +811,8 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     for (k=0;k<3;k++) {MINMAX_CHECK(dv_hat[k], out.Minima.Velocity_hat[k], out.Maxima.Velocity_hat[k]);}
 
                     double hinv_forgrad, hinv3_forgrad, hinv4_forgrad, u_forgrad, wk_i_forgrad, dwk_i_forgrad;
-                    if (kernel.r < local.Hsml) {
-                        kernel_hinv(local.Hsml, &hinv_forgrad, &hinv3_forgrad, &hinv4_forgrad);
+                    if (kernel.r < local.KernelRadius) {
+                        kernel_hinv(local.KernelRadius, &hinv_forgrad, &hinv3_forgrad, &hinv4_forgrad);
                         u_forgrad = DMIN(kernel.r * hinv_forgrad, 1.0);
                         kernel_main(u_forgrad, hinv3_forgrad, hinv4_forgrad, &wk_i_forgrad, &dwk_i_forgrad, kernel_mode_i);
 

@@ -48,9 +48,9 @@ void radiation_pressure_winds_consolidated(void)
 
                 /* calculate some pre-amble properties */
 #if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
-                double RtauMax = DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , 4.*P[i].Hsml );
+                double RtauMax = DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , 4.*P[i].KernelRadius );
 #else
-                double RtauMax = P[i].Hsml * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].Hsml*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
+                double RtauMax = P[i].KernelRadius * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].KernelRadius*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
                 RtauMax = DMAX( 1./(UNIT_LENGTH_IN_KPC*All.cf_atime) , DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , RtauMax )); // restrict to 1-10 kpc here
 #endif
                 
@@ -60,7 +60,7 @@ void radiation_pressure_winds_consolidated(void)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
                 v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS; // for this module use lower unit mass for kicks
 #endif
-                double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].Hsml*All.cf_atime; // density and h in -physical- units
+                double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].KernelRadius*All.cf_atime; // density and h in -physical- units
                 double v_grav_guess; v_grav_guess = DMIN( 1.82*(65.748/UNIT_VEL_IN_KMS)*pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25) , sqrt(All.G*(P[i].Mass + VOLUME_NORM_COEFF_FOR_NDIMS*rho_phys*h_phys*h_phys*h_phys)/h_phys) ); // don't want to 'under-kick' if there are small local characteristic velocities in the region of interest
                 delta_v_imparted_rp = v_wind_threshold; // always couple this 'discrete' kick, to avoid having to couple every single timestep for every single star particle
                 double dv_imparted_perpart_guess = (dE_over_c/P[i].Mass); // estimate of summed dv_imparted [in code units] from single-scattering: = momentum/mass of particle
@@ -82,9 +82,9 @@ void radiation_pressure_winds_consolidated(void)
                 { // within loop
                     /* ok, now open the neighbor list for the star particle */
 #if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
-                    N_MIN_KERNEL=1; N_MAX_KERNEL=256; MAXITER_FB=10; h=0.5*P[i].Hsml;
+                    N_MIN_KERNEL=1; N_MAX_KERNEL=256; MAXITER_FB=10; h=0.5*P[i].KernelRadius;
 #else
-                    N_MIN_KERNEL=10; N_MAX_KERNEL=256; MAXITER_FB=100; h=1.0*P[i].Hsml;
+                    N_MIN_KERNEL=10; N_MAX_KERNEL=256; MAXITER_FB=100; h=1.0*P[i].KernelRadius;
 #endif
                     NITER=0; wt_sum=0; startnode=All.MaxPart; dummy=0; numngb_inbox=0; pos=P[i].Pos;
                     if(h<=0) {h=All.ForceSoftening[0];} else {if(h>RtauMax) {h=RtauMax;}}
@@ -96,7 +96,7 @@ void radiation_pressure_winds_consolidated(void)
                             for(n=0; n<numngb_inbox; n++)
                             {
                                 j = Ngblist[n];
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                                 if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
 #endif
                                 if((P[j].Mass>0) && (CellP[j].Density>0))
@@ -123,7 +123,7 @@ void radiation_pressure_winds_consolidated(void)
                         for(n=0; n<numngb_inbox; n++)
                         {
                             j = Ngblist[n];
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                             if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
 #endif
                             if((P[j].Mass>0) && (CellP[j].Density>0))
@@ -248,14 +248,14 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
 
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
-#ifdef BH_HII_HEATING
+#ifdef SINK_HII_HEATING
         if((P[i].Type == 5)||(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))))
 #else
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
 #endif
         {
             dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
             if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
 #endif
             if(dt<=0) {continue;} // don't keep going with this loop
@@ -265,7 +265,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(i)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
 #endif
             if(stellum <= 0) {continue;}
-            pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = P[i].Hsml;
+            pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = P[i].KernelRadius;
             RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667); // Stromgren radius, RHII, computed using a case B recombination coefficient at 10^4 K of 2.59e-13 cm^3 s^-1, and assuming a Hydrogen mass fraction ~0.74.
             RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS; // convert to code units
             RHIIMAX = 2. * 240.0*pow(stellum,0.5) / (All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background, x2 safety factor

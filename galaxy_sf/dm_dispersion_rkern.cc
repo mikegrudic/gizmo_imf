@@ -8,7 +8,7 @@
 #include "../core/proto.h"
 #include "../mesh/kernel.h"
 
-/*! \file dm_dispersion_hsml
+/*! \file dm_dispersion_rkern
  *  \brief smoothing length and velocity dispersion calculation for dark matter particles around gas particles
  *
  *  This file contains a loop modeled on the gas density computation which
@@ -38,7 +38,7 @@
 static struct INPUT_STRUCT_NAME
 {
     MyDouble Pos[3];
-    MyFloat HsmlDM;
+    MyFloat KernelRadiusDM;
     int NodeList[NODELISTLENGTH];
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -47,7 +47,7 @@ static struct INPUT_STRUCT_NAME
 void disp_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
-    in->HsmlDM = CellP[i].HsmlDM;
+    in->KernelRadiusDM = CellP[i].KernelRadiusDM;
 }
 
 
@@ -73,7 +73,7 @@ void disp_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, 
 }
 
 
-/* routine to determine if we need to use disp_density to calculate Hsml */
+/* routine to determine if we need to use disp_density to calculate KernelRadius */
 int disp_density_isactive(int i);
 int disp_density_isactive(int i)
 {
@@ -94,7 +94,7 @@ int disp_density_evaluate(int target, int mode, int *exportflag, int *exportnode
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.HsmlDM, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 2); // search for high-res DM particles only: 2^1 = 2
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.KernelRadiusDM, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 2); // search for high-res DM particles only: 2^1 = 2
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -130,22 +130,22 @@ void disp_density(void)
     {
         #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 
-        /* do check on whether we have enough neighbors, and iterate for density-hsml solution */
+        /* do check on whether we have enough neighbors, and iterate for density-rkern solution */
         double tstart = my_second(), tend;
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
             if(disp_density_isactive(i))
             {
                 redo_particle = 0; /* now check whether we have enough neighbours, and are below the maximum search radius */
-                double maxsoft = DMIN(All.MaxHsml, 10.0*P[i].Hsml);
+                double maxsoft = DMIN(All.MaxKernelRadius, 10.0*P[i].KernelRadius);
                 if(((CellP[i].NumNgbDM < desnumngb - desnumngbdev) || (CellP[i].NumNgbDM > (desnumngb + desnumngbdev)))
                    && (Right[i]-Left[i] > 0.001*Left[i] || Left[i]==0 || Right[i]==0))
                 {
                     redo_particle = 1;
                 }
-                if(CellP[i].HsmlDM >= maxsoft)
+                if(CellP[i].KernelRadiusDM >= maxsoft)
                 {
-                    CellP[i].HsmlDM = maxsoft;
+                    CellP[i].KernelRadiusDM = maxsoft;
                     redo_particle = 0;
                 }
 
@@ -154,13 +154,13 @@ void disp_density(void)
                     /* need to redo this particle */
                     npleft++;
                     
-                    if(CellP[i].NumNgbDM < desnumngb-desnumngbdev) {Left[i]=DMAX(CellP[i].HsmlDM, Left[i]);}
-                    if(CellP[i].NumNgbDM > desnumngb+desnumngbdev) {if(Right[i]>0) {Right[i]=DMIN(Right[i],CellP[i].HsmlDM);} else {Right[i]=CellP[i].HsmlDM;}}
+                    if(CellP[i].NumNgbDM < desnumngb-desnumngbdev) {Left[i]=DMAX(CellP[i].KernelRadiusDM, Left[i]);}
+                    if(CellP[i].NumNgbDM > desnumngb+desnumngbdev) {if(Right[i]>0) {Right[i]=DMIN(Right[i],CellP[i].KernelRadiusDM);} else {Right[i]=CellP[i].KernelRadiusDM;}}
                     
                     if(iter >= MAXITER - 10)
                     {
-                        PRINT_WARNING("DM disp: i=%d task=%d ID=%llu Type=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-                         i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, CellP[i].HsmlDM, Left[i], Right[i], (float) CellP[i].NumNgbDM, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                        PRINT_WARNING("DM disp: i=%d task=%d ID=%llu Type=%d KernelRadius=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
+                         i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, CellP[i].KernelRadiusDM, Left[i], Right[i], (float) CellP[i].NumNgbDM, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                     }
                     
                     // right/left define upper/lower bounds from previous iterations
@@ -169,17 +169,17 @@ void disp_density(void)
                         // geometric interpolation between right/left //
                         if(CellP[i].NumNgbDM > 1)
                         {
-                            CellP[i].HsmlDM *= pow( desnumngb / CellP[i].NumNgbDM , 1./NUMDIMS );
+                            CellP[i].KernelRadiusDM *= pow( desnumngb / CellP[i].NumNgbDM , 1./NUMDIMS );
                         } else {
-                            CellP[i].HsmlDM *= 2.0;
+                            CellP[i].KernelRadiusDM *= 2.0;
                         }
-                        if((CellP[i].HsmlDM<Right[i])&&(CellP[i].HsmlDM>Left[i]))
+                        if((CellP[i].KernelRadiusDM<Right[i])&&(CellP[i].KernelRadiusDM>Left[i]))
                         {
-                            CellP[i].HsmlDM = pow(CellP[i].HsmlDM*CellP[i].HsmlDM*CellP[i].HsmlDM*CellP[i].HsmlDM * Left[i]*Right[i] , 1./6.);
+                            CellP[i].KernelRadiusDM = pow(CellP[i].KernelRadiusDM*CellP[i].KernelRadiusDM*CellP[i].KernelRadiusDM*CellP[i].KernelRadiusDM * Left[i]*Right[i] , 1./6.);
                         } else {
-                            if(CellP[i].HsmlDM>Right[i]) CellP[i].HsmlDM=Right[i];
-                            if(CellP[i].HsmlDM<Left[i]) CellP[i].HsmlDM=Left[i];
-                            CellP[i].HsmlDM = pow(CellP[i].HsmlDM * Left[i] * Right[i] , 1.0/3.0);
+                            if(CellP[i].KernelRadiusDM>Right[i]) CellP[i].KernelRadiusDM=Right[i];
+                            if(CellP[i].KernelRadiusDM<Left[i]) CellP[i].KernelRadiusDM=Left[i];
+                            CellP[i].KernelRadiusDM = pow(CellP[i].KernelRadiusDM * Left[i] * Right[i] , 1.0/3.0);
                         }
                     }
                     else
@@ -187,20 +187,20 @@ void disp_density(void)
                         if(Right[i] == 0 && Left[i] == 0)
                         {
                             char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE];
-                            snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "DM disp: Right[i] == 0 && Left[i] == 0 && CellP[i].HsmlDM=%g\n", CellP[i].HsmlDM); terminate(buf);
+                            snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "DM disp: Right[i] == 0 && Left[i] == 0 && CellP[i].KernelRadiusDM=%g\n", CellP[i].KernelRadiusDM); terminate(buf);
                         }
                         double fac;
                         if(Right[i] == 0 && Left[i] > 0)
                         {
                             if(CellP[i].NumNgbDM > 1) {fac = log( desnumngb / CellP[i].NumNgbDM ) / NUMDIMS;} else {fac=1.4;}
-                            if((CellP[i].NumNgbDM < 2*desnumngb)&&(CellP[i].NumNgbDM > 0.1*desnumngb)) {CellP[i].HsmlDM *= exp(fac);} else {CellP[i].HsmlDM *= 1.26;}
+                            if((CellP[i].NumNgbDM < 2*desnumngb)&&(CellP[i].NumNgbDM > 0.1*desnumngb)) {CellP[i].KernelRadiusDM *= exp(fac);} else {CellP[i].KernelRadiusDM *= 1.26;}
                         }
                         
                         if(Right[i] > 0 && Left[i] == 0)
                         {
                             if(CellP[i].NumNgbDM > 1) {fac = log( desnumngb / CellP[i].NumNgbDM ) / NUMDIMS;} else {fac=1.4;}
                             fac = DMAX(fac,-1.535);
-                            if((CellP[i].NumNgbDM < 2*desnumngb)&&(CellP[i].NumNgbDM > 0.1*desnumngb)) {CellP[i].HsmlDM *= exp(fac);} else {CellP[i].HsmlDM /= 1.26;}
+                            if((CellP[i].NumNgbDM < 2*desnumngb)&&(CellP[i].NumNgbDM > 0.1*desnumngb)) {CellP[i].KernelRadiusDM *= exp(fac);} else {CellP[i].KernelRadiusDM /= 1.26;}
                         }
                     }
                 }
@@ -230,7 +230,7 @@ void disp_density(void)
         if(P[i].TimeBin < 0) {P[i].TimeBin = -P[i].TimeBin - 1;}
     }
     
-    /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results */
+    /* now that we are DONE iterating to find rkern, we can do the REAL final operations on the results */
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     {
         if(disp_density_isactive(i))

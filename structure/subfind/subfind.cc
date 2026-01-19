@@ -83,12 +83,12 @@ void subfind(int num)
 
   MPI_Allreduce(count, countall, 6, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-  /* do first loop: basically just defining the hsml for different species */
+  /* do first loop: basically just defining the rkern for different species */
   for(j = 0; j < 6; j++)
     {
       if((1 << j) & (FOF_DENSITY_SPLIT_TYPES))
 	{
-	  //if(j == 5) {countall[j] = 0;}	/* this will prevent that the black holes are treated separately */
+	  //if(j == 5) {countall[j] = 0;}	/* this will prevent that the sink particles are treated separately */
 
 	  force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
 

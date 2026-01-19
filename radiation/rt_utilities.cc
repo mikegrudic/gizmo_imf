@@ -69,7 +69,7 @@ int rt_get_source_luminosity(int i, int mode, double *lum)
 #endif
 #else
     active_check += rt_get_lum_band_stellarpopulation(i,mode,lum); // get luminosities for star particles assuming they represent IMF-averaged populations
-#if defined(BLACK_HOLES)
+#if defined(SINK_PARTICLES)
     active_check += rt_get_lum_band_agn(i,mode,lum); // get luminosities for BH/sink particles assuming they represent AGN
 #endif
 #endif
@@ -298,7 +298,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     double f_uv=All.PhotonMomentum_fUV, f_op=All.PhotonMomentum_fOPT;
     double L = evaluate_light_to_mass_ratio(star_age, i) * m_sol / UNIT_LUM_IN_SOLAR; if(L<=0 || isnan(L)) {L=0;}
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
-    double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,P[i].Hsml,P[i].DensAroundStar,P[i].NumNgb,0,i); if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;} // sigma here is in code units
+    double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,P[i].DensAroundStar,P[i].NumNgb,0,i); if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;} // sigma here is in code units
     if(star_age <= 0.0025) {f_op=0.09;} else {if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));} else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
     /* note that the metallicity doing attenuation is the -gas- opacity around the star, while here we only know the stellar metallicity,
         so we use this as a guess, but this could substantially under-estimate opacities for old stars in MW-like galaxies. But for young stars (which dominate) this is generally ok. */
@@ -382,8 +382,8 @@ int rt_get_lum_band_agn(int i, int mode, double *lum)
 {
     if(P[i].Type != 5) {return 0;} // only go forward for BH-type particles
     int active_check = 0; // default to inactive //
-#if defined(BLACK_HOLES)
-    double l_bol = bh_lum_bol(P[i].BH_Mdot,P[i].Mass,i); if(l_bol <= 0) {return 0;} // no accretion luminosity -- no point in going further!
+#if defined(SINK_PARTICLES)
+    double l_bol = sink_lum_bol(P[i].Sink_Mdot,P[i].Mass,i); if(l_bol <= 0) {return 0;} // no accretion luminosity -- no point in going further!
     // corrections below follow  Shen, PFH, et al. 2020 to account for alpha-ox and template spectrum to get AGN set in different bands as a function of bolometric luminosity. functional form very similar to Hopkins, Richards, & Hernquist 2007, but updated values. //
     double lbol_lsun = l_bol * UNIT_LUM_IN_SOLAR, R_opt_xr; // luminosity in physical code units //
     double f_xr_0=0.0461795, R_xr_opt = pow(lbol_lsun/1.e10,0.026) / (0.0455713 + 0.140974*pow(lbol_lsun/1.e10,0.304)), Rfxr=R_xr_opt*f_xr_0; // x-ray to optical ratio normalized to its value at Lbol=1e13 solar
@@ -556,7 +556,7 @@ double c_light_RSL_reductionfactor_local(int i)
     int j,k; double rmin=MAX_REAL_NUMBER, r=0;
     for(j=0;j<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;j++)
     {
-        double dp[3]={0},r2=0; for(k=0;k<3;k++) {dp[k] = All.cf_atime*(P[i].Pos[k] - All.SMBH_SpecialParticle_Position_ForRefinement[j][k]); r2 += dp[k]*dp[k];}
+        double dp[3]={0},r2=0; for(k=0;k<3;k++) {dp[k] = All.cf_atime*(P[i].Pos[k] - All.SpecialParticle_Position_ForRefinement[j][k]); r2 += dp[k]*dp[k];}
         r=sqrt(r2); if(r<rmin) {rmin=r;}
     }
     r = rmin * UNIT_LENGTH_IN_PC; if(r < 1.e-10 || isnan(r) || isfinite(r)==0) {r = 1.e-10;}
@@ -1481,7 +1481,7 @@ double dust_dEdt(int i, double T, double Tdust, double dust_absorption_rate)
     double kappa_emission = rt_kappa_adaptive_IR_band(i, Tdust, Tdust, 1, 1);
     double dust_emission = fac_emission * kappa_emission * pow(Tdust,4);
 #if defined(COOLING) && !defined(RT_INFRARED) // if we aren't doing RT self-consistently, approximate outward radiative transport rate in optically-thick regime
-    double column = evaluate_NH_from_GradRho(CellP[i].Gradients.Density,P[i].Hsml,CellP[i].Density,P[i].NumNgb,1,i);
+    double column = evaluate_NH_from_GradRho(CellP[i].Gradients.Density,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i);
     double tau = column * kappa_emission;
     dust_emission /= (1 + tau*tau); // e.g. Masunaha & Inutsuka 1999, Rafikov 2007
 #endif
@@ -1646,7 +1646,7 @@ double stellar_lum_in_band(int i, double E_lower, double E_upper)
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
     double r_sol = P[i].ProtoStellarRadius_inSolar, l_sol = P[i].StarLuminosity_Solar;
 #elif defined(SINGLE_STAR_SINK_DYNAMICS) // use generic fits based on mass
-    double l_sol=bh_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR, m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
+    double l_sol=sink_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR, m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
 #else
     double l_sol=1., r_sol=1.; // nothing usefully defined for the above - default to solar-type stars //
 #endif
@@ -1681,7 +1681,7 @@ int rt_get_source_luminosity_chimes(int i, int mode, double *lum, double *chimes
 {
     int value_to_return = 0;
     value_to_return = rt_get_source_luminosity(i, mode, lum); // call routine as normal for all bands, before adding chimes-specific details
-    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (P[i].Hsml>0) )
+    if( ((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3)))) && (P[i].Mass>0) && (P[i].KernelRadius>0) )
     {
         int age_bin, j; double age_Myr=1000.*evaluate_stellar_age_Gyr(i), log_age_Myr=log10(age_Myr), stellar_mass=P[i].Mass*UNIT_MASS_IN_SOLAR;
         if(log_age_Myr < CHIMES_LOCAL_UV_AGE_LOW) {age_bin = 0;} else if (log_age_Myr < CHIMES_LOCAL_UV_AGE_MID) {age_bin = (int) floor(((log_age_Myr - CHIMES_LOCAL_UV_AGE_LOW) / CHIMES_LOCAL_UV_DELTA_AGE_LOW) + 1);} else {

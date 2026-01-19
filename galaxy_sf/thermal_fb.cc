@@ -49,7 +49,7 @@ struct kernel_addthermalFB {double dp[3], r, wk, dwk, hinv, hinv3, hinv4;};
 /* define structures to use below */
 struct INPUT_STRUCT_NAME
 {
-    MyDouble Pos[3], Hsml, Msne, Esne, wt_sum;
+    MyDouble Pos[3], KernelRadius, Msne, Esne, wt_sum;
 #ifdef METALS
     MyDouble yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION];
 #endif
@@ -61,7 +61,7 @@ struct INPUT_STRUCT_NAME
 void particle2in_addthermalFB(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     if((P[i].SNe_ThisTimeStep<=0)||(P[i].DensAroundStar<=0)||(P[i].Mass<=0)) {in->Msne=0; return;} // trap for no sne
-    int k; in->Hsml=P[i].Hsml; in->wt_sum=P[i].DensAroundStar; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} // simple kernel-weighted deposition
+    int k; in->KernelRadius=P[i].KernelRadius; in->wt_sum=P[i].DensAroundStar; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} // simple kernel-weighted deposition
     struct addFB_evaluate_data_in_ local; particle2in_addFB_fromstars(&local,i,0); // get feedback properties from generic routine //
     in->Msne = local.Msne; in->Esne = 0.5 * local.Msne * local.SNe_v_ejecta*local.SNe_v_ejecta; // assign mass and energy to be used below
 #ifdef METALS
@@ -86,7 +86,7 @@ int addthermalFB_evaluate_active_check(int i);
 int addthermalFB_evaluate_active_check(int i)
 {
     if(P[i].Type != 4) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
-    if(P[i].Hsml <= 0) {return 0;}
+    if(P[i].KernelRadius <= 0) {return 0;}
     if(P[i].NumNgb <= 0) {return 0;}
     if(P[i].SNe_ThisTimeStep>0) {return 1;}
     return 0;
@@ -107,9 +107,9 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
     /* Load the data for the particle injecting feedback */
     if(mode == 0) {particle2in_addthermalFB(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if(local.Msne<=0) return 0; // no SNe for the origin particle! nothing to do here //
-    if(local.Hsml<=0) return 0; // zero-extent kernel, no particles //
-    h2 = local.Hsml*local.Hsml;
-    kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
+    if(local.KernelRadius<=0) return 0; // zero-extent kernel, no particles //
+    h2 = local.KernelRadius*local.KernelRadius;
+    kernel_hinv(local.KernelRadius, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
     
     /* Now start the actual FB computation for this particle */
     if(mode == 0)
@@ -125,7 +125,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -164,7 +164,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 
                 /* inject mass */
                 double dM_ejecta_in = wk * local.Msne;
-                if(P[j].Hsml<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in/(P[j].Hsml*P[j].Hsml*P[j].Hsml);}
+                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in/(P[j].KernelRadius*P[j].KernelRadius*P[j].KernelRadius);}
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
 #ifdef METALS

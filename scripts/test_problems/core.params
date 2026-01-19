@@ -63,4 +63,4 @@ Softening_Type4                    5e-6
 Softening_Type5                    5e-6
 % -- optional parameters - speed up the test with bigger steps, but maybe bigger errors
 MaxSizeTimestep                    5e-05
-MaxHsml                            100
+MaxKernelRadius                            100

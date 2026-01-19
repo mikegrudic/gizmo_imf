@@ -53,7 +53,7 @@ int GasGrad_isactive(int i)
 {
     if(P[i].Type != 0) return 0;
     if(P[i].Mass <= 0) return 0;
-    if(CellP[i].Density <= 0 || P[i].Hsml <= 0) return 0;
+    if(CellP[i].Density <= 0 || P[i].KernelRadius <= 0) return 0;
 #if defined(GALSF_SUBGRID_WINDS) && !defined(TURB_DIFF_DYNAMIC)
     if(CellP[i].DelayTime > 0) return 0;
 #endif
@@ -103,7 +103,7 @@ struct GasGraddata_in
 {
     MyDouble Pos[3];
     MyFloat Mass;
-    MyFloat Hsml;
+    MyFloat KernelRadius;
 #ifdef MHD_CONSTRAINED_GRADIENT
     MyDouble ConditionNumber;
     MyDouble NV_T[3][3];
@@ -240,7 +240,7 @@ static inline void particle2in_GasGrad(struct GasGraddata_in *in, int i, int gra
 {
     int k;
     for(k = 0; k < 3; k++) {in->Pos[k] = P[i].Pos[k];}
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     in->Mass = P[i].Mass;
     if(in->Mass < 0) {in->Mass = 0;}
 
@@ -546,7 +546,7 @@ void construct_gradient(double *grad, int i)
     if(SHOULD_I_USE_SPH_GRADIENTS(CellP[i].ConditionNumber))
     {
         /* the condition number was bad, so we used SPH-like gradients */
-        if(CellP[i].Density > 0) {int k; for(k=0;k<3;k++) {grad[k] *= P[i].DhsmlNgbFactor / CellP[i].Density;}}
+        if(CellP[i].Density > 0) {int k; for(k=0;k<3;k++) {grad[k] *= P[i].DrkernNgbFactor / CellP[i].Density;}}
     } else {
         /* ok, the condition number was good so we used the matrix-like gradient estimator */
         int k; double v_tmp[3];
@@ -896,11 +896,11 @@ void hydro_gradient_calc(void)
                 double v_tmp = P[i].Mass / CellP[i].Density;
                 double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * CellP[i].Pressure*v_tmp*v_tmp) +
                                     CellP[i].BPred[0]*CellP[i].BPred[0]+CellP[i].BPred[1]*CellP[i].BPred[1]+CellP[i].BPred[2]*CellP[i].BPred[2]);
-                double tmp = 3.0e3 * fabs(CellP[i].divB) * P[i].Hsml / tmp_d;
+                double tmp = 3.0e3 * fabs(CellP[i].divB) * P[i].KernelRadius / tmp_d;
                 double alim; alim = 1. + DMIN(1.,tmp*tmp);
 #if (MHD_CONSTRAINED_GRADIENT <= 1)
                 double dbmax=0, dbgrad=0;
-                double dh=0.25*P[i].Hsml; // need to be more aggressive with new wt_i,wt_j formalism
+                double dh=0.25*P[i].KernelRadius; // need to be more aggressive with new wt_i,wt_j formalism
                 for(k=0;k<3;k++)
                 {
                     double b0 = Get_Gas_BField(i,k);
@@ -914,7 +914,7 @@ void hydro_gradient_calc(void)
                     double d_abs=0; for(k=0;k<3;k++) {d_abs += CellP[i].Gradients.B[k1][k]*CellP[i].Gradients.B[k1][k];}
                     if(d_abs > 0)
                     {
-                        double cfac = 1 / (0.25 * P[i].Hsml * sqrt(d_abs));
+                        double cfac = 1 / (0.25 * P[i].KernelRadius * sqrt(d_abs));
                         cfac *= DMIN(fabs(GasGradDataPasser[i].Maxima.B[k1]) , fabs(GasGradDataPasser[i].Minima.B[k1]));
                         double c_eff = DMIN( cfac , DMAX(cfac/alim , dbmax) );
                         if(c_eff < 1) {for(k=0;k<3;k++) {CellP[i].Gradients.B[k1][k] *= c_eff;}}
@@ -925,7 +925,7 @@ void hydro_gradient_calc(void)
 #endif
                 /* check the particle area closure, which will inform whether it is safe to use the constrained gradients */
                 double area = fabs(CellP[i].Face_Area[0]) + fabs(CellP[i].Face_Area[1]) + fabs(CellP[i].Face_Area[2]);
-                area /= Get_Particle_Expected_Area(P[i].Hsml);
+                area /= Get_Particle_Expected_Area(P[i].KernelRadius);
                 /* set the relevant flags to decide whether or not we use the constrained gradients */
                 if(area > 0.5) {CellP[i].FlagForConstrainedGradients = 0;}
                 if(CellP[i].ConditionNumber > 1000.) {CellP[i].FlagForConstrainedGradients = 0;}
@@ -991,7 +991,7 @@ void hydro_gradient_calc(void)
                                 }
                                 /* slope-limit the corrected gradients again, but with a more tolerant slope-limiter */
 #if (MHD_CONSTRAINED_GRADIENT <= 1)
-                                local_slopelimiter(CellP[i].Gradients.B[k],GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],0.25, P[i].Hsml, 0.25, 0, 0, 0);
+                                local_slopelimiter(CellP[i].Gradients.B[k],GasGradDataPasser[i].Maxima.B[k],GasGradDataPasser[i].Minima.B[k],0.25, P[i].KernelRadius, 0.25, 0, 0, 0);
 #endif
                             }
                         } // closes j_gloop loop
@@ -1003,7 +1003,7 @@ void hydro_gradient_calc(void)
                 for(k=0;k<3;k++) {CellP[i].Gradients.Phi[k] = GasGradDataPasser[i].PhiGrad[k];}
                 /* build and limit the gradient */
                 construct_gradient(CellP[i].Gradients.Phi,i);
-                local_slopelimiter(CellP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,P[i].Hsml,0.0, 0, 0, 0);
+                local_slopelimiter(CellP[i].Gradients.Phi,GasGradDataPasser[i].Maxima.Phi,GasGradDataPasser[i].Minima.Phi,a_limiter,P[i].KernelRadius,0.0, 0, 0, 0);
 #endif
             } // closes Ptype == 0 check
 #endif
@@ -1052,7 +1052,7 @@ void hydro_gradient_calc(void)
 
             /* now the gradients are calculated: below are simply useful operations on the results */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-            /* this is here because for the models of BH growth and self-shielding of stars, we need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! but note, this is the -un-limited- gradient here */
+            /* this is here because for the models of sink growth and self-shielding of stars, we need to calculate GradRho: we don't bother doing it in density.c if we're already calculating it here! but note, this is the -un-limited- gradient here */
             for(k=0;k<3;k++) {P[i].GradRho[k] = CellP[i].Gradients.Density[k];}
 #endif
 
@@ -1065,14 +1065,14 @@ void hydro_gradient_calc(void)
 #ifdef SPH_TP12_ARTIFICIAL_RESISTIVITY
             /* use the magnitude of the B-field gradients relative to kernel length to calculate artificial resistivity */
             double GradBMag=0,BMag=0; for(k=0;k<3;k++) {for(j=0;j<3;j++) {GradBMag += CellP[i].Gradients.B[k][j]*CellP[i].Gradients.B[k][j];} BMag += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-            CellP[i].Balpha = DMAX(DMIN(P[i].Hsml * sqrt(GradBMag/(BMag+1.0e-33)), 0.1 * All.ArtMagDispConst), 0.005);
+            CellP[i].Balpha = DMAX(DMIN(P[i].KernelRadius * sqrt(GradBMag/(BMag+1.0e-33)), 0.1 * All.ArtMagDispConst), 0.005);
 #endif
             
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-            /* note non-gas particles are handled separately, in the ags_hsml routine. here the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary particles, it can actually be worse. so we need to check whether we should use it or not */
+            /* note non-gas particles are handled separately, in the ags_rkern routine. here the zeta terms ONLY control errors if we maintain the 'correct' neighbor number: for boundary particles, it can actually be worse. so we need to check whether we should use it or not */
             double ngb_eff = pow(P[i].NumNgb, NUMDIMS); // calculate the actual neighbor number, needed here
-            if((fabs(ngb_eff-All.DesNumNgb)/All.DesNumNgb < 0.05) && (P[i].Hsml > 1.001*All.MinHsml) && (P[i].Hsml < 0.999*All.MaxHsml)) {
-                double ndenNGB = ngb_eff / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) ); P[i].AGS_zeta *= P[i].Mass * P[i].Hsml / (NUMDIMS * ndenNGB) * P[i].DhsmlNgbFactor;
+            if((fabs(ngb_eff-All.DesNumNgb)/All.DesNumNgb < 0.05) && (P[i].KernelRadius > 1.001*All.MinKernelRadius) && (P[i].KernelRadius < 0.999*All.MaxKernelRadius)) {
+                double ndenNGB = ngb_eff / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) ); P[i].AGS_zeta *= P[i].Mass * P[i].KernelRadius / (NUMDIMS * ndenNGB) * P[i].DrkernNgbFactor;
             } else {P[i].AGS_zeta=0;}
 #endif
 
@@ -1081,14 +1081,14 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
             if(CellP[i].Density > 0)
             {
-                for(k=0;k<3;k++) {CellP[i].DtB[k] *= P[i].DhsmlNgbFactor * P[i].Mass / (CellP[i].Density * CellP[i].Density) / All.cf_atime;} // induction equation (convert from Bcode*vcode/rcode to Bphy/tphys) //
+                for(k=0;k<3;k++) {CellP[i].DtB[k] *= P[i].DrkernNgbFactor * P[i].Mass / (CellP[i].Density * CellP[i].Density) / All.cf_atime;} // induction equation (convert from Bcode*vcode/rcode to Bphy/tphys) //
 #ifdef DIVBCLEANING_DEDNER
                 /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */ /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
-                CellP[i].divB *= P[i].DhsmlNgbFactor * P[i].Mass / (CellP[i].Density * CellP[i].Density);
-                if((!isnan(CellP[i].divB))&&(P[i].Hsml>0)&&(CellP[i].divB!=0)&&(CellP[i].Density>0)) {
+                CellP[i].divB *= P[i].DrkernNgbFactor * P[i].Mass / (CellP[i].Density * CellP[i].Density);
+                if((!isnan(CellP[i].divB))&&(P[i].KernelRadius>0)&&(CellP[i].divB!=0)&&(CellP[i].Density>0)) {
                     double tmp_ded = 0.5 * CellP[i].MaxSignalVel * All.cf_afac3; /* has units of v_physical now *//* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
                     double b2_max = 0.0; for(k=0;k<3;k++) {b2_max += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-                    b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (CellP[i].Density*All.cf_a3inv) * 1.0 / (P[i].Hsml*All.cf_atime) );
+                    b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (CellP[i].Density*All.cf_a3inv) * 1.0 / (P[i].KernelRadius*All.cf_atime) );
                     if(fabs(CellP[i].divB) > b2_max) {CellP[i].divB *= b2_max / fabs(CellP[i].divB);} /* ok now can apply this to get the growth rate of phi */
                     CellP[i].DtPhi = -tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * CellP[i].divB * CellP[i].Density*All.cf_a3inv; // mass-based phi-flux
                     // phiphi above now has units of [Bcode]*[vcode]^2/[rcode]=(Bcode*vcode)*vcode/rcode; needs to have units of [Phicode]*[vcode]/[rcode] so [PhiGrad]=[Phicode]/[rcode] = [DtB] = [Bcode]*[vcode]/[rcode] IFF [Phicode]=[Bcode]*[vcode]; this also makes the above self-consistent //
@@ -1118,7 +1118,7 @@ void hydro_gradient_calc(void)
             cs_nv = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3; // converts to physical velocity units //
             alphaloc = All.ViscosityAMax * h_eff*h_eff*NV_A / (0.36*cs_nv*cs_nv + h_eff*h_eff*NV_A);
             // 0.25 in front of vsig is the 'noise parameter' that determines the relative amplitude which will trigger the switch: that choice was quite large (requires approach velocity rate-of-change is super-sonic); better to use c_s (above), and 0.05-0.25 //
-            // NV_A is physical 1/(time*time), but Hsml and vsig can be comoving, so need appropriate correction terms above //
+            // NV_A is physical 1/(time*time), but KernelRadius and vsig can be comoving, so need appropriate correction terms above //
             if(CellP[i].alpha < alphaloc) {CellP[i].alpha = alphaloc;}
                 else if (CellP[i].alpha > alphaloc) {CellP[i].alpha = alphaloc + (CellP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(CellP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * 0.05);}
             if(CellP[i].alpha < All.ViscosityAMin) {CellP[i].alpha = All.ViscosityAMin;}
@@ -1186,15 +1186,15 @@ void hydro_gradient_calc(void)
             
             /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
             double stol = 0.0, stol_tmp, stol_diffusion; stol_diffusion = 0.1; stol_tmp = stol;
-            double h_lim = P[i].Hsml, d_max = DMAX(P[i].Hsml,GasGradDataPasser[i].MaxDistance); h_lim = d_max;
+            double h_lim = P[i].KernelRadius, d_max = DMAX(P[i].KernelRadius,GasGradDataPasser[i].MaxDistance); h_lim = d_max;
             /* fraction of H at which maximum reconstruction is allowed (=0.5 for 'standard'); for pure hydro we can
              be a little more aggresive and the equations are still stable (but this is as far as you want to push it) */
             double a_limiter = 0.25; if(CellP[i].ConditionNumber>100) a_limiter=DMIN(0.5, 0.25 + 0.25 * (CellP[i].ConditionNumber-100)/100);
 #if defined(SELFGRAVITY_OFF) && (!defined(MAGNETIC) && !defined(GALSF))
-            h_lim=P[i].Hsml; stol=0.1;
+            h_lim=P[i].KernelRadius; stol=0.1;
 #endif
 #if (SLOPE_LIMITER_TOLERANCE == 2)
-            h_lim = P[i].Hsml; a_limiter *= 0.5; stol = 0.125;
+            h_lim = P[i].KernelRadius; a_limiter *= 0.5; stol = 0.125;
 #endif
 #if (SLOPE_LIMITER_TOLERANCE == 0)
             a_limiter *= 2.0; stol = 0.0;
@@ -1252,7 +1252,7 @@ void hydro_gradient_calc(void)
             double v_tmp = P[i].Mass / CellP[i].Density;
             double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * CellP[i].Pressure*v_tmp*v_tmp) +
                                 CellP[i].BPred[0]*CellP[i].BPred[0]+CellP[i].BPred[1]*CellP[i].BPred[1]+CellP[i].BPred[2]*CellP[i].BPred[2]);
-            double q = fabs(CellP[i].divB) * P[i].Hsml / tmp_d, alim2 = a_limiter * (1. + q*q); if(alim2 > 0.5) alim2=0.5;
+            double q = fabs(CellP[i].divB) * P[i].KernelRadius / tmp_d, alim2 = a_limiter * (1. + q*q); if(alim2 > 0.5) alim2=0.5;
             stol_tmp = stol;
 #ifdef MHD_NON_IDEAL
             stol_tmp = DMAX(stol,stol_diffusion);
@@ -1463,7 +1463,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
         if(local.GQuant.Density <= 0) return 0;
 
     /* now set particle-i centric quantities so we don't do it inside the loop */
-    kernel.h_i = local.Hsml;
+    kernel.h_i = local.KernelRadius;
     double h2_i = kernel.h_i*kernel.h_i;
     kernel_hinv(kernel.h_i, &hinv, &hinv3, &hinv4);
     int sph_gradients_flag_i = 0;
@@ -1517,7 +1517,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                double h_j = P[j].Hsml;
+                double h_j = P[j].KernelRadius;
 #if !defined(HYDRO_SPH) && !defined(KERNEL_CRK_FACES)
                 if(r2 <= 0) continue;
 #else

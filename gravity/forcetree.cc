@@ -465,13 +465,13 @@ void force_update_node_recursive(int no, int sib, int father)
         rt_source_lum_s[1] = rt_source_lum_vs[1] = 0;
         rt_source_lum_s[2] = rt_source_lum_vs[2] = 0;
 #endif
-#ifdef BH_PHOTONMOMENTUM
-        MyFloat bh_lum,bh_lum_grad[3]; bh_lum=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
+#ifdef SINK_PHOTONMOMENTUM
+        MyFloat sink_lum,sink_lum_grad[3]; sink_lum=sink_lum_grad[0]=sink_lum_grad[1]=sink_lum_grad[2]=0;
 #endif
-#ifdef BH_CALC_DISTANCES
-        MyFloat bh_mass=0, bh_pos_times_mass[3]={0,0,0};   /* position of each black hole in the node times its mass; divide by total mass at the end to get COM */
+#ifdef SINK_CALC_DISTANCES
+        MyFloat sink_mass=0, sink_pos_times_mass[3]={0,0,0};   /* position of each sink particle in the node times its mass; divide by total mass at the end to get COM */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-        MyFloat bh_mom[3] = {0,0,0}, bh_force[3] = {0,0,0}; int N_BH = 0;
+        MyFloat sink_mom[3] = {0,0,0}, sink_force[3] = {0,0,0}; int N_SINK = 0;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
         MyFloat max_feedback_vel=0;
 #endif        
@@ -558,29 +558,29 @@ void force_update_node_recursive(int no, int sib, int father)
                         rt_source_lum_vs[1] += (l_tot * Extnodes[p].rt_source_lum_vs[1]);
                         rt_source_lum_vs[2] += (l_tot * Extnodes[p].rt_source_lum_vs[2]);
 #endif
-#ifdef BH_PHOTONMOMENTUM
-                        bh_lum += Nodes[p].bh_lum;
-                        bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
-                        bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
-                        bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+                        sink_lum += Nodes[p].sink_lum;
+                        sink_lum_grad[0] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[0];
+                        sink_lum_grad[1] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[1];
+                        sink_lum_grad[2] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-                        bh_mass += Nodes[p].bh_mass;
-                        bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
-                        bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
-                        bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
+#ifdef SINK_CALC_DISTANCES
+                        sink_mass += Nodes[p].sink_mass;
+                        sink_pos_times_mass[0] += Nodes[p].sink_pos[0] * Nodes[p].sink_mass;
+                        sink_pos_times_mass[1] += Nodes[p].sink_pos[1] * Nodes[p].sink_mass;
+                        sink_pos_times_mass[2] += Nodes[p].sink_pos[2] * Nodes[p].sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-                        bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
-                        bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
-                        bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+                        sink_mom[0] += Nodes[p].sink_vel[0] * Nodes[p].sink_mass;
+                        sink_mom[1] += Nodes[p].sink_vel[1] * Nodes[p].sink_mass;
+                        sink_mom[2] += Nodes[p].sink_vel[2] * Nodes[p].sink_mass;
 #ifdef SPECIAL_POINT_MOTION
-                        bh_force[0] += Nodes[p].bh_acc[0] * Nodes[p].bh_mass;
-                        bh_force[1] += Nodes[p].bh_acc[1] * Nodes[p].bh_mass;
-                        bh_force[2] += Nodes[p].bh_acc[2] * Nodes[p].bh_mass;
+                        sink_force[0] += Nodes[p].sink_acc[0] * Nodes[p].sink_mass;
+                        sink_force[1] += Nodes[p].sink_acc[1] * Nodes[p].sink_mass;
+                        sink_force[2] += Nodes[p].sink_acc[2] * Nodes[p].sink_mass;
 #endif
-                        N_BH += Nodes[p].N_BH;
+                        N_SINK += Nodes[p].N_SINK;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-                        if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(Nodes[p].MaxFeedbackVel, max_feedback_vel);}
+                        if(Nodes[p].sink_mass > 0) {max_feedback_vel = DMAX(Nodes[p].MaxFeedbackVel, max_feedback_vel);}
 #endif                        
 #endif
 #endif
@@ -598,7 +598,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                         if(Nodes[p].u.d.mass > 0)
                         {
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
                             count_particles += Nodes[p].N_part; // we're saving the number of particles in the node, so simply add it
 #else
                             if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // we will assume 1 particle unless the node has multiples then 2
@@ -629,8 +629,8 @@ void force_update_node_recursive(int no, int sib, int father)
                     vs[2] += (pa->Mass * pa->Vel[2]);
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                     if(pa->Type == 0) gasmass += pa->Mass;
-#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                    if(pa->Type == 5) gasmass += P[p].BH_Mass_AlphaDisk; // gas at the inner edge of a disk should not see a hole due to the sink
+#if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
+                    if(pa->Type == 5) gasmass += P[p].Sink_Mass_Reservoir; // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -668,40 +668,40 @@ void force_update_node_recursive(int no, int sib, int father)
 
 
 
-#ifdef BH_PHOTONMOMENTUM
+#ifdef SINK_PHOTONMOMENTUM
                     if(pa->Type == 5)
                     {
-                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->BH_Mdot>0))
+                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->Sink_Mdot>0))
                         {
-                            double BHLum = bh_lum_bol(pa->BH_Mdot, pa->BH_Mass, p);
-                            bh_lum += BHLum;
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-                            for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->BH_Specific_AngMom[k];}
+                            double BHLum = sink_lum_bol(pa->Sink_Mdot, pa->Sink_Mass, p);
+                            sink_lum += BHLum;
+#if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
+                            for(k=0;k<3;k++) {sink_lum_grad[k] += BHLum * pa->Sink_Specific_AngMom[k];}
 #else
-                            for(k=0;k<3;k++) {bh_lum_grad[k] += BHLum * pa->GradRho[k];}
+                            for(k=0;k<3;k++) {sink_lum_grad[k] += BHLum * pa->GradRho[k];}
 #endif
                         }
                     }
 #endif
-#ifdef BH_CALC_DISTANCES
+#ifdef SINK_CALC_DISTANCES
                     if(pa->Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
                     {
-                        bh_mass += pa->Mass;    /* actual value is not used for distances */
-                        bh_pos_times_mass[0] += pa->Pos[0] * pa->Mass;  /* positition times mass; divide by total mass later */
-                        bh_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
-                        bh_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
+                        sink_mass += pa->Mass;    /* actual value is not used for distances */
+                        sink_pos_times_mass[0] += pa->Pos[0] * pa->Mass;  /* positition times mass; divide by total mass later */
+                        sink_pos_times_mass[1] += pa->Pos[1] * pa->Mass;
+                        sink_pos_times_mass[2] += pa->Pos[2] * pa->Mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-                        N_BH += 1;
+                        N_SINK += 1;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SPECIAL_POINT_MOTION)
-                        bh_mom[0] += pa->Vel[0] * pa->Mass;
-                        bh_mom[1] += pa->Vel[1] * pa->Mass;
-                        bh_mom[2] += pa->Vel[2] * pa->Mass;
+                        sink_mom[0] += pa->Vel[0] * pa->Mass;
+                        sink_mom[1] += pa->Vel[1] * pa->Mass;
+                        sink_mom[2] += pa->Vel[2] * pa->Mass;
 #endif
 #if defined(SPECIAL_POINT_MOTION)
-                        bh_force[0] += pa->Acc_Total_PrevStep[0] * pa->Mass;
-                        bh_force[1] += pa->Acc_Total_PrevStep[1] * pa->Mass;
-                        bh_force[2] += pa->Acc_Total_PrevStep[2] * pa->Mass;
+                        sink_force[0] += pa->Acc_Total_PrevStep[0] * pa->Mass;
+                        sink_force[1] += pa->Acc_Total_PrevStep[1] * pa->Mass;
+                        sink_force[2] += pa->Acc_Total_PrevStep[2] * pa->Mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
                         max_feedback_vel = DMAX(pa->MaxFeedbackVel, max_feedback_vel);
@@ -727,7 +727,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #endif
                     if(pa->Type == 0)
                     {
-                        double htmp = DMIN(All.MaxHsml, P[p].Hsml);
+                        double htmp = DMIN(All.MaxKernelRadius, P[p].KernelRadius);
                         if(htmp > hmax) {hmax = htmp;}
                         divVel = P[p].Particle_DivVel;
                         if(divVel > divVmax) {divVmax = divVel;}
@@ -739,7 +739,7 @@ void force_update_node_recursive(int no, int sib, int father)
                     double soft_p = ForceSoftening_KernelRadius(p);
                     if(soft_p > maxsoft) {maxsoft = soft_p;}
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                    if(pa->Type == 5) if(P[p].Hsml > maxsoft) {maxsoft = P[p].Hsml;}
+                    if(pa->Type == 5) if(P[p].KernelRadius > maxsoft) {maxsoft = P[p].KernelRadius;}
 #endif
                 }
             }
@@ -786,12 +786,12 @@ void force_update_node_recursive(int no, int sib, int father)
             rt_source_lum_vs[2] = 0;
         }
 #endif
-#ifdef BH_PHOTONMOMENTUM
-        if(bh_lum)
+#ifdef SINK_PHOTONMOMENTUM
+        if(sink_lum)
         {
-            bh_lum_grad[0] /= bh_lum; bh_lum_grad[1] /= bh_lum; bh_lum_grad[2] /= bh_lum;
+            sink_lum_grad[0] /= sink_lum; sink_lum_grad[1] /= sink_lum; sink_lum_grad[2] /= sink_lum;
         } else {
-            bh_lum_grad[0]=bh_lum_grad[1]=0; bh_lum_grad[2]=1;
+            sink_lum_grad[0]=sink_lum_grad[1]=0; sink_lum_grad[2]=1;
         }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -849,31 +849,31 @@ void force_update_node_recursive(int no, int sib, int father)
         Extnodes[no].rt_source_lum_dp[1] = 0;
         Extnodes[no].rt_source_lum_dp[2] = 0;
 #endif
-#ifdef BH_PHOTONMOMENTUM
-        Nodes[no].bh_lum = bh_lum;
-        Nodes[no].bh_lum_grad[0] = bh_lum_grad[0];
-        Nodes[no].bh_lum_grad[1] = bh_lum_grad[1];
-        Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+        Nodes[no].sink_lum = sink_lum;
+        Nodes[no].sink_lum_grad[0] = sink_lum_grad[0];
+        Nodes[no].sink_lum_grad[1] = sink_lum_grad[1];
+        Nodes[no].sink_lum_grad[2] = sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-        Nodes[no].bh_mass = bh_mass;
+#ifdef SINK_CALC_DISTANCES
+        Nodes[no].sink_mass = sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-        Nodes[no].N_BH = N_BH;
+        Nodes[no].N_SINK = N_SINK;
 #endif
-        if(bh_mass > 0)
+        if(sink_mass > 0)
         {
-            Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
-            Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
-            Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
+            Nodes[no].sink_pos[0] = sink_pos_times_mass[0] / sink_mass;  /* weighted position is sum(pos*mass)/sum(mass) */
+            Nodes[no].sink_pos[1] = sink_pos_times_mass[1] / sink_mass;
+            Nodes[no].sink_pos[2] = sink_pos_times_mass[2] / sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-            Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
-            Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
-            Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+            Nodes[no].sink_vel[0] = sink_mom[0] / sink_mass;
+            Nodes[no].sink_vel[1] = sink_mom[1] / sink_mass;
+            Nodes[no].sink_vel[2] = sink_mom[2] / sink_mass;
 #endif
 #if defined(SPECIAL_POINT_MOTION)
-            Nodes[no].bh_acc[0] = bh_force[0] / bh_mass;
-            Nodes[no].bh_acc[1] = bh_force[1] / bh_mass;
-            Nodes[no].bh_acc[2] = bh_force[2] / bh_mass;
+            Nodes[no].sink_acc[0] = sink_force[0] / sink_mass;
+            Nodes[no].sink_acc[1] = sink_force[1] / sink_mass;
+            Nodes[no].sink_acc[2] = sink_force[2] / sink_mass;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
             Nodes[no].MaxFeedbackVel = max_feedback_vel;
@@ -908,7 +908,7 @@ void force_update_node_recursive(int no, int sib, int father)
         Extnodes[no].dp[1] = 0;
         Extnodes[no].dp[2] = 0;
 
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
         Nodes[no].N_part = count_particles; /* save this value */
 #endif
         if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;} /* this flags that the node represents more than one particle */
@@ -950,7 +950,7 @@ void force_exchange_pseudodata(void)
         MyFloat hmax;
         MyFloat vmax;
         MyFloat divVmax;
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
         long N_part;
 #endif
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
@@ -970,17 +970,17 @@ void force_exchange_pseudodata(void)
         MyFloat rt_source_lum_s[3];
         MyFloat rt_source_lum_vs[3];
 #endif
-#ifdef BH_PHOTONMOMENTUM
-        MyFloat bh_lum,bh_lum_grad[3];
+#ifdef SINK_PHOTONMOMENTUM
+        MyFloat sink_lum,sink_lum_grad[3];
 #endif
-#ifdef BH_CALC_DISTANCES
-        MyFloat bh_mass;
-        MyFloat bh_pos[3];
+#ifdef SINK_CALC_DISTANCES
+        MyFloat sink_mass;
+        MyFloat sink_pos[3];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-        int N_BH;
-        MyFloat bh_vel[3];
+        int N_SINK;
+        MyFloat sink_vel[3];
 #ifdef SPECIAL_POINT_MOTION
-        MyFloat bh_acc[3];
+        MyFloat sink_acc[3];
 #endif
 #ifdef  SINGLE_STAR_FB_TIMESTEPLIMIT
         MyFloat MaxFeedbackVel;
@@ -1026,7 +1026,7 @@ void force_exchange_pseudodata(void)
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
             DomainMoment[i].maxsoft = Nodes[no].maxsoft;
 #endif
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
             DomainMoment[i].N_part = Nodes[no].N_part;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1050,26 +1050,26 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].rt_source_lum_vs[1] = Extnodes[no].rt_source_lum_vs[1];
             DomainMoment[i].rt_source_lum_vs[2] = Extnodes[no].rt_source_lum_vs[2];
 #endif
-#ifdef BH_PHOTONMOMENTUM
-            DomainMoment[i].bh_lum = Nodes[no].bh_lum;
-            DomainMoment[i].bh_lum_grad[0] = Nodes[no].bh_lum_grad[0];
-            DomainMoment[i].bh_lum_grad[1] = Nodes[no].bh_lum_grad[1];
-            DomainMoment[i].bh_lum_grad[2] = Nodes[no].bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+            DomainMoment[i].sink_lum = Nodes[no].sink_lum;
+            DomainMoment[i].sink_lum_grad[0] = Nodes[no].sink_lum_grad[0];
+            DomainMoment[i].sink_lum_grad[1] = Nodes[no].sink_lum_grad[1];
+            DomainMoment[i].sink_lum_grad[2] = Nodes[no].sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-            DomainMoment[i].bh_mass = Nodes[no].bh_mass;
-            DomainMoment[i].bh_pos[0] = Nodes[no].bh_pos[0];
-            DomainMoment[i].bh_pos[1] = Nodes[no].bh_pos[1];
-            DomainMoment[i].bh_pos[2] = Nodes[no].bh_pos[2];
+#ifdef SINK_CALC_DISTANCES
+            DomainMoment[i].sink_mass = Nodes[no].sink_mass;
+            DomainMoment[i].sink_pos[0] = Nodes[no].sink_pos[0];
+            DomainMoment[i].sink_pos[1] = Nodes[no].sink_pos[1];
+            DomainMoment[i].sink_pos[2] = Nodes[no].sink_pos[2];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-            DomainMoment[i].bh_vel[0] = Nodes[no].bh_vel[0];
-            DomainMoment[i].bh_vel[1] = Nodes[no].bh_vel[1];
-            DomainMoment[i].bh_vel[2] = Nodes[no].bh_vel[2];
-            DomainMoment[i].N_BH = Nodes[no].N_BH;
+            DomainMoment[i].sink_vel[0] = Nodes[no].sink_vel[0];
+            DomainMoment[i].sink_vel[1] = Nodes[no].sink_vel[1];
+            DomainMoment[i].sink_vel[2] = Nodes[no].sink_vel[2];
+            DomainMoment[i].N_SINK = Nodes[no].N_SINK;
 #if defined(SPECIAL_POINT_MOTION)
-            DomainMoment[i].bh_acc[0] = Nodes[no].bh_acc[0];
-            DomainMoment[i].bh_acc[1] = Nodes[no].bh_acc[1];
-            DomainMoment[i].bh_acc[2] = Nodes[no].bh_acc[2];
+            DomainMoment[i].sink_acc[0] = Nodes[no].sink_acc[0];
+            DomainMoment[i].sink_acc[1] = Nodes[no].sink_acc[1];
+            DomainMoment[i].sink_acc[2] = Nodes[no].sink_acc[2];
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
             DomainMoment[i].MaxFeedbackVel = Nodes[no].MaxFeedbackVel;
@@ -1137,7 +1137,7 @@ void force_exchange_pseudodata(void)
 #ifdef FORCETREE_VARIABLE_SOFTENINGS
                     Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #endif
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
                     Nodes[no].N_part = DomainMoment[i].N_part;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1161,26 +1161,26 @@ void force_exchange_pseudodata(void)
                     Extnodes[no].rt_source_lum_vs[1] = DomainMoment[i].rt_source_lum_vs[1];
                     Extnodes[no].rt_source_lum_vs[2] = DomainMoment[i].rt_source_lum_vs[2];
 #endif
-#ifdef BH_PHOTONMOMENTUM
-                    Nodes[no].bh_lum = DomainMoment[i].bh_lum;
-                    Nodes[no].bh_lum_grad[0] = DomainMoment[i].bh_lum_grad[0];
-                    Nodes[no].bh_lum_grad[1] = DomainMoment[i].bh_lum_grad[1];
-                    Nodes[no].bh_lum_grad[2] = DomainMoment[i].bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+                    Nodes[no].sink_lum = DomainMoment[i].sink_lum;
+                    Nodes[no].sink_lum_grad[0] = DomainMoment[i].sink_lum_grad[0];
+                    Nodes[no].sink_lum_grad[1] = DomainMoment[i].sink_lum_grad[1];
+                    Nodes[no].sink_lum_grad[2] = DomainMoment[i].sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-                    Nodes[no].bh_mass = DomainMoment[i].bh_mass;
-                    Nodes[no].bh_pos[0] = DomainMoment[i].bh_pos[0];
-                    Nodes[no].bh_pos[1] = DomainMoment[i].bh_pos[1];
-                    Nodes[no].bh_pos[2] = DomainMoment[i].bh_pos[2];
+#ifdef SINK_CALC_DISTANCES
+                    Nodes[no].sink_mass = DomainMoment[i].sink_mass;
+                    Nodes[no].sink_pos[0] = DomainMoment[i].sink_pos[0];
+                    Nodes[no].sink_pos[1] = DomainMoment[i].sink_pos[1];
+                    Nodes[no].sink_pos[2] = DomainMoment[i].sink_pos[2];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-                    Nodes[no].bh_vel[0] = DomainMoment[i].bh_vel[0];
-                    Nodes[no].bh_vel[1] = DomainMoment[i].bh_vel[1];
-                    Nodes[no].bh_vel[2] = DomainMoment[i].bh_vel[2];
-                    Nodes[no].N_BH = DomainMoment[i].N_BH;
+                    Nodes[no].sink_vel[0] = DomainMoment[i].sink_vel[0];
+                    Nodes[no].sink_vel[1] = DomainMoment[i].sink_vel[1];
+                    Nodes[no].sink_vel[2] = DomainMoment[i].sink_vel[2];
+                    Nodes[no].N_SINK = DomainMoment[i].N_SINK;
 #ifdef SPECIAL_POINT_MOTION
-                    Nodes[no].bh_acc[0] = DomainMoment[i].bh_acc[0];
-                    Nodes[no].bh_acc[1] = DomainMoment[i].bh_acc[1];
-                    Nodes[no].bh_acc[2] = DomainMoment[i].bh_acc[2];
+                    Nodes[no].sink_acc[0] = DomainMoment[i].sink_acc[0];
+                    Nodes[no].sink_acc[1] = DomainMoment[i].sink_acc[1];
+                    Nodes[no].sink_acc[2] = DomainMoment[i].sink_acc[2];
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                     Nodes[no].MaxFeedbackVel = DomainMoment[i].MaxFeedbackVel;
@@ -1243,17 +1243,17 @@ void force_treeupdate_pseudos(int no)
     rt_source_lum_vs[1] = 0;
     rt_source_lum_vs[2] = 0;
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    MyFloat bh_lum,bh_lum_grad[3]; bh_lum=bh_lum_grad[0]=bh_lum_grad[1]=bh_lum_grad[2]=0;
+#ifdef SINK_PHOTONMOMENTUM
+    MyFloat sink_lum,sink_lum_grad[3]; sink_lum=sink_lum_grad[0]=sink_lum_grad[1]=sink_lum_grad[2]=0;
 #endif
-#ifdef BH_CALC_DISTANCES
-    MyFloat bh_mass=0;
-    MyFloat bh_pos_times_mass[3]={0,0,0};
+#ifdef SINK_CALC_DISTANCES
+    MyFloat sink_mass=0;
+    MyFloat sink_pos_times_mass[3]={0,0,0};
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-    MyFloat bh_mom[3] = {0,0,0};
-    int N_BH = 0;
+    MyFloat sink_mom[3] = {0,0,0};
+    int N_SINK = 0;
 #ifdef SPECIAL_POINT_MOTION
-    MyFloat bh_force[3] = {0,0,0};
+    MyFloat sink_force[3] = {0,0,0};
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     MyFloat max_feedback_vel=0;
@@ -1316,29 +1316,29 @@ void force_treeupdate_pseudos(int no)
             rt_source_lum_vs[1] += (l_tot * Extnodes[p].rt_source_lum_vs[1]);
             rt_source_lum_vs[2] += (l_tot * Extnodes[p].rt_source_lum_vs[2]);
 #endif
-#ifdef BH_PHOTONMOMENTUM
-            bh_lum += Nodes[p].bh_lum;
-            bh_lum_grad[0] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[0];
-            bh_lum_grad[1] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[1];
-            bh_lum_grad[2] += Nodes[p].bh_lum * Nodes[p].bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+            sink_lum += Nodes[p].sink_lum;
+            sink_lum_grad[0] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[0];
+            sink_lum_grad[1] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[1];
+            sink_lum_grad[2] += Nodes[p].sink_lum * Nodes[p].sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-            bh_mass += Nodes[p].bh_mass;
-            bh_pos_times_mass[0] += Nodes[p].bh_pos[0] * Nodes[p].bh_mass;
-            bh_pos_times_mass[1] += Nodes[p].bh_pos[1] * Nodes[p].bh_mass;
-            bh_pos_times_mass[2] += Nodes[p].bh_pos[2] * Nodes[p].bh_mass;
+#ifdef SINK_CALC_DISTANCES
+            sink_mass += Nodes[p].sink_mass;
+            sink_pos_times_mass[0] += Nodes[p].sink_pos[0] * Nodes[p].sink_mass;
+            sink_pos_times_mass[1] += Nodes[p].sink_pos[1] * Nodes[p].sink_mass;
+            sink_pos_times_mass[2] += Nodes[p].sink_pos[2] * Nodes[p].sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-            N_BH += Nodes[p].N_BH;
-            bh_mom[0] += Nodes[p].bh_vel[0] * Nodes[p].bh_mass;
-            bh_mom[1] += Nodes[p].bh_vel[1] * Nodes[p].bh_mass;
-            bh_mom[2] += Nodes[p].bh_vel[2] * Nodes[p].bh_mass;
+            N_SINK += Nodes[p].N_SINK;
+            sink_mom[0] += Nodes[p].sink_vel[0] * Nodes[p].sink_mass;
+            sink_mom[1] += Nodes[p].sink_vel[1] * Nodes[p].sink_mass;
+            sink_mom[2] += Nodes[p].sink_vel[2] * Nodes[p].sink_mass;
 #ifdef SPECIAL_POINT_MOTION
-            bh_force[0] += Nodes[p].bh_acc[0] * Nodes[p].bh_mass;
-            bh_force[1] += Nodes[p].bh_acc[1] * Nodes[p].bh_mass;
-            bh_force[2] += Nodes[p].bh_acc[2] * Nodes[p].bh_mass;
+            sink_force[0] += Nodes[p].sink_acc[0] * Nodes[p].sink_mass;
+            sink_force[1] += Nodes[p].sink_acc[1] * Nodes[p].sink_mass;
+            sink_force[2] += Nodes[p].sink_acc[2] * Nodes[p].sink_mass;
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-            if(Nodes[p].bh_mass > 0) {max_feedback_vel = DMAX(max_feedback_vel, Nodes[p].MaxFeedbackVel);}
+            if(Nodes[p].sink_mass > 0) {max_feedback_vel = DMAX(max_feedback_vel, Nodes[p].MaxFeedbackVel);}
 #endif
 #endif
 #endif
@@ -1364,7 +1364,7 @@ void force_treeupdate_pseudos(int no)
 
             if(Nodes[p].u.d.mass > 0)
             {
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
                 count_particles += Nodes[p].N_part; // saved, so directly add
 #else
                 if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // not recorded so save =1 minimum or 2 if multiples flag set
@@ -1419,14 +1419,14 @@ void force_treeupdate_pseudos(int no)
         rt_source_lum_vs[2] = 0;
     }
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    if(bh_lum)
+#ifdef SINK_PHOTONMOMENTUM
+    if(sink_lum)
     {
-        bh_lum_grad[0] /= bh_lum; bh_lum_grad[1] /= bh_lum; bh_lum_grad[2] /= bh_lum;
+        sink_lum_grad[0] /= sink_lum; sink_lum_grad[1] /= sink_lum; sink_lum_grad[2] /= sink_lum;
     }
     else
     {
-        bh_lum_grad[0]=bh_lum_grad[1]=0; bh_lum_grad[2]=1;
+        sink_lum_grad[0]=sink_lum_grad[1]=0; sink_lum_grad[2]=1;
     }
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
@@ -1479,30 +1479,30 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].rt_source_lum_vs[1] = rt_source_lum_vs[1];
     Extnodes[no].rt_source_lum_vs[2] = rt_source_lum_vs[2];
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    Nodes[no].bh_lum = bh_lum;
-    Nodes[no].bh_lum_grad[0] = bh_lum_grad[0];
-    Nodes[no].bh_lum_grad[1] = bh_lum_grad[1];
-    Nodes[no].bh_lum_grad[2] = bh_lum_grad[2];
+#ifdef SINK_PHOTONMOMENTUM
+    Nodes[no].sink_lum = sink_lum;
+    Nodes[no].sink_lum_grad[0] = sink_lum_grad[0];
+    Nodes[no].sink_lum_grad[1] = sink_lum_grad[1];
+    Nodes[no].sink_lum_grad[2] = sink_lum_grad[2];
 #endif
-#ifdef BH_CALC_DISTANCES
-    Nodes[no].bh_mass = bh_mass;
+#ifdef SINK_CALC_DISTANCES
+    Nodes[no].sink_mass = sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-    Nodes[no].N_BH = N_BH;
+    Nodes[no].N_SINK = N_SINK;
 #endif
-    if(bh_mass > 0)
+    if(sink_mass > 0)
         {
-            Nodes[no].bh_pos[0] = bh_pos_times_mass[0] / bh_mass;
-            Nodes[no].bh_pos[1] = bh_pos_times_mass[1] / bh_mass;
-            Nodes[no].bh_pos[2] = bh_pos_times_mass[2] / bh_mass;
+            Nodes[no].sink_pos[0] = sink_pos_times_mass[0] / sink_mass;
+            Nodes[no].sink_pos[1] = sink_pos_times_mass[1] / sink_mass;
+            Nodes[no].sink_pos[2] = sink_pos_times_mass[2] / sink_mass;
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-            Nodes[no].bh_vel[0] = bh_mom[0] / bh_mass;
-            Nodes[no].bh_vel[1] = bh_mom[1] / bh_mass;
-            Nodes[no].bh_vel[2] = bh_mom[2] / bh_mass;
+            Nodes[no].sink_vel[0] = sink_mom[0] / sink_mass;
+            Nodes[no].sink_vel[1] = sink_mom[1] / sink_mass;
+            Nodes[no].sink_vel[2] = sink_mom[2] / sink_mass;
 #if defined(SPECIAL_POINT_MOTION)
-            Nodes[no].bh_acc[0] = bh_force[0] / bh_mass;
-            Nodes[no].bh_acc[1] = bh_force[1] / bh_mass;
-            Nodes[no].bh_acc[2] = bh_force[2] / bh_mass;
+            Nodes[no].sink_acc[0] = sink_force[0] / sink_mass;
+            Nodes[no].sink_acc[1] = sink_force[1] / sink_mass;
+            Nodes[no].sink_acc[2] = sink_force[2] / sink_mass;
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
             Nodes[no].MaxFeedbackVel = max_feedback_vel;
@@ -1528,7 +1528,7 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].divVmax = divVmax;
     Extnodes[no].Flag = GlobFlag;
 
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
     Nodes[no].N_part = count_particles; // record
 #endif
     if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;}
@@ -1611,7 +1611,7 @@ void force_add_star_to_tree(int igas, int istar)
     Nextnode[istar] = no; // order correctly
     Father[istar] = Father[igas]; // set parent node to be the same
     // update parent node properties [maximum softening, speed] for opening criteria
-    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].Hsml, All.MaxHsml));
+    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].KernelRadius, All.MaxKernelRadius));
     double vmax = Extnodes[Father[igas]].vmax;
     int k; for(k=0; k<3; k++) {if(fabs(P[istar].Vel[k]) > vmax) {vmax = fabs(P[istar].Vel[k]);}}
     Extnodes[Father[igas]].vmax = vmax;
@@ -1647,7 +1647,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 #endif
-#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
     double dvx, dvy, dvz;
 #endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
@@ -1656,7 +1656,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     double jerk[3] = {0,0,0};
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
     double vel_x, vel_y, vel_z;
 #endif
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
@@ -1688,13 +1688,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     double RT_ET[N_RT_FREQ_BINS][6]={{0}};
 #endif
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    double mass_bhlum=0; // convert bh luminosity to our tree units
+#ifdef SINK_PHOTONMOMENTUM
+    double mass_sinklumwt_forradfb=0; // convert bh luminosity to our tree units
 #endif
 #ifdef GALSF_FB_FIRE_RT_UVHEATING
     double incident_flux_uv=0, incident_flux_euv=0;
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
     double incident_flux_agn=0;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1706,8 +1706,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
     double Rad_Flux[N_RT_FREQ_BINS][3]; {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {Rad_Flux[kf][k2]=0;}}}
 #endif
-#ifdef BH_CALC_DISTANCES
-    double min_dist_to_bh2=MAX_REAL_NUMBER, min_xyz_to_bh[3]={MAX_REAL_NUMBER,MAX_REAL_NUMBER,MAX_REAL_NUMBER};
+#ifdef SINK_CALC_DISTANCES
+    double Min_Distance_to_Sink2=MAX_REAL_NUMBER, Min_xyz_to_Sink[3]={MAX_REAL_NUMBER,MAX_REAL_NUMBER,MAX_REAL_NUMBER};
 #ifdef SPECIAL_POINT_MOTION
     double vel_of_nearest_special[3]={0,0,0}, acc_of_nearest_special[3]={0,0,0};
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
@@ -1716,19 +1716,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-    double min_bh_t_orbital=MAX_REAL_NUMBER, comp_dx[3], comp_dv[3], comp_Mass;
+    double Min_Sink_OrbitalTime=MAX_REAL_NUMBER, comp_dx[3], comp_dv[3], comp_Mass;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-    double min_bh_approach_time = MAX_REAL_NUMBER, min_bh_freefall_time = MAX_REAL_NUMBER;
+    double Min_Sink_Approach_Time = MAX_REAL_NUMBER, Min_Sink_Freefall_time = MAX_REAL_NUMBER;
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-    double min_bh_fb_time = MAX_REAL_NUMBER;
+    double Min_Sink_FeedbackTime = MAX_REAL_NUMBER;
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
     double dx_dm = 0, dy_dm = 0, dz_dm = 0, mass_dm = 0;
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
-    double bh_mass = 0, m_j_eff_for_df = 0;
+#if defined(SINK_DYNFRICTION_FROMTREE)
+    double sink_mass = 0, m_j_eff_for_df = 0;
 #endif
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
     double pmass;
@@ -1759,11 +1759,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = P[target].Mass;
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
         vel_x = P[target].Vel[0]; vel_y = P[target].Vel[1]; vel_z = P[target].Vel[2];
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
-        if(ptype == 5) {bh_mass = P[target].BH_Mass;}
+#if defined(SINK_DYNFRICTION_FROMTREE)
+        if(ptype == 5) {sink_mass = P[target].Sink_Mass;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
         if(ptype == 0) {if(soft > All.ForceSoftening[P[target].Type]) {zeta = P[target].AGS_zeta;} else {soft=All.ForceSoftening[P[target].Type]; zeta=0;}}
@@ -1786,11 +1786,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = GravDataGet[target].Mass;
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
         vel_x = GravDataGet[target].Vel[0]; vel_y = GravDataGet[target].Vel[1]; vel_z = GravDataGet[target].Vel[2];
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
-        if(ptype == 5) {bh_mass = GravDataGet[target].BH_Mass;}
+#if defined(SINK_DYNFRICTION_FROMTREE)
+        if(ptype == 5) {sink_mass = GravDataGet[target].Sink_Mass;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
         zeta = GravDataGet[target].AGS_zeta;
@@ -1823,7 +1823,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
 #endif
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     double m_enc_in_rcrit = 0, r_for_total_menclosed = soft; r_for_total_menclosed = DMAX( r_for_total_menclosed , 0.1/(UNIT_LENGTH_IN_KPC*All.cf_atime) ); /* set a baseline Rcrit_min, otherwise we get statistics that are very noisy */
 #endif
 
@@ -1867,16 +1867,16 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
                 r_source = sqrt(pow(P[no].Pos[0] - center[0],2) + pow(P[no].Pos[1] - center[1],2) + pow(P[no].Pos[2] - center[2],2));
 #endif
-#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
                 dvx = P[no].Vel[0] - vel_x; dvy = P[no].Vel[1] - vel_y; dvz = P[no].Vel[2] - vel_z;
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINK_DYNFRICTION_FROMTREE)
                 m_j_eff_for_df = mass;
 #endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                 if(P[no].Type == 0) {gasmass = P[no].Mass;}
-#if defined(BH_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                if(P[no].Type == 5) {gasmass = P[no].BH_Mass_AlphaDisk;} // gas at the inner edge of a disk should not see a hole due to the sink
+#if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
+                if(P[no].Type == 5) {gasmass = P[no].Sink_Mass_Reservoir;} // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
@@ -1887,7 +1887,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if((r2 > 0) && (mass > 0))
                 {
 
-#ifdef BH_CALC_DISTANCES
+#ifdef SINK_CALC_DISTANCES
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                 if(ptype == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
                 {
@@ -1902,10 +1902,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                     if(ptype != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
 #endif
-                    if(r2 < min_dist_to_bh2)    /* is this the closest BH part I've found yet? */
+                    if(r2 < Min_Distance_to_Sink2)    /* is this the closest BH part I've found yet? */
                     {
-                        min_dist_to_bh2 = r2;   /* if yes: adjust min bh dist */
-                        min_xyz_to_bh[0] = dx; min_xyz_to_bh[1] = dy; min_xyz_to_bh[2] = dz; /* remember, dx = x_BH - myx */
+                        Min_Distance_to_Sink2 = r2;   /* if yes: adjust min bh dist */
+                        Min_xyz_to_Sink[0] = dx; Min_xyz_to_Sink[1] = dy; Min_xyz_to_Sink[2] = dz; /* remember, dx = x_SINK - myx */
 #ifdef SPECIAL_POINT_MOTION
                         int kx;
                         for(kx=0;kx<3;kx++) {vel_of_nearest_special[kx] = P[no].Vel[kx];}
@@ -1913,20 +1913,20 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                    double bh_dvx=P[no].Vel[0]-vel_x, bh_dvy=P[no].Vel[1]-vel_y, bh_dvz=P[no].Vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=P[no].Mass+pmass, r2soft=SinkParticle_GravityKernelRadius;
+                    double sink_dvx=P[no].Vel[0]-vel_x, sink_dvy=P[no].Vel[1]-vel_y, sink_dvz=P[no].Vel[2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=P[no].Mass+pmass, r2soft=SinkParticle_GravityKernelRadius;
                     r2soft = DMAX(r2soft, soft);
                     r2soft *= KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                     r2soft = r2 + r2soft*r2soft;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                     if(ptype == 0) {
                         double tSqr_fb = r2soft /(P[no].MaxFeedbackVel * P[no].MaxFeedbackVel + MIN_REAL_NUMBER);
-                        if(tSqr_fb < min_bh_fb_time) {min_bh_fb_time = tSqr_fb;}
+                        if(tSqr_fb < Min_Sink_FeedbackTime) {Min_Sink_FeedbackTime = tSqr_fb;}
                     } // for gas, add the signal velocity of feedback from the star
 #endif                    
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
 
-                    if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
-                    if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
+                    if(tSqr < Min_Sink_Approach_Time) {Min_Sink_Approach_Time = tSqr;}
+                    if(tff4 < Min_Sink_Freefall_time) {Min_Sink_Freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
                     if(ptype == 5) // only for BH particles and for non center of mass calculation
                     {
@@ -1940,17 +1940,17 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         {
                             double semimajor_axis= -All.G*M_total/(2.*specific_energy);
                             double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
-                            if(t_orbital < min_bh_t_orbital) /* Save parameters of companion */
+                            if(t_orbital < Min_Sink_OrbitalTime) /* Save parameters of companion */
                             {
-                                min_bh_t_orbital=t_orbital; comp_Mass=P[no].Mass;
-                                comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
+                                Min_Sink_OrbitalTime=t_orbital; comp_Mass=P[no].Mass;
+                                comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=sink_dvx; comp_dv[1]=sink_dvy; comp_dv[2]=sink_dvz;
                             }
                         } /* specific_energy < 0 */
                     } /* ptype == 5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
-#endif // BH_CALC_DISTANCES
+#endif // SINK_CALC_DISTANCES
 
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
                 cr_injection = cr_get_source_injection_rate(no);
@@ -1974,15 +1974,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         if(active_check) {chimes_mass_stellarlum_G0[kf] = chimes_lum_G0[kf]; chimes_mass_stellarlum_ion[kf] = chimes_lum_ion[kf];} else {chimes_mass_stellarlum_G0[kf] = 0; chimes_mass_stellarlum_ion[kf] = 0;}
                     }
 #endif
-#ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum=0;
+#ifdef SINK_PHOTONMOMENTUM
+                    mass_sinklumwt_forradfb=0;
 		            if(P[no].Type == 5)
 		            {
-			            double bhlum_t = bh_lum_bol(P[no].BH_Mdot, P[no].BH_Mass, no);
-#if defined(BH_FOLLOW_ACCRETED_ANGMOM)
-                        mass_bhlum = bh_angleweight(bhlum_t, P[no].BH_Specific_AngMom, dx,dy,dz);
+			            double bhlum_t = sink_lum_bol(P[no].Sink_Mdot, P[no].Sink_Mass, no);
+#if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
+                        mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P[no].Sink_Specific_AngMom, dx,dy,dz);
 #else
-			            mass_bhlum = bh_angleweight(bhlum_t, P[no].GradRho, dx,dy,dz);
+			            mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P[no].GradRho, dx,dy,dz);
 #endif
 		            }
 #endif
@@ -2154,7 +2154,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #if (defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES)) && defined(SINGLE_STAR_DIRECT_GRAVITY_RADIUS)
 		        if(ptype == 5) {
-			        if((nop->N_BH > 0) && (r2 < pow(SINGLE_STAR_DIRECT_GRAVITY_RADIUS/UNIT_LENGTH_IN_AU + 0.6*nop->len,2))) // we are a star looking at another star within the specified radius, open cell to get direct force summation
+			        if((nop->N_SINK > 0) && (r2 < pow(SINGLE_STAR_DIRECT_GRAVITY_RADIUS/UNIT_LENGTH_IN_AU + 0.6*nop->len,2))) // we are a star looking at another star within the specified radius, open cell to get direct force summation
 			        {
 			            no = nop->u.d.nextnode;
 			            continue;
@@ -2174,7 +2174,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
                 r_source = sqrt(pow(nop->u.d.s[0] - center[0],2) + pow(nop->u.d.s[1] - center[1],2) + pow(nop->u.d.s[2] - center[2],2));
 #endif
-#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
                 dvx = Extnodes[no].vs[0] - vel_x; dvy = Extnodes[no].vs[1] - vel_y; dvz = Extnodes[no].vs[2] - vel_z;
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -2198,8 +2198,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #else
                     dx_stellarlum = dx; dy_stellarlum = dy; dz_stellarlum = dz;
 #endif
-#ifdef BH_PHOTONMOMENTUM
-                    mass_bhlum = bh_angleweight(nop->bh_lum, nop->bh_lum_grad, dx_stellarlum,dy_stellarlum,dz_stellarlum);
+#ifdef SINK_PHOTONMOMENTUM
+                    mass_sinklumwt_forradfb = sink_fb_angleweight(nop->sink_lum, nop->sink_lum_grad, dx_stellarlum,dy_stellarlum,dz_stellarlum);
 #endif
                 }
 #endif // RT_USE_GRAVTREE
@@ -2207,14 +2207,14 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef DM_SCALARFIELD_SCREENING
                 if(ptype != 0) {dx_dm = nop->s_dm[0] - pos_x; dy_dm = nop->s_dm[1] - pos_y; dz_dm = nop->s_dm[2] - pos_z; mass_dm = nop->mass_dm;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;} /* we have a dark matter particle as target */
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINK_DYNFRICTION_FROMTREE)
                 m_j_eff_for_df = (nop->u.d.mass) / (nop->N_part);
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
                 {int ki,kj; for(ki=0;ki<3;ki++) {for(kj=0;kj<3;kj++) {j_zeta_tidal_tensorps_prevstep[ki][kj]=nop->tidal_tensorps_prevstep[ki][kj];}}}
 #endif
 
-#ifdef BH_CALC_DISTANCES // NOTE: moved this to AFTER the checks for node opening, because we only want to record BH positions from the nodes that actually get used for the force calculation - MYG
+#ifdef SINK_CALC_DISTANCES // NOTE: moved this to AFTER the checks for node opening, because we only want to record BH positions from the nodes that actually get used for the force calculation - MYG
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                 if(ptype == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
                 {
@@ -2224,54 +2224,54 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     for(kx=0;kx<3;kx++) {acc_of_nearest_special[kx] = 0;} /* no accel for now, that will be computed later, but keep this if needed */
                 }
 #endif
-                if(nop->bh_mass > 0)        /* found a node with non-zero BH mass */
+                if(nop->sink_mass > 0)        /* found a node with non-zero BH mass */
                 {
-                    double bh_dx = nop->bh_pos[0] - pos_x, bh_dy = nop->bh_pos[1] - pos_y, bh_dz = nop->bh_pos[2] - pos_z;  /* SHEA:  now using bh_pos instead of center */
-                    GRAVITY_NEAREST_XYZ(bh_dx,bh_dy,bh_dz,-1);
-                    double bh_r2 = bh_dx * bh_dx + bh_dy * bh_dy + bh_dz * bh_dz; // + (nop->len)*(nop->len);
+                    double sink_dx = nop->sink_pos[0] - pos_x, sink_dy = nop->sink_pos[1] - pos_y, sink_dz = nop->sink_pos[2] - pos_z;  /* SHEA:  now using sink_pos instead of center */
+                    GRAVITY_NEAREST_XYZ(sink_dx,sink_dy,sink_dz,-1);
+                    double sink_r2 = sink_dx * sink_dx + sink_dy * sink_dy + sink_dz * sink_dz; // + (nop->len)*(nop->len);
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                     if(ptype != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
 #endif
-                    if(bh_r2 < min_dist_to_bh2)
+                    if(sink_r2 < Min_Distance_to_Sink2)
                     {
-                        min_dist_to_bh2 = bh_r2; min_xyz_to_bh[0] = bh_dx; min_xyz_to_bh[1] = bh_dy; min_xyz_to_bh[2] = bh_dz; /* remember, dx = x_BH - myx */
+                        Min_Distance_to_Sink2 = sink_r2; Min_xyz_to_Sink[0] = sink_dx; Min_xyz_to_Sink[1] = sink_dy; Min_xyz_to_Sink[2] = sink_dz; /* remember, dx = x_SINK - myx */
 #ifdef SPECIAL_POINT_MOTION
                         int kx;
-                        for(kx=0;kx<3;kx++) {vel_of_nearest_special[kx] = nop->bh_vel[kx];}
-                        for(kx=0;kx<3;kx++) {acc_of_nearest_special[kx] = nop->bh_acc[kx];}
+                        for(kx=0;kx<3;kx++) {vel_of_nearest_special[kx] = nop->sink_vel[kx];}
+                        for(kx=0;kx<3;kx++) {acc_of_nearest_special[kx] = nop->sink_acc[kx];}
 #endif
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                    double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
+                    double sink_dvx=nop->sink_vel[0]-vel_x, sink_dvy=nop->sink_vel[1]-vel_y, sink_dvz=nop->sink_vel[2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=nop->sink_mass+pmass, r2soft;
                     r2soft = DMAX(SinkParticle_GravityKernelRadius, soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER; r2soft = r2 + r2soft*r2soft;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                     if(ptype == 0) {
                         double tSqr_fb = r2soft /(nop->MaxFeedbackVel * nop->MaxFeedbackVel + MIN_REAL_NUMBER);
-                        if(tSqr_fb < min_bh_fb_time) {min_bh_fb_time = tSqr_fb;}
+                        if(tSqr_fb < Min_Sink_FeedbackTime) {Min_Sink_FeedbackTime = tSqr_fb;}
                     } // for gas, add the signal velocity of feedback from the star
 #endif                                                            
-                    if(tSqr < min_bh_approach_time) {min_bh_approach_time = tSqr;}
-                    if(tff4 < min_bh_freefall_time) {min_bh_freefall_time = tff4;}
+                    if(tSqr < Min_Sink_Approach_Time) {Min_Sink_Approach_Time = tSqr;}
+                    if(tff4 < Min_Sink_Freefall_time) {Min_Sink_Freefall_time = tff4;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                    if(ptype == 5 && nop->N_BH == 1) // only do it if we're looking at a single star in the node
+                    if(ptype == 5 && nop->N_SINK == 1) // only do it if we're looking at a single star in the node
                     {
                         double specific_energy = 0.5*vSqr - All.G*M_total/sqrt(r2);
                         if (specific_energy<0)
                         {
                             double semimajor_axis= -All.G*M_total/(2.*specific_energy);
                             double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
-                            if(t_orbital < min_bh_t_orbital) /* Save parameters of companion */
+                            if(t_orbital < Min_Sink_OrbitalTime) /* Save parameters of companion */
                             {
-                                min_bh_t_orbital=t_orbital; comp_Mass=nop->bh_mass;
-                                comp_dx[0]=bh_dx; comp_dx[1]=bh_dy; comp_dx[2]=bh_dz; comp_dv[0]=bh_dvx; comp_dv[1]=bh_dvy; comp_dv[2]=bh_dvz;
+                                Min_Sink_OrbitalTime=t_orbital; comp_Mass=nop->sink_mass;
+                                comp_dx[0]=sink_dx; comp_dx[1]=sink_dy; comp_dx[2]=sink_dz; comp_dv[0]=sink_dvx; comp_dv[1]=sink_dvy; comp_dv[2]=sink_dvz;
                             }
                         } /* specific_energy < 0 */
                     } /* ptype == 5 */
 #endif //#ifdef SINGLE_STAR_FIND_BINARIES
 #endif //#ifdef SINGLE_STAR_TIMESTEPPING
                 }
-#endif // BH_CALC_DISTANCES
+#endif // SINK_CALC_DISTANCES
 
             } /* ok we've completed all the opening criteria -- we will keep this node or particle as-is */
             
@@ -2389,19 +2389,19 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 acc_z += (dz * fac_accel);
 
 
-#if defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINK_DYNFRICTION_FROMTREE)
                 if( (fac_accel>MIN_REAL_NUMBER) && (ptype==5) && (mass>MIN_REAL_NUMBER) )
                 {
                     double dv2=dvx*dvx+dvy*dvy+dvz*dvz;
-                    if((dv2 > MIN_REAL_NUMBER) && (bh_mass > MIN_REAL_NUMBER))
+                    if((dv2 > MIN_REAL_NUMBER) && (sink_mass > MIN_REAL_NUMBER))
                     {
                         double dv0=sqrt(dv2),dvx_h=dvx/dv0,dvy_h=dvy/dv0,dvz_h=dvz/dv0,rdotvhat=dx*dvx_h+dy*dvy_h+dz*dvz_h;
                         double bx_im=dx-rdotvhat*dvx_h,by_im=dy-rdotvhat*dvy_h,bz_im=dz-rdotvhat*dvz_h,b_impact=sqrt(bx_im*bx_im+by_im*by_im+bz_im*bz_im);
-                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*bh_mass), fac_df=fac_accel*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
+                        double a_im=(b_impact*All.cf_atime)*(dv2*All.cf_a2inv)/(All.G*sink_mass), fac_df=fac_accel*b_impact*a_im/(1.+a_im*a_im); // need to convert to fully-physical units to ensure this has the correct dimensions
                         /* this is where we can insert an ad-hoc renormalization to avoid double-counting if we have a genuinely very massive BH (so DF is well-resolved) */
                         {
                             double m_j=m_j_eff_for_df; /* estimate mean mass of the particles in the node */
-                            if(bh_mass > 14.251*m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(bh_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
+                            if(sink_mass > 14.251*m_j) {fac_df *= DMIN(1.,DMAX(0.,(-1.+3./log10(sink_mass/m_j))/1.6));} /* approximate correction factor estimated by linhao */
                         }
                         if((m_j_eff_for_df <= MIN_REAL_NUMBER) || (b_impact <= MIN_REAL_NUMBER) || (dv2 <= MIN_REAL_NUMBER)) {fac_df = 0;}
                         /* parallel deflection component: dvx = V[distant particle/node] - V[bh], sign here is set to accelerate towards V[ext], as needed */
@@ -2510,7 +2510,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
             ninteractions++;
 
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
             if(r < r_for_total_menclosed) {m_enc_in_rcrit += mass;}
 #endif
 #ifdef COUNT_MASS_IN_GRAVTREE
@@ -2572,12 +2572,12 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 }
                 // don't multiply by shortrange_table since that is to prevent 2x-counting by PMgrid (which never happens here) //
 #endif
-#ifdef BH_PHOTONMOMENTUM
+#ifdef SINK_PHOTONMOMENTUM
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
-                Rad_E_gamma[RT_FREQ_BIN_FIRE_IR] += fac_intensity * mass_bhlum;
+                Rad_E_gamma[RT_FREQ_BIN_FIRE_IR] += fac_intensity * mass_sinklumwt_forradfb;
 #endif
-#ifdef BH_COMPTON_HEATING
-                incident_flux_agn += fac_intensity * mass_bhlum; // L/(4pi*r*r) analog
+#ifdef SINK_COMPTON_HEATING
+                incident_flux_agn += fac_intensity * mass_sinklumwt_forradfb; // L/(4pi*r*r) analog
 #endif
 #endif
 
@@ -2612,11 +2612,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #else /* simply apply an on-the-spot approximation and do the absorption and RP force now */
                 for(kf_rt=0;kf_rt<N_RT_FREQ_BINS;kf_rt++) {lum_force_fac += mass_stellarlum[kf_rt] * fac_stellum[kf_rt];} // add directly to forces. appropriate normalization (and sign) in 'fac_stellum'
 #endif
-#ifdef BH_PHOTONMOMENTUM /* divide out PhotoMom_coupled_frac here b/c we have our own BH_Rad_Mom factor, and don't want to double-count */
+#ifdef SINK_PHOTONMOMENTUM /* divide out PhotoMom_coupled_frac here b/c we have our own SINK_Rad_Mom factor, and don't want to double-count */
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
-                Rad_Flux[RT_FREQ_BIN_FIRE_IR][0]+=mass_bhlum*fac_flux*dx_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][1]+=mass_bhlum*fac_flux*dy_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][2]+=mass_bhlum*fac_flux*dz_stellarlum;
+                Rad_Flux[RT_FREQ_BIN_FIRE_IR][0]+=mass_sinklumwt_forradfb*fac_flux*dx_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][1]+=mass_sinklumwt_forradfb*fac_flux*dy_stellarlum; Rad_Flux[RT_FREQ_BIN_FIRE_IR][2]+=mass_sinklumwt_forradfb*fac_flux*dz_stellarlum;
 #elif !defined(RT_DISABLE_RAD_PRESSURE)
-                lum_force_fac += (All.BH_Rad_MomentumFactor / (MIN_REAL_NUMBER + All.PhotonMomentum_Coupled_Fraction)) * mass_bhlum * fac_stellum[N_RT_FREQ_BINS-1];
+                lum_force_fac += (All.Sink_Rad_MomentumFactor / (MIN_REAL_NUMBER + All.PhotonMomentum_Coupled_Fraction)) * mass_sinklumwt_forradfb * fac_stellum[N_RT_FREQ_BINS-1];
 #endif
 #endif
                 if(lum_force_fac>0) {acc_x += (dx_stellarlum * fac_rt*lum_force_fac); acc_y += (dy_stellarlum * fac_rt*lum_force_fac); acc_z += (dz_stellarlum * fac_rt*lum_force_fac);}
@@ -2705,10 +2705,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {CellP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; CellP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
         }
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
         P[target].MencInRcrit = m_enc_in_rcrit;
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
         if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_AGN = incident_flux_agn;}
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON)
@@ -2732,11 +2732,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         {int i1; for(i1 = 0; i1 < 3; i1++) {P[target].GravJerk[i1] = jerk[i1];}}
 #endif
-#ifdef BH_CALC_DISTANCES
-        P[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
-        P[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
-        P[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
-        P[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+#ifdef SINK_CALC_DISTANCES
+        P[target].Min_Distance_to_Sink = sqrt( Min_Distance_to_Sink2 );
+        P[target].Min_xyz_to_Sink[0] = Min_xyz_to_Sink[0];   /* remember, dx = x_SINK - myx */
+        P[target].Min_xyz_to_Sink[1] = Min_xyz_to_Sink[1];
+        P[target].Min_xyz_to_Sink[2] = Min_xyz_to_Sink[2];
 #ifdef SPECIAL_POINT_MOTION
         {int k;
             for(k=0;k<3;k++) {P[target].vel_of_nearest_special[k] = vel_of_nearest_special[k];}
@@ -2747,21 +2747,21 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-        P[target].is_in_a_binary=0; P[target].min_bh_t_orbital=min_bh_t_orbital; //orbital time for binary
-        if (min_bh_t_orbital<MAX_REAL_NUMBER)
+        P[target].is_in_a_binary=0; P[target].Min_Sink_OrbitalTime=Min_Sink_OrbitalTime; //orbital time for binary
+        if (Min_Sink_OrbitalTime<MAX_REAL_NUMBER)
         {
 	        P[target].is_in_a_binary=1; P[target].comp_Mass=comp_Mass; //mass of binary companion
             int i1; for(i1=0;i1<3;i1++) {P[target].comp_dx[i1]=comp_dx[i1]; P[target].comp_dv[i1]=comp_dv[i1];}
         }
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-        P[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-        P[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+        P[target].Min_Sink_Approach_Time = sqrt(Min_Sink_Approach_Time);
+        P[target].Min_Sink_Freefall_time = sqrt(sqrt(Min_Sink_Freefall_time)/All.G);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-        P[target].min_bh_fb_time = sqrt(min_bh_fb_time);
+        P[target].Min_Sink_FeedbackTime = sqrt(Min_Sink_FeedbackTime);
 #endif  
 #endif
-#endif // BH_CALC_DISTANCES        
+#endif // SINK_CALC_DISTANCES        
     }
     else
     {
@@ -2784,10 +2784,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef CHIMES_STELLAR_FLUXES
         int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {GravDataResult[target].Chimes_G0[kc] = chimes_flux_G0[kc]; GravDataResult[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
         GravDataResult[target].MencInRcrit = m_enc_in_rcrit;
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
         GravDataResult[target].Rad_Flux_AGN = incident_flux_agn;
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON)
@@ -2811,11 +2811,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef COMPUTE_JERK_IN_GRAVTREE
         {int i1; for(i1 = 0; i1 < 3; i1++) {GravDataResult[target].GravJerk[i1] = jerk[i1];}}
 #endif
-#ifdef BH_CALC_DISTANCES
-        GravDataResult[target].min_dist_to_bh = sqrt( min_dist_to_bh2 );
-        GravDataResult[target].min_xyz_to_bh[0] = min_xyz_to_bh[0];   /* remember, dx = x_BH - myx */
-        GravDataResult[target].min_xyz_to_bh[1] = min_xyz_to_bh[1];
-        GravDataResult[target].min_xyz_to_bh[2] = min_xyz_to_bh[2];
+#ifdef SINK_CALC_DISTANCES
+        GravDataResult[target].Min_Distance_to_Sink = sqrt( Min_Distance_to_Sink2 );
+        GravDataResult[target].Min_xyz_to_Sink[0] = Min_xyz_to_Sink[0];   /* remember, dx = x_SINK - myx */
+        GravDataResult[target].Min_xyz_to_Sink[1] = Min_xyz_to_Sink[1];
+        GravDataResult[target].Min_xyz_to_Sink[2] = Min_xyz_to_Sink[2];
 #ifdef SPECIAL_POINT_MOTION
         {int k;
             for(k=0;k<3;k++) {GravDataResult[target].vel_of_nearest_special[k] = vel_of_nearest_special[k];}
@@ -2826,21 +2826,21 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         }
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-        GravDataResult[target].is_in_a_binary=0; GravDataResult[target].min_bh_t_orbital=min_bh_t_orbital; // orbital time for binary
-        if (min_bh_t_orbital<MAX_REAL_NUMBER)
+        GravDataResult[target].is_in_a_binary=0; GravDataResult[target].Min_Sink_OrbitalTime=Min_Sink_OrbitalTime; // orbital time for binary
+        if (Min_Sink_OrbitalTime<MAX_REAL_NUMBER)
         {
 		    GravDataResult[target].is_in_a_binary = 1; GravDataResult[target].comp_Mass=comp_Mass; //mass of binary companion
             int i1; for(i1=0;i1<3;i1++) {GravDataResult[target].comp_dx[i1]=comp_dx[i1]; GravDataResult[target].comp_dv[i1]=comp_dv[i1];}
 	    }
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-        GravDataResult[target].min_bh_approach_time = sqrt(min_bh_approach_time);
-        GravDataResult[target].min_bh_freefall_time = sqrt(sqrt(min_bh_freefall_time)/All.G);
+        GravDataResult[target].Min_Sink_Approach_Time = sqrt(Min_Sink_Approach_Time);
+        GravDataResult[target].Min_Sink_Freefall_time = sqrt(sqrt(Min_Sink_Freefall_time)/All.G);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-        GravDataResult[target].min_bh_fb_time = sqrt(min_bh_fb_time);
+        GravDataResult[target].Min_Sink_FeedbackTime = sqrt(Min_Sink_FeedbackTime);
 #endif        
 #endif
-#endif // BH_CALC_DISTANCES        
+#endif // SINK_CALC_DISTANCES        
         *exportflag = nodesinlist;
     }
 

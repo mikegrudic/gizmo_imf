@@ -58,7 +58,7 @@ void MeshMotion_KeplerianOrbit(int i)
 {
     double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
+    int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;
 #endif
@@ -82,7 +82,7 @@ void MeshMotion_CircularOrbitExternalGravity(int i)
     double a, dp[3], r, r2, Omega; int k;
     dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
@@ -118,7 +118,7 @@ void MeshMotion_UniformExpansion(int i)
     double dvdr = 1; // velocity divergence (or effective "Hubble constant") of the flow, in code units //
     int k; double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
@@ -135,7 +135,7 @@ void MeshMotion_UniformCollapse(int i)
     double dvdr = -1; // velocity divergence (or effective "Hubble constant") of the flow, in code units //
     int k; double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].min_xyz_to_bh[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif

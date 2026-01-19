@@ -262,7 +262,7 @@ void begrun(void)
       All.TimeBetStatistics = all.TimeBetStatistics;
       All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
       All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
-      All.MinGasHsmlFractional = all.MinGasHsmlFractional;
+      All.MinGasKernelRadiusFractional = all.MinGasKernelRadiusFractional;
       All.MinGasTemp = all.MinGasTemp;
 #ifdef CHIMES
       All.ChimesThermEvolOn = all.ChimesThermEvolOn;
@@ -285,7 +285,7 @@ void begrun(void)
         All.SofteningStars = all.SofteningStars;
         All.SofteningBndry = all.SofteningBndry;
 
-        All.MaxHsml = all.MaxHsml;
+        All.MaxKernelRadius = all.MaxKernelRadius;
         All.MaxRMSDisplacementFac = all.MaxRMSDisplacementFac;
 
         All.ErrTolForceAcc = all.ErrTolForceAcc;
@@ -324,44 +324,44 @@ void begrun(void)
         All.FastestWaveSpeed = 0.0;
         All.FastestWaveDecay = 0.0;
 #endif
-#ifdef BLACK_HOLES
-        All.BlackHoleEddingtonFactor = all.BlackHoleEddingtonFactor;
-        All.SeedBlackHoleMass = all.SeedBlackHoleMass;
-        All.BlackHoleNgbFactor = all.BlackHoleNgbFactor;
-        All.BlackHoleMaxAccretionRadius = all.BlackHoleMaxAccretionRadius;
-        All.BlackHoleRadiativeEfficiency = all.BlackHoleRadiativeEfficiency;
-        All.BlackHoleFeedbackFactor = all.BlackHoleFeedbackFactor;
-#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
-        All.SeedBlackHoleMassSigma = all.SeedBlackHoleMassSigma;
-        All.SeedBlackHoleMinRedshift = all.SeedBlackHoleMinRedshift;
-#ifdef BH_SEED_FROM_LOCALGAS
-        All.SeedBlackHolePerUnitMass = all.SeedBlackHolePerUnitMass;
+#ifdef SINK_PARTICLES
+        All.SinkEddingtonFactor = all.SinkEddingtonFactor;
+        All.SeedSinkMass = all.SeedSinkMass;
+        All.SinkNgbFactor = all.SinkNgbFactor;
+        All.SinkMaxAccretionRadius = all.SinkMaxAccretionRadius;
+        All.SinkRadiativeEfficiency = all.SinkRadiativeEfficiency;
+        All.SinkFeedbackFactor = all.SinkFeedbackFactor;
+#if defined(SINK_SEED_FROM_FOF) || defined(SINK_SEED_FROM_LOCALGAS)
+        All.SeedSinkMassSigma = all.SeedSinkMassSigma;
+        All.SeedSinkMinRedshift = all.SeedSinkMinRedshift;
+#ifdef SINK_SEED_FROM_LOCALGAS
+        All.SeedSinkPerUnitMass = all.SeedSinkPerUnitMass;
 #endif
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-        All.SeedAlphaDiskMass = all.SeedAlphaDiskMass;
+#ifdef SINK_ALPHADISK_ACCRETION
+        All.SeedReservoirMass = all.SeedReservoirMass;
 #endif
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_SEED_FROM_FOF
         All.MinFoFMassForNewSeed = all.MinFoFMassForNewSeed;
 #endif
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
-        All.BAL_f_accretion = all.BAL_f_accretion;
-        All.BAL_v_outflow = all.BAL_v_outflow;
+#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+        All.Sink_accreted_fraction = all.Sink_accreted_fraction;
+        All.Sink_outflow_velocity = all.Sink_outflow_velocity;
 #endif
 #if defined(SINGLE_STAR_FB_JETS)
-        All.BAL_f_launch_v = all.BAL_f_launch_v;
+        All.Sink_outflow_jetlaunchvelscaling = all.Sink_outflow_jetlaunchvelscaling;
 #endif
-#if defined(BH_COSMIC_RAYS)
-        All.BH_CosmicRay_Injection_Efficiency = all.BH_CosmicRay_Injection_Efficiency;
+#if defined(SINK_COSMIC_RAYS)
+        All.Sink_CosmicRay_Injection_Efficiency = all.Sink_CosmicRay_Injection_Efficiency;
 #endif
-#ifdef BH_WIND_SPAWN
-        All.BAL_internal_temperature = all.BAL_internal_temperature;
-        All.BAL_wind_particle_mass = all.BAL_wind_particle_mass; // dangeous to change this, as it is also part of the merger criterion!
+#ifdef SINK_WIND_SPAWN
+        All.Sink_outflow_temperature = all.Sink_outflow_temperature;
+        All.Sink_outflow_particlemass = all.Sink_outflow_particlemass; // dangeous to change this, as it is also part of the merger criterion!
 #endif
-#ifdef BH_PHOTONMOMENTUM
-        All.BH_Rad_MomentumFactor = all.BH_Rad_MomentumFactor;
+#ifdef SINK_PHOTONMOMENTUM
+        All.Sink_Rad_MomentumFactor = all.Sink_Rad_MomentumFactor;
 #endif
-#endif // blackholes
+#endif // sinks
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
         All.RP_Local_Momentum_Renormalization = all.RP_Local_Momentum_Renormalization;
 #endif
@@ -401,7 +401,7 @@ void begrun(void)
 #endif
 
       All.MaxNumNgbDeviation = all.MaxNumNgbDeviation;
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
       /* Allow the tolerance over the number of neighbours to vary during the run:
         If it was initially set to a very strict value, convergence in ngb-iteration may at some point fail */
       All.AGS_MaxNumNgbDeviation = all.AGS_MaxNumNgbDeviation;
@@ -617,30 +617,30 @@ void open_outputfiles(void)
   if(ThisTask == 0) {mkdir(All.OutputDir, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef BLACK_HOLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
-  if(ThisTask == 0) {snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details", All.OutputDir); mkdir(buf, 02755);}
+#ifdef SINK_PARTICLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
+  if(ThisTask == 0) {snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details", All.OutputDir); mkdir(buf, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
-#if defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(BH_OUTPUT_MOREINFO)
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details/blackhole_details_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBlackHolesDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#if defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(SINK_OUTPUT_MOREINFO)
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_details_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdSinksDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 #ifdef OUTPUT_SINK_ACCRETION_HIST
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details/bhswallow_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_swallow_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdSinkSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details/bhformation_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_formation_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdSinkFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-#ifdef BH_OUTPUT_MOREINFO
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details/bhmergers_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
-#ifdef BH_WIND_KICK
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%sblackhole_details/bhwinds_%d.txt", All.OutputDir, ThisTask);
-  if(!(FdBhWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#ifdef SINK_OUTPUT_MOREINFO
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_mergers_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdSinkMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#ifdef SINK_WIND_KICK
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_winds_%d.txt", All.OutputDir, ThisTask);
+  if(!(FdSinkWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
-#endif // bh-output-more-info if
-#endif // black-holes if
+#endif // output-more-info if
+#endif // SINK_PARTICLES if
 
     if(ThisTask != 0) {return;}	/* only the root processors writes to the log files listed below */
 
@@ -684,7 +684,7 @@ void open_outputfiles(void)
     fprintf(FdBalance, "Potential      = '%c' / '%c'\n", CPU_Symbol[CPU_POTENTIAL], CPU_SymbolImbalance[CPU_POTENTIAL]);
     fprintf(FdBalance, "PM-gravity     = '%c' / '%c'\n", CPU_Symbol[CPU_MESH], CPU_SymbolImbalance[CPU_MESH]);
     fprintf(FdBalance, "Snapshot dump  = '%c' / '%c'\n", CPU_Symbol[CPU_SNAPSHOT], CPU_SymbolImbalance[CPU_SNAPSHOT]);
-    fprintf(FdBalance, "Blackhole      = '%c' / '%c'\n", CPU_Symbol[CPU_BLACKHOLES], CPU_SymbolImbalance[CPU_BLACKHOLES]);
+    fprintf(FdBalance, "Sink           = '%c' / '%c'\n", CPU_Symbol[CPU_SINKS], CPU_SymbolImbalance[CPU_SINKS]);
     fprintf(FdBalance, "Cooling & SFR  = '%c' / '%c'\n", CPU_Symbol[CPU_COOLINGSFR], CPU_SymbolImbalance[CPU_COOLINGSFR]);
     fprintf(FdBalance, "Coolimbal check= '%c' / '%c'\n", CPU_Symbol[CPU_COOLSFRIMBAL], CPU_SymbolImbalance[CPU_COOLSFRIMBAL]);
     fprintf(FdBalance, "FoF & subfind  = '%c' / '%c'\n", CPU_Symbol[CPU_FOF], CPU_SymbolImbalance[CPU_FOF]);
@@ -736,12 +736,12 @@ void open_outputfiles(void)
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "SN_details.txt");
-  if(!(FdBhSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  if(!(FdSinkSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
-#ifdef BLACK_HOLES
-  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "blackholes.txt");
-  if(!(FdBlackHoles = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+#ifdef SINK_PARTICLES
+  snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "sinks.txt");
+  if(!(FdSinks = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(TURB_DRIVING) && defined(OUTPUT_ADDITIONAL_RUNINFO)
@@ -1237,14 +1237,14 @@ void read_parameter_file(char *fname)
 #endif
 
 
-        strcpy(tag[nt], "MinGasHsmlFractional");
-        strcpy(alternate_tag[nt], "Minimum_Gas_KernelSize_RelativetoSoftening");
-        addr[nt] = &All.MinGasHsmlFractional;
+        strcpy(tag[nt], "MinGasKernelRadiusFractional");
+        strcpy(alternate_tag[nt], "Minimum_Gas_KernelRadius_RelativetoSoftening");
+        addr[nt] = &All.MinGasKernelRadiusFractional;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "MaxHsml");
-        strcpy(alternate_tag[nt], "Maximum_KernelSize_CodeUnits");
-        addr[nt] = &All.MaxHsml;
+        strcpy(tag[nt], "MaxKernelRadius");
+        strcpy(alternate_tag[nt], "Maximum_KernelRadius_CodeUnits");
+        addr[nt] = &All.MaxKernelRadius;
         id[nt++] = REAL;
 
         strcpy(tag[nt], "MaxSizeTimestep");
@@ -1422,121 +1422,121 @@ void read_parameter_file(char *fname)
 #endif
 
 
-#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
+#if (defined(SINK_PARTICLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
       strcpy(tag[nt], "TimeBetOnTheFlyFoF");
       addr[nt] = &All.TimeBetOnTheFlyFoF;
       id[nt++] = REAL;
 #endif
 
-#ifdef BLACK_HOLES
-        strcpy(tag[nt], "BlackHoleAccretionFactor");
-        addr[nt] = &All.BlackHoleAccretionFactor;
+#ifdef SINK_PARTICLES
+        strcpy(tag[nt], "SinkAccretionFactor");
+        addr[nt] = &All.SinkAccretionFactor;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "BlackHoleEddingtonFactor");
-        addr[nt] = &All.BlackHoleEddingtonFactor;
+        strcpy(tag[nt], "SinkEddingtonFactor");
+        addr[nt] = &All.SinkEddingtonFactor;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "SeedBlackHoleMass");
-        addr[nt] = &All.SeedBlackHoleMass;
+        strcpy(tag[nt], "SeedSinkMass");
+        addr[nt] = &All.SeedSinkMass;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "BlackHoleNgbFactor");
-        addr[nt] = &All.BlackHoleNgbFactor;
+        strcpy(tag[nt], "SinkNgbFactor");
+        addr[nt] = &All.SinkNgbFactor;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "BlackHoleMaxAccretionRadius");
-        addr[nt] = &All.BlackHoleMaxAccretionRadius;
+        strcpy(tag[nt], "SinkMaxAccretionRadius");
+        addr[nt] = &All.SinkMaxAccretionRadius;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "BlackHoleRadiativeEfficiency");
-        addr[nt] = &All.BlackHoleRadiativeEfficiency;
+        strcpy(tag[nt], "SinkRadiativeEfficiency");
+        addr[nt] = &All.SinkRadiativeEfficiency;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "BlackHoleFeedbackFactor");
-        addr[nt] = &All.BlackHoleFeedbackFactor;
+        strcpy(tag[nt], "SinkFeedbackFactor");
+        addr[nt] = &All.SinkFeedbackFactor;
         id[nt++] = REAL;
 
-#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
-        strcpy(tag[nt], "SeedBlackHoleMassSigma");
-        addr[nt] = &All.SeedBlackHoleMassSigma;
+#if defined(SINK_SEED_FROM_FOF) || defined(SINK_SEED_FROM_LOCALGAS)
+        strcpy(tag[nt], "SeedSinkMassSigma");
+        addr[nt] = &All.SeedSinkMassSigma;
         id[nt++] = REAL;
 
-        strcpy(tag[nt], "SeedBlackHoleMinRedshift");
-        addr[nt] = &All.SeedBlackHoleMinRedshift;
+        strcpy(tag[nt], "SeedSinkMinRedshift");
+        addr[nt] = &All.SeedSinkMinRedshift;
         id[nt++] = REAL;
 
-#ifdef BH_SEED_FROM_LOCALGAS
-        strcpy(tag[nt], "SeedBlackHolePerUnitMass");
-        addr[nt] = &All.SeedBlackHolePerUnitMass;
-        id[nt++] = REAL;
-#endif
-#endif
-
-#ifdef BH_ALPHADISK_ACCRETION
-        strcpy(tag[nt], "SeedAlphaDiskMass");
-        addr[nt] = &All.SeedAlphaDiskMass;
+#ifdef SINK_SEED_FROM_LOCALGAS
+        strcpy(tag[nt], "SeedSinkPerUnitMass");
+        addr[nt] = &All.SeedSinkPerUnitMass;
         id[nt++] = REAL;
 #endif
+#endif
 
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_ALPHADISK_ACCRETION
+        strcpy(tag[nt], "SeedReservoirMass");
+        addr[nt] = &All.SeedReservoirMass;
+        id[nt++] = REAL;
+#endif
+
+#ifdef SINK_SEED_FROM_FOF
         strcpy(tag[nt], "MinFoFMassForNewSeed");
         addr[nt] = &All.MinFoFMassForNewSeed;
         id[nt++] = REAL;
 #endif
 
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
-        strcpy(tag[nt],"BAL_f_accretion");
+#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+        strcpy(tag[nt],"Sink_accreted_fraction");
         strcpy(alternate_tag[nt], "Sink_f_accretion");
-        addr[nt] = &All.BAL_f_accretion;
+        addr[nt] = &All.Sink_accreted_fraction;
         id[nt++] = REAL;
 
-        strcpy(tag[nt],"BAL_v_outflow");
+        strcpy(tag[nt],"Sink_outflow_velocity");
         strcpy(alternate_tag[nt], "Sink_v_outflow");
-        addr[nt] = &All.BAL_v_outflow;
+        addr[nt] = &All.Sink_outflow_velocity;
         id[nt++] = REAL;
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-        strcpy(tag[nt],"BAL_f_launch_v");
+        strcpy(tag[nt],"Sink_outflow_jetlaunchvelscaling");
         strcpy(alternate_tag[nt], "Sink_f_launch_v");
-        addr[nt] = &All.BAL_f_launch_v;
+        addr[nt] = &All.Sink_outflow_jetlaunchvelscaling;
         id[nt++] = REAL;
 #endif
 
-#if defined(BH_COSMIC_RAYS)
-        strcpy(tag[nt],"BH_CosmicRay_Injection_Efficiency");
+#if defined(SINK_COSMIC_RAYS)
+        strcpy(tag[nt],"Sink_CosmicRay_Injection_Efficiency");
         strcpy(alternate_tag[nt], "Sink_CosmicRay_Injection_Efficiency");
-        addr[nt] = &All.BH_CosmicRay_Injection_Efficiency;
+        addr[nt] = &All.Sink_CosmicRay_Injection_Efficiency;
         id[nt++] = REAL;
 #endif
 
 
-#ifdef BH_WIND_SPAWN
-        strcpy(tag[nt], "BAL_internal_temperature");
+#ifdef SINK_WIND_SPAWN
+        strcpy(tag[nt], "Sink_outflow_temperature");
         strcpy(alternate_tag[nt], "Cell_Spawn_Temperature");
-        addr[nt] = &All.BAL_internal_temperature;
+        addr[nt] = &All.Sink_outflow_temperature;
         id[nt++] = REAL;
-        strcpy(tag[nt], "BAL_wind_particle_mass");
+        strcpy(tag[nt], "Sink_outflow_particlemass");
         strcpy(alternate_tag[nt], "Cell_Spawn_Mass_ratio");
-        addr[nt] = &All.BAL_wind_particle_mass;
+        addr[nt] = &All.Sink_outflow_particlemass;
         id[nt++] = REAL;
 #ifdef SINGLE_STAR_FB_WINDS
         strcpy(tag[nt], "Cell_Spawn_Mass_ratio_MS");
-        strcpy(alternate_tag[nt], "BAL_wind_particle_mass_MS");
+        strcpy(alternate_tag[nt], "Sink_outflow_particlemass_MS");
         addr[nt] = &All.Cell_Spawn_Mass_ratio_MS;
         id[nt++] = REAL;
 #endif
 #endif
 
-#ifdef BH_PHOTONMOMENTUM
-        strcpy(tag[nt],"BH_FluxMomentumFactor");
-        strcpy(alternate_tag[nt], "BH_Rad_MomentumFactor");
-        addr[nt] = &All.BH_Rad_MomentumFactor;
+#ifdef SINK_PHOTONMOMENTUM
+        strcpy(tag[nt],"Sink_FluxMomentumFactor");
+        strcpy(alternate_tag[nt], "Sink_Rad_MomentumFactor");
+        addr[nt] = &All.Sink_Rad_MomentumFactor;
         id[nt++] = REAL;
 #endif
 
-#endif /* BLACK_HOLES */
+#endif /* SINK_PARTICLES */
 
 
 #ifdef GALSF
@@ -1695,35 +1695,35 @@ void read_parameter_file(char *fname)
 #endif
 #endif /* MAGNETIC */
 
-#ifdef BH_WIND_SPAWN_SET_BFIELD_POLTOR
-      strcpy(tag[nt], "BH_spawn_injection_radius");
-      addr[nt] = &All.BH_spawn_rinj;
+#ifdef SINK_WIND_SPAWN_SET_BFIELD_POLTOR
+      strcpy(tag[nt], "Sink_spawn_injection_radius");
+      addr[nt] = &All.Sink_spawn_injectionradius;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "BH_spawn_poloidal_B");
+      strcpy(tag[nt], "Sink_spawn_poloidal_B");
       addr[nt] = &All.B_spawn_pol;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "BH_spawn_toroidal_B");
+      strcpy(tag[nt], "Sink_spawn_toroidal_B");
       addr[nt] = &All.B_spawn_tor;
       id[nt++] = REAL;
 #endif
-#ifdef BH_WIND_SPAWN_SET_JET_PRECESSION
-      strcpy(tag[nt], "BH_jet_precession_degree");
-      addr[nt] = &All.BH_jet_precess_degree;
+#ifdef SINK_WIND_SPAWN_SET_JET_PRECESSION
+      strcpy(tag[nt], "Sink_jet_precession_degree");
+      addr[nt] = &All.Sink_jet_precess_degree;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "BH_jet_precession_period");
-      addr[nt] = &All.BH_jet_precess_period;
+      strcpy(tag[nt], "Sink_jet_precession_period");
+      addr[nt] = &All.Sink_jet_precess_period;
       id[nt++] = REAL;
 #endif
-#ifdef BH_DEBUG_FIX_MDOT_MBH
-      strcpy(tag[nt], "BH_fb_duty_cycle");
-      addr[nt] = &All.BH_fb_duty_cycle;
+#ifdef SINK_DEBUG_FIX_MDOT_MASS
+      strcpy(tag[nt], "Sink_fb_duty_cycle");
+      addr[nt] = &All.Sink_fb_duty_cycle;
       id[nt++] = REAL;
 
-      strcpy(tag[nt], "BH_fb_period");
-      addr[nt] = &All.BH_fb_period;
+      strcpy(tag[nt], "Sink_fb_period");
+      addr[nt] = &All.Sink_fb_period;
       id[nt++] = REAL;
 #endif
 
@@ -1834,7 +1834,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
         strcpy(tag[nt], "AGS_DesNumNgb");
         strcpy(alternate_tag[nt], "AdaptGravSoft_Effective_NeighborNumber");
         addr[nt] = &All.AGS_DesNumNgb;
@@ -2209,18 +2209,18 @@ void read_parameter_file(char *fname)
                     if(strcmp("MaxSizeTimestep",tag[i])==0) {*((double *)addr[i])=(1.e-3*All.TimeMax); printf("Tag %s (%s) not set in parameter file: it is often unsafe to not set a maximum timestep. We will default to assume 0.1 percent of the maximum time (=%g), but this may need to be set lower. \n",tag[i],alternate_tag[i],All.MaxSizeTimestep); continue;}
                 }
                 if(strcmp("DesNumNgb",tag[i])==0) {*((double *)addr[i])=(0.5*(KERNEL_NMIN+KERNEL_NMAX)); printf("Tag %s (%s) not set in parameter file: you did not set a target effective neighbor number for the interaction kernel. Trying to set a reasonable guess of =%g based on the kernel specified, but PLEASE CHECK that this is intended and experiment with different values or set your own for safety. \n",tag[i],alternate_tag[i],All.DesNumNgb); continue;}
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
                 if(strcmp("AGS_DesNumNgb",tag[i])==0) {*((double *)addr[i])=(0.5*(KERNEL_NMIN+KERNEL_NMAX)); printf("Tag %s (%s) not set in parameter file: you did not set a target effective neighbor number for the adaptive-gravity (non-fluid) interaction kernel. Trying to set a reasonable guess (=%g) based on the kernel specified, but PLEASE CHECK that this is intended and experiment with different values or set your own for safety. \n",tag[i],alternate_tag[i],All.AGS_DesNumNgb); continue;}
 #endif
                 if(strcmp("InitGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume temperatures defined in ICs (=%g) \n",tag[i],alternate_tag[i],All.InitGasTemp); continue;}
                 if(strcmp("MinGasTemp",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasTemp); continue;}
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
-                if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume minimum matches the specified force softening (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
+                if(strcmp("MinGasKernelRadiusFractional",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to assume minimum matches the specified force softening (=%g) \n",tag[i],alternate_tag[i],All.MinGasKernelRadiusFractional); continue;}
 #else
-                if(strcmp("MinGasHsmlFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasHsmlFractional); continue;}
+                if(strcmp("MinGasKernelRadiusFractional",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to assume no mininum (=%g) \n",tag[i],alternate_tag[i],All.MinGasKernelRadiusFractional); continue;}
 #endif
                 if(strcmp("TreeDomainUpdateFrequency",tag[i])==0) {*((double *)addr[i])=0.005; printf("Tag %s (%s) not set in parameter file: defaulting to guess that we should re-build whenever 0.5 percent of the system is active. But this should be adjusted manually for performance and accuracy in most cases (=%g) \n",tag[i],alternate_tag[i],All.TreeDomainUpdateFrequency); continue;}
-                if(strcmp("MaxHsml",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxHsml); continue;}
+                if(strcmp("MaxKernelRadius",tag[i])==0) {*((double *)addr[i])=MAX_REAL_NUMBER; printf("Tag %s (%s) not set in parameter file: defaulting to assume no maximum (=%g) \n",tag[i],alternate_tag[i],All.MaxKernelRadius); continue;}
                 if(strcmp("GravityConstantInternal",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to calculating in terms of other specified units if needed (=%g) \n",tag[i],alternate_tag[i],All.G); continue;}
                 if(strcmp("MinSizeTimestep",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to minimum allowed by memory table-size (=%g) \n",tag[i],alternate_tag[i],All.MinSizeTimestep); continue;}
                 if(strcmp("TimeLimitCPU",tag[i])==0) {*((double *)addr[i])=8.6e4; printf("Tag %s (%s) not set in parameter file: defaulting to 24-hours before auto-shutdown (=%g) \n",tag[i],alternate_tag[i],All.TimeLimitCPU); continue;}
@@ -2246,7 +2246,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_JETS) && defined(SINGLE_STAR_STARFORGE_DEFAULTS)
-                if(strcmp("BAL_f_launch_v",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to =%g (this is the fraction of escape velocity outflows are launched with) \n",tag[i],alternate_tag[i],All.BAL_f_launch_v); continue;}
+                if(strcmp("Sink_outflow_jetlaunchvelscaling",tag[i])==0) {*((double *)addr[i])=0.3; printf("Tag %s (%s) not set in parameter file: will default to =%g (this is the fraction of escape velocity outflows are launched with) \n",tag[i],alternate_tag[i],All.Sink_outflow_jetlaunchvelscaling); continue;}
 #endif
 #ifdef CONDUCTION_SPITZER
                 if(strcmp("ConductionCoeff",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: code was compiled with Spitzer-Braginski conductivity, so will default to calculating the physical coefficient without arbitrary re-normalization (i.e. user-specified additional coefficient/multipler=%g) \n",tag[i],alternate_tag[i],All.ConductionCoeff); continue;}
@@ -2301,20 +2301,20 @@ void read_parameter_file(char *fname)
 #endif
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
                 if(strcmp("SfEffPerFreeFall",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to scaling-default of unity (=%g) \n",tag[i],alternate_tag[i],All.MaxSfrTimescale); continue;}
-                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
-                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to no Eddington-limit in accretion from disk to sink (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
-                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to arbitrary small value which will be ignored later (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
-                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to sinks beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
-                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to no augment of sink neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
-                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to some large size of order a few in code units (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
-                if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
-                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to a reference radiative efficiency, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
-#if defined(BH_WIND_SPAWN)
-                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume 70 percent is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
-                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
-                if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
+                if(strcmp("SinkAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.SinkAccretionFactor); continue;}
+                if(strcmp("SinkEddingtonFactor",tag[i])==0) {*((double *)addr[i])=1e10; printf("Tag %s (%s) not set in parameter file: defaulting to no Eddington-limit in accretion from disk to sink (=%g) \n",tag[i],alternate_tag[i],All.SinkEddingtonFactor); continue;}
+                if(strcmp("SeedSinkMass",tag[i])==0) {*((double *)addr[i])=1e-20; printf("Tag %s (%s) not set in parameter file: defaulting to arbitrary small value which will be ignored later (=%g) \n",tag[i],alternate_tag[i],All.SeedSinkMass); continue;}
+                if(strcmp("SeedReservoirMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to sinks beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedReservoirMass); continue;}
+                if(strcmp("SinkNgbFactor",tag[i])==0) {*((double *)addr[i])=1.0; printf("Tag %s (%s) not set in parameter file: defaulting to no augment of sink neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.SinkNgbFactor); continue;}
+                if(strcmp("SinkMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to some large size of order a few in code units (=%g) \n",tag[i],alternate_tag[i],All.SinkMaxAccretionRadius); continue;}
+                if(strcmp("SinkFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.SinkFeedbackFactor); continue;}
+                if(strcmp("SinkRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=5.e-7; printf("Tag %s (%s) not set in parameter file: defaulting to a reference radiative efficiency, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.SinkRadiativeEfficiency); continue;}
+#if defined(SINK_WIND_SPAWN)
+                if(strcmp("Sink_accreted_fraction",tag[i])==0) {*((double *)addr[i])=0.7; printf("Tag %s (%s) not set in parameter file: defaulting to assume 70 percent is accreted onto sink versus outflow (=%g) \n",tag[i],alternate_tag[i],All.Sink_accreted_fraction); continue;}
+                if(strcmp("Sink_outflow_velocity",tag[i])==0) {*((double *)addr[i])=100.; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 100 in code units, but tracks ignore this (=%g) \n",tag[i],alternate_tag[i],All.Sink_outflow_velocity); continue;}
+                if(strcmp("Sink_outflow_temperature",tag[i])==0) {*((double *)addr[i])=1.e3; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.Sink_outflow_temperature); continue;}
 #ifdef SINGLE_STAR_FB_WINDS
-                if(strcmp("Cell_Spawn_Mass_ratio_MS",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file, BAL_wind_particle_mass will be used instead \n",tag[i],alternate_tag[i]); continue;}
+                if(strcmp("Cell_Spawn_Mass_ratio_MS",tag[i])==0) {*((double *)addr[i])=0.0; printf("Tag %s (%s) not set in parameter file, Sink_outflow_particlemass will be used instead \n",tag[i],alternate_tag[i]); continue;}
 #endif
 #endif
 #endif
@@ -2332,27 +2332,27 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 #if defined(FIRE_BHS)
-                if(strcmp("BlackHoleAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleAccretionFactor); continue;}
-                if(strcmp("BlackHoleEddingtonFactor",tag[i])==0) {*((double *)addr[i])=100; printf("Tag %s (%s) not set in parameter file: defaulting no Eddington-limit in accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleEddingtonFactor); continue;}
-                if(strcmp("SeedBlackHoleMass",tag[i])==0) {*((double *)addr[i])=0.7e-8; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMass); continue;}
-                if(strcmp("BlackHoleNgbFactor",tag[i])==0) {*((double *)addr[i])=8.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleNgbFactor); continue;}
-                if(strcmp("BlackHoleMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of kpc/h (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleMaxAccretionRadius); continue;}
-                if(strcmp("BlackHoleRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleRadiativeEfficiency); continue;}
-                if(strcmp("BlackHoleFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.BlackHoleFeedbackFactor); continue;}
-                if(strcmp("SeedBlackHoleMassSigma",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to a uniform blackhole seed mass (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMassSigma); continue;}
-                if(strcmp("SeedBlackHoleMinRedshift",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to allow seed creation at all times (=%g) \n",tag[i],alternate_tag[i],All.SeedBlackHoleMinRedshift); continue;}
-                if(strcmp("SeedAlphaDiskMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedAlphaDiskMass); continue;}
-                if(strcmp("BH_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.BH_Rad_MomentumFactor); continue;}
-                if(strcmp("BAL_f_accretion",tag[i])==0) {*((double *)addr[i])=0.5; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.BAL_f_accretion); continue;}
-                if(strcmp("BAL_v_outflow",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.BAL_v_outflow); continue;}
-#if defined(BH_WIND_SPAWN)
-                if(strcmp("BAL_internal_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.BAL_internal_temperature); continue;}
-#if defined(BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
-                if(strcmp("BAL_wind_particle_mass",tag[i])==0) {*((double *)addr[i])=0.01; printf("Tag %s (%s) not set in parameter file: defaulting to assuming spawned cells from the sink have mass a fixed fraction (=%g) of the sink initial formation mass \n",tag[i],alternate_tag[i],All.BAL_wind_particle_mass); continue;}
+                if(strcmp("SinkAccretionFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to Hopkins and Quataert best-estimate (=%g) \n",tag[i],alternate_tag[i],All.SinkAccretionFactor); continue;}
+                if(strcmp("SinkEddingtonFactor",tag[i])==0) {*((double *)addr[i])=100; printf("Tag %s (%s) not set in parameter file: defaulting no Eddington-limit in accretion from disk to BH (=%g) \n",tag[i],alternate_tag[i],All.SinkEddingtonFactor); continue;}
+                if(strcmp("SeedSinkMass",tag[i])==0) {*((double *)addr[i])=0.7e-8; printf("Tag %s (%s) not set in parameter file: defaulting to upper-limit of normal stellar BHs, assuming code mass units of 1e10 Msun/h (=%g) \n",tag[i],alternate_tag[i],All.SeedSinkMass); continue;}
+                if(strcmp("SinkNgbFactor",tag[i])==0) {*((double *)addr[i])=8.0; printf("Tag %s (%s) not set in parameter file: defaulting to standard augment of BH neighbors vs gas (=%g) \n",tag[i],alternate_tag[i],All.SinkNgbFactor); continue;}
+                if(strcmp("SinkMaxAccretionRadius",tag[i])==0) {*((double *)addr[i])=5.0; printf("Tag %s (%s) not set in parameter file: defaulting to typical galaxy size assuming code units of kpc/h (=%g) \n",tag[i],alternate_tag[i],All.SinkMaxAccretionRadius); continue;}
+                if(strcmp("SinkRadiativeEfficiency",tag[i])==0) {*((double *)addr[i])=0.1; printf("Tag %s (%s) not set in parameter file: defaulting to canonical radiative efficiency (=%g) \n",tag[i],alternate_tag[i],All.SinkRadiativeEfficiency); continue;}
+                if(strcmp("SinkFeedbackFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to follow user-defined coefficients for each mechanism (=%g) \n",tag[i],alternate_tag[i],All.SinkFeedbackFactor); continue;}
+                if(strcmp("SeedSinkMassSigma",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to a uniform sink seed mass (=%g) \n",tag[i],alternate_tag[i],All.SeedSinkMassSigma); continue;}
+                if(strcmp("SeedSinkMinRedshift",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to allow seed creation at all times (=%g) \n",tag[i],alternate_tag[i],All.SeedSinkMinRedshift); continue;}
+                if(strcmp("SeedReservoirMass",tag[i])==0) {*((double *)addr[i])=0; printf("Tag %s (%s) not set in parameter file: defaulting to BHs beginning their existence without an active accretion disk (=%g) \n",tag[i],alternate_tag[i],All.SeedReservoirMass); continue;}
+                if(strcmp("Sink_FluxMomentumFactor",tag[i])==0) {*((double *)addr[i])=1; printf("Tag %s (%s) not set in parameter file: defaulting to using actual AGN spectrum for radiative feedback (=%g) \n",tag[i],alternate_tag[i],All.Sink_Rad_MomentumFactor); continue;}
+                if(strcmp("Sink_accreted_fraction",tag[i])==0) {*((double *)addr[i])=0.5; printf("Tag %s (%s) not set in parameter file: defaulting to assume equal BH accretion and outflow rate intrinsically (=%g) \n",tag[i],alternate_tag[i],All.Sink_accreted_fraction); continue;}
+                if(strcmp("Sink_outflow_velocity",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assume mechanical outflow with 1e4 km/s assuming km/s code units (=%g) \n",tag[i],alternate_tag[i],All.Sink_outflow_velocity); continue;}
+#if defined(SINK_WIND_SPAWN)
+                if(strcmp("Sink_outflow_temperature",tag[i])==0) {*((double *)addr[i])=1.e4; printf("Tag %s (%s) not set in parameter file: defaulting to assuming ISM-type temperatures in internal spawned elements (=%g) \n",tag[i],alternate_tag[i],All.Sink_outflow_temperature); continue;}
+#if defined(SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS)
+                if(strcmp("Sink_outflow_particlemass",tag[i])==0) {*((double *)addr[i])=0.01; printf("Tag %s (%s) not set in parameter file: defaulting to assuming spawned cells from the sink have mass a fixed fraction (=%g) of the sink initial formation mass \n",tag[i],alternate_tag[i],All.Sink_outflow_particlemass); continue;}
 #endif
 #endif
-#if defined(BH_COSMIC_RAYS)
-                if(strcmp("BH_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.BH_CosmicRay_Injection_Efficiency); continue;}
+#if defined(SINK_COSMIC_RAYS)
+                if(strcmp("Sink_CosmicRay_Injection_Efficiency",tag[i])==0) {*((double *)addr[i])=1.e-2; printf("Tag %s (%s) not set in parameter file: defaulting to assuming CR injection efficiency of ~1 percent (=%g) \n",tag[i],alternate_tag[i],All.Sink_CosmicRay_Injection_Efficiency); continue;}
 #endif
 #endif
 #if defined(TURB_DRIVING)
@@ -2499,7 +2499,7 @@ void read_parameter_file(char *fname)
 #ifdef EOS_ELASTIC
     All.MaxNumNgbDeviation /= 20.0;
 #endif
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 640.;
 #ifdef GALSF
     All.AGS_MaxNumNgbDeviation = All.AGS_DesNumNgb / 64.;
@@ -2507,7 +2507,7 @@ void read_parameter_file(char *fname)
     if(All.AGS_MaxNumNgbDeviation < 0.05) All.AGS_MaxNumNgbDeviation = 0.05;
 #endif
 #endif // closes DEVELOPER_MODE check //
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
     All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
 #endif
 
@@ -2531,7 +2531,7 @@ void read_parameter_file(char *fname)
     if(All.MaxNumNgbDeviation > 0.05) {All.MaxNumNgbDeviation = 0.05;}
 #endif
     
-#if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(BH_WIND_SPAWN)
+#if defined(MAGNETIC) || defined(HYDRO_MESHLESS_FINITE_VOLUME) || defined(SINK_WIND_SPAWN)
     if(All.CourantFac > 0.2) {All.CourantFac = 0.2;}
     /* (PFH) safety factor needed for MHD calc, because people keep using the same CFac as hydro! */
 #endif
@@ -2614,7 +2614,7 @@ void read_parameter_file(char *fname)
             if(ThisTask==0) {printf("For the kernel chosen, proper sampling and stability requires DesNumNgb must be >%d and <%d \n",KERNEL_NMIN,KERNEL_NMAX); endrun(1);}
         }
     }
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     if((All.AGS_MaxNumNgbDeviation<=0)||(All.AGS_MaxNumNgbDeviation>0.1*All.AGS_DesNumNgb))
     {
         if(ThisTask==0) {printf("AGS_MaxNumNgbDeviation must be >0 and <0.1*AGS_DesNumNgb \n"); endrun(1);}

@@ -33,7 +33,7 @@ void init(void)
     /* NOTE: we will always work -internally- in code units where MU_0 = 1; hence the 4pi here; [much simpler, but be sure of your conversions!] */
 #endif
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
     int count_holes = 0;
 #endif
 
@@ -158,8 +158,8 @@ void init(void)
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     for(i = 0; i < SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM; i++)
     {
-        All.SMBH_SpecialParticle_Position_ForRefinement[i][0]=All.SMBH_SpecialParticle_Position_ForRefinement[i][1]=All.SMBH_SpecialParticle_Position_ForRefinement[i][2]=0;
-        All.Mass_Accreted_By_SpecialSMBHParticle[i]=0; All.Mass_of_SpecialSMBHParticle[i]=0;
+        All.SpecialParticle_Position_ForRefinement[i][0]=All.SpecialParticle_Position_ForRefinement[i][1]=All.SpecialParticle_Position_ForRefinement[i][2]=0;
+        All.Mass_Accreted_By_SpecialParticle[i]=0; All.Mass_of_SpecialParticle[i]=0;
     }
 #endif
     
@@ -171,7 +171,7 @@ void init(void)
     if(All.ComovingIntegrationOn) {check_omega();}
 #endif
     All.TimeLastStatistics = All.TimeBegin - All.TimeBetStatistics;
-#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
+#if (defined(SINK_PARTICLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
     All.TimeNextOnTheFlyFoF = All.TimeBegin;
 #endif
 
@@ -229,10 +229,6 @@ void init(void)
         P[i].tdyn_step_for_treeforce = 0;
 #endif        
         
-
-#ifdef KEEP_DM_HSML_AS_GUESS
-        if(RestartFlag != 1) {P[i].DM_Hsml = -1;}
-#endif
 
 #ifdef PMGRID
         for(j = 0; j < 3; j++) {P[i].GravPM[j] = 0;}
@@ -439,15 +435,15 @@ void init(void)
 
 
 
-#ifdef BLACK_HOLES
-#ifdef BH_WAKEUP_GAS
-	    if(P[i].Type == 0) {P[i].LowestBHTimeBin = TIMEBINS;}
+#ifdef SINK_PARTICLES
+#ifdef SINK_WAKEUP_GAS
+	    if(P[i].Type == 0) {P[i].LowestSinkTimeBin = TIMEBINS;}
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-        P[i].BH_Ngb_Flag = 0;
+        P[i].Sink_Ngb_Flag = 0;
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-	    P[i].min_bh_approach_time = P[i].min_bh_freefall_time = MAX_REAL_NUMBER;
+	    P[i].Min_Sink_Approach_Time = P[i].Min_Sink_Freefall_time = MAX_REAL_NUMBER;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
 	    P[i].SuperTimestepFlag = 0;
 #endif
@@ -457,53 +453,53 @@ void init(void)
             count_holes++;
             if(RestartFlag == 0)
             {
-                P[i].BH_Mass = All.SeedBlackHoleMass;
+                P[i].Sink_Mass = All.SeedSinkMass;
                 P[i].Sink_Formation_Mass = P[i].Mass;
-#ifdef BH_RIAF_SUBEDDINGTON_MODEL
-                P[i].BH_Mdot_ROI = 0;
-                P[i].BH_ROI = 0;
+#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+                P[i].Sink_Mdot_ROI = 0;
+                P[i].Sink_ROI = 0;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                P[i].BH_Mass = P[i].Mass;
+                P[i].Sink_Mass = P[i].Mass;
 #endif
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION // properly initialize luminosity
                 singlestar_subgrid_protostellar_evolution_update_track(i,0,0);
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-                P[i].ZAMS_Mass = P[i].BH_Mass;
-                calculate_individual_stellar_luminosity(P[i].BH_Mdot, P[i].BH_Mass, i);
+                P[i].ZAMS_Mass = P[i].Sink_Mass;
+                calculate_individual_stellar_luminosity(P[i].Sink_Mdot, P[i].Sink_Mass, i);
 #endif                
 #endif
 #ifdef GRAIN_FLUID
-                P[i].BH_Dust_Mass = 0;
+                P[i].Sink_Dust_Mass = 0;
 #endif
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
                 P[i].SinkRadius = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * SinkParticle_GravityKernelRadius;
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-                P[i].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
+#ifdef SINK_ALPHADISK_ACCRETION
+                P[i].Sink_Mass_Reservoir = All.SeedReservoirMass;
 #endif
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM
-                double bh_mu=2*get_random_number(P[i].ID+3)-1, bh_phi=2*M_PI*get_random_number(P[i].ID+4), bh_sin=sqrt(1-bh_mu*bh_mu);
-                double spin_prefac = All.G * P[i].BH_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
-                P[i].BH_Specific_AngMom[0]=spin_prefac*bh_sin*cos(bh_phi); P[i].BH_Specific_AngMom[1]=spin_prefac*bh_sin*sin(bh_phi); P[i].BH_Specific_AngMom[2]=spin_prefac*bh_mu;
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
+                double sink_mu=2*get_random_number(P[i].ID+3)-1, sink_phi=2*M_PI*get_random_number(P[i].ID+4), sink_sin=sqrt(1-sink_mu*sink_mu);
+                double spin_prefac = All.G * P[i].Sink_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
+                P[i].Sink_Specific_AngMom[0]=spin_prefac*sink_sin*cos(sink_phi); P[i].Sink_Specific_AngMom[1]=spin_prefac*sink_sin*sin(sink_phi); P[i].Sink_Specific_AngMom[2]=spin_prefac*sink_mu;
 #endif
-#ifdef BH_COUNTPROGS
-                P[i].BH_CountProgs = 1;
+#ifdef SINK_COUNTPROGS
+                P[i].Sink_CountProgs = 1;
 #endif
             }
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
             P[i].dt_since_last_gas_search = 0;
             P[i].do_gas_search_this_timestep = 1;
 #endif 
-#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
-            if(RestartFlag != 1) {P[i].BH_AccretionDeficit = 0;}
+#if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
+            if(RestartFlag != 1) {P[i].Sink_AccretionDeficit = 0;}
 #endif
         }
 #endif
     }
 
-#ifdef BLACK_HOLES
-    MPI_Allreduce(&count_holes, &All.TotBHs, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#ifdef SINK_PARTICLES
+    MPI_Allreduce(&count_holes, &All.TotSinks, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
     for(i = 0; i < TIMEBINS; i++) {TimeBinActive[i] = 1;}
@@ -540,10 +536,10 @@ void init(void)
         for(j=0;j<3;j++) CellP[i].GravWorkTerm[j] = 0;
 #endif
 
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
         P[i].AGS_zeta = 0;
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P[i].AGS_Hsml = P[i].Hsml;} else {P[i].AGS_Hsml = All.ForceSoftening[P[i].Type];}
+        if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P[i].AGS_KernelRadius = P[i].KernelRadius;} else {P[i].AGS_KernelRadius = All.ForceSoftening[P[i].Type];}
 #endif
 #endif
 
@@ -591,8 +587,8 @@ void init(void)
 
         if(RestartFlag == 0)
         {
-#ifndef INPUT_READ_HSML
-            P[i].Hsml = 0;
+#ifndef INPUT_READ_KERNELRADIUS
+            P[i].KernelRadius = 0;
 #endif
             CellP[i].Density = -1;
 #ifdef COOLING
@@ -610,7 +606,7 @@ void init(void)
 #ifdef CHIMES_STELLAR_FLUXES
 	    int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {CellP[i].Chimes_fluxPhotIon[kc] = 0; CellP[i].Chimes_G0[kc] = 0;}
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
             CellP[i].Rad_Flux_AGN = 0;
 #endif
         }
@@ -637,8 +633,8 @@ void init(void)
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
         if(RestartFlag != 1) {CellP[i].DtCREgyNewInjectionFromShocks = 0;}
 #endif
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-        if(RestartFlag != 1) {CellP[i].BH_CR_Energy_Available_For_Injection = 0;}
+#if defined(SINK_CR_INJECTION_AT_TERMINATION)
+        if(RestartFlag != 1) {CellP[i].Sink_CR_Energy_Available_For_Injection = 0;}
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
         //if(RestartFlag == 0) {for(j=0;j<N_CR_PARTICLE_BINS;j++) {CellP[i].CosmicRay_PwrLaw_Slopes_in_Bin[j] = -2.5; CellP[i].CosmicRay_Number_in_Bin[j] = 0; CellP[i].DtCosmicRay_Number_in_Bin[j] = 0;}} // initialize a flat spectrum in each bin
@@ -704,15 +700,15 @@ void init(void)
 #ifdef DIVBCLEANING_DEDNER
         CellP[i].Phi = CellP[i].PhiPred = CellP[i].DtPhi = 0;
 #endif
-#ifdef BH_RETURN_BFLUX
+#ifdef SINK_RETURN_BFLUX
         P[i].B[0] = P[i].B[1] = P[i].B[2] = 0;
 #endif
 #endif
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
         CellP[i].alpha = 0.0;
 #endif
-#if defined(BH_THERMALFEEDBACK)
-        CellP[i].Injected_BH_Energy = 0;
+#if defined(SINK_THERMALFEEDBACK)
+        CellP[i].Injected_Sink_Energy = 0;
 #endif
     }
 
@@ -767,7 +763,7 @@ void init(void)
     Flag_FullStep = 1;		/* to ensure that Peano-Hilbert order is done */
     TreeReconstructFlag = 1;
 
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
     Max_Unspawned_MassUnits_fromSink = 0;
 #endif
 
@@ -799,7 +795,7 @@ void init(void)
 
     if(RestartFlag != 3 && RestartFlag != 5) {setup_smoothinglengths();}
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     if(RestartFlag != 3 && RestartFlag != 5) {ags_setup_smoothinglengths();}
 #endif
 #ifdef CBE_INTEGRATOR
@@ -816,7 +812,7 @@ void init(void)
     for(i = 0; i < NumPart; i++) {P[i].IMF_Mturnover = 2.0;} // reset to normal IMF
 #endif
 
-#if defined(WAKEUP) && defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if defined(WAKEUP) && defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
     for(i=0;i<NumPart;i++) {P[i].wakeup=0;}
 #endif
 
@@ -873,7 +869,7 @@ void init(void)
         CellP[i].MassTrue = P[i].Mass;
         for(j=0;j<3;j++) CellP[i].GravWorkTerm[j] = 0;
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
         P[i].AGS_zeta = 0;
 #endif
 #ifdef WAKEUP
@@ -889,7 +885,7 @@ void init(void)
         CellP[i].Rad_Flux_UV = 0;
         CellP[i].Rad_Flux_EUV = 0;
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
         CellP[i].Rad_Flux_AGN = 0;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
@@ -993,10 +989,10 @@ void init(void)
 
     if(RestartFlag == 3)
     {
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-        if(ThisTask == 0) {printf("*AGS_HSML_CALCULATION_IS_ACTIVE* Computation of softening lengths... \n");}
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
+        if(ThisTask == 0) {printf("*AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE* Computation of softening lengths... \n");}
         ags_setup_smoothinglengths();
-        if(ThisTask == 0) {printf("*AGS_HSML_CALCULATION_IS_ACTIVE* Computation of softening lengths done. \n");}
+        if(ThisTask == 0) {printf("*AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE* Computation of softening lengths done. \n");}
 #endif
 
 #ifdef FOF
@@ -1129,7 +1125,7 @@ void check_omega(void)
 void setup_smoothinglengths(void)
 {
     int i, no, p;
-    if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc Hsml for snapshot restarts //
+    if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc KernelRadius for snapshot restarts //
     {
 #if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(GRAIN_FLUID)
         for(i = 0; i < NumPart; i++)
@@ -1145,42 +1141,42 @@ void setup_smoothinglengths(void)
                     no = p;
                 }
 
-                if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved Hsml of the gas as initial guess //
+                if((RestartFlag == 0)||(P[i].Type != 0)) // if Restartflag==2, use the saved KernelRadius of the gas as initial guess //
                 {
-#ifndef INPUT_READ_HSML
+#ifndef INPUT_READ_KERNELRADIUS
 #if NUMDIMS == 3
-                    P[i].Hsml = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
+                    P[i].KernelRadius = pow(3.0 / (4 * M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.333333) * Nodes[no].len;
 #endif
 #if NUMDIMS == 2
-                    P[i].Hsml = pow(1.0 / (M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.5) * Nodes[no].len;
+                    P[i].KernelRadius = pow(1.0 / (M_PI) * All.DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 0.5) * Nodes[no].len;
 #endif
 #if NUMDIMS == 1
-                    P[i].Hsml = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
+                    P[i].KernelRadius = All.DesNumNgb * (P[i].Mass / Nodes[no].u.d.mass) * Nodes[no].len;
 #endif
 #ifndef SELFGRAVITY_OFF
                     double soft = All.ForceSoftening[P[i].Type];
-                    if(soft != 0) {if((P[i].Hsml>100.*soft)||(P[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].Hsml = soft;}}
+                    if(soft != 0) {if((P[i].KernelRadius>100.*soft)||(P[i].KernelRadius<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].KernelRadius = soft;}}
 #else
                     if((Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {
 #if (defined(BOX_PERIODIC) || defined(BOX_SHEARING) || defined(BOX_DEFINED_SPECIAL_XYZ_BOUNDARY_CONDITIONS_ARE_ACTIVE) || defined(BOX_LONG_X) || defined(BOX_LONG_Y) || defined(BOX_LONG_Z))
-                        P[i].Hsml = 0.05 * All.BoxSize;
+                        P[i].KernelRadius = 0.05 * All.BoxSize;
 #else
-                        P[i].Hsml = 1;
+                        P[i].KernelRadius = 1;
 #endif
                     }
 #endif
-#endif // INPUT_READ_HSML
+#endif // INPUT_READ_KERNELRADIUS
                 } // closes if((RestartFlag == 0)||(P[i].Type != 0))
             }
     }
-    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {P[i].Hsml *= pow(All.OmegaMatter/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for Hsml */
+    if((RestartFlag==0 || RestartFlag==2) && All.ComovingIntegrationOn) {for(i=0;i<N_gas;i++) {P[i].KernelRadius *= pow(All.OmegaMatter/All.OmegaBaryon,1./NUMDIMS);}} /* correct (crudely) for baryon fraction, used in the estimate above for KernelRadius */
 
-#ifdef BLACK_HOLES
-    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {P[i].Hsml = All.ForceSoftening[P[i].Type];}}}
+#ifdef SINK_PARTICLES
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {if(P[i].Type == 5) {P[i].KernelRadius = All.ForceSoftening[P[i].Type];}}}
 #endif
 
 #ifdef GRAIN_FLUID
-    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {P[i].Hsml *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
+    if(RestartFlag==0 || RestartFlag==2) {for(i=0;i<NumPart;i++) {P[i].KernelRadius *= pow(2.,1./NUMDIMS);}} /* very rough correction assuming comparable numbers of dust and gas elements */
 #endif
 
     density();
@@ -1211,7 +1207,7 @@ void assign_unique_ids(void)
 }
 
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void)
 {
     int i, no, p;
@@ -1232,17 +1228,17 @@ void ags_setup_smoothinglengths(void)
                         if(p < 0) break;
                         no = p;
                     }
-                    P[i].AGS_Hsml = 2. * pow(1.0/VOLUME_NORM_COEFF_FOR_NDIMS * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                    P[i].AGS_KernelRadius = 2. * pow(1.0/VOLUME_NORM_COEFF_FOR_NDIMS * All.AGS_DesNumNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                     double soft = All.ForceSoftening[P[i].Type];
                     if(soft != 0)
                     {
-                        if((P[i].AGS_Hsml>1e6*soft)||(P[i].AGS_Hsml<=1e-3*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].AGS_Hsml = 1.e2*soft;} /* random guess to get things started here, thats all */
+                        if((P[i].AGS_KernelRadius>1e6*soft)||(P[i].AGS_KernelRadius<=1e-3*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {P[i].AGS_KernelRadius = 1.e2*soft;} /* random guess to get things started here, thats all */
                     }
                 } else {
-                    P[i].AGS_Hsml = P[i].Hsml;
+                    P[i].AGS_KernelRadius = P[i].KernelRadius;
                 }
             } else {
-                P[i].AGS_Hsml = All.ForceSoftening[P[i].Type]; /* not AGS-active, use fixed softening */
+                P[i].AGS_KernelRadius = All.ForceSoftening[P[i].Type]; /* not AGS-active, use fixed softening */
             }
         }
     }
@@ -1251,7 +1247,7 @@ void ags_setup_smoothinglengths(void)
     do_dm_fuzzy_initialization();
 #endif
 }
-#endif // AGS_HSML_CALCULATION_IS_ACTIVE
+#endif // AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 
 
 #if defined(GALSF_SUBGRID_WINDS)
@@ -1272,9 +1268,9 @@ void disp_setup_smoothinglengths(void)
                     if(p < 0) {break;}
                     no = p;
                 }
-                CellP[i].HsmlDM = pow(1.0/VOLUME_NORM_COEFF_FOR_NDIMS * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
+                CellP[i].KernelRadiusDM = pow(1.0/VOLUME_NORM_COEFF_FOR_NDIMS * 2.0 * 64 * P[i].Mass / Nodes[no].u.d.mass, 1.0/NUMDIMS) * Nodes[no].len;
                 double soft = All.ForceSoftening[P[i].Type];
-                if(soft != 0) {if((CellP[i].HsmlDM >1000.*soft)||(P[i].Hsml<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {CellP[i].HsmlDM = soft;}}
+                if(soft != 0) {if((CellP[i].KernelRadiusDM >1000.*soft)||(P[i].KernelRadius<=0.01*soft)||(Nodes[no].u.d.mass<=0)||(Nodes[no].len<=0)) {CellP[i].KernelRadiusDM = soft;}}
             }
         }
     }

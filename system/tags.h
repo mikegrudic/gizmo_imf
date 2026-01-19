@@ -37,15 +37,15 @@
 #define TAG_DENS_B        36
 #define TAG_LOCALN        37
 
-#define TAG_BH_A          38
-#define TAG_BH_B          39
-#define TAG_BH_C          40
-#define TAG_BH_D          41
-#define TAG_BH_E          42
-#define TAG_BH_F          43
-#define TAG_BH_G          44
-#define TAG_BH_H          45
-#define TAG_BH_I          46
+#define TAG_SINK_A          38
+#define TAG_SINK_B          39
+#define TAG_SINK_C          40
+#define TAG_SINK_D          41
+#define TAG_SINK_E          42
+#define TAG_SINK_F          43
+#define TAG_SINK_G          44
+#define TAG_SINK_H          45
+#define TAG_SINK_I          46
 
 #define TAG_FOF_A         47
 #define TAG_FOF_B         48
@@ -96,9 +96,9 @@
 
 #define TAG_PDATA_STARS   93
 #define TAG_KEY_STARS     94
-#define TAG_PDATA_BHS     95
-#define TAG_KEY_BHS       96
-#define TAG_BHDATA        97
+#define TAG_PDATA_SINKS     95
+#define TAG_KEY_SINKS       96
+#define TAG_SINKDATA        97
 
 #define TAG_DYNSMAGLOOP_A 98
 #define TAG_DYNSMAGLOOP_B 99

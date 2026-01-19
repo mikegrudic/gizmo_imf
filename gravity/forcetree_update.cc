@@ -335,7 +335,7 @@ void force_drift_node(int no, integertime time1)
 
 
 /*! This function updates the hmax-values in tree nodes that hold gas cells. These values are needed to find all neighbors in the
- *  hydro-force computation.  Since the Hsml-values are potentially changed in the fluid-density computation, force_update_hmax() should be carried
+ *  hydro-force computation.  Since the KernelRadius-values are potentially changed in the fluid-density computation, force_update_hmax() should be carried
  *  out just before the hydrodynamical forces are computed, i.e. after density(). */
 void force_update_hmax(void)
 {
@@ -366,9 +366,9 @@ void force_update_hmax(void)
         {
             force_drift_node(no, All.Ti_Current);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-            double htmp = DMIN(P[i].AGS_Hsml, All.MaxHsml);
+            double htmp = DMIN(P[i].AGS_KernelRadius, All.MaxKernelRadius);
 #else
-            double htmp = DMIN(P[i].Hsml, All.MaxHsml);
+            double htmp = DMIN(P[i].KernelRadius, All.MaxKernelRadius);
 #endif
             if(htmp > Extnodes[no].hmax || divVel > Extnodes[no].divVmax)
             {

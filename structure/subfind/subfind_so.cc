@@ -545,7 +545,7 @@ int Subfind_RvirMvir_evaluate(int target, int mode, int *nexport, int *nsend_loc
 }
 
 
-double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
 				  int mode, int *nexport, int *nsend_local)
 {
   int no, p, task, nexport_save;
@@ -566,7 +566,7 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat hsml, int ta
 	  p = no;
 	  no = Nextnode[no];
 
-        dist = hsml; double xtmp; xtmp=0;
+        dist = rkern; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
@@ -638,7 +638,7 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat hsml, int ta
 	    }
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
-        dist = hsml + 0.5 * current->len; double xtmp; xtmp=0;
+        dist = rkern + 0.5 * current->len; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
@@ -656,7 +656,7 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat hsml, int ta
 	  if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))) == 0)	/* only use fully local nodes */
 	    {
 	      /* test whether the node is contained within the sphere */
-	      dist = hsml - CUBE_EDGEFACTOR_2 * current->len;
+	      dist = rkern - CUBE_EDGEFACTOR_2 * current->len;
 	      if(dist > 0)
 		if(r2 < dist * dist)
 		  {

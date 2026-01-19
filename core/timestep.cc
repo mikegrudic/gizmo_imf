@@ -157,17 +157,17 @@ void find_timesteps(void)
 #endif
             }
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             if(P[i].Type == 5)
             {
-                TimeBin_BH_mass[binold] -= P[i].BH_Mass;
-                TimeBin_BH_dynamicalmass[binold] -= P[i].Mass;
-                TimeBin_BH_Mdot[binold] -= P[i].BH_Mdot;
-                if(P[i].BH_Mass > 0) {TimeBin_BH_Medd[binold] -= P[i].BH_Mdot / P[i].BH_Mass;}
-                TimeBin_BH_mass[bin] += P[i].BH_Mass;
-                TimeBin_BH_dynamicalmass[bin] += P[i].Mass;
-                TimeBin_BH_Mdot[bin] += P[i].BH_Mdot;
-                if(P[i].BH_Mass > 0) {TimeBin_BH_Medd[bin] += P[i].BH_Mdot / P[i].BH_Mass;}
+                TimeBin_Sink_mass[binold] -= P[i].Sink_Mass;
+                TimeBin_Sink_dynamicalmass[binold] -= P[i].Mass;
+                TimeBin_Sink_Mdot[binold] -= P[i].Sink_Mdot;
+                if(P[i].Sink_Mass > 0) {TimeBin_Sink_Medd[binold] -= P[i].Sink_Mdot / P[i].Sink_Mass;}
+                TimeBin_Sink_mass[bin] += P[i].Sink_Mass;
+                TimeBin_Sink_dynamicalmass[bin] += P[i].Mass;
+                TimeBin_Sink_Mdot[bin] += P[i].Sink_Mdot;
+                if(P[i].Sink_Mass > 0) {TimeBin_Sink_Medd[bin] += P[i].Sink_Mdot / P[i].Sink_Mass;}
             }
 #endif
             prev = PrevInTimeBin[i];
@@ -204,14 +204,14 @@ void find_timesteps(void)
 #if defined(WAKEUP)
         P[i].dt_step = ti_step;
 #endif
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
         if(P[i].Type == 5){
             if(All.Ti_Current == 0) { // first timestep
                 P[i].dt_since_last_gas_search = GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin,i);
                 P[i].do_gas_search_this_timestep = 1;
             } else {
                 P[i].dt_since_last_gas_search += GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].TimeBin,i);
-                if(P[i].dt_since_last_gas_search > 0.49 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].BH_TimeBinGasNeighbor,i)){
+                if(P[i].dt_since_last_gas_search > 0.49 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[i].Sink_TimeBinGasNeighbor,i)){
                     P[i].do_gas_search_this_timestep = 1;
                 } else {P[i].do_gas_search_this_timestep = 0;}
             }
@@ -228,20 +228,20 @@ void find_timesteps(void)
     }
 
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    MPI_Allreduce(xyz_local, xyz_global, 3*SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the new position of the SMBH particle
+    MPI_Allreduce(xyz_local, xyz_global, 3*SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the new position of the special particle
     double mass_to_sum_local[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM],  mass_to_sum_global[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM]={0}; // define mass variables for passing
-    int k; for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++) {mass_to_sum_local[k] = All.Mass_Accreted_By_SpecialSMBHParticle[k];}
-    MPI_Allreduce(mass_to_sum_local, mass_to_sum_global, SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the mass update of the SMBH particle
+    int k; for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++) {mass_to_sum_local[k] = All.Mass_Accreted_By_SpecialParticle[k];}
+    MPI_Allreduce(mass_to_sum_local, mass_to_sum_global, SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); // broadcast the mass update of the special particle
     for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++)
     {
         if(xyz_global[k][0] > -1.e10) { // this indicates that the special particle was active on one task
-            All.SMBH_SpecialParticle_Position_ForRefinement[k][0] = xyz_global[k][0]; All.SMBH_SpecialParticle_Position_ForRefinement[k][1] = xyz_global[k][1]; All.SMBH_SpecialParticle_Position_ForRefinement[k][2] = xyz_global[k][2]; // variable was updated, update global variable as needed
+            All.SpecialParticle_Position_ForRefinement[k][0] = xyz_global[k][0]; All.SpecialParticle_Position_ForRefinement[k][1] = xyz_global[k][1]; All.SpecialParticle_Position_ForRefinement[k][2] = xyz_global[k][2]; // variable was updated, update global variable as needed
             if(special_particle_active_with_this_index[k]>=0) {P[special_particle_active_with_this_index[k]].Mass += mass_to_sum_global[k]; special_particle_mass_local[k] += mass_to_sum_global[k];} // the special particle lives here with this id, so we can update it with this mass
-            All.Mass_Accreted_By_SpecialSMBHParticle[k] = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
+            All.Mass_Accreted_By_SpecialParticle[k] = 0; // reset this variable on all processors because we have added it now to the special particle, to conserve mass properly
         }
     }
-    MPI_Allreduce(special_particle_mass_local, special_particle_mass_global, SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the mass of the SMBH particle
-    for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++) {if(special_particle_mass_global[k] > 0) {All.Mass_of_SpecialSMBHParticle[k] = special_particle_mass_global[k];}} // update the mass of the SMBH particle for everyone to use
+    MPI_Allreduce(special_particle_mass_local, special_particle_mass_global, SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); // broadcast the mass of the special particle
+    for(k=0;k<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;k++) {if(special_particle_mass_global[k] > 0) {All.Mass_of_SpecialParticle[k] = special_particle_mass_global[k];}} // update the mass of the special particle for everyone to use
     // ???
 #endif
 
@@ -295,7 +295,7 @@ integertime get_timestep(int p,		/*!< particle index */
     if( (P[p].Type == 5) && P[p].is_in_a_binary ) // candidate: need to decide whether to use super timestepping for binaries
     {
 #if (SINGLE_STAR_TIMESTEPPING == 1) // to be conservative, use the semimajor axis, ie. the internal timescale is the orbital period
-	    double dt_bin = P[p].min_bh_t_orbital / (2.*M_PI); // sqrt(a^3/GM) for binary
+	    double dt_bin = P[p].Min_Sink_OrbitalTime / (2.*M_PI); // sqrt(a^3/GM) for binary
 	    if(0.03*P[p].COM_dt_tidal>dt_bin) {P[p].SuperTimestepFlag=2;
 	    } // external timestep is appropriately larger than 'internal' timestep, so use super-timestepping routine
 #else // to be more aggressive, use the instantaneous orbital timescale, ie. freefall time from the CURRENT orbital separation. This lets us super step an orbit on the close passages, even when it is affected by tides at apopase
@@ -392,9 +392,9 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         if((All.ComovingIntegrationOn)) // sort of a hack here, but acceptable in applications
         {
-            double h_min = All.ForceSoftening[P[p].Type], ags_h = DMIN(DMAX(P[p].Hsml, h_min), 10.*h_min);
+            double h_min = All.ForceSoftening[P[p].Type], ags_h = DMIN(DMAX(P[p].KernelRadius, h_min), 10.*h_min);
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            ags_h = DMIN(DMAX(P[p].AGS_Hsml , DMAX(P[p].Hsml, h_min)) , DMAX(100.*h_min, 10.*P[p].AGS_Hsml));
+            ags_h = DMIN(DMAX(P[p].AGS_KernelRadius , DMAX(P[p].KernelRadius, h_min)) , DMAX(100.*h_min, 10.*P[p].AGS_KernelRadius));
 #endif
             dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime  * KERNEL_CORE_SIZE * ags_h / ac);
         }
@@ -438,7 +438,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_TIMESTEPPING // this ensures that binaries advance in lock-step, which gives superior conservation
     if(P[p].Type == 5)
     {
-        double dt_2body = sqrt(2*All.ErrTolIntAccuracy) * 0.3 / (1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+        double dt_2body = sqrt(2*All.ErrTolIntAccuracy) * 0.3 / (1./P[p].Min_Sink_Approach_Time + 1./P[p].Min_Sink_Freefall_time); // timestep is harmonic mean of freefall and approach time
 #ifdef HERMITE_INTEGRATION
         if(eligible_for_hermite(p)) dt_2body /= 0.3;
 #endif
@@ -451,7 +451,7 @@ integertime get_timestep(int p,		/*!< particle index */
             double r_effective = KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER * ForceSoftening_KernelRadius(p); // plummer-equivalent softening
 	        dr += r_effective*r_effective; // add in quadrature for simple softening estimate
             dr=sqrt(dr); if(dv>0) {dv=sqrt(dv);} else {dv=0;}
-            double dt_2body_base = 1/(1./P[p].min_bh_approach_time + 1./P[p].min_bh_freefall_time); // timestep is harmonic mean of freefall and approach time
+            double dt_2body_base = 1/(1./P[p].Min_Sink_Approach_Time + 1./P[p].Min_Sink_Freefall_time); // timestep is harmonic mean of freefall and approach time
 	        binary_dt_2body = 1. / (dv / dr + sqrt(All.G * Mtot / (dr*dr*dr)));
 	        if(fabs(binary_dt_2body - dt_2body_base)/dt_2body_base < 1e-2)
 	        { // If consistent with the binary parameters, we choose a super-timestep that gives ~constant number of timesteps per orbit
@@ -466,7 +466,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     }
 #if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(SELFGRAVITY_OFF)
-    if(P[p].Type == 0) {dt = DMIN(dt, 0.5 * All.CourantFac * DMIN(P[p].min_bh_fb_time, P[p].min_bh_approach_time));}
+    if(P[p].Type == 0) {dt = DMIN(dt, 0.5 * All.CourantFac * DMIN(P[p].Min_Sink_FeedbackTime, P[p].Min_Sink_Approach_Time));}
 #endif    
 #endif // SINGLE_STAR_TIMESTEPPING
 
@@ -533,7 +533,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt_courant < dt) dt = dt_courant;
     }
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-    if(P[p].Type>-1) {double dt_inj = 0.1 * P[p].Hsml / C_LIGHT_CODE_REDUCED(p); if(P[p].Type==4) {dt_inj*=0.25;} if(dt_inj < dt) {dt = dt_inj;}}
+    if(P[p].Type>-1) {double dt_inj = 0.1 * P[p].KernelRadius / C_LIGHT_CODE_REDUCED(p); if(P[p].Type==4) {dt_inj*=0.25;} if(dt_inj < dt) {dt = dt_inj;}}
 #endif
 #endif
 
@@ -543,7 +543,7 @@ integertime get_timestep(int p,		/*!< particle index */
             csnd = 0.5 * CellP[p].MaxSignalVel * All.cf_afac3;
             double L_particle = Get_Particle_Size(p);
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
 	    if(P[p].ID == All.AGNWindID){dt_courant *= 0.5;} // be more careful if this is a spawned-in gas cell
 #endif			    
             if(dt_courant < dt) dt = dt_courant;
@@ -732,7 +732,7 @@ integertime get_timestep(int p,		/*!< particle index */
                     double radacc = return_flux_limiter(p,kf) * (sqrt(gradErad) / CellP[p].Density) / All.cf_atime; // radiation acceleration for a timestep criterion
                     if(gradErad > 0 && radacc > 0)
                     {
-                        double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(ForceSoftening_KernelRadius(p), P[p].Hsml) / radacc);
+                        double dt_radacc = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * KERNEL_CORE_SIZE * DMAX(ForceSoftening_KernelRadius(p), P[p].KernelRadius) / radacc);
                         if(dt_radacc < dt_rad) {dt_rad = dt_radacc;}
                     }
 #endif
@@ -745,7 +745,7 @@ integertime get_timestep(int p,		/*!< particle index */
                 dt_courant = All.CourantFac * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED(p); /* courant-type criterion, using the reduced speed of light */
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
                 dt_courant = 0.4 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED(p); /* hacked here for starforge, where mike's experimentation suggests we can get away with a slightly larger courant factor. remains experimental. courant-type criterion, using the reduced speed of light - here we hardcode the most aggressive possible Courant factor as an optimization */
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
                 if((CellP[p].MaxSignalVel > 0.5*C_LIGHT_CODE_REDUCED(p)) || (P[p].ID == All.AGNWindID && P[p].Type == 0)) dt_courant *= 0.5; // be more careful if this is a jet cell or there are transluminal velocities
 #endif
 #endif                
@@ -944,9 +944,9 @@ integertime get_timestep(int p,		/*!< particle index */
             double p_target = 0.2; // desired maximum probability per timestep
             double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
 #ifdef GRAIN_COLLISIONS
-            double p_dt = prob_of_grain_interaction(return_grain_cross_section_per_unit_mass(p),P[p].Mass,0.,P[p].AGS_Hsml,dV,dt,p); // probability of interacting with another grain super-particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+            double p_dt = prob_of_grain_interaction(return_grain_cross_section_per_unit_mass(p),P[p].Mass,0.,P[p].AGS_KernelRadius,dV,dt,p); // probability of interacting with another grain super-particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
 #else
-            double p_dt = prob_of_interaction(P[p].Mass,0.,P[p].AGS_Hsml,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
+            double p_dt = prob_of_interaction(P[p].Mass,0.,P[p].AGS_KernelRadius,dV,dt); // probability of interacting with another DM particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
 #endif
             if(p_dt > p_target) {dt *= p_target / p_dt;}
         }
@@ -986,16 +986,16 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
     if(is_particle_a_special_zoom_target(p))
     {
-        double dt_smbh_max = 1000./UNIT_TIME_IN_YR; // set a maximum physical timestep to prevent this centering from jumping
-        if(dt > dt_smbh_max) {dt = dt_smbh_max;}
+        double dt_special_max = 1000./UNIT_TIME_IN_YR; // set a maximum physical timestep to prevent this centering from jumping
+        if(dt > dt_special_max) {dt = dt_special_max;}
     }
 #endif
     
     
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
 
-#ifdef BH_WAKEUP_GAS
-    if(P[p].Type == 0) {double dt_bh = 2.*GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].LowestBHTimeBin,p); if(dt>dt_bh) {dt=0.99*dt_bh; P[p].LowestBHTimeBin=TIMEBINS;}}
+#ifdef SINK_WAKEUP_GAS
+    if(P[p].Type == 0) {double dt_sink = 2.*GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].LowestSinkTimeBin,p); if(dt>dt_sink) {dt=0.99*dt_sink; P[p].LowestSinkTimeBin=TIMEBINS;}}
 #endif
 
     if(P[p].Type == 5)
@@ -1005,23 +1005,24 @@ integertime get_timestep(int p,		/*!< particle index */
 #else
       double dt_accr = All.MaxSizeTimestep;
 #endif
-        if(P[p].BH_Mdot > 0 && P[p].BH_Mass > 0 && All.Time > All.TimeBegin)
+        if(P[p].Sink_Mdot > 0 && P[p].Sink_Mass > 0 && All.Time > All.TimeBegin)
         {
-#if (defined(BH_GRAVCAPTURE_GAS) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-            /* really want prefactor to be ratio of median gas mass to bh mass */
-            dt_accr = 0.001 * DMAX(P[p].BH_Mass, All.MaxMassForParticleSplit) / P[p].BH_Mdot;
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK)
-            dt_accr *= DMAX(0.1, All.BAL_f_accretion);
+#if (defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+            /* really want prefactor to be ratio of median gas mass to sink mass */
+            dt_accr = 0.001 * DMAX(P[p].Sink_Mass, All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
+#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK)
+            dt_accr *= DMAX(0.1, All.Sink_accreted_fraction);
 #endif
 #else
-            dt_accr = 0.05 * DMAX(P[p].BH_Mass , All.MaxMassForParticleSplit) / P[p].BH_Mdot;
+            //dt_accr = 0.05 * DMAX(P[p].Sink_Mass , All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
+            dt_accr = 0.001 * DMIN(P[p].Sink_Mass, All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
 #endif
 #ifdef SINGLE_STAR_FB_JETS	    
-            dt_accr = DMIN(dt_accr, target_mass_for_wind_spawning(p) / P[p].BH_Mdot); 
+            dt_accr = DMIN(dt_accr, target_mass_for_wind_spawning(p) / P[p].Sink_Mdot); 
 #endif
-        } // if(P[p].BH_Mdot > 0 && P[p].BH_Mass > 0)
-#ifdef BH_SEED_GROWTH_TESTS
-        double dt_evol = 1.e4 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
+        } // if(P[p].Sink_Mdot > 0 && P[p].Sink_Mass > 0)
+#if defined(SINK_SEED_GROWTH_TESTS) || defined(FIRE_BHS)
+        double dt_evol = 4.2e5 / UNIT_TIME_IN_YR; // totally arbitrary hard-coding here //
 #ifdef TURB_DRIVING
         if(dt_evol > 1.e-3*st_return_mode_correlation_time()) {dt_evol=1.e-3*st_return_mode_correlation_time();}
 #endif
@@ -1029,25 +1030,25 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         if(dt_accr > 0 && dt_accr < dt) {dt = dt_accr;}
 
-        double dt_ngbs = 4.1 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].BH_TimeBinGasNeighbor,p); /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of BH c-o-m, which is important for single-sink sims */
+        double dt_ngbs = 4.1 * GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].Sink_TimeBinGasNeighbor,p); /* standard wakeup-type threshold: use this by default here, unless dynamical interaction important (e.g. back-rx term from oscillation of sink c-o-m, which is important for single-sink sims */
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
 	    if(P[p].DensAroundStar > 0)
 	    {
-            double eps = DMAX( KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), P[p].BH_dr_to_NearestGasNeighbor);
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+            double eps = DMAX( KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), P[p].Sink_dr_to_NearestGasNeighbor);
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[p].SinkRadius);
 #endif
             if(eps < MAX_REAL_NUMBER) {eps = DMAX(Get_Particle_Size(p), eps);} else {eps = Get_Particle_Size(p);}
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
-            eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_Hsml);
+            eps = DMAX(eps, KERNEL_CORE_SIZE*P[p].AGS_KernelRadius);
 #endif
             double dt_ff = sqrt(2*All.ErrTolIntAccuracy * pow(eps*All.cf_atime,3) / (All.G * P[p].Mass)); // fraction of the freefall time of the nearest gas particle from rest
             if(dt > dt_ff && dt_ff > 0) {dt = 1.01 * dt_ff;}
 
             double L_particle = Get_Particle_Size(p);
-            double vsig = P[p].BH_SurroundingGasVel;
+            double vsig = P[p].Sink_SurroundingGasVel;
 #if defined(SINGLE_STAR_FB_TIMESTEPLIMIT) && !defined(NOGRAVITY)
             vsig += P[p].MaxFeedbackVel;
 #endif                        
@@ -1071,9 +1072,9 @@ integertime get_timestep(int p,		/*!< particle index */
             }}
 #endif
 #ifdef SINGLE_STAR_FB_SNE
-        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].BH_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
-            double eps = DMIN(KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), P[p].Hsml);
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+        if ( (P[p].ProtoStellarStage == 6) && ( (P[p].Sink_Mass > 0) || (P[p].unspawned_wind_mass > 0) ) ) { //Star going supernova, still has mass to eject
+            double eps = DMIN(KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), P[p].KernelRadius);
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
             eps = DMAX(eps, P[p].SinkRadius);
 #endif
             double t_clear=eps/single_star_SN_velocity(p);
@@ -1083,10 +1084,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
     } // if(P[p].Type == 5)
 
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
-    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && CellP[p].IniDen<0)) {if(dt>All.BH_spawn_rinj/All.BAL_v_outflow && All.BH_spawn_rinj>0 && All.BAL_v_outflow>0) {dt=All.BH_spawn_rinj/All.BAL_v_outflow;}}
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
+    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && CellP[p].IniDen<0)) {if(dt>All.Sink_spawn_injectionradius/All.Sink_outflow_velocity && All.Sink_spawn_injectionradius>0 && All.Sink_outflow_velocity>0) {dt=All.Sink_spawn_injectionradius/All.Sink_outflow_velocity;}}
 #endif
-#endif // BLACK_HOLES
+#endif // SINK_PARTICLES
     
 
 
@@ -1118,10 +1119,10 @@ integertime get_timestep(int p,		/*!< particle index */
 #ifdef RT_RAD_PRESSURE_OUTPUT
             arad = sqrt(CellP[p].Rad_Accel[0]*CellP[p].Rad_Accel[0] + CellP[p].Rad_Accel[1]*CellP[p].Rad_Accel[1] + CellP[p].Rad_Accel[2]*CellP[p].Rad_Accel[2]);
 #endif
-            PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_gravTree=%g accel_gravPM=%g accel_hydro=%g accel_rad=%g accel_turb=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n Hsml=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
+            PRINT_WARNING("\n Cell-ID=%llu  dt_desired=%g dt_Courant=%g dt_Accel=%g\n accel_tot=%g accel_gravTree=%g accel_gravPM=%g accel_hydro=%g accel_rad=%g accel_turb=%g Pos_xyz=(%g|%g|%g) Vel_xyz=(%g|%g|%g)\n KernelRadius=%g Density=%g InternalEnergy=%g dtInternalEnergy=%g divV=%g Pressure=%g Cs_Eff=%g vAlfven=%g f_ion=%g\n csnd_for_signalspeed=%g eps_forcesoftening=%g mass=%g type=%d condition_number=%g Nngb=%g\n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g\n",
                           (unsigned long long) P[p].ID, dt, dt_courant*All.cf_hubble_a, sqrt(2*All.ErrTolIntAccuracy*All.cf_atime*ForceSoftening_KernelRadius(p) / ac)*All.cf_hubble_a,
                           ac, agrav, agrav_pm, ahydro, arad, aturb, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0]/All.cf_atime, P[p].Vel[1]/All.cf_atime, P[p].Vel[2]/All.cf_atime,
-                          P[p].Hsml*All.cf_atime, CellP[p].Density*All.cf_a3inv, CellP[p].InternalEnergy, CellP[p].DtInternalEnergy, P[p].Particle_DivVel*All.cf_a2inv,
+                          P[p].KernelRadius*All.cf_atime, CellP[p].Density*All.cf_a3inv, CellP[p].InternalEnergy, CellP[p].DtInternalEnergy, P[p].Particle_DivVel*All.cf_a2inv,
                           CellP[p].Pressure*All.cf_a3inv, Get_Gas_effective_soundspeed_i(p), Get_Gas_Alfven_speed_i(p), Get_Gas_Ionized_Fraction(p),
                           csnd, ForceSoftening_KernelRadius(p)*All.cf_atime, P[p].Mass, P[p].Type, CellP[p].ConditionNumber, P[p].NumNgb,
                           CellP[p].NV_T[0][0],CellP[p].NV_T[0][1],CellP[p].NV_T[0][2],CellP[p].NV_T[1][0],CellP[p].NV_T[1][1],CellP[p].NV_T[1][2],CellP[p].NV_T[2][0],CellP[p].NV_T[2][1],CellP[p].NV_T[2][2]);
@@ -1209,7 +1210,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         v_sum[4] = v_sum[0];
         count_sum[4] = count_sum[0];
         min_mass[0] = min_mass[4] = (mean_mass[0] + mean_mass[4]) / count_sum[0];
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
         v_sum[0] += v_sum[5];
         count_sum[0] += count_sum[5];
         v_sum[5] = v_sum[0];
@@ -1237,7 +1238,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
                 else
                     dmean = pow(min_mass[type] / ((All.OmegaMatter - All.OmegaBaryon) * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
                 if(type == 5) {dmean = pow(min_mass[type] / (All.OmegaBaryon * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G)), 1.0 / 3);}
 #endif
                 dt = All.MaxRMSDisplacementFac * hfac * dmean / sqrt(v_sum[type] / count_sum[type]);
@@ -1325,7 +1326,7 @@ void process_wake_ups(void)
 	for(i = 0; i < NumPart; i++)
 	{
 	    if(!P[i].wakeup) {continue;}
-#if !defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if !defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
 	    if(P[i].Type != 0) {continue;} // only gas particles can be awakened
 #endif
 	    if(P[i].Mass <= 0) {continue;}

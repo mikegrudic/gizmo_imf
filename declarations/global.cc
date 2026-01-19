@@ -187,7 +187,7 @@ double return_timestep_dilation_factor(int i, int mode)
     double a = 1;
     
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
-    double r = P[i].min_dist_to_bh;
+    double r = P[i].Min_Distance_to_Sink;
     if(P[i].Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {r = 0;}
     double wt = weight_function_for_weighted_motion_smoothing(r, 0);
     if(wt > 0 && wt < 1) {a = 1. / wt;}
@@ -207,7 +207,7 @@ double return_timestep_dilation_factor(int i, int mode)
     for(j=0;j<SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM;j++)
     {
         double p0[3]={0}, dp[3]={0}, r2=0, pos_i[3];
-        for(k=0;k<3;k++) {p0[k] = All.SMBH_SpecialParticle_Position_ForRefinement[j][k];}
+        for(k=0;k<3;k++) {p0[k] = All.SpecialParticle_Position_ForRefinement[j][k];}
         if(mode==0) {for(k=0;k<3;k++) {pos_i[k]=P[i].Pos[k];}} /* the reference index refers to a real particle */
             else {for(k=0;k<3;k++) {pos_i[k]=Nodes[i].u.d.s[k];}} /* the reference index refers to a node or pseudo-particle */
         for(k=0;k<3;k++) {dp[k] = All.cf_atime*(pos_i[k] - p0[k]); r2 += dp[k]*dp[k];}

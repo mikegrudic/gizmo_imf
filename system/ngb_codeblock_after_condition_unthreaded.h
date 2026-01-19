@@ -2,7 +2,7 @@ if(P[p].Ti_current != ti_Current)
 drift_particle(p, ti_Current);
 
 #if (SEARCHBOTHWAYS==1)
-dist = DMAX(P[p].Hsml, hsml);
+dist = DMAX(P[p].KernelRadius, rkern);
 dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
 if(dx > dist) continue;
 dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
@@ -77,9 +77,9 @@ else
     
     double hmax = Extnodes[no].hmax;
 #if (SEARCHBOTHWAYS==1)
-    dist = DMAX(hmax, hsml) + 0.5 * current->len;
+    dist = DMAX(hmax, rkern) + 0.5 * current->len;
 #else
-    dist = hsml + 0.5 * current->len;
+    dist = rkern + 0.5 * current->len;
 #endif
     no = current->u.d.sibling;	// in case the node can be discarded //
 #include "ngb_codeblock_checknode.h"

@@ -244,36 +244,36 @@ void calculate_non_standard_physics(void)
 #endif
 
 
-#ifdef BLACK_HOLES /***** black hole accretion and feedback *****/
+#ifdef SINK_PARTICLES /***** sink accretion and feedback *****/
     CPU_Step[CPU_MISC] += measure_time();
 #ifdef GALSF_LIMIT_FBTIMESTEPS_FROM_BELOW
     if(All.Dt_Since_LastFBCalc_Gyr >= All.Dt_Min_Between_FBCalc_Gyr)
 #endif
     {
-        blackhole_accretion();
-#ifdef BH_WIND_SPAWN
+        sink_accretion();
+#ifdef SINK_WIND_SPAWN
         double Max_Unspawned_MassUnits_fromSink_global;
         MPI_Allreduce(&Max_Unspawned_MassUnits_fromSink, &Max_Unspawned_MassUnits_fromSink_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
         if(Max_Unspawned_MassUnits_fromSink_global > 1)
         {
-            spawn_bh_wind_feedback();
+            spawn_sink_wind_feedback();
             rearrange_particle_sequence();
             Max_Unspawned_MassUnits_fromSink=Max_Unspawned_MassUnits_fromSink_global=0.;
         }
 #if defined(SNE_NONSINK_SPAWN)
         {int i; for(i=0;i<NumPart;i++) {if(P[i].Type != 4) {continue;}
-            double n_unspawned = P[i].unspawned_wind_mass / ((BH_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
+            double n_unspawned = P[i].unspawned_wind_mass / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
             if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
         }}
 #endif
 #endif
-        MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_BLACKHOLES] += measure_time();
+        MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_SINKS] += measure_time();
     }
 #endif
 
 
-#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
-    if(All.Time >= All.TimeNextOnTheFlyFoF) {fof_fof(-1); /* this will find new black hole seed halos and/or assign host halo masses for the variable wind model */
+#if (defined(SINK_PARTICLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
+    if(All.Time >= All.TimeNextOnTheFlyFoF) {fof_fof(-1); /* this will find new sink seed halos and/or assign host halo masses for the variable wind model */
         if(All.ComovingIntegrationOn) {All.TimeNextOnTheFlyFoF *= All.TimeBetOnTheFlyFoF;} else {All.TimeNextOnTheFlyFoF += All.TimeBetOnTheFlyFoF;}}
 #endif
 
@@ -311,7 +311,7 @@ void calculate_non_standard_physics(void)
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_COOLINGSFR] += measure_time(); // finish time calc for SFR+cooling
 #endif
 
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
 #endif
 
@@ -815,7 +815,7 @@ void write_cpu_log(void)
 #if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL))
           "potentialeval %10.2f  %5.1f%%\n"
 #endif
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 	      "ags-nongas    %10.2f  %5.1f%%\n"
 	      "   agsdensity %10.2f  %5.1f%%\n"
 	      "   agscomm    %10.2f  %5.1f%%\n"
@@ -857,8 +857,8 @@ void write_cpu_log(void)
 #ifdef CHIMES
 	      " coolchmimbal %10.2f  %5.1f%%\n"
 #endif
-#ifdef BLACK_HOLES
-	      "blackholes    %10.2f  %5.1f%%\n"
+#ifdef SINK_PARTICLES
+	      "sinks    %10.2f  %5.1f%%\n"
 #endif
 #ifdef GRAIN_FLUID
           "grains        %10.2f  %5.1f%%\n"
@@ -892,7 +892,7 @@ void write_cpu_log(void)
 #if !defined(EVALPOTENTIAL) && (defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL))
     All.CPU_Sum[CPU_POTENTIAL], (All.CPU_Sum[CPU_POTENTIAL]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
     All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC],
               (All.CPU_Sum[CPU_AGSDENSCOMPUTE] + All.CPU_Sum[CPU_AGSDENSWAIT] + All.CPU_Sum[CPU_AGSDENSCOMM] + All.CPU_Sum[CPU_AGSDENSMISC]) / All.CPU_Sum[CPU_ALL] * 100,
     All.CPU_Sum[CPU_AGSDENSCOMPUTE], (All.CPU_Sum[CPU_AGSDENSCOMPUTE]) / All.CPU_Sum[CPU_ALL] * 100,
@@ -940,8 +940,8 @@ void write_cpu_log(void)
 #ifdef CHIMES
     All.CPU_Sum[CPU_COOLSFRIMBAL], (All.CPU_Sum[CPU_COOLSFRIMBAL]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
-#ifdef BLACK_HOLES
-    All.CPU_Sum[CPU_BLACKHOLES], (All.CPU_Sum[CPU_BLACKHOLES]) / All.CPU_Sum[CPU_ALL] * 100,
+#ifdef SINK_PARTICLES
+    All.CPU_Sum[CPU_SINKS], (All.CPU_Sum[CPU_SINKS]) / All.CPU_Sum[CPU_ALL] * 100,
 #endif
 #ifdef GRAIN_FLUID
     All.CPU_Sum[CPU_DRAGFORCE], (All.CPU_Sum[CPU_DRAGFORCE]) / All.CPU_Sum[CPU_ALL] * 100,

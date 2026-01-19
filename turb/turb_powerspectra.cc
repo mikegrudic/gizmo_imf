@@ -82,7 +82,7 @@ static float    *RandomValue;
 
 static fftw_complex *fft_of_field;
 
-static float *powerspec_turb_nearest_distance, *powerspec_turb_nearest_hsml;
+static float *powerspec_turb_nearest_distance, *powerspec_turb_nearest_rkern;
 
 #ifndef USE_FFTW3
 void powerspec_turb_calc_and_bin_spectrum(fftw_real *field, int flag);
@@ -94,7 +94,7 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_plan plan, fftw_real *field, int 
 static struct data_in
 {
   MyDouble Pos[3];
-  MyFloat Hsml;
+  MyFloat KernelRadius;
   int NodeList[NODELISTLENGTH];
 }
  *DataIn, *DataGet;
@@ -804,12 +804,12 @@ double powerspec_turb_obtain_fields(void)
   large_array_offset i, n, Ncount = ((large_array_offset)nslab_x) * (TURB_DRIVING_SPECTRUMGRID * TURB_DRIVING_SPECTRUMGRID);  /* number of grid points on the local slab */
 
   powerspec_turb_nearest_distance = (float *) mymalloc("powerspec_turb_nearest_distance", sizeof(float) * Ncount);
-  powerspec_turb_nearest_hsml = (float *) mymalloc("powerspec_turb_nearest_hsml", sizeof(float) * Ncount);
+  powerspec_turb_nearest_rkern = (float *) mymalloc("powerspec_turb_nearest_rkern", sizeof(float) * Ncount);
 
   for(n = 0; n < Ncount; n++)
     {
       powerspec_turb_nearest_distance[n] = 1.0e30;
-      powerspec_turb_nearest_hsml[n] = All.BoxSize / pow(All.TotN_gas, 1.0/3);
+      powerspec_turb_nearest_rkern[n] = All.BoxSize / pow(All.TotN_gas, 1.0/3);
     }
 
   /* allocate buffers to arrange communication */
@@ -884,7 +884,7 @@ double powerspec_turb_obtain_fields(void)
 	      DataIn[j].Pos[0] = x;
 	      DataIn[j].Pos[1] = y;
 	      DataIn[j].Pos[2] = z;
-	      DataIn[j].Hsml = powerspec_turb_nearest_hsml[place];
+	      DataIn[j].KernelRadius = powerspec_turb_nearest_rkern[place];
 
 	      memcpy(DataIn[j].NodeList,
 		     DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -1016,7 +1016,7 @@ double powerspec_turb_obtain_fields(void)
 	    {
 	      /* need to redo this particle */
 	      npleft++;
-	      powerspec_turb_nearest_hsml[i] *= 2.0;
+	      powerspec_turb_nearest_rkern[i] *= 2.0;
 /*
 	      if(iter >= MAXITER - 10)
 		{
@@ -1051,7 +1051,7 @@ double powerspec_turb_obtain_fields(void)
   myfree(DataIndexTable);
   myfree(Ngblist);
 
-  myfree(powerspec_turb_nearest_hsml);
+  myfree(powerspec_turb_nearest_rkern);
   myfree(powerspec_turb_nearest_distance);
 
     if(ThisTask == 0) {printf("done finding velocity field\n");}
@@ -1250,14 +1250,14 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
       pos[0] = x;
       pos[1] = y;
       pos[2] = z;
-      h = powerspec_turb_nearest_hsml[target];
+      h = powerspec_turb_nearest_rkern[target];
     }
   else
     {
       pos[0] = DataGet[target].Pos[0];
       pos[1] = DataGet[target].Pos[1];
       pos[2] = DataGet[target].Pos[2];
-      h = DataGet[target].Hsml;
+      h = DataGet[target].KernelRadius;
     }
 
   index = -1;

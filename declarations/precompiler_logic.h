@@ -60,8 +60,8 @@
 #if defined(SPECIAL_POINT_WEIGHTED_MOTION) && !defined(SPECIAL_POINT_MOTION)
 #define SPECIAL_POINT_MOTION (SPECIAL_POINT_WEIGHTED_MOTION) /* doesn't seem to be working ???? */
 #endif
-#if defined(SPECIAL_POINT_MOTION) && !defined(BH_CALC_DISTANCES)
-#define BH_CALC_DISTANCES
+#if defined(SPECIAL_POINT_MOTION) && !defined(SINK_CALC_DISTANCES)
+#define SINK_CALC_DISTANCES
 #endif
 
 #if defined(EOS_ELASTIC)
@@ -115,7 +115,7 @@
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(CBE_INTEGRATOR) || defined(DM_FUZZY) || defined(AGS_FACE_CALCULATION_IS_ACTIVE) || defined(DM_SIDM)
-#define AGS_HSML_CALCULATION_IS_ACTIVE
+#define AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -201,17 +201,17 @@
 #define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION (2) /* use tidal softening for dark matter, where its well-defined, more accurate subhalo/center/caustic evolution, minimal cost */
 #endif
 #if defined(FIRE_BHS)
-//#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
+//#define SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
 #define MAINTAIN_TREE_IN_REARRANGE /* optimization when using cell-spawning */
-//#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
+//#define SINK_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
 #endif
 /* more aggressive module experiments here, only enabled if this module is active and set to a numerical value >= 3 */
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_MODULE_TESTS)
 #if (FIRE_MODULE_TESTS >= 3) /* more aggressive module experiments here */
 #define GALSF_MERGER_STARCLUSTER_PARTICLES /* merge bound star clusters together into super-star-clusters. works, but bit more experimental, could in principle eat too much, so needs some testing */
 #if defined(FIRE_BHS)
-#define BH_EXCISION_NONGAS /* merge over-bound particles into BH [non-gas]. works but could be over-aggressive in some cases, needs bit more testing */
-#define BH_EXCISION_GAS /* merge over-bound particles into BH [gas]. works but could be over-aggressive in some cases, needs bit more testing */
+#define SINK_EXCISION_NONGAS /* merge over-bound particles into BH [non-gas]. works but could be over-aggressive in some cases, needs bit more testing */
+#define SINK_EXCISION_GAS /* merge over-bound particles into BH [gas]. works but could be over-aggressive in some cases, needs bit more testing */
 #endif
 #endif
 #endif
@@ -270,36 +270,36 @@
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
-#define BLACK_HOLES                 /* top-level flag */
-#define BH_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
-#define BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
-#define BH_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
-#if (defined(GALSF_SFR_IMF_SAMPLING) || (FIRE_PHYSICS_DEFAULTS > 2)) && !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE)
-#define BH_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
+#define SINK_PARTICLES                 /* top-level flag */
+#define SINK_SEED_FROM_LOCALGAS       /* seed BHs locally in SF-ing gas */
+#define SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA /* use the total surface-density criterion, not just gas */
+#define SINK_CALC_DISTANCES           /* use this for various checks, particularly in seeding */
+#if (defined(GALSF_SFR_IMF_SAMPLING) || (FIRE_PHYSICS_DEFAULTS > 2)) && !defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_DYNFRICTION_FROMTREE)
+#define SINK_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
 #endif
-#if !defined(BH_REPOSITION_ON_POTMIN) && !defined(BH_DYNFRICTION_FROMTREE) && !defined(BH_DYNFRICTION)
-#define BH_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#if !defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_DYNFRICTION_FROMTREE) && !defined(SINK_DYNFRICTION)
+#define SINK_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
 #endif
 #if (FIRE_PHYSICS_DEFAULTS > 2)
-#define BH_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
+#define SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
 #endif
-#define BH_SWALLOWGAS               /* allow BHs to accrete in principle */
-#if !defined(BH_GRAVACCRETION)
-#define BH_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
-#define BH_GRAVACCRETION_STELLARFBCORR          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
+#define SINK_SWALLOWGAS               /* allow BHs to accrete in principle */
+#if !defined(SINK_GRAVACCRETION)
+#define SINK_GRAVACCRETION 1          /* accrete following our standard gravitational torques model */
+#define SINK_GRAVACCRETION_STELLARFBCORR          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
 #endif
-#if !defined(BH_ALPHADISK_ACCRETION)
-#define BH_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
+#if !defined(SINK_ALPHADISK_ACCRETION)
+#define SINK_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
 #endif
-#define BH_PHOTONMOMENTUM           /* allow AGN radiation pressure */
-#define BH_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
-#define BH_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
-#define BH_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
-#if !defined(BH_WIND_CONTINUOUS)
-#define BH_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
+#define SINK_PHOTONMOMENTUM           /* allow AGN radiation pressure */
+#define SINK_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
+#define SINK_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
+#define SINK_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
+#if !defined(SINK_WIND_CONTINUOUS)
+#define SINK_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
 #endif
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
-#define BH_COSMIC_RAYS              /* allow CR injection from AGN */
+#define SINK_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
 #endif // FIRE_BHS
 
@@ -308,7 +308,7 @@
 #if (FIRE_PHYSICS_DEFAULTS == 3)
 #define PM_PLACEHIGHRESREGION 2 /* 2 -- if we want to have potentially resolved hyper-velocity stars/bhs/cells, need to avoid them restructuring the PMGRID completely */
 #else
-#if defined(BLACK_HOLES)
+#if defined(SINK_PARTICLES)
 #define PM_PLACEHIGHRESREGION 51 /* 1+2+16+32 */
 #else
 #define PM_PLACEHIGHRESREGION 19 /* 1+2+16 */
@@ -451,9 +451,9 @@
 #define GRAVITY_ANALYTIC
 #define SELFGRAVITY_OFF
 #endif
-#define BH_ALPHADISK_ACCRETION (1.0e6)
+#define SINK_ALPHADISK_ACCRETION (1.0e6)
 #ifdef GRAIN_FLUID
-#define BH_GRAVCAPTURE_NONGAS
+#define SINK_GRAVCAPTURE_NONGAS
 #endif
 #ifdef MAGNETIC
 #define MHD_CONSTRAINED_GRADIENT 1
@@ -482,7 +482,7 @@
 #define RT_SPEEDOFLIGHT_REDUCTION (3.0e-4)
 #endif
 #define RT_REPROCESS_INJECTED_PHOTONS
-#define RT_BH_ANGLEWEIGHT_PHOTON_INJECTION
+#define RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION
 #define RT_OPTICAL_NIR
 #define RT_NUV
 #define RT_PHOTOELECTRIC
@@ -534,30 +534,30 @@
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 #define GALSF // top-level switch needed to enable various frameworks
 #define METALS  // metals should be active for stellar return
-#define BLACK_HOLES // need to have black holes active since these are our sink particles
-#define BH_INTERACT_ON_GAS_TIMESTEP // BH-gas interactions (feedback and accretion) occur with frequency set by the gas timestep
-#define BH_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
+#define SINK_PARTICLES // need to have sink particles active since these are our sink particles
+#define SINK_INTERACT_ON_GAS_TIMESTEP // BH-gas interactions (feedback and accretion) occur with frequency set by the gas timestep
+#define SINK_CALC_DISTANCES // calculate distance to nearest sink in gravity tree
 
 #ifdef SINGLE_STAR_ACCRETION // figure out flags needed for the chosen sink accretion model
-#define BH_SWALLOWGAS // need to swallow gas [part of sink model]
-#ifndef BH_ALPHADISK_ACCRETION
-#define BH_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
+#define SINK_SWALLOWGAS // need to swallow gas [part of sink model]
+#ifndef SINK_ALPHADISK_ACCRETION
+#define SINK_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #endif
 #if (SINGLE_STAR_ACCRETION <= 8)
-#define BH_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
+#define SINK_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
 #endif
 #if (SINGLE_STAR_ACCRETION == 9)
-#define BH_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
+#define SINK_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
 #endif
 #if (SINGLE_STAR_ACCRETION == 10)
-#define BH_BONDI 1 // use Bondi rate ignoring local relative velocities
+#define SINK_BONDI 1 // use Bondi rate ignoring local relative velocities
 #endif
 #if (SINGLE_STAR_ACCRETION == 11)
-#define BH_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
+#define SINK_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
 #endif
 #if (SINGLE_STAR_ACCRETION == 12)
-#define BH_GRAVCAPTURE_GAS
-#define BH_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
+#define SINK_GRAVCAPTURE_GAS
+#define SINK_GRAVCAPTURE_FIXEDSINKRADIUS // modify grav capture to Bate-style, fixed (in time) sink radius based on SF neighbor distance, plus angular momentum criterion
 #endif
 #endif
 
@@ -567,7 +567,7 @@
 
 #if defined(SINGLE_STAR_FB_RT_HEATING) && !(defined(RT_OTVET) || defined(RT_FLUXLIMITEDDIFFUSION) || defined(RT_M1) || defined(RT_LOCALRAYGRID))
 #define GALSF_FB_FIRE_RT_LONGRANGE  // turn on FIRE RT approximation: no Type-4 particles so don't worry about its approximations
-#define BH_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework.
+#define SINK_PHOTONMOMENTUM // enable BHs within the FIRE-RT framework.
 #define RT_DISABLE_RAD_PRESSURE
 #endif
 
@@ -581,15 +581,15 @@
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS) || ((defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE)) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION))
-#define BH_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
+#define SINK_WIND_SPAWN (2) // leverage the BHFB model already developed within the FIRE-BHs framework. gives accurate launching of arbitrarily-structured jets.
 #if !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
 #define MAINTAIN_TREE_IN_REARRANGE // don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed
 #endif
 #endif
 
 #if defined(SINGLE_STAR_FB_LOCAL_RP) // use standard angle-weighted local coupling to impart photon momentum from stars
-#if !defined(BH_PHOTONMOMENTUM)
-#define BH_PHOTONMOMENTUM
+#if !defined(SINK_PHOTONMOMENTUM)
+#define SINK_PHOTONMOMENTUM
 #endif
 #if !defined(RT_DISABLE_RAD_PRESSURE)
 #define RT_DISABLE_RAD_PRESSURE // we only want the local short-ranged photon momentum, since SF sims can easily get into the badly non-photon-conserving limit where LEBRON fluxes are less accurate
@@ -681,14 +681,14 @@
 
 
 #if defined(SPECIAL_POINT_MOTION)
-#if !defined(BH_CALC_DISTANCES)
-#define BH_CALC_DISTANCES /* make sure the distance tracking is actually enabled */
+#if !defined(SINK_CALC_DISTANCES)
+#define SINK_CALC_DISTANCES /* make sure the distance tracking is actually enabled */
 #endif
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(SPECIAL_POINT_MOTION)
 #define SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES (SPECIAL_POINT_MOTION) /* set the special particle type to be used for tracking */
 #endif
 #endif
-#if defined(BH_CALC_DISTANCES) && !defined(SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
+#if defined(SINK_CALC_DISTANCES) && !defined(SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
 #define SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES (5) /* default to type = 5 for this module */
 #endif
 
@@ -697,8 +697,8 @@
 #if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(GRAVITY_ANALYTIC)
 #if (GRAVITY_ANALYTIC > 0)
 #define GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE /* ok, analytic gravity is defined with a numerical value > 0, indicating we should use this flag */
-#ifndef BH_CALC_DISTANCES
-#define BH_CALC_DISTANCES
+#ifndef SINK_CALC_DISTANCES
+#define SINK_CALC_DISTANCES
 #endif
 #endif
 #endif
@@ -740,7 +740,7 @@
 #endif
 
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 #define OUTPUT_SOFTENING  /*! output softening to snapshots */
 #endif
 
@@ -1014,7 +1014,7 @@
 
 
 
-#if defined(GALSF) || defined(BLACK_HOLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES) || defined(RT_REPROCESS_INJECTED_PHOTONS)
+#if defined(GALSF) || defined(SINK_PARTICLES) || defined(RADTRANSFER) || defined(OUTPUT_DENS_AROUND_STAR) || defined(CHIMES) || defined(RT_REPROCESS_INJECTED_PHOTONS)
 #define DO_DENSITY_AROUND_STAR_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
@@ -1029,13 +1029,13 @@
 #endif
 #endif
 
-#if defined(BH_SWALLOWGAS)
-#define BH_FOLLOW_ACCRETED_COM
-#define BH_FOLLOW_ACCRETED_MOMENTUM
-#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(BH_GRAVCAPTURE_GAS)
-#define BH_FOLLOW_ACCRETED_ANGMOM 0 // follow accreted AM just from explicit 'swallow' operations
+#if defined(SINK_SWALLOWGAS)
+#define SINK_FOLLOW_ACCRETED_COM
+#define SINK_FOLLOW_ACCRETED_MOMENTUM
+#if defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINK_GRAVCAPTURE_GAS)
+#define SINK_FOLLOW_ACCRETED_ANGMOM 0 // follow accreted AM just from explicit 'swallow' operations
 #else
-#define BH_FOLLOW_ACCRETED_ANGMOM 1 // follow accreted AM from 'swallowed' BH particles, and from continuous/smooth properties [mdot] of kernel gas near BH
+#define SINK_FOLLOW_ACCRETED_ANGMOM 1 // follow accreted AM from 'swallowed' BH particles, and from continuous/smooth properties [mdot] of kernel gas near BH
 #endif
 #endif
 
@@ -1064,18 +1064,18 @@
 #define EVALPOTENTIAL
 #endif
 
-#if defined(BH_REPOSITION_ON_POTMIN)
-#if (BH_REPOSITION_ON_POTMIN < 0)
-#undef BH_REPOSITION_ON_POTMIN // this is a key to un-define this variable if it is set, useful for some of the preset variable packages above //
+#if defined(SINK_REPOSITION_ON_POTMIN)
+#if (SINK_REPOSITION_ON_POTMIN < 0)
+#undef SINK_REPOSITION_ON_POTMIN // this is a key to un-define this variable if it is set, useful for some of the preset variable packages above //
 #endif
 #endif
 
-#if defined(BLACK_HOLES) && (defined(BH_REPOSITION_ON_POTMIN) || defined(BH_SEED_FROM_FOF))
+#if defined(SINK_PARTICLES) && (defined(SINK_REPOSITION_ON_POTMIN) || defined(SINK_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
 #endif
-#if !defined(BH_DYNFRICTION) && (BH_REPOSITION_ON_POTMIN == 2)
-#define BH_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
+#if !defined(SINK_DYNFRICTION) && (SINK_REPOSITION_ON_POTMIN == 2)
+#define SINK_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
 #endif
 #endif
 
@@ -1226,16 +1226,16 @@
 #endif
 
 
-#ifdef BLACK_HOLES
-#define BH_COUNTPROGS /* carries a counter for each BH that gives the total number of seeds that merged into it */
-#define BH_ENFORCE_EDDINGTON_LIMIT /* put a hard limit on the maximum accretion rate (set BlackHoleEddingtonFactor>>1 to allow super-eddington) */
-#if defined(BH_PHOTONMOMENTUM) || defined(BH_WIND_CONTINUOUS) || defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
-#define BH_CALC_LOCAL_ANGLEWEIGHTS
+#ifdef SINK_PARTICLES
+#define SINK_COUNTPROGS /* carries a counter for each BH that gives the total number of seeds that merged into it */
+#define SINK_ENFORCE_EDDINGTON_LIMIT /* put a hard limit on the maximum accretion rate (set SinkEddingtonFactor>>1 to allow super-eddington) */
+#if defined(SINK_PHOTONMOMENTUM) || defined(SINK_WIND_CONTINUOUS) || defined(RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION)
+#define SINK_CALC_LOCAL_ANGLEWEIGHTS
 #endif
-#if defined(BH_GRAVCAPTURE_GAS) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_NONGAS) || defined(BH_CALC_LOCAL_ANGLEWEIGHTS) || defined(BH_DYNFRICTION) || defined(BH_EXCISION_NONGAS)
-#define BH_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
+#if defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_NONGAS) || defined(SINK_CALC_LOCAL_ANGLEWEIGHTS) || defined(SINK_DYNFRICTION) || defined(SINK_EXCISION_NONGAS)
+#define SINK_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
 #else
-#define BH_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and black holes) around a primary BH particle */
+#define SINK_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and sinks) around a primary BH particle */
 #endif
 #endif
 

@@ -1269,7 +1269,7 @@ GRAVITY_OBJS  = gravity/forcetree.o \
 				gravity/pm_periodic.o \
                 gravity/pm_nonperiodic.o \
                 gravity/longrange.o \
-                gravity/ags_hsml.o \
+                gravity/ags_rkern.o \
                 gravity/binary.o
 
 HYDRO_OBJS = 	hydro/hydro_toplevel.o \
@@ -1298,13 +1298,13 @@ STARFORM_OBJS = galaxy_sf/sfr_eff.o \
                 galaxy_sf/mechanical_fb.o \
                 galaxy_sf/thermal_fb.o \
                 galaxy_sf/radfb_local.o \
-                galaxy_sf/dm_dispersion_hsml.o
+                galaxy_sf/dm_dispersion_rkern.o
 
-SINK_OBJS = galaxy_sf/blackholes/blackhole.o \
-            galaxy_sf/blackholes/blackhole_util.o \
-            galaxy_sf/blackholes/blackhole_environment.o \
-            galaxy_sf/blackholes/blackhole_feed.o \
-            galaxy_sf/blackholes/blackhole_swallow_and_kick.o
+SINK_OBJS = sinks/sink.o \
+            sinks/sink_util.o \
+            sinks/sink_environment.o \
+            sinks/sink_feed.o \
+            sinks/sink_swallow_and_kick.o
 
 RHD_OBJS =  radiation/rt_utilities.o \
 			radiation/rt_CGmethod.o \
@@ -1354,7 +1354,7 @@ INCL    += 	declarations/allvars.h \
 			system/myqsort.h \
 			mesh/kernel.h \
 			eos/eos.h \
-			galaxy_sf/blackholes/blackhole.h \
+			sinks/sink.h \
 			structure/fof.h \
 			structure/subfind/subfind.h \
 			cooling/cooling.h \

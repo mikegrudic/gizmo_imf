@@ -74,7 +74,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
     /* --------------------------------------------------------------------------------- */
     kernel.sound_i = local.SoundSpeed;
     kernel.spec_egy_u_i = local.InternalEnergyPred;
-    kernel.h_i = local.Hsml;
+    kernel.h_i = local.KernelRadius;
     kernel_hinv(kernel.h_i, &hinv_i, &hinv3_i, &hinv4_i);
     hinv_j=hinv3_j=hinv4_j=0;
     V_i = local.Mass / local.Density;
@@ -157,7 +157,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /* find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                kernel.h_j = P[j].Hsml;
+                kernel.h_j = P[j].KernelRadius;
 
                 /* force applied for all particles inside each-others kernels! */
                 if((r2 >= kernel.h_i * kernel.h_i) && (r2 >= kernel.h_j * kernel.h_j)) continue;
@@ -316,7 +316,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #define HLL_correction(ui,uj,wt,kappa) (k_hll = v_hll * (wt) * kernel.r * All.cf_atime / fabs(kappa),\
                                         k_hll = (0.2 + k_hll) / (0.2 + k_hll + k_hll*k_hll),\
                                         -1.0*k_hll*Face_Area_Norm*v_hll*((ui)-(uj)))
-#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING) || defined(BLACK_HOLES)
+#if !defined(MAGNETIC) || defined(GALSF) || defined(COOLING) || defined(SINK_PARTICLES)
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  0.005
 #else
 #define HLL_DIFFUSION_OVERSHOOT_FACTOR  1.0

@@ -95,7 +95,7 @@ There are some Config flags that CHIMES does not currently work with, or its beh
     We do NOT want to do this when using it with CHIMES, because the chemistry solver will apply local self-shielding 
     itself. Therefore, you need to add an exception for CHIMES in accel.c. ALSO, what is the difference between 
     CellP[i].Rad_Flux_UV and CellP[i].Rad_Flux_EUV?
-  - BLACK_HOLES - currently, CHIMES is not compatible with the inclusion of black holes, because when a gas particle 
+  - SINK_PARTICLES - currently, CHIMES is not compatible with the inclusion of sink particles, because when a gas particle 
     is accreted, we will need to delete the corresponding gasVariables structure (this is not currently done). 
   - RT_CHEM_PHOTOION - this is currently incompatible with CHIMES, as it uses its own routines to compute chemistry 
     abundances for the radiative transport. 

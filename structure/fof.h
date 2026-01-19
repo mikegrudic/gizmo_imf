@@ -61,10 +61,10 @@ typedef struct
 #ifdef GALSF
   double Sfr;
 #endif
-#ifdef BLACK_HOLES
-  MyOutputFloat BH_Mass;
-  MyOutputFloat BH_Mdot;
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_PARTICLES
+  MyOutputFloat Sink_Mass;
+  MyOutputFloat Sink_Mdot;
+#ifdef SINK_SEED_FROM_FOF
   MyOutputFloat MinPot;
   int index_maxdens, task_maxdens;
 #endif

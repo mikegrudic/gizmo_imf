@@ -96,7 +96,7 @@ void do_second_halfstep_kick(void)
 int eligible_for_hermite(int i)
 {
     if(!(HERMITE_INTEGRATION & (1<<P[i].Type))) {return 0;} // hermite flag said to not include these types
-#if defined(BH_DRAG) || defined(BH_DYNFRICTION)
+#if defined(SINK_DRAG) || defined(SINK_DYNFRICTION)
     if(P[i].Type==5) {return 0;} // not compatible with these flags for these types
 #endif
 #if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
@@ -105,7 +105,7 @@ int eligible_for_hermite(int i)
 #if defined(GRAIN_FLUID)
     if((1 << P[i].Type) & (GRAIN_PTYPES)) {return 0;} // not compatible with these flags for these types
 #endif
-#if defined(BLACK_HOLES) || defined(GALSF)
+#if defined(SINK_PARTICLES) || defined(GALSF)
     if(P[i].StellarAge >= DMAX(All.Time - 2*(GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i)*All.cf_hubble_a), 0)) {return 0;} // if we were literally born yesterday then let things settle down a bit with the less-accurate, but more-robust regular integration
     if(P[i].AccretedThisTimestep) {return 0;}
 #endif
@@ -310,7 +310,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
             CellP[i].Density_ExplicitInt *= exp(-DMIN(1.5,DMAX(-1.5,P[i].Particle_DivVel*All.cf_a2inv * dt_hydrokick))); /*!< explicitly integrated volume/density variable to be used if integrating the SPH-like form of the continuity directly */
             if(CellP[i].FaceClosureError > 0) {double drho2=0; int k; for(k=0;k<3;k++) {drho2+=CellP[i].Gradients.Density[k]*CellP[i].Gradients.Density[k];} /* the evolved density evolves back to the explicit density on a relaxation time of order the sound-crossing or tension wave-crossing time across the density gradient length */
                 if(drho2>0 && CellP[i].Density_ExplicitInt>0 && CellP[i].Density>0) {
-                    double Lgrad = CellP[i].Density / sqrt(drho2); Lgrad=DMAX(Lgrad,P[i].Hsml); double cs_eff_forrestoringforce=Get_Gas_effective_soundspeed_i(i); /* gradient scale length and sound speed */
+                    double Lgrad = CellP[i].Density / sqrt(drho2); Lgrad=DMAX(Lgrad,P[i].KernelRadius); double cs_eff_forrestoringforce=Get_Gas_effective_soundspeed_i(i); /* gradient scale length and sound speed */
 #if defined(EOS_TILLOTSON)
                     cs_eff_forrestoringforce=DMIN(cs_eff_forrestoringforce , sqrt(All.Tillotson_EOS_params[CellP[i].CompositionType][10] / CellP[i].Density)); /* speed of deviatoric waves, which is most relevant, if defined */
 #endif
@@ -502,7 +502,7 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
                     PRINT_WARNING("significant growth detected in phi-field: phi_phys_abs=%g vb_phy_abs=%g vsig_max=%g b_phys=%g particle_id_i=%d dtphi_code=%g Pressure=%g rho=%g x/y/z=%g/%g/%g vx/vy/vz=%g/%g/%g Bx/By/Bz=%g/%g/%g h=%g u=%g m=%g phi=%g bin=%d SigVel=%g a=%g \n",
                        phi_phys_abs,vb_phy_abs,vsig_max,b_phys,i,CellP[i].DtPhi,CellP[i].Pressure,CellP[i].Density,P[i].Pos[0],P[i].Pos[1],P[i].Pos[2],
                        P[i].Vel[0],P[i].Vel[1],P[i].Vel[2],CellP[i].B[0],CellP[i].B[1],CellP[i].B[2],
-                       P[i].Hsml,CellP[i].InternalEnergy,P[i].Mass,CellP[i].Phi,P[i].TimeBin,CellP[i].MaxSignalVel,All.cf_atime);}
+                       P[i].KernelRadius,CellP[i].InternalEnergy,P[i].Mass,CellP[i].Phi,P[i].TimeBin,CellP[i].MaxSignalVel,All.cf_atime);}
                 CellP[i].PhiPred = CellP[i].Phi = CellP[i].DtPhi = 0;
             } else {
                 if(phi_phys_abs > phi_max_tolerance * vb_phy_abs)

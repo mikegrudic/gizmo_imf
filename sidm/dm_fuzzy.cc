@@ -263,7 +263,7 @@ void dm_fuzzy_reconstruct_and_slopelimit_sub(double *u_R_f, double *u_L_f, doubl
  Everything below here is a giant block to define the sub-routines needed
  to calculate the higher-order matrix gradient estimators for the density
  field, around each DM element (based on its interacting neighbor set,
- within the AGS_Hsml volume). This will give the density gradients
+ within the AGS_KernelRadius volume). This will give the density gradients
  AGS_Gradients_Density needed to actually compute the quantum pressure tensor
  -------------------------------------------------------------------------- */
 
@@ -299,7 +299,7 @@ struct kernel_DMGrad {double dp[3],r,wk_i, wk_j, dwk_i, dwk_j,h_i;};
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME
 {
-    MyDouble Pos[3], AGS_Hsml;
+    MyDouble Pos[3], AGS_KernelRadius;
     struct Quantities_for_Gradients_DM GQuant;
     int NodeList[NODELISTLENGTH], Type;
 }
@@ -309,7 +309,7 @@ struct INPUT_STRUCT_NAME
 static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k; for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
-    in->AGS_Hsml = P[i].AGS_Hsml;
+    in->AGS_KernelRadius = P[i].AGS_KernelRadius;
     in->Type = P[i].Type;
     in->GQuant.AGS_Density = P[i].AGS_Density;
     for(k=0;k<3;k++) {in->GQuant.AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
@@ -391,10 +391,10 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
     memset(&kernel, 0, sizeof(struct kernel_DMGrad));
     if(mode == 0) {particle2in_DMGrad(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     /* check if we should bother doing a neighbor loop */
-    if(local.AGS_Hsml <= 0) return 0;
+    if(local.AGS_KernelRadius <= 0) return 0;
     if(local.GQuant.AGS_Density <= 0) return 0;
     /* now set particle-i centric quantities so we don't do it inside the loop */
-    kernel.h_i = local.AGS_Hsml;
+    kernel.h_i = local.AGS_KernelRadius;
     double h2_i = kernel.h_i*kernel.h_i;
     kernel_hinv(kernel.h_i, &hinv, &hinv3, &hinv4);
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(local.Type); // determine allowed particle types for search for adaptive gravitational softening terms
@@ -405,7 +405,7 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
     {
         while(startnode >= 0)
         {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.AGS_Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.AGS_KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, AGS_kernel_shared_BITFLAG);
             if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {

@@ -158,11 +158,11 @@ extern int *PrevInTimeBin;
 extern double TimeBinSfr[TIMEBINS];
 #endif
 
-#ifdef BLACK_HOLES
-extern double TimeBin_BH_mass[TIMEBINS];
-extern double TimeBin_BH_dynamicalmass[TIMEBINS];
-extern double TimeBin_BH_Mdot[TIMEBINS];
-extern double TimeBin_BH_Medd[TIMEBINS];
+#ifdef SINK_PARTICLES
+extern double TimeBin_Sink_mass[TIMEBINS];
+extern double TimeBin_Sink_dynamicalmass[TIMEBINS];
+extern double TimeBin_Sink_Mdot[TIMEBINS];
+extern double TimeBin_Sink_Medd[TIMEBINS];
 #endif
 
 
@@ -207,7 +207,7 @@ extern int NeedToWakeupParticles_local;
 
 extern int NumPart;		/*!< number of particles on the LOCAL processor */
 extern int N_gas;		/*!< number of gas particles on the LOCAL processor  */
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
 extern double Max_Unspawned_MassUnits_fromSink;
 #endif
 
@@ -330,25 +330,25 @@ extern FILE *FdHIIHeating;    /*!< file handle for HIIheating.txt log-file */
 #ifdef GALSF_FB_MECHANICAL
 extern FILE *FdSneIIHeating;    /*!< file handle for SNIIheating.txt log-file */
 #endif
-#ifdef BLACK_HOLES
-extern FILE *FdBlackHoles;    /*!< file handle for blackholes.txt log-file. */
+#ifdef SINK_PARTICLES
+extern FILE *FdSinks;    /*!< file handle for sinks.txt log-file. */
 #endif
 #ifdef OUTPUT_SINK_ACCRETION_HIST
-extern FILE *FdBhSwallowDetails;
+extern FILE *FdSinkSwallowDetails;
 #endif
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-extern FILE *FdBhSNDetails;
+extern FILE *FdSinkSNDetails;
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
-extern FILE *FdBhFormationDetails;
+extern FILE *FdSinkFormationDetails;
 #endif
-#if (defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(BH_OUTPUT_MOREINFO)) && defined(BLACK_HOLES)
-extern FILE *FdBlackHolesDetails;
-#ifdef BH_OUTPUT_MOREINFO
-extern FILE *FdBhMergerDetails;
+#if (defined(OUTPUT_ADDITIONAL_RUNINFO) || defined(SINK_OUTPUT_MOREINFO)) && defined(SINK_PARTICLES)
+extern FILE *FdSinksDetails;
+#ifdef SINK_OUTPUT_MOREINFO
+extern FILE *FdSinkMergerDetails;
 #endif
-#ifdef BH_WIND_KICK
-extern FILE *FdBhWindDetails;
+#ifdef SINK_WIND_KICK
+extern FILE *FdSinkWindDetails;
 #endif
 #endif
 
@@ -416,8 +416,8 @@ extern struct global_data_all_processes
   long long TotNumPart;		/*!<  total particle numbers (global value) */
   long long TotN_gas;		/*!<  total gas particle number (global value) */
 
-#ifdef BLACK_HOLES
-  int TotBHs;
+#ifdef SINK_PARTICLES
+  int TotSinks;
 #endif
 
 #if defined(DM_SIDM)
@@ -574,9 +574,9 @@ extern struct global_data_all_processes
   double TreeDomainUpdateFrequency;	/*!< controls frequency of domain decompositions  */
 
   /* gravitational and hydrodynamical softening lengths (given in terms of an `equivalent' Plummer softening length) five groups of particles are supported 0=gas,1=halo,2=disk,3=bulge,4=stars */
-    double MinGasHsmlFractional; /*!< minimim allowed gas kernel length relative to force softening (what you actually set) */
-    double MinHsml;			/*!< minimum allowed gas kernel length */
-    double MaxHsml;           /*!< minimum allowed gas kernel length */
+    double MinGasKernelRadiusFractional; /*!< minimim allowed gas kernel length relative to force softening (what you actually set) */
+    double MinKernelRadius;			/*!< minimum allowed gas kernel length */
+    double MaxKernelRadius;           /*!< minimum allowed gas kernel length */
 
   double SofteningGas,		/*!< for type 0 */
     SofteningHalo,		/*!< for type 1 */
@@ -650,8 +650,8 @@ extern struct global_data_all_processes
     double PhotonMomentum_fOPT;
 #endif
 #endif
-#ifdef BH_PHOTONMOMENTUM
-    double BH_Rad_MomentumFactor;
+#ifdef SINK_PHOTONMOMENTUM
+    double Sink_Rad_MomentumFactor;
 #endif
 
 #ifdef GRAIN_FLUID
@@ -764,17 +764,17 @@ extern struct global_data_all_processes
     double InitStellarAgeinGyr;
 #endif
     
-#if defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_WIND_SPAWN)
-    double BAL_f_accretion;
-    double BAL_v_outflow;
+#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+    double Sink_accreted_fraction;
+    double Sink_outflow_velocity;
 #endif
 
 #if defined(SINGLE_STAR_FB_JETS)
-    double BAL_f_launch_v; // scales the amount of accretion power going into jets, we eject (1-All.BAL_f_accretion) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.BAL_f_accretion)
+    double Sink_outflow_jetlaunchvelscaling; // scales the amount of accretion power going into jets, we eject (1-All.Sink_accreted_fraction) fraction of the accreted mass at this value times the Keplerian velocity at the protostellar radius. If set to 1 then the mass and power loading of the jets are both (1-All.Sink_accreted_fraction)
 #endif
 
-#if defined(BH_COSMIC_RAYS)
-    double BH_CosmicRay_Injection_Efficiency;
+#if defined(SINK_COSMIC_RAYS)
+    double Sink_CosmicRay_Injection_Efficiency;
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -867,40 +867,40 @@ extern struct global_data_all_processes
 #endif
 #endif /* MAGNETIC */
 
-#if (defined(BLACK_HOLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
+#if (defined(SINK_PARTICLES) || defined(GALSF_SUBGRID_WINDS)) && defined(FOF)
   double TimeNextOnTheFlyFoF;
   double TimeBetOnTheFlyFoF;
 #endif
 
-#ifdef BLACK_HOLES
-  double BlackHoleAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
-  double BlackHoleFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
-  double SeedBlackHoleMass;         /*!< Seed black hole mass */
-#if defined(BH_SEED_FROM_FOF) || defined(BH_SEED_FROM_LOCALGAS)
-  double SeedBlackHoleMassSigma;    /*!< Standard deviation of init black hole masses */
-  double SeedBlackHoleMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
-#ifdef BH_SEED_FROM_LOCALGAS
-  double SeedBlackHolePerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
+#ifdef SINK_PARTICLES
+  double SinkAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
+  double SinkFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
+  double SeedSinkMass;         /*!< Seed sink particle mass */
+#if defined(SINK_SEED_FROM_FOF) || defined(SINK_SEED_FROM_LOCALGAS)
+  double SeedSinkMassSigma;    /*!< Standard deviation of init sink particle masses */
+  double SeedSinkMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
+#ifdef SINK_SEED_FROM_LOCALGAS
+  double SeedSinkPerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
 #endif
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-  double SeedAlphaDiskMass;         /*!< Seed alpha disk mass */
+#ifdef SINK_ALPHADISK_ACCRETION
+  double SeedReservoirMass;         /*!< Seed alpha disk mass */
 #endif
-#ifdef BH_WIND_SPAWN
-  double BAL_wind_particle_mass;        /*!< target mass for feedback particles to be spawned */
-  double BAL_internal_temperature;
+#ifdef SINK_WIND_SPAWN
+  double Sink_outflow_particlemass;        /*!< target mass for feedback particles to be spawned */
+  double Sink_outflow_temperature;
   MyIDType AGNWindID;
 #ifdef SINGLE_STAR_FB_WINDS
   double Cell_Spawn_Mass_ratio_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
 #endif
 #endif
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
 #endif
-  double BlackHoleNgbFactor;        /*!< Factor by which the gas neighbour count should be increased/decreased */
-  double BlackHoleMaxAccretionRadius;
-  double BlackHoleEddingtonFactor;	/*!< Factor above Eddington */
-  double BlackHoleRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
+  double SinkNgbFactor;        /*!< Factor by which the gas neighbour count should be increased/decreased */
+  double SinkMaxAccretionRadius;
+  double SinkEddingtonFactor;	/*!< Factor above Eddington */
+  double SinkRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
 #endif
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
@@ -912,9 +912,9 @@ extern struct global_data_all_processes
 #endif
     
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    double SMBH_SpecialParticle_Position_ForRefinement[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM][3];
-    double Mass_Accreted_By_SpecialSMBHParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
-    double Mass_of_SpecialSMBHParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
+    double SpecialParticle_Position_ForRefinement[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM][3];
+    double Mass_Accreted_By_SpecialParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
+    double Mass_of_SpecialParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
 #endif
 
 #ifdef NUCLEAR_NETWORK
@@ -928,7 +928,7 @@ extern struct global_data_all_processes
   double NetworkTempThreshold;
 #endif
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
 #endif
@@ -952,18 +952,18 @@ extern struct global_data_all_processes
     code_units GrackleUnits;
 #endif
 
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR)
-  double BH_spawn_rinj;
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR)
+  double Sink_spawn_injectionradius;
   double B_spawn_pol;
   double B_spawn_tor;
 #endif
-#ifdef BH_WIND_SPAWN_SET_JET_PRECESSION
-  double BH_jet_precess_degree;
-  double BH_jet_precess_period;
+#ifdef SINK_WIND_SPAWN_SET_JET_PRECESSION
+  double Sink_jet_precess_degree;
+  double Sink_jet_precess_period;
 #endif
-#ifdef BH_DEBUG_FIX_MDOT_MBH
-  double BH_fb_duty_cycle;
-  double BH_fb_period;
+#ifdef SINK_DEBUG_FIX_MDOT_MASS
+  double Sink_fb_duty_cycle;
+  double Sink_fb_period;
 #endif
 
 }
@@ -1028,17 +1028,17 @@ extern struct gravdata_in
 #define GRAVDATA_IN_INCLUDES_MASS_FIELD
     MyFloat Mass;
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
     MyFloat Vel[3];
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
-    MyFloat BH_Mass;
+#if defined(SINK_DYNFRICTION_FROMTREE)
+    MyFloat Sink_Mass;
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL)
     MyFloat AGS_zeta;
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-    MyFloat min_bh_t_orbital;   /*!<orbital time for binary */
+    MyFloat Min_Sink_OrbitalTime;   /*!<orbital time for binary */
     MyDouble comp_dx[3];        /*!< position of binary companion */
     MyDouble comp_dv[3];        /*!< velocity of binary companion */
     MyDouble comp_Mass;         /*!< mass of binary companion */
@@ -1086,10 +1086,10 @@ extern struct gravdata_out
     double Chimes_G0[CHIMES_LOCAL_UV_NBINS];
     double Chimes_fluxPhotIon[CHIMES_LOCAL_UV_NBINS];
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
     MyDouble Rad_Flux_AGN;
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     MyDouble MencInRcrit;
 #endif
 #ifdef EVALPOTENTIAL
@@ -1104,9 +1104,9 @@ extern struct gravdata_out
 #ifdef COMPUTE_JERK_IN_GRAVTREE
     MyDouble GravJerk[3];
 #endif
-#ifdef BH_CALC_DISTANCES
-    MyFloat min_dist_to_bh;
-    MyFloat min_xyz_to_bh[3];
+#ifdef SINK_CALC_DISTANCES
+    MyFloat Min_Distance_to_Sink;
+    MyFloat Min_xyz_to_Sink[3];
 #ifdef SPECIAL_POINT_MOTION
     MyFloat vel_of_nearest_special[3];
     MyFloat acc_of_nearest_special[3];
@@ -1115,15 +1115,15 @@ extern struct gravdata_out
 #endif
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-    MyFloat min_bh_t_orbital; //orbital time for binary
+    MyFloat Min_Sink_OrbitalTime; //orbital time for binary
     MyDouble comp_dx[3]; //position of binary companion
     MyDouble comp_dv[3]; //velocity of binary companion
     MyDouble comp_Mass; //mass of binary companion
     int is_in_a_binary; // 1 if star is in a binary, 0 otherwise
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-    MyFloat min_bh_freefall_time;    // minimum value of sqrt(R^3 / G(M_BH + M_particle)) as calculated from the tree-walk
-    MyFloat min_bh_approach_time; // smallest approach time t_a = |v_radial|/r
+    MyFloat Min_Sink_Freefall_time;    // minimum value of sqrt(R^3 / G(M_SINK + M_particle)) as calculated from the tree-walk
+    MyFloat Min_Sink_Approach_Time; // smallest approach time t_a = |v_radial|/r
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     MyDouble COM_tidal_tensorps[3][3]; //tidal tensor evaluated at the center of mass without contribution from the companion
     MyDouble COM_GravAccel[3]; //gravitational acceleration evaluated at the center of mass without contribution from the companion
@@ -1131,7 +1131,7 @@ extern struct gravdata_out
     int SuperTimestepFlag; // 2 if allowed to super-timestep, 1 if a candidate for super-timestepping, 0 otherwise
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-    MyFloat min_bh_fb_time; // minimum time for feedback to arrive from a star
+    MyFloat Min_Sink_FeedbackTime; // minimum time for feedback to arrive from a star
 #endif    
 #endif
 #endif
@@ -1163,7 +1163,7 @@ extern struct info_block
 extern struct addFB_evaluate_data_in_
 {
     MyDouble Pos[3], Vel[3], Msne, unit_mom_SNe;
-    MyFloat Hsml, V_i, SNe_v_ejecta;
+    MyFloat KernelRadius, V_i, SNe_v_ejecta;
 #ifdef GALSF_FB_MECHANICAL
     MyFloat Area_weighted_sum[AREA_WEIGHTED_SUM_ELEMENTS];
 #endif
@@ -1236,7 +1236,7 @@ enum iofields
   IO_RHO,
   IO_NE,
   IO_NH,
-  IO_HSML,
+  IO_KERNELRADIUS,
   IO_SFR,
   IO_AGE,
   IO_GRAINSIZE,
@@ -1247,10 +1247,10 @@ enum iofields
   IO_DUSTCHEMZMET,
   IO_DUSTCHEMSPECIESMET,
   IO_ISMDUSTCHEMMOL,
-  IO_BHMASS,
-  IO_BHMASSALPHA,
-  IO_BH_ANGMOM,
-  IO_BHMDOT,
+  IO_SINKMASS,
+  IO_SINKMASSALPHA,
+  IO_SINK_ANGMOM,
+  IO_SINKMDOT,
   IO_SINKDUSTMASSACC,
   IO_R_PROTOSTAR,
   IO_MASS_D_PROTOSTAR,
@@ -1258,8 +1258,8 @@ enum iofields
   IO_STAGE_PROTOSTAR,
   IO_AGE_PROTOSTAR,
   IO_LUM_SINGLESTAR,
-  IO_BHPROGS,
-  IO_BH_DIST,
+  IO_SINKPROGS,
+  IO_SINK_DIST,
   IO_ACRB,
   IO_SINKRAD,
   IO_SINK_FORM_MASS,
@@ -1436,7 +1436,7 @@ extern ALIGN(32) struct NODE
 #if defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
   MyFloat gasmass;
 #endif
-#ifdef BH_DYNFRICTION_FROMTREE
+#ifdef SINK_DYNFRICTION_FROMTREE
   long N_part;   /*!< number of particles+cells in the tree node */
 #endif
 #ifdef RT_USE_GRAVTREE
@@ -1447,26 +1447,26 @@ extern ALIGN(32) struct NODE
 #endif
 #endif
 
-#ifdef BH_PHOTONMOMENTUM
-    MyFloat bh_lum;		    /*!< luminosity of BHs in the node */
-    MyFloat bh_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
+#ifdef SINK_PHOTONMOMENTUM
+    MyFloat sink_lum;		    /*!< luminosity of BHs in the node */
+    MyFloat sink_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
     MyFloat cr_injection;
 #endif
 
-#ifdef BH_CALC_DISTANCES
-  MyFloat bh_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
-  MyFloat bh_pos[3];    /*!< holds the mass-weighted position of the the actual black holes within the node */
+#ifdef SINK_CALC_DISTANCES
+  MyFloat sink_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+  MyFloat sink_pos[3];    /*!< holds the mass-weighted position of the the actual sink particles within the node */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SPECIAL_POINT_MOTION)
-    MyFloat bh_vel[3];    /*!< holds the mass-weighted avg. velocity of black holes in the node */
+    MyFloat sink_vel[3];    /*!< holds the mass-weighted avg. velocity of sink particles in the node */
 #endif
 #if defined(SPECIAL_POINT_MOTION)
-    MyFloat bh_acc[3]; /*!< holds the mass-weighted avg. acceleration of black holes in the node */
+    MyFloat sink_acc[3]; /*!< holds the mass-weighted avg. acceleration of sink particles in the node */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-  int N_BH;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+  int N_SINK;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
     MyFloat MaxFeedbackVel;

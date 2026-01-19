@@ -44,7 +44,7 @@
     s_star_ij = 0;
     //
 #if !defined(MHD_CONSTRAINED_GRADIENT)
-     //s_star_ij = 0.5 * kernel.r * (P[j].Hsml - local.Hsml) / (local.Hsml + P[j].Hsml); // old test, doesn't account for Hsml changing for condition number reasons
+     //s_star_ij = 0.5 * kernel.r * (P[j].KernelRadius - local.KernelRadius) / (local.KernelRadius + P[j].KernelRadius); // old test, doesn't account for KernelRadius changing for condition number reasons
      //s_star_ij = 0.5 * kernel.r * (local.Density - CellP[j].Density) / (local.Density + CellP[j].Density); // frame with zero mass flux in a first-order reconstruction //
 #endif
     //
@@ -116,7 +116,7 @@
 #if defined(GALSF) || defined(COOLING)
         if(fabs(vdotr2_phys)*UNIT_VEL_IN_KMS > 1000.) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
 #endif
-        //if(kernel.r > local.Hsml || kernel.r > P[j].Hsml) {recon_mode = 0;} // some extrapolation: this is more conservative but does help preserve contact discontinuities (perhaps too well?)
+        //if(kernel.r > local.KernelRadius || kernel.r > P[j].KernelRadius) {recon_mode = 0;} // some extrapolation: this is more conservative but does help preserve contact discontinuities (perhaps too well?)
         if(leak_vs_tol > 1) {recon_mode = 0;}
         
         double rho_i=local.Density, rho_j=CellP[j].Density, P_i=Pressure_i, P_j=Pressure_j; // initialize for below
@@ -246,7 +246,7 @@
                 {
 #if defined(MAGNETIC) && defined(DIVBCLEANING_DEDNER)
                     printf("Riemann Solver Failed to Find Positive Pressure!: Pmax=%g PL/M/R=%g/%g/%g Mi/j=%g/%g rhoL/R=%g/%g H_ij=%g/%g vL=%g/%g/%g vR=%g/%g/%g n_unit=%g/%g/%g BL=%g/%g/%g BR=%g/%g/%g phiL/R=%g/%g \n",
-                           press_tot_limiter,Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.Hsml,P[j].Hsml,
+                           press_tot_limiter,Riemann_vec.L.p,Riemann_out.P_M,Riemann_vec.R.p,local.Mass,P[j].Mass,Riemann_vec.L.rho,Riemann_vec.R.rho,local.KernelRadius,P[j].KernelRadius,
                            local.Vel[0]-v_frame[0],local.Vel[1]-v_frame[1],local.Vel[2]-v_frame[2],
                            VelPred_j[0]-v_frame[0],VelPred_j[1]-v_frame[1],VelPred_j[2]-v_frame[2],
                            n_unit[0],n_unit[1],n_unit[2],
@@ -349,8 +349,8 @@
                 int use_entropic_energy_equation = 1;
                 double facenorm_pm = Riemann_out.P_M * Face_Area_Norm;
                 double PdV_fac = Riemann_out.P_M * vdotr2_phys / All.cf_a2inv;
-                double PdV_i = kernel.dwk_i * V_i*V_i * local.DhsmlNgbFactor * PdV_fac;
-                double PdV_j = kernel.dwk_j * V_j*V_j * P[j].DhsmlNgbFactor * PdV_fac;
+                double PdV_i = kernel.dwk_i * V_i*V_i * local.DrkernNgbFactor * PdV_fac;
+                double PdV_j = kernel.dwk_j * V_j*V_j * P[j].DrkernNgbFactor * PdV_fac;
                 double du_old = facenorm_pm * (Riemann_out.S_M + face_area_dot_vel);
                 double du_new = 0.5 * (PdV_i - PdV_j + facenorm_pm * (face_vel_i+face_vel_j));
                 // more detailed check for intermediate cases //

@@ -217,16 +217,16 @@ void gravity_tree(void)
 #ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
                 GravDataIn[j].Mass = P[place].Mass;
 #endif
-#if defined(BH_DYNFRICTION_FROMTREE)
-                if(P[place].Type==5) {GravDataIn[j].BH_Mass = P[place].BH_Mass;}
+#if defined(SINK_DYNFRICTION_FROMTREE)
+                if(P[place].Type==5) {GravDataIn[j].Sink_Mass = P[place].Sink_Mass;}
 #endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(BH_DYNFRICTION_FROMTREE)
+#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
                 for(k = 0; k < 3; k++) {GravDataIn[j].Vel[k] = P[place].Vel[k];}
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
                 if(P[place].Type == 5)
                 {
-                    GravDataIn[j].min_bh_t_orbital = P[place].min_bh_t_orbital; //orbital time for binary
+                    GravDataIn[j].Min_Sink_OrbitalTime = P[place].Min_Sink_OrbitalTime; //orbital time for binary
                     GravDataIn[j].comp_Mass = P[place].comp_Mass; //mass of binary companion
                     GravDataIn[j].is_in_a_binary = P[place].is_in_a_binary; // 1 if we're in a binary, 0 if not
                     for(k=0;k<3;k++) {GravDataIn[j].comp_dx[k]=P[place].comp_dx[k]; GravDataIn[j].comp_dv[k]=P[place].comp_dv[k];}
@@ -234,10 +234,10 @@ void gravity_tree(void)
                 else {P[place].is_in_a_binary=0; /* setting values to zero just to be sure */}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if((P[place].Type == 0) && (P[place].Hsml > All.ForceSoftening[P[place].Type])) {GravDataIn[j].AGS_zeta = P[place].AGS_zeta;} else {GravDataIn[j].AGS_zeta = 0;}
+                if((P[place].Type == 0) && (P[place].KernelRadius > All.ForceSoftening[P[place].Type])) {GravDataIn[j].AGS_zeta = P[place].AGS_zeta;} else {GravDataIn[j].AGS_zeta = 0;}
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-                GravDataIn[j].Soft = P[place].AGS_Hsml;
+                GravDataIn[j].Soft = P[place].AGS_KernelRadius;
                 GravDataIn[j].AGS_zeta = P[place].AGS_zeta;
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
@@ -340,11 +340,11 @@ void gravity_tree(void)
 #ifdef COUNT_MASS_IN_GRAVTREE
                 P[place].TreeMass += GravDataOut[j].TreeMass;
 #endif
-#ifdef BH_CALC_DISTANCES /* GravDataOut[j].min_dist_to_bh contains the min dist to particle "P[place]" on another task.  We now check if it is smaller than the current value */
-                if(GravDataOut[j].min_dist_to_bh < P[place].min_dist_to_bh)
+#ifdef SINK_CALC_DISTANCES /* GravDataOut[j].Min_Distance_to_Sink contains the min dist to particle "P[place]" on another task.  We now check if it is smaller than the current value */
+                if(GravDataOut[j].Min_Distance_to_Sink < P[place].Min_Distance_to_Sink)
                 {
-                    P[place].min_dist_to_bh = GravDataOut[j].min_dist_to_bh;
-                    for(k=0;k<3;k++) {P[place].min_xyz_to_bh[k] = GravDataOut[j].min_xyz_to_bh[k];}
+                    P[place].Min_Distance_to_Sink = GravDataOut[j].Min_Distance_to_Sink;
+                    for(k=0;k<3;k++) {P[place].Min_xyz_to_Sink[k] = GravDataOut[j].Min_xyz_to_Sink[k];}
 #ifdef SPECIAL_POINT_MOTION
                     if(P[place].Type != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
                     {
@@ -362,27 +362,27 @@ void gravity_tree(void)
                 }
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-                if(GravDataOut[j].min_bh_approach_time < P[place].min_bh_approach_time) {P[place].min_bh_approach_time = GravDataOut[j].min_bh_approach_time;}
-                if(GravDataOut[j].min_bh_freefall_time < P[place].min_bh_freefall_time) {P[place].min_bh_freefall_time = GravDataOut[j].min_bh_freefall_time;}
+                if(GravDataOut[j].Min_Sink_Approach_Time < P[place].Min_Sink_Approach_Time) {P[place].Min_Sink_Approach_Time = GravDataOut[j].Min_Sink_Approach_Time;}
+                if(GravDataOut[j].Min_Sink_Freefall_time < P[place].Min_Sink_Freefall_time) {P[place].Min_Sink_Freefall_time = GravDataOut[j].Min_Sink_Freefall_time;}
 #ifdef SINGLE_STAR_FIND_BINARIES
-                if((P[place].Type == 5) && (GravDataOut[j].min_bh_t_orbital < P[place].min_bh_t_orbital))
+                if((P[place].Type == 5) && (GravDataOut[j].Min_Sink_OrbitalTime < P[place].Min_Sink_OrbitalTime))
                 {
-                    P[place].min_bh_t_orbital = GravDataOut[j].min_bh_t_orbital;
+                    P[place].Min_Sink_OrbitalTime = GravDataOut[j].Min_Sink_OrbitalTime;
                     P[place].comp_Mass = GravDataOut[j].comp_Mass;
                     P[place].is_in_a_binary = GravDataOut[j].is_in_a_binary;
                     for(k=0;k<3;k++) {P[place].comp_dx[k]=GravDataOut[j].comp_dx[k]; P[place].comp_dv[k]=GravDataOut[j].comp_dv[k];}
                 }
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-                if(GravDataOut[j].min_bh_fb_time < P[place].min_bh_fb_time) {P[place].min_bh_fb_time = GravDataOut[j].min_bh_fb_time;}
+                if(GravDataOut[j].Min_Sink_FeedbackTime < P[place].Min_Sink_FeedbackTime) {P[place].Min_Sink_FeedbackTime = GravDataOut[j].Min_Sink_FeedbackTime;}
 #endif                
 #endif
-#endif // BH_CALC_DISTANCES
+#endif // SINK_CALC_DISTANCES
 
 #ifdef RT_USE_TREECOL_FOR_NH
                 int kbin=0; for(kbin=0; kbin < RT_USE_TREECOL_FOR_NH; kbin++) {P[place].ColumnDensityBins[kbin] += GravDataOut[j].ColumnDensityBins[kbin];}
 #endif
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
                 P[place].MencInRcrit += GravDataOut[j].MencInRcrit;
 #endif
 #ifdef RT_OTVET
@@ -402,7 +402,7 @@ void gravity_tree(void)
                 }
 #endif
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
                 if(P[place].Type==0) CellP[place].Rad_Flux_AGN += GravDataOut[j].Rad_Flux_AGN;
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
@@ -758,9 +758,9 @@ void set_softenings(void)
         for(i=0; i<6; i++) {if(soft_temp[i]<soft[i]) {soft[i]=soft_temp[i];}}
     }
     for(i=0; i<6; i++) {All.ForceSoftening[i] = soft[i] / KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;}
-    All.MinHsml = All.MinGasHsmlFractional * All.ForceSoftening[0]; /* set the minimum gas kernel length to be used this timestep */
+    All.MinKernelRadius = All.MinGasKernelRadiusFractional * All.ForceSoftening[0]; /* set the minimum gas kernel length to be used this timestep */
 #ifndef SELFGRAVITY_OFF
-    if(All.MinHsml <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]) {All.MinHsml = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];}
+    if(All.MinKernelRadius <= 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0]) {All.MinKernelRadius = 5.0*EPSILON_FOR_TREERND_SUBNODE_SPLITTING * All.ForceSoftening[0];}
 #endif
 }
 
@@ -842,7 +842,7 @@ void subtract_companion_gravity(int i)
     tidal_tensorps[2][2] = P[i].tidal_tensorps[2][2] - (-fac + P[i].comp_dx[2] * P[i].comp_dx[2] * fac2);
     tidal_tensorps[1][0]=tidal_tensorps[0][1]; tidal_tensorps[2][0]=tidal_tensorps[0][2]; tidal_tensorps[2][1]=tidal_tensorps[1][2]; /* symmetric so just set these now */
 
-#ifdef BH_OUTPUT_MOREINFO
+#ifdef SINK_OUTPUT_MOREINFO
     printf("Corrected center of mass acceleration %g %g %g tidal tensor diagonal elements %g %g %g \n", P[i].COM_GravAccel[0], P[i].COM_GravAccel[1], P[i].COM_GravAccel[2], tidal_tensorps[0][0],tidal_tensorps[1][1],tidal_tensorps[2][2]);
 #endif
     P[i].COM_dt_tidal = 0; for(i1=0;i1<3;i1++) for(i2=0;i2<3;i2++) {P[i].COM_dt_tidal += tidal_tensorps[i1][i2]*tidal_tensorps[i1][i2];}
@@ -857,7 +857,7 @@ int needs_new_treeforce(int n){
     } else {
         if(P[n].time_since_last_treeforce >= P[n].tdyn_step_for_treeforce * ADAPTIVE_TREEFORCE_UPDATE) {return 1;}
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-        else if(P[n].time_since_last_treeforce >= P[n].min_bh_fb_time) {return 1;} // we want ejecta to re-calculate their feedback time so they don't get stuck on a short timestep
+        else if(P[n].time_since_last_treeforce >= P[n].Min_Sink_FeedbackTime) {return 1;} // we want ejecta to re-calculate their feedback time so they don't get stuck on a short timestep
 #endif        
         else {return 0;}
     }

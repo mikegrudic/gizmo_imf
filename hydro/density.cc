@@ -30,7 +30,7 @@ struct kernel_density /*! defines a number of useful variables we will use below
 /*! routine to determine if a given element is actually going to be active in the density subroutines below */
 int density_isactive(int n)
 {
-    /* first check our 'marker' for particles which have finished iterating to an Hsml solution (if they have, dont do them again) */
+    /* first check our 'marker' for particles which have finished iterating to an KernelRadius solution (if they have, dont do them again) */
     if(P[n].TimeBin < 0) {return 0;}
     if(P[n].Type == 0) {if(CellP[n].recent_refinement_flag == 1) return 1;}
     
@@ -38,7 +38,7 @@ int density_isactive(int n)
     if((1 << P[n].Type) & (GRAIN_PTYPES)) {return 1;} /* any of the particle types flagged as a valid grain-type is active here */
 #endif
 
-#if defined(BH_INTERACT_ON_GAS_TIMESTEP)
+#if defined(SINK_INTERACT_ON_GAS_TIMESTEP)
     if(P[n].Type == 5){if(!P[n].do_gas_search_this_timestep && All.Ti_Current > 0) return 0;} /* not enough time has elapsed since the last gas interaction */
 #endif
 #if defined(RT_SOURCE_INJECTION)
@@ -78,7 +78,7 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn == 0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(n);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && defined(PM_HIRES_REGION_CLIPPING)
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(SINK_PARTICLES) && defined(PM_HIRES_REGION_CLIPPING)
             if(star_age < 0.0035) return 1;
 #else
             if(star_age < 0.035) return 1;
@@ -91,7 +91,7 @@ int density_isactive(int n)
     }
 #endif
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
     if(P[n].Type == 5) return 1;
 #endif
 
@@ -116,7 +116,7 @@ static struct INPUT_STRUCT_NAME
   MyFloat Accel[3];
 #endif
   MyFloat Vel[3];
-  MyFloat Hsml;
+  MyFloat KernelRadius;
 #ifdef GALSF_SUBGRID_WINDS
   MyFloat DelayTime;
 #endif
@@ -130,7 +130,7 @@ void hydrokerneldensity_particle2in(struct INPUT_STRUCT_NAME *in, int i, int loo
 {
     int k;
     in->Type = P[i].Type;
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     for(k=0;k<3;k++) {in->Pos[k] = P[i].Pos[k];}
     for(k=0;k<3;k++) {if(P[i].Type==0) {in->Vel[k]=CellP[i].VelPred[k];} else {in->Vel[k]=P[i].Vel[k];}}
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
@@ -146,14 +146,14 @@ static struct OUTPUT_STRUCT_NAME
 {
     MyDouble Ngb;
     MyDouble Rho;
-    MyDouble DhsmlNgb;
+    MyDouble DrkernNgb;
     MyDouble Particle_DivVel;
     MyDouble NV_T[3][3];
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==5)||(HYDRO_FIX_MESH_MOTION==6))
     MyDouble ParticleVel[3];
 #endif
 #ifdef HYDRO_SPH
-    MyDouble DhsmlHydroSumFactor;
+    MyDouble DrkernHydroSumFactor;
 #endif
 #ifdef RT_SOURCE_INJECTION
     MyDouble KernelSum_Around_RT_Source;
@@ -168,10 +168,10 @@ static struct OUTPUT_STRUCT_NAME
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat GradRho[3];
 #endif
-#if defined(BLACK_HOLES)
-    int BH_TimeBinGasNeighbor;
-#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-    MyDouble BH_dr_to_NearestGasNeighbor;
+#if defined(SINK_PARTICLES)
+    int Sink_TimeBinGasNeighbor;
+#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+    MyDouble Sink_dr_to_NearestGasNeighbor;
 #endif
 #endif
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
@@ -191,7 +191,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 {
     int j,k;
     ASSIGN_ADD(P[i].NumNgb, out->Ngb, mode);
-    ASSIGN_ADD(P[i].DhsmlNgbFactor, out->DhsmlNgb, mode);
+    ASSIGN_ADD(P[i].DrkernNgbFactor, out->DrkernNgb, mode);
     ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
 
     if(P[i].Type == 0)
@@ -203,7 +203,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
         for(k=0;k<3;k++) {for(j=0;j<3;j++) {ASSIGN_ADD(CellP[i].NV_T[k][j], out->NV_T[k][j], mode);}}
 
 #ifdef HYDRO_SPH
-        ASSIGN_ADD(CellP[i].DhsmlHydroSumFactor, out->DhsmlHydroSumFactor, mode);
+        ASSIGN_ADD(CellP[i].DrkernHydroSumFactor, out->DrkernHydroSumFactor, mode);
 #endif
 #ifdef HYDRO_PRESSURE_SPH
         ASSIGN_ADD(CellP[i].EgyWtDensity,   out->EgyRho,   mode);
@@ -239,18 +239,18 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
 #endif
 
 #if defined(RT_SOURCE_INJECTION)
-#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
-    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
-#endif    
+#if defined(RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION)
+    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a sink loop yet to get the angle weights we'll use normally
+#endif
     if((1 << P[i].Type) & (RT_SOURCES)) {ASSIGN_ADD(P[i].KernelSum_Around_RT_Source, out->KernelSum_Around_RT_Source, mode);}
 #endif
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
     if(P[i].Type == 5)
     {
-        if(mode == 0) {P[i].BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;} else {if(P[i].BH_TimeBinGasNeighbor > out->BH_TimeBinGasNeighbor) {P[i].BH_TimeBinGasNeighbor = out->BH_TimeBinGasNeighbor;}}
-#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-        if(mode == 0) {P[i].BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;} else {if(P[i].BH_dr_to_NearestGasNeighbor > out->BH_dr_to_NearestGasNeighbor) {P[i].BH_dr_to_NearestGasNeighbor = out->BH_dr_to_NearestGasNeighbor;}}
+        if(mode == 0) {P[i].Sink_TimeBinGasNeighbor = out->Sink_TimeBinGasNeighbor;} else {if(P[i].Sink_TimeBinGasNeighbor > out->Sink_TimeBinGasNeighbor) {P[i].Sink_TimeBinGasNeighbor = out->Sink_TimeBinGasNeighbor;}}
+#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+        if(mode == 0) {P[i].Sink_dr_to_NearestGasNeighbor = out->Sink_dr_to_NearestGasNeighbor;} else {if(P[i].Sink_dr_to_NearestGasNeighbor > out->Sink_dr_to_NearestGasNeighbor) {P[i].Sink_dr_to_NearestGasNeighbor = out->Sink_dr_to_NearestGasNeighbor;}}
 #endif
     } /* if(P[i].Type == 5) */
 #endif
@@ -267,17 +267,17 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     int j, n, startnode, numngb_inbox, listindex = 0; double r2, h2, u, mass_j, wk;
     struct kernel_density kernel; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     if(mode == 0) {hydrokerneldensity_particle2in(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
-    h2 = local.Hsml * local.Hsml; kernel_hinv(local.Hsml, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
-#if defined(BLACK_HOLES)
-    out.BH_TimeBinGasNeighbor = TIMEBINS;
-#ifdef BH_ACCRETE_NEARESTFIRST
-    out.BH_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER;
+    h2 = local.KernelRadius * local.KernelRadius; kernel_hinv(local.KernelRadius, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
+#if defined(SINK_PARTICLES)
+    out.Sink_TimeBinGasNeighbor = TIMEBINS;
+#ifdef SINK_ACCRETE_NEARESTFIRST
+    out.Sink_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER;
 #endif
 #endif
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             for(n = 0; n < numngb_inbox; n++)
             {
@@ -291,7 +291,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1);
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                if(r2 < h2) /* this loop is only considering particles inside local.Hsml, i.e. seen-by-main */
+                if(r2 < h2) /* this loop is only considering particles inside local.KernelRadius, i.e. seen-by-main */
                 {
                     kernel.r = sqrt(r2);
                     u = kernel.r * kernel.hinv;
@@ -305,19 +305,19 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(local.Type == 0 && kernel.r==0) {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * CellP[j].VelPred[kv];}} // just the self-contribution //
 #endif
 #if defined(RT_SOURCE_INJECTION)
-#if defined(RT_BH_ANGLEWEIGHT_PHOTON_INJECTION)
-                    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a BH loop yet to get the angle weights we'll use normally
-#endif                        
+#if defined(RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION)
+                    if(All.TimeStep == 0) // we only do this on the 0'th timestep, since we haven't done a sink loop yet to get the angle weights we'll use normally
+#endif
                     if((1 << local.Type) & (RT_SOURCES)) {out.KernelSum_Around_RT_Source += 1.-u*u;}
 #endif
-                    out.DhsmlNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
+                    out.DrkernNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #ifdef HYDRO_SPH
                     double mass_eff = mass_j;
 #ifdef HYDRO_PRESSURE_SPH
                     mass_eff *= CellP[j].InternalEnergyPred;
                     out.EgyRho += kernel.wk * mass_eff;
 #endif
-                    out.DhsmlHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
+                    out.DrkernHydroSumFactor += -mass_eff * (NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
 #endif
                     /* for everything below, we do NOT include the particle self-contribution! */
                     if(kernel.r > 0)
@@ -346,7 +346,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                         {int kv; for(kv=0;kv<3;kv++) {out.ParticleVel[kv] += kernel.mj_wk * (local.Vel[kv] - kernel.dv[kv]);}}
 #endif
                         out.Particle_DivVel -= kernel.dwk * (kernel.dp[0] * kernel.dv[0] + kernel.dp[1] * kernel.dv[1] + kernel.dp[2] * kernel.dv[2]) / kernel.r;
-                        /* this is the -particle- divv estimator, which determines how Hsml will evolve (particle drift) */
+                        /* this is the -particle- divv estimator, which determines how KernelRadius will evolve (particle drift) */
 
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
                     } // kernel.r > 0
@@ -383,31 +383,31 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
         }
 #endif
 
-#if defined(BLACK_HOLES)
+#if defined(SINK_PARTICLES)
         /* note, we will have some writes to shared memory here for some initializations of 'j' quantities. fortunately these do not depend on previous values of those quantities, so can be done thread-safely with minor edits using the constructs below */
         if(local->Type == 5)
         {
             #pragma omp atomic write
-            P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in blackhole_accretion() to reset these quantities...
+            P[j].SwallowID = 0;  // this way we don't have to do a global loop over local particles in sink_accretion() to reset these quantities...
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             #pragma omp atomic write
             P[j].SwallowTime = MAX_REAL_NUMBER; // initialize as a large number before looking
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-            if(kernel->r < DMAX(P[j].Hsml, SinkParticle_GravityKernelRadius)) {
+            if(kernel->r < DMAX(P[j].KernelRadius, SinkParticle_GravityKernelRadius)) {
                 #pragma omp atomic write
-                P[j].BH_Ngb_Flag = 1; // note that this particle is inside of a BH's kernel function
+                P[j].Sink_Ngb_Flag = 1; // note that this particle is inside of a sink's kernel function
             }
 #endif
             short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
-            if(out->BH_TimeBinGasNeighbor > TimeBin_j) {out->BH_TimeBinGasNeighbor = TimeBin_j;}
-#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+            if(out->Sink_TimeBinGasNeighbor > TimeBin_j) {out->Sink_TimeBinGasNeighbor = TimeBin_j;}
+#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j);
             dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
-            if((dr_eff_wtd < out->BH_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->BH_dr_to_NearestGasNeighbor = dr_eff_wtd;}
+            if((dr_eff_wtd < out->Sink_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->Sink_dr_to_NearestGasNeighbor = dr_eff_wtd;}
 #endif
         }
-#endif // BLACK_HOLES
+#endif // SINK_PARTICLES
         
     } else { /* local.Type == 0 */
 
@@ -465,7 +465,7 @@ void density(void)
 {
     /* initialize variables used below, in particlar the structures we need to call throughout the iteration */
     CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second(); MyFloat *Left, *Right; double fac, fac_lim, desnumngb, desnumngbdev; long long ntot;
-    int i, npleft, iter=0, redo_particle, particle_set_to_minhsml_flag = 0, particle_set_to_maxhsml_flag = 0;
+    int i, npleft, iter=0, redo_particle, particle_set_to_minrkern_flag = 0, particle_set_to_maxrkern_flag = 0;
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
     
@@ -486,23 +486,23 @@ void density(void)
     for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i]) {
         if(density_isactive(i)) {
             Left[i] = Right[i] = 0;
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             P[i].SwallowID = 0;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             P[i].SwallowTime = MAX_REAL_NUMBER;
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-            P[i].BH_Ngb_Flag = 0;
+            P[i].Sink_Ngb_Flag = 0;
 #endif
 #endif
-            double maxsoft = All.MaxHsml; /* before the first pass, need to ensure the particles do not exceed the maximum Hsml allowed */
+            double maxsoft = All.MaxKernelRadius; /* before the first pass, need to ensure the particles do not exceed the maximum KernelRadius allowed */
 #if defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(GALSF)
             if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) ) {maxsoft = 2.0 / (UNIT_LENGTH_IN_KPC*All.cf_atime);}
 #endif
-#ifdef BLACK_HOLES
-            if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#ifdef SINK_PARTICLES
+            if(P[i].Type == 5) {maxsoft = All.SinkMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #endif
-            if((P[i].Hsml < 0) || !isfinite(P[i].Hsml) || (P[i].Hsml > 0.99*maxsoft)) {P[i].Hsml = 0.99*maxsoft;} /* don't set to exactly maxsoft because our looping below won't treat this correctly */
+            if((P[i].KernelRadius < 0) || !isfinite(P[i].KernelRadius) || (P[i].KernelRadius > 0.99*maxsoft)) {P[i].KernelRadius = 0.99*maxsoft;} /* don't set to exactly maxsoft because our looping below won't treat this correctly */
             
         }} /* done with intial zero-out loop */
 
@@ -513,7 +513,7 @@ void density(void)
     {
         #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */
 
-        /* do check on whether we have enough neighbors, and iterate for density-hsml solution */
+        /* do check on whether we have enough neighbors, and iterate for density-rkern solution */
         double tstart = my_second(), tend;
         for(i = FirstActiveParticle, npleft = 0; i >= 0; i = NextActiveParticle[i])
         {
@@ -525,31 +525,31 @@ void density(void)
             {
                 if(P[i].NumNgb > 0)
                 {
-                    P[i].DhsmlNgbFactor *= P[i].Hsml / (NUMDIMS * P[i].NumNgb);
+                    P[i].DrkernNgbFactor *= P[i].KernelRadius / (NUMDIMS * P[i].NumNgb);
                     P[i].Particle_DivVel /= P[i].NumNgb;
                     /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
-                    P[i].NumNgb *= VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS);
+                    P[i].NumNgb *= VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS);
                 } else {
-                    P[i].NumNgb = P[i].DhsmlNgbFactor = P[i].Particle_DivVel = 0;
+                    P[i].NumNgb = P[i].DrkernNgbFactor = P[i].Particle_DivVel = 0;
                 }
-#if defined(ADAPTIVE_GRAVSOFT_FORALL) /* if particle is AGS-active and non-gas, set DivVel to zero because it will be reset in ags_hsml routine */
+#if defined(ADAPTIVE_GRAVSOFT_FORALL) /* if particle is AGS-active and non-gas, set DivVel to zero because it will be reset in ags_rkern routine */
                 if(ags_density_isactive(i) && (P[i].Type > 0)) {P[i].Particle_DivVel = 0;}
 #endif
 
                 // inverse of fluid volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(P[i].DhsmlNgbFactor > -0.9) {P[i].DhsmlNgbFactor = 1 / (1 + P[i].DhsmlNgbFactor);} else {P[i].DhsmlNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
-                P[i].Particle_DivVel *= P[i].DhsmlNgbFactor;
+                if(P[i].DrkernNgbFactor > -0.9) {P[i].DrkernNgbFactor = 1 / (1 + P[i].DrkernNgbFactor);} else {P[i].DrkernNgbFactor = 1;} /* note: this would be -1 if only a single particle at zero lag is found */
+                P[i].Particle_DivVel *= P[i].DrkernNgbFactor;
 
                 double dimless_face_leak=0; MyDouble NV_T_prev[6]; NV_T_prev[0]=CellP[i].NV_T[0][0]; NV_T_prev[1]=CellP[i].NV_T[1][1]; NV_T_prev[2]=CellP[i].NV_T[2][2]; NV_T_prev[3]=CellP[i].NV_T[0][1]; NV_T_prev[4]=CellP[i].NV_T[0][2]; NV_T_prev[5]=CellP[i].NV_T[1][2];
                 if(P[i].Type == 0) /* invert the NV_T matrix we just measured */
                 {
                     /* use the single-moment terms of NV_T to construct the faces one would have if the system were perfectly symmetric in reconstruction 'from both sides' */
-                    double V_i = VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) / P[i].NumNgb, dx_i = pow(V_i , 1./NUMDIMS); // this is the effective volume which will be used below
+                    double V_i = VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) / P[i].NumNgb, dx_i = pow(V_i , 1./NUMDIMS); // this is the effective volume which will be used below
                     dx_i = sqrt(V_i * (CellP[i].NV_T[0][0] + CellP[i].NV_T[1][1] + CellP[i].NV_T[2][2])); // this is the sqrt of the weighted sum of (w*r^2)
                     double Face_Area_OneSided_Estimator_in[3]={0}, Face_Area_OneSided_Estimator_out[3]={0}; Face_Area_OneSided_Estimator_in[0]=CellP[i].NV_T[1][0]; Face_Area_OneSided_Estimator_in[1]=CellP[i].NV_T[2][0]; Face_Area_OneSided_Estimator_in[2]=CellP[i].NV_T[2][1];
                     /* now fill in the missing elements of NV_T (it's symmetric, so we saved time not computing these directly) */
                     CellP[i].NV_T[1][0]=CellP[i].NV_T[0][1]; CellP[i].NV_T[2][0]=CellP[i].NV_T[0][2]; CellP[i].NV_T[2][1]=CellP[i].NV_T[1][2];
-                    double dimensional_NV_T_normalizer = pow( P[i].Hsml , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
+                    double dimensional_NV_T_normalizer = pow( P[i].KernelRadius , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
                     for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {CellP[i].NV_T[k1][k2] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
                     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
                         this will tell us how robust our procedure is (and let us know if we need to expand the neighbor number */
@@ -569,8 +569,8 @@ void density(void)
                     for(k1=0;k1<3;k1++) {dimless_face_leak += fabs(Face_Area_OneSided_Estimator_out[k1]) / NUMDIMS;} // average of absolute values
 #ifdef HYDRO_KERNEL_SURFACE_VOLCORR
                     double closure_asymm=0; for(k1=0;k1<3;k1++) {closure_asymm += Face_Area_OneSided_Estimator_in[k1]*Face_Area_OneSided_Estimator_in[k1];}
-                    double particle_inverse_volume = P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) );
-                    closure_asymm = sqrt(closure_asymm) / (P[i].Hsml * particle_inverse_volume); // dimensionnless measure of asymmetry in kernel
+                    double particle_inverse_volume = P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) );
+                    closure_asymm = sqrt(closure_asymm) / (P[i].KernelRadius * particle_inverse_volume); // dimensionnless measure of asymmetry in kernel
                     CellP[i].FaceClosureError = DMIN(DMAX(1.0259-2.52444*closure_asymm,0.344301),1.); // correction factor for 'missing' volume assuming a wendland C2 kernel and a sharp surface from Reinhardt & Stadel 2017 (arXiv:1701.08296)
 #else
                     CellP[i].FaceClosureError = dimless_face_leak / (2.*NUMDIMS*pow(dx_i,NUMDIMS-1));
@@ -607,14 +607,14 @@ void density(void)
                 if(iter > 1) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*(double)iter) );}
 #endif
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
                 if(P[i].Type == 5)
                 {
-                    desnumngb = All.DesNumNgb * All.BlackHoleNgbFactor;
+                    desnumngb = All.DesNumNgb * All.SinkNgbFactor;
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                    desnumngbdev = (All.BlackHoleNgbFactor+1);
+                    desnumngbdev = (All.SinkNgbFactor+1);
 #else
-                    desnumngbdev = 4 * (All.BlackHoleNgbFactor+1);
+                    desnumngbdev = 4 * (All.SinkNgbFactor+1);
 #endif
                 }
 #endif
@@ -629,8 +629,8 @@ void density(void)
                 }
 #endif
 
-                double minsoft = All.MinHsml;
-                double maxsoft = All.MaxHsml;
+                double minsoft = All.MinKernelRadius;
+                double maxsoft = All.MaxKernelRadius;
 
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
                 /* use a much looser check for N_neighbors when the central point is a star particle,
@@ -651,7 +651,7 @@ void density(void)
                     // if we're finding this for feedback routines, there isn't any good reason to search beyond a modest physical radius //
                     double unitlength_in_kpc=UNIT_LENGTH_IN_KPC*All.cf_atime;
                     maxsoft = 2.0 / unitlength_in_kpc;
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(BLACK_HOLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(SINK_PARTICLES) && (defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL))
                     if((P[i].SNe_ThisTimeStep>0) || (P[i].MassReturn_ThisTimeStep>0) || (All.Time==All.TimeBegin)) {maxsoft=2.0/unitlength_in_kpc;} else {maxsoft=0.1/unitlength_in_kpc;};
 #endif
 #endif
@@ -659,11 +659,11 @@ void density(void)
                 }
 #endif
 
-#ifdef BLACK_HOLES
-                if(P[i].Type == 5) {maxsoft = All.BlackHoleMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+#ifdef SINK_PARTICLES
+                if(P[i].Type == 5) {maxsoft = All.SinkMaxAccretionRadius / All.cf_atime;}  // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
 		        if(P[i].Type == 5) {minsoft = SinkParticle_GravityKernelRadius;} // we should always find all neighbours within the softening kernel/accretion radius, which is a lower bound on the accretion radius
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
                 if(P[i].Type == 5) {minsoft = DMAX(minsoft, DMIN(P[i].SinkRadius , 0.1*SinkParticle_GravityKernelRadius));}
 #endif
 #endif
@@ -672,42 +672,42 @@ void density(void)
                 redo_particle = 0;
 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((P[i].NumNgb < (desnumngb - desnumngbdev) && P[i].Hsml < 0.999*maxsoft) ||
-                   (P[i].NumNgb > (desnumngb + desnumngbdev) && P[i].Hsml > 1.001*minsoft))
+                if((P[i].NumNgb < (desnumngb - desnumngbdev) && P[i].KernelRadius < 0.999*maxsoft) ||
+                   (P[i].NumNgb > (desnumngb + desnumngbdev) && P[i].KernelRadius > 1.001*minsoft))
                     {redo_particle = 1;}
 
                 /* check maximum kernel size allowed */
-                particle_set_to_maxhsml_flag = 0;
-                if((P[i].Hsml >= 0.999*maxsoft) && (P[i].NumNgb < (desnumngb - desnumngbdev)))
+                particle_set_to_maxrkern_flag = 0;
+                if((P[i].KernelRadius >= 0.999*maxsoft) && (P[i].NumNgb < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(P[i].Hsml == maxsoft)
+                    if(P[i].KernelRadius == maxsoft)
                     {
                         /* iteration at the maximum value is already complete */
-                        particle_set_to_maxhsml_flag = 0;
+                        particle_set_to_maxrkern_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
                         redo_particle = 1;
-                        P[i].Hsml = maxsoft;
-                        particle_set_to_maxhsml_flag = 1;
+                        P[i].KernelRadius = maxsoft;
+                        particle_set_to_maxrkern_flag = 1;
                     }
                 }
 
                 /* check minimum kernel size allowed */
-                particle_set_to_minhsml_flag = 0;
-                if((P[i].Hsml <= 1.001*minsoft) && (P[i].NumNgb > (desnumngb + desnumngbdev)))
+                particle_set_to_minrkern_flag = 0;
+                if((P[i].KernelRadius <= 1.001*minsoft) && (P[i].NumNgb > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(P[i].Hsml == minsoft)
+                    if(P[i].KernelRadius == minsoft)
                     {
-                        /* this means we've already done an iteration with the MinHsml value, so the
+                        /* this means we've already done an iteration with the MinKernelRadius value, so the
                          neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
-                        particle_set_to_minhsml_flag = 0;
+                        particle_set_to_minrkern_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
                         redo_particle = 1;
-                        P[i].Hsml = minsoft;
-                        particle_set_to_minhsml_flag = 1;
+                        P[i].KernelRadius = minsoft;
+                        particle_set_to_minrkern_flag = 1;
                     }
                 }
 
@@ -722,10 +722,10 @@ void density(void)
                 {
                     /* ok we have reached the desired number of neighbors: save the condition number for next timestep */
                     if(ConditionNumber > 1e6 * (double)CONDITION_NUMBER_DANGER) {
-                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g CNum_danger=%g iter=%d Num_Ngb=%g desnumngb=%g Hsml=%g Hsml_min=%g Hsml_max=%g \n i=%d task=%d ID=%llu Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
-                               ConditionNumber,CellP[i].ConditionNumber,CONDITION_NUMBER_DANGER,iter,P[i].NumNgb,desnumngb,P[i].Hsml,All.MinHsml,All.MaxHsml, i, ThisTask,
-                               (unsigned long long) P[i].ID, P[i].Type, P[i].Hsml, P[i].DhsmlNgbFactor, Left[i], Right[i],
-                               (float) P[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
+                        PRINT_WARNING("Condition number=%g CNum_prevtimestep=%g CNum_danger=%g iter=%d Num_Ngb=%g desnumngb=%g KernelRadius=%g KernelRadius_min=%g KernelRadius_max=%g \n i=%d task=%d ID=%llu Type=%d KernelRadius=%g Drkern=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)  \n NVT=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g NVT_inv=%.17g/%.17g/%.17g %.17g/%.17g/%.17g %.17g/%.17g/%.17g ",
+                               ConditionNumber,CellP[i].ConditionNumber,CONDITION_NUMBER_DANGER,iter,P[i].NumNgb,desnumngb,P[i].KernelRadius,All.MinKernelRadius,All.MaxKernelRadius, i, ThisTask,
+                               (unsigned long long) P[i].ID, P[i].Type, P[i].KernelRadius, P[i].DrkernNgbFactor, Left[i], Right[i],
+                               (float) P[i].NumNgb, Right[i] - Left[i], particle_set_to_maxrkern_flag, particle_set_to_minrkern_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
                                CellP[i].NV_T[0][0],CellP[i].NV_T[0][1],CellP[i].NV_T[0][2],CellP[i].NV_T[1][0],CellP[i].NV_T[1][1],CellP[i].NV_T[1][2],CellP[i].NV_T[2][0],CellP[i].NV_T[2][1],CellP[i].NV_T[2][2],
                                NV_T_prev[0],NV_T_prev[3],NV_T_prev[4],NV_T_prev[3],NV_T_prev[1],NV_T_prev[5],NV_T_prev[4],NV_T_prev[5],NV_T_prev[2]);}
@@ -736,9 +736,9 @@ void density(void)
                 {
                     if(iter >= MAXITER - 10)
                     {
-                        PRINT_WARNING("i=%d task=%d ID=%llu iter=%d Type=%d Hsml=%g dhsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
-                               i, ThisTask, (unsigned long long) P[i].ID, iter, P[i].Type, P[i].Hsml, P[i].DhsmlNgbFactor, Left[i], Right[i],
-                               (float) P[i].NumNgb, Right[i] - Left[i], particle_set_to_maxhsml_flag, particle_set_to_minhsml_flag, minsoft,
+                        PRINT_WARNING("i=%d task=%d ID=%llu iter=%d Type=%d KernelRadius=%g Drkern=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)",
+                               i, ThisTask, (unsigned long long) P[i].ID, iter, P[i].Type, P[i].KernelRadius, P[i].DrkernNgbFactor, Left[i], Right[i],
+                               (float) P[i].NumNgb, Right[i] - Left[i], particle_set_to_maxrkern_flag, particle_set_to_minrkern_flag, minsoft,
                                maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                     }
 
@@ -755,12 +755,12 @@ void density(void)
                             continue;
                         }
 
-                    if((particle_set_to_maxhsml_flag==0)&&(particle_set_to_minhsml_flag==0))
+                    if((particle_set_to_maxrkern_flag==0)&&(particle_set_to_minrkern_flag==0))
                     {
-                        if(P[i].NumNgb < (desnumngb - desnumngbdev)) {Left[i] = DMAX(P[i].Hsml, Left[i]);}
+                        if(P[i].NumNgb < (desnumngb - desnumngbdev)) {Left[i] = DMAX(P[i].KernelRadius, Left[i]);}
                         else
                         {
-                            if(Right[i] != 0) {if(P[i].Hsml < Right[i]) {Right[i] = P[i].Hsml;}} else {Right[i] = P[i].Hsml;}
+                            if(Right[i] != 0) {if(P[i].KernelRadius < Right[i]) {Right[i] = P[i].KernelRadius;}} else {Right[i] = P[i].KernelRadius;}
                         }
 
                         // right/left define upper/lower bounds from previous iterations
@@ -771,24 +771,24 @@ void density(void)
                             if(iter>1) {maxjump = 0.2*log(Right[i]/Left[i]);}
                             if(P[i].NumNgb > 1)
                             {
-                                double jumpvar = P[i].DhsmlNgbFactor * log( desnumngb / P[i].NumNgb ) / NUMDIMS;
+                                double jumpvar = P[i].DrkernNgbFactor * log( desnumngb / P[i].NumNgb ) / NUMDIMS;
                                 if(iter>1) {if(fabs(jumpvar) < maxjump) {if(jumpvar<0) {jumpvar=-maxjump;} else {jumpvar=maxjump;}}}
-                                P[i].Hsml *= exp(jumpvar);
+                                P[i].KernelRadius *= exp(jumpvar);
                             } else {
-                                P[i].Hsml *= 2.0;
+                                P[i].KernelRadius *= 2.0;
                             }
-                            if((P[i].Hsml<Right[i])&&(P[i].Hsml>Left[i]))
+                            if((P[i].KernelRadius<Right[i])&&(P[i].KernelRadius>Left[i]))
                             {
                                 if(iter > 1)
                                 {
                                     double hfac = exp(maxjump);
-                                    if(P[i].Hsml > Right[i] / hfac) {P[i].Hsml = Right[i] / hfac;}
-                                    if(P[i].Hsml < Left[i] * hfac) {P[i].Hsml = Left[i] * hfac;}
+                                    if(P[i].KernelRadius > Right[i] / hfac) {P[i].KernelRadius = Right[i] / hfac;}
+                                    if(P[i].KernelRadius < Left[i] * hfac) {P[i].KernelRadius = Left[i] * hfac;}
                                 }
                             } else {
-                                if(P[i].Hsml>Right[i]) P[i].Hsml=Right[i];
-                                if(P[i].Hsml<Left[i]) P[i].Hsml=Left[i];
-                                P[i].Hsml = pow(P[i].Hsml * Left[i] * Right[i] , 1.0/3.0);
+                                if(P[i].KernelRadius>Right[i]) P[i].KernelRadius=Right[i];
+                                if(P[i].KernelRadius<Left[i]) P[i].KernelRadius=Left[i];
+                                P[i].KernelRadius = pow(P[i].KernelRadius * Left[i] * Right[i] , 1.0/3.0);
                             }
                         }
                         else
@@ -796,7 +796,7 @@ void density(void)
                             if(Right[i] == 0 && Left[i] == 0)
                             {
                                 char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE];
-                                snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "Right[i] == 0 && Left[i] == 0 && P[i].Hsml=%g\n", P[i].Hsml); terminate(buf);
+                                snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "Right[i] == 0 && Left[i] == 0 && P[i].KernelRadius=%g\n", P[i].KernelRadius); terminate(buf);
                             }
 
                             if(Right[i] == 0 && Left[i] > 0)
@@ -808,24 +808,24 @@ void density(void)
 
                                 if((P[i].NumNgb < 2*desnumngb)&&(P[i].NumNgb > 0.1*desnumngb))
                                 {
-                                    double slope = P[i].DhsmlNgbFactor;
+                                    double slope = P[i].DrkernNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4) {if(P[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(P[i].DrkernNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac < fac_lim+0.231)
                                     {
-                                        P[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                        P[i].KernelRadius *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
                                     {
-                                        P[i].Hsml *= exp(fac_lim+0.231);
+                                        P[i].KernelRadius *= exp(fac_lim+0.231);
                                         // fac~0.26 leads to expected doubling of number if density is constant,
                                         //   insert this limiter here b/c we don't want to get *too* far from the answer (which we're close to)
                                     }
                                 }
                                 else
-                                    {P[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {P[i].KernelRadius *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
 
                             if(Right[i] > 0 && Left[i] == 0)
@@ -839,28 +839,28 @@ void density(void)
 
                                 if((P[i].NumNgb < 2*desnumngb)&&(P[i].NumNgb > 0.1*desnumngb))
                                 {
-                                    double slope = P[i].DhsmlNgbFactor;
+                                    double slope = P[i].DrkernNgbFactor;
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
-                                    if(iter>=4) {if(P[i].DhsmlNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
+                                    if(iter>=4) {if(P[i].DrkernNgbFactor==1) {fac *= 10;}} // tries to help with being trapped in small steps
 
                                     if(fac > fac_lim-0.231)
                                     {
-                                        P[i].Hsml *= exp(fac); // more expensive function, but faster convergence
+                                        P[i].KernelRadius *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
-                                        {P[i].Hsml *= exp(fac_lim-0.231);} // limiter to prevent --too-- far a jump in a single iteration
+                                        {P[i].KernelRadius *= exp(fac_lim-0.231);} // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    {P[i].Hsml *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    {P[i].KernelRadius *= exp(fac_lim);} // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
-                        } // closes if[particle_set_to_max/minhsml_flag]
+                        } // closes if[particle_set_to_max/minrkern_flag]
                     } // closes redo_particle
                     /* resets for max/min values */
-                    if(P[i].Hsml < minsoft) {P[i].Hsml = minsoft;}
-                    if(particle_set_to_minhsml_flag==1) {P[i].Hsml = minsoft;}
-                    if(P[i].Hsml > maxsoft) {P[i].Hsml = maxsoft;}
-                    if(particle_set_to_maxhsml_flag==1) {P[i].Hsml = maxsoft;}
+                    if(P[i].KernelRadius < minsoft) {P[i].KernelRadius = minsoft;}
+                    if(particle_set_to_minrkern_flag==1) {P[i].KernelRadius = minsoft;}
+                    if(P[i].KernelRadius > maxsoft) {P[i].KernelRadius = maxsoft;}
+                    if(particle_set_to_maxrkern_flag==1) {P[i].KernelRadius = maxsoft;}
                 }
                 else {P[i].TimeBin = -P[i].TimeBin - 1;}	/* Mark as inactive */
             } //  if(density_isactive(i))
@@ -889,7 +889,7 @@ void density(void)
     }
 
 
-    /* now that we are DONE iterating to find hsml, we can do the REAL final operations on the results
+    /* now that we are DONE iterating to find rkern, we can do the REAL final operations on the results
      ( any quantities that only need to be evaluated once, on the final iteration --
      won't save much b/c the real cost is in the neighbor loop for each particle, but it's something )
      -- also, some results (for example, viscosity suppression below) should not be calculated unless
@@ -924,13 +924,13 @@ void density(void)
                     }
 #endif
                     /* need to divide by the sum of x_tilde=1, i.e. numden_ngb */
-                    if((P[i].Hsml > 0)&&(P[i].NumNgb > 0))
+                    if((P[i].KernelRadius > 0)&&(P[i].NumNgb > 0))
                     {
-                        double numden_ngb = P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) );
-                        CellP[i].DhsmlHydroSumFactor *= P[i].Hsml / (NUMDIMS * numden_ngb);
-                        CellP[i].DhsmlHydroSumFactor *= -P[i].DhsmlNgbFactor; /* now this is ready to be called in hydro routine */
+                        double numden_ngb = P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) );
+                        CellP[i].DrkernHydroSumFactor *= P[i].KernelRadius / (NUMDIMS * numden_ngb);
+                        CellP[i].DrkernHydroSumFactor *= -P[i].DrkernNgbFactor; /* now this is ready to be called in hydro routine */
                     } else {
-                        CellP[i].DhsmlHydroSumFactor = 0;
+                        CellP[i].DrkernHydroSumFactor = 0;
                     }
 #endif
 
@@ -980,15 +980,15 @@ void density(void)
                 }
 
 #ifndef HYDRO_SPH
-                if((P[i].Hsml > 0)&&(P[i].NumNgb > 0))
+                if((P[i].KernelRadius > 0)&&(P[i].NumNgb > 0))
                 {
-                    CellP[i].Density = P[i].Mass * P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) ); // divide mass by volume
+                    CellP[i].Density = P[i].Mass * P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) ); // divide mass by volume
                 } else {
-                    if(P[i].Hsml <= 0)
+                    if(P[i].KernelRadius <= 0)
                     {
                         CellP[i].Density = 0; // in this case, give up, no meaningful volume
                     } else {
-                        CellP[i].Density = P[i].Mass / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].Hsml,NUMDIMS) ); // divide mass (lone particle) by volume
+                        CellP[i].Density = P[i].Mass / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].KernelRadius,NUMDIMS) ); // divide mass (lone particle) by volume
                     }
                 }
 #endif
@@ -1048,7 +1048,7 @@ void density(void)
             
         } // density_isactive(i)
         
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
         if(P[i].Type==0) {if(P[i].ID==All.AGNWindID && CellP[i].IniDen<0) {CellP[i].IniDen=CellP[i].Density; int k; for(k=0;k<3;k++) {CellP[i].BPred[k]=CellP[i].B[k]=CellP[i].IniB[k]*(All.UnitMagneticField_in_gauss/UNIT_B_IN_GAUSS)*(P[i].Mass/(All.cf_a2inv*CellP[i].Density));}}}
 #endif
         
@@ -1074,11 +1074,11 @@ void density(void)
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 /* define structures to use below */
-struct INPUT_STRUCT_NAME {MyDouble Pos[3], Hsml, Volume_0; int NodeList[NODELISTLENGTH];} *DATAIN_NAME, *DATAGET_NAME;
+struct INPUT_STRUCT_NAME {MyDouble Pos[3], KernelRadius, Volume_0; int NodeList[NODELISTLENGTH];} *DATAIN_NAME, *DATAGET_NAME;
 
 /* define properties to be sent to nodes */
 void particle2in_cellcorrections(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
-{in->Volume_0=CellP[i].Volume_0; in->Hsml=P[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];}}
+{in->Volume_0=CellP[i].Volume_0; in->KernelRadius=P[i].KernelRadius; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];}}
 
 /* define output structure to use below */
 struct OUTPUT_STRUCT_NAME {MyFloat Volume_1;} *DATARESULT_NAME, *DATAOUT_NAME;
@@ -1095,7 +1095,7 @@ int cellcorrections_evaluate(int target, int mode, int *exportflag, int *exportn
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode; /* open it */} /* start usual neighbor tree search */
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb_inbox = ngb_treefind_pairs_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             for(n=0; n<numngb_inbox; n++)
             {
@@ -1103,8 +1103,8 @@ int cellcorrections_evaluate(int target, int mode, int *exportflag, int *exportn
                 double dp[3]; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];}
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); // find the closest image in the given box size  //
                 double r2=0; for(k=0;k<3;k++) {r2+=dp[k]*dp[k];} // distance
-                if(r2 >= P[j].Hsml*P[j].Hsml) {continue;} // need to be inside of 'j's kernel search
-                double u,hinv,hinv3,hinv4,wk,dwk; kernel_hinv(P[j].Hsml, &hinv, &hinv3, &hinv4); u=sqrt(r2)*hinv; wk=0; dwk=0; // define kernel-needed variables
+                if(r2 >= P[j].KernelRadius*P[j].KernelRadius) {continue;} // need to be inside of 'j's kernel search
+                double u,hinv,hinv3,hinv4,wk,dwk; kernel_hinv(P[j].KernelRadius, &hinv, &hinv3, &hinv4); u=sqrt(r2)*hinv; wk=0; dwk=0; // define kernel-needed variables
                 kernel_main(u, hinv3, hinv4, &wk, &dwk, -1); // calculate the normal kernel weight 'wk'
                 out.Volume_1 += CellP[j].Volume_0 * CellP[j].Volume_0 * wk; // this is the next-order correction to the cell volume quadrature
             } // for(n = 0; n < numngb; n++)

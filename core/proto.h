@@ -6,8 +6,8 @@
 #ifdef COOLING
 #include "../cooling/cooling.h"
 #endif
-#ifdef BLACK_HOLES
-#include "../galaxy_sf/blackholes/blackhole.h"
+#ifdef SINK_PARTICLES
+#include "../sinks/sink.h"
 #endif
 
 /* declarations of functions throughout the code */
@@ -137,18 +137,18 @@ static inline double ForceSoftening_KernelRadius(int p)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
     if(P[p].Type == 4) {return All.ForceSoftening[4] * pow(P[p].Mass*UNIT_MASS_IN_SOLAR / (GALSF_MERGER_STARCLUSTER_PARTICLES),0.333);}
 #endif
-#ifdef BH_EXCISION_NONGAS
-    if(P[p].Type==5) {if(P[p].Mass > P[p].BH_Mass+P[p].Sink_Formation_Mass) {return All.ForceSoftening[P[p].Type] * pow((P[p].Mass-P[p].BH_Mass)/P[p].Sink_Formation_Mass,1./3.);} else {return All.ForceSoftening[P[p].Type];}} // scale the force softening to the excess mass to avoid a runaway divergence in the galaxy center from artificially collapsing the potential to that of a point mass
+#ifdef SINK_EXCISION_NONGAS
+    if(P[p].Type==5) {if(P[p].Mass > P[p].Sink_Mass+P[p].Sink_Formation_Mass) {return All.ForceSoftening[P[p].Type] * pow((P[p].Mass-P[p].Sink_Mass)/P[p].Sink_Formation_Mass,1./3.);} else {return All.ForceSoftening[P[p].Type];}} // scale the force softening to the excess mass to avoid a runaway divergence in the galaxy center from artificially collapsing the potential to that of a point mass
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P[p].AGS_Hsml;}
+    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P[p].AGS_KernelRadius;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(SELFGRAVITY_OFF) /* softening scale still appears in timestep criterion for problems without self-gravity, so set it adaptively */
     //if(P[p].Type == 0) {if(All.Time == All.TimeBegin) {return All.ForceSoftening[P[p].Type];}}
 #ifdef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
-    if(P[p].Type == 0) {return DMIN(P[p].Hsml, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
+    if(P[p].Type == 0) {return DMIN(P[p].KernelRadius, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
 #else
-    if(P[p].Type == 0) {return P[p].Hsml;}
+    if(P[p].Type == 0) {return P[p].KernelRadius;}
 #endif
 #endif
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
@@ -173,11 +173,11 @@ void calc_shearing_box_pos_offset(void);
 #endif
 
 
-int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                            int *ngblist, int TARGET_BITMASK);
 
-int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                            int *ngblist, int TARGET_BITMASK);
 
@@ -324,14 +324,6 @@ void kinetic_feedback_mhm(void);
 int kin_compare_key(const void *a, const void *b);
 void kinetic_evaluate(int target, int mode);
 
-void bubble(void);
-void multi_bubbles(void);
-void bh_bubble(double bh_dmass, MyFloat center[3], MyIDType BH_id);
-void find_CM_of_biggest_group(void);
-int compare_length_values(const void *a, const void *b);
-double rho_dot(double z, void *params);
-double bhgrowth(double z1, double z2);
-
 int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend_local);
 
 double INLINE_FUNC Get_Particle_Size(int i);
@@ -419,7 +411,7 @@ double INLINE_FUNC Get_Gas_PhiField(int i_particle_id);
 double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id);
 #endif
 #endif
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 double INLINE_FUNC Get_Particle_Size_AGS(int i);
 double get_particle_volume_ags(int j);
 #endif
@@ -443,21 +435,21 @@ double INLINE_FUNC dGfak(double a);
 double INLINE_FUNC hubble_function_external(double a);
 #endif
 
-void blackhole_accretion(void);
-#ifdef BH_WIND_SPAWN
+void sink_accretion(void);
+#ifdef SINK_WIND_SPAWN
 void get_random_orthonormal_basis(int seed, double *nx, double *ny, double *nz);
 void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double *ny, double *nz, double *veldir, double *dpdir);
 double get_spawned_cell_launch_speed(int i);
 #ifdef MAGNETIC
 void get_wind_spawn_magnetic_field(int j, int mode, double *ny, double *nz,  double *dpdir, double d_r);
 #endif
-int blackhole_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_already_spawned );
-void spawn_bh_wind_feedback(void);
+int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_already_spawned );
+void spawn_sink_wind_feedback(void);
 #endif
-int blackhole_evaluate(int target, int mode, int *nexport, int *nsend_local);
-int blackhole_evaluate_swallow(int target, int mode, int *nexport, int *nsend_local);
+int sink_evaluate(int target, int mode, int *nexport, int *nsend_local);
+int sink_evaluate_swallow(int target, int mode, int *nexport, int *nsend_local);
 
-int  blackhole_compare_key(const void *a, const void *b);
+int  sink_compare_key(const void *a, const void *b);
 
 
 void fof_fof(int num);
@@ -478,7 +470,7 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 int fof_compare_key(const void *a, const void *b);
 void fof_link_special(void);
 void fof_link_specialpair(int p, int s);
-void fof_make_black_holes(void);
+void fof_make_sink_particles(void);
 
 int io_compare_P_GrNr_ID(const void *a, const void *b);
 
@@ -598,7 +590,7 @@ void st_turbdrive_init_ouseq(void);
 void st_turbdrive_calc_phases(void);
 double st_return_driving_scale(void);
 #endif
-double evaluate_NH_from_GradRho(MyFloat gradrho[3], double hsml, double rho, double numngb_ndim, double include_h, int target);
+double evaluate_NH_from_GradRho(MyFloat gradrho[3], double rkern, double rho, double numngb_ndim, double include_h, int target);
 double evaluate_time_since_t_initial_in_Gyr(double t_initial);
 
 #ifdef GALSF
@@ -607,7 +599,7 @@ double evaluate_stellar_age_Gyr(long i);
 double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i);
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i, int mode);
 double calculate_individual_stellar_luminosity(double mdot, double mass, long i);
-double return_probability_of_this_forming_bh_from_seed_model(int i);
+double return_probability_of_this_forming_sink_from_seed_model(int i);
 
 void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int fb_loop_iteration);
 double mechanical_fb_calculate_eventrates(int i, double dt);
@@ -756,8 +748,8 @@ char *GetMultiSpeciesFilename(int i, int hk);
 #endif
 #endif
 
-double bh_angleweight(double bh_lum_input, MyFloat bh_angle[3], double dx, double dy, double dz);
-double bh_angleweight_localcoupling(int j, double cos_theta, double r, double H_bh);
+double sink_fb_angleweight(double sink_lum_input, MyFloat sink_angle[3], double dx, double dy, double dz);
+double sink_fb_angleweight_localcoupling(int j, double cos_theta, double r, double H_kernel);
 
 #if defined(GALSF_SUBGRID_WINDS)
 void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pvtau_return);
@@ -767,8 +759,8 @@ void assign_wind_kick_from_sf_routine(int i, double sm, double dtime, double* pv
 void radiation_pressure_winds_consolidated(void);
 #endif
 
-#if defined(BLACK_HOLES)
-int blackhole_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_local);
+#if defined(SINK_PARTICLES)
+int sink_evaluate_PREPASS(int target, int mode, int *nexport, int *nSend_local);
 #endif
 
 #ifdef GALSF_SUBGRID_WINDS
@@ -1007,7 +999,7 @@ int pmtidaltensor_nonperiodic_fourier(int component, int grnr);
 #endif
 
 int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary);
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 void ags_setup_smoothinglengths(void);
 void ags_density(void);
 int ags_density_isactive(int i);

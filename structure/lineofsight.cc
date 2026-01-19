@@ -67,7 +67,7 @@ struct line_of_sight
 struct line_of_sight_particles
 {
   MyFloat Pos[3];
-  MyFloat Hsml;
+  MyFloat KernelRadius;
   MyFloat Vz;
   MyFloat Utherm;
   MyFloat Mass;
@@ -169,12 +169,12 @@ void find_particles_and_save_them(int num)
 
 	  r2 = dx * dx + dy * dy;
 
-	  if(r2 < P[n].Hsml * P[n].Hsml)
+	  if(r2 < P[n].KernelRadius * P[n].KernelRadius)
 	    {
 	      for(k = 0; k < 3; k++)
 		particles[count_local].Pos[k] = P[n].Pos[k];
 
-	      particles[count_local].Hsml = P[n].Hsml;
+	      particles[count_local].KernelRadius = P[n].KernelRadius;
 	      particles[count_local].Vz = P[n].Vel[Los->zaxis];
 	      particles[count_local].Utherm = CellP[n].InternalEnergyPred;
 	      particles[count_local].Mass = P[n].Mass;
@@ -289,10 +289,10 @@ void add_along_lines_of_sight(void)
 
 	  r2 = dx * dx + dy * dy;
 
-	  if(r2 < P[n].Hsml * P[n].Hsml)
+	  if(r2 < P[n].KernelRadius * P[n].KernelRadius)
 	    {
-	      z0 = (P[n].Pos[Los->zaxis] - P[n].Hsml) / All.BoxSize * PIXELS;
-	      z1 = (P[n].Pos[Los->zaxis] + P[n].Hsml) / All.BoxSize * PIXELS;
+	      z0 = (P[n].Pos[Los->zaxis] - P[n].KernelRadius) / All.BoxSize * PIXELS;
+	      z1 = (P[n].Pos[Los->zaxis] + P[n].KernelRadius) / All.BoxSize * PIXELS;
 	      iz0 = (int) z0;
 	      iz1 = (int) z1;
 	      if(z0 < 0)
@@ -306,16 +306,16 @@ void add_along_lines_of_sight(void)
             NEAREST_XYZ(dx,dy,dz,-1);
 		  r = sqrt(r2 + dz * dz);
 
-		  if(P[n].Hsml > All.BoxSize)
+		  if(P[n].KernelRadius > All.BoxSize)
 		    {
-		      printf("Here:%d  n=%d %g\n", ThisTask, n, P[n].Hsml);
+		      printf("Here:%d  n=%d %g\n", ThisTask, n, P[n].KernelRadius);
 		      endrun(89);
 		    }
 
-		  if(r < P[n].Hsml)
+		  if(r < P[n].KernelRadius)
 		    {
-		      u = r / P[n].Hsml;
-		      h3inv = 1.0 / (P[n].Hsml * P[n].Hsml * P[n].Hsml);
+		      u = r / P[n].KernelRadius;
+		      h3inv = 1.0 / (P[n].KernelRadius * P[n].KernelRadius * P[n].KernelRadius);
               kernel_main(u, h3inv, 1, &wk, &dwk, -1);
                 
 		      bin = iz;

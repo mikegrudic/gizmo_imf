@@ -43,7 +43,7 @@ void apply_grain_dragforce(void)
 #endif
         if(((1 << P[i].Type) & (GRAIN_PTYPES)) && (P[i].Mass>0)) /* only particles of designated type[s] are eligible for this routine */
         {
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             P[i].SwallowID = 0; /* zero for next cycle */
 #ifdef SINGLE_STAR_SINK_DYNAMICS
             P[i].SwallowTime = MAX_REAL_NUMBER; /* set to large number to be checked against lower values in next cycle */
@@ -270,7 +270,7 @@ void apply_grain_dragforce(void)
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME
 {
-    int NodeList[NODELISTLENGTH]; MyDouble Pos[3], Hsml; /* these must always be defined */
+    int NodeList[NODELISTLENGTH]; MyDouble Pos[3], KernelRadius; /* these must always be defined */
 #if defined(GRAIN_BACKREACTION)
     double Grain_DeltaMomentum[3], Gas_Density, Grain_AccelTimeMin;
 #endif
@@ -281,7 +281,7 @@ struct INPUT_STRUCT_NAME
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {   /* "i" is the particle from which data will be assigned, to structure "in" */
     int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} /* good example - always needed */
-    in->Hsml = P[i].Hsml; /* also always needed for search (can change the radius "P[i].Hsml" but in->Hsml must be defined */
+    in->KernelRadius = P[i].KernelRadius; /* also always needed for search (can change the radius "P[i].KernelRadius" but in->KernelRadius must be defined */
 #if defined(GRAIN_BACKREACTION)
     for(k=0;k<3;k++) {in->Grain_DeltaMomentum[k]=P[i].Grain_DeltaMomentum[k];}
     in->Gas_Density = P[i].Gas_Density;
@@ -310,27 +310,27 @@ int grain_backrx_evaluate(int target, int mode, int *exportflag, int *exportnode
     int startnode, numngb_inbox, listindex = 0, j, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
 
-    if(local.Hsml <= 0) {return 0;} /* don't bother doing a loop if this isnt going to do anything */
+    if(local.KernelRadius <= 0) {return 0;} /* don't bother doing a loop if this isnt going to do anything */
     int kernel_shared_BITFLAG = 1; /* grains 'see' gas in this loop */
 
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, kernel_shared_BITFLAG);
+            numngb_inbox = ngb_treefind_variable_threads_targeted(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, kernel_shared_BITFLAG);
             if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                if((P[j].Mass <= 0)||(P[j].KernelRadius <= 0)) {continue;} /* make sure neighbor is valid */
                 int k; double dp[3]; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
 #ifdef BOX_BND_PARTICLES
                 if(P[j].ID > 0) {r2 = -1;} /* ignore frozen boundary particles */
 #endif
-                if((r2>0)&&(r2<local.Hsml*local.Hsml)) /* only keep elements inside search radius */
+                if((r2>0)&&(r2<local.KernelRadius*local.KernelRadius)) /* only keep elements inside search radius */
                 {
-                    double hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(local.Hsml,&hinv,&hinv3,&hinv4);
+                    double hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(local.KernelRadius,&hinv,&hinv3,&hinv4);
                     kernel_main(r*hinv, hinv3, hinv4, &wk_i, &dwk_i, 0); /* kernel quantities that may be needed */
 #if defined(GRAIN_BACKREACTION)
                     double wt = -wk_i / local.Gas_Density, dv2=0; /* degy=wt*delta_egy; */
@@ -435,12 +435,12 @@ void calculate_interact_kick(double dV[3], double kick[3], double m)
 
 /* this structure defines the variables that need to be sent -from- the 'searching' element */
 struct INPUT_STRUCT_NAME {
-    int NodeList[NODELISTLENGTH], Type; MyDouble Mass, Hsml, Pos[3], Vel[3], Grain_Size, Grain_Abs_Coeff[N_RT_FREQ_BINS]; /* these must always be defined */
+    int NodeList[NODELISTLENGTH], Type; MyDouble Mass, KernelRadius, Pos[3], Vel[3], Grain_Size, Grain_Abs_Coeff[N_RT_FREQ_BINS]; /* these must always be defined */
 } *DATAIN_NAME, *DATAGET_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {   /* "i" is the particle from which data will be assigned, to structure "in" */
-    in->Type=P[i].Type; in->Mass=P[i].Mass; in->Hsml=P[i].Hsml; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
+    in->Type=P[i].Type; in->Mass=P[i].Mass; in->KernelRadius=P[i].KernelRadius; int k; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];}
     if((1 << P[i].Type) & (GRAIN_PTYPES))
     {
         in->Grain_Size=P[i].Grain_Size; int k_freq;
@@ -480,18 +480,18 @@ int interpolate_fluxes_opacities_gasgrains_evaluate(int target, int mode, int *e
         while(startnode >= 0) {
             if(local.Type == 0)
             {
-                numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, GRAIN_PTYPES); /* gas searches for grains which can see -it- */
+                numngb_inbox = ngb_treefind_pairs_threads_targeted(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, GRAIN_PTYPES); /* gas searches for grains which can see -it- */
             } else {
-                numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.Hsml, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist); /* grains search for gas -they- can see */
+                numngb_inbox = ngb_treefind_variable_threads(local.Pos, local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist); /* grains search for gas -they- can see */
             }
             if(numngb_inbox < 0) {return -2;} /* no neighbors! */
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if((P[j].Mass <= 0)||(P[j].Hsml <= 0)) {continue;} /* make sure neighbor is valid */
+                if((P[j].Mass <= 0)||(P[j].KernelRadius <= 0)) {continue;} /* make sure neighbor is valid */
                 int k,k_freq; double dp[3],h_to_use; for(k=0;k<3;k++) {dp[k]=local.Pos[k]-P[j].Pos[k];} /* position offset */
                 NEAREST_XYZ(dp[0],dp[1],dp[2],1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; /* box-wrap appropriately and calculate distance */
-                if(local.Type == 0) {h_to_use = P[j].Hsml;} else {h_to_use = local.Hsml;}
+                if(local.Type == 0) {h_to_use = P[j].KernelRadius;} else {h_to_use = local.KernelRadius;}
                 if((r2>0)&&(r2<h_to_use*h_to_use)) /* only keep elements inside search radius */
                 {
                     double wt=0,hinv,hinv3,hinv4,wk_i=0,dwk_i=0,r=sqrt(r2); kernel_hinv(h_to_use,&hinv,&hinv3,&hinv4);

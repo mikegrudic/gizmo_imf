@@ -60,11 +60,11 @@ void compute_hydro_densities_and_forces(void)
     {
         PRINT_STATUS("Start hydrodynamics computation...");
         density();		/* computes density, and pressure */
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
         ags_density();
 #endif
         force_update_hmax();	/* update kernel lengths in tree */
-        /*! This function updates the hmax-values in tree nodes that hold gas. These values are needed to find all neighbors in the hydro-force computation.  Since the Hsml-values are potentially changed in the gas-denity computation, force_update_hmax() should be carried out before the hydrodynamical forces are computed, i.e. after density(). */
+        /*! This function updates the hmax-values in tree nodes that hold gas. These values are needed to find all neighbors in the hydro-force computation.  Since the KernelRadius-values are potentially changed in the gas-denity computation, force_update_hmax() should be carried out before the hydrodynamical forces are computed, i.e. after density(). */
 
         PRINT_STATUS(" ..density & tree-update computation done...");
 
@@ -102,7 +102,7 @@ void compute_hydro_densities_and_forces(void)
         PRINT_STATUS(" ..hydro force computation done.");
 
     } else {
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
         ags_density(); // if there are no gas particles but ags-all is active, still need to enter this loop //
         force_update_hmax();    /* update kernel lengths in tree */
 #endif

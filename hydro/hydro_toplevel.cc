@@ -181,7 +181,7 @@ struct INPUT_STRUCT_NAME
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
     MyFloat ParticleVel[3];
 #endif
-    MyFloat Hsml;
+    MyFloat KernelRadius;
     MyFloat Mass;
     MyFloat Density;
     MyFloat Pressure;
@@ -190,9 +190,9 @@ struct INPUT_STRUCT_NAME
     MyFloat InternalEnergyPred;
     MyFloat SoundSpeed;
     MyFloat dt_hydrostep_i;
-    MyFloat DhsmlNgbFactor;
+    MyFloat DrkernNgbFactor;
 #ifdef HYDRO_SPH
-    MyFloat DhsmlHydroSumFactor;
+    MyFloat DrkernHydroSumFactor;
     MyFloat alpha;
 #endif
     
@@ -409,7 +409,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         in->ParticleVel[k] = CellP[i].ParticleVel[k];
 #endif
     }
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     in->Mass = P[i].Mass;
     in->Density = CellP[i].Density;
     in->Pressure = CellP[i].Pressure;
@@ -423,9 +423,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
      to conveniently indicate the status of the parent particle flag, for the constrained gradients */
     if(CellP[i].FlagForConstrainedGradients == 0) {in->ConditionNumber *= -1;}
 #endif
-    in->DhsmlNgbFactor = P[i].DhsmlNgbFactor;
+    in->DrkernNgbFactor = P[i].DrkernNgbFactor;
 #ifdef HYDRO_SPH
-    in->DhsmlHydroSumFactor = CellP[i].DhsmlHydroSumFactor;
+    in->DrkernHydroSumFactor = CellP[i].DrkernHydroSumFactor;
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
     in->alpha = CellP[i].alpha_limiter * CellP[i].alpha;
 #else
@@ -729,13 +729,13 @@ void hydro_final_operations_and_cleanup(void)
 #else
             CellP[i].DtPhi = 0;
 #endif
-            if((!isnan(CellP[i].divB))&&(P[i].Hsml>0)&&(CellP[i].divB!=0)&&(CellP[i].Density>0))
+            if((!isnan(CellP[i].divB))&&(P[i].KernelRadius>0)&&(CellP[i].divB!=0)&&(CellP[i].Density>0))
             {
                 double tmp_ded = 0.5 * CellP[i].MaxSignalVel / (fac_mu*All.cf_atime); // has units of v_physical now
                 /* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
                 double b2_max = 0.0;
                 for(k=0;k<3;k++) {b2_max += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
-                b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (CellP[i].Density*All.cf_a3inv) * 1.0 / (P[i].Hsml*All.cf_atime) );
+                b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (CellP[i].Density*All.cf_a3inv) * 1.0 / (P[i].KernelRadius*All.cf_atime) );
                 if(fabs(CellP[i].divB) > b2_max) {CellP[i].divB *= b2_max / fabs(CellP[i].divB);}
                 /* ok now can apply this to get the growth rate of phi */
                 // CellP[i].DtPhi -= tmp_ded * tmp_ded * All.DivBcleanHyperbolicSigma * CellP[i].divB;
@@ -774,7 +774,7 @@ void hydro_final_operations_and_cleanup(void)
             /* ok, now: HydroAccel = dv/dt, DtInternalEnergy = du/dt (energy per unit mass) */
 
             /* zero out hydrodynamic PdV work terms if the particle is at the maximum smoothing, these will be incorrect */
-            if(P[i].Hsml >= 0.99*All.MaxHsml) {CellP[i].DtInternalEnergy = 0;}
+            if(P[i].KernelRadius >= 0.99*All.MaxKernelRadius) {CellP[i].DtInternalEnergy = 0;}
 
             // need to explicitly include adiabatic correction from the hubble-flow (for drifting) here //
             if(All.ComovingIntegrationOn) {CellP[i].DtInternalEnergy -= 3*(GAMMA(i)-1) * CellP[i].InternalEnergyPred * All.cf_hubble_a;}
@@ -906,8 +906,8 @@ void hydro_final_operations_and_cleanup(void)
                 CellP[i].DtInternalEnergy = 0; //CellP[i].dInternalEnergy = 0;
                 double windspeed = sqrt(2 * All.WindEnergyFraction * All.FactorSN * All.EgySpecSN / (1 - All.FactorSN) / All.WindEfficiency) * All.Time;
                 windspeed *= fac_mu;
-                double hsml_c = pow(All.WindFreeTravelDensFac * All.PhysDensThresh / (CellP[i].Density * All.cf_a3inv), (1. / 3.));
-                CellP[i].MaxSignalVel = hsml_c * DMAX((2 * windspeed), CellP[i].MaxSignalVel);
+                double rkern_c = pow(All.WindFreeTravelDensFac * All.PhysDensThresh / (CellP[i].Density * All.cf_a3inv), (1. / 3.));
+                CellP[i].MaxSignalVel = rkern_c * DMAX((2 * windspeed), CellP[i].MaxSignalVel);
             }
 #endif
 

@@ -40,7 +40,7 @@ group_properties *Group;
 static struct fofdata_in
 {
   MyDouble Pos[3];
-  MyFloat Hsml;
+  MyFloat KernelRadius;
   MyIDType MinID;
   MyIDType MinIDTask;
   int NodeList[NODELISTLENGTH];
@@ -81,7 +81,7 @@ static char *NonlocalFlag;
 
 
 static float *fof_nearest_distance;
-static float *fof_nearest_hsml;
+static float *fof_nearest_rkern;
 
 
 void fof_fof(int num)
@@ -292,9 +292,9 @@ void fof_fof(int num)
   if(ThisTask == 0)
     printf("computation of group properties took = %g sec\n", timediff(t0, t1));
 
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_SEED_FROM_FOF
   if(num < 0){   // Make BHs in every call to fof_fof (including the group finding for each snapshot)
-      if(All.Time < 1.0/(1.0+All.SeedBlackHoleMinRedshift)) { fof_make_black_holes(); } else {  printf("skipping black hole seeding at a = %g \n", All.Time); }
+      if(All.Time < 1.0/(1.0+All.SeedSinkMinRedshift)) { fof_make_sink_particles(); } else {  printf("skipping sink particle seeding at a = %g \n", All.Time); }
   }
 #endif
 
@@ -910,11 +910,11 @@ void fof_compute_group_properties(int gr, int start, int len)
 #ifdef GALSF
   Group[gr].Sfr = 0;
 #endif
-#ifdef BLACK_HOLES
-  Group[gr].BH_Mass = 0;
-  Group[gr].BH_Mdot = 0;
-#ifdef BH_SEED_FROM_FOF
-  Group[gr].MinPot = BHPOTVALUEINIT;
+#ifdef SINK_PARTICLES
+  Group[gr].Sink_Mass = 0;
+  Group[gr].Sink_Mdot = 0;
+#ifdef SINK_SEED_FROM_FOF
+  Group[gr].MinPot = SINK_MINPOTVALUE_INIT;
   Group[gr].index_maxdens = Group[gr].task_maxdens = -1;
 #endif
 #endif
@@ -947,17 +947,17 @@ void fof_compute_group_properties(int gr, int start, int len)
 	Group[gr].Sfr += CellP[index].Sfr;
 #endif
 
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
       if(P[index].Type == 5)
 	{
-	  Group[gr].BH_Mdot += P[index].BH_Mdot;
-	  Group[gr].BH_Mass += P[index].BH_Mass;
+	  Group[gr].Sink_Mdot += P[index].Sink_Mdot;
+	  Group[gr].Sink_Mass += P[index].Sink_Mass;
 	}
 
-#ifdef BH_SEED_FROM_FOF
-#if (BH_SEED_FROM_FOF==0)
+#ifdef SINK_SEED_FROM_FOF
+#if (SINK_SEED_FROM_FOF==0)
       if(P[index].Type==0)
-#elif (BH_SEED_FROM_FOF==1)
+#elif (SINK_SEED_FROM_FOF==1)
       if(P[index].Type==4)
 #endif
          if(P[index].Potential < Group[gr].MinPot)
@@ -967,7 +967,7 @@ void fof_compute_group_properties(int gr, int start, int len)
           Group[gr].task_maxdens = ThisTask;
         }
 #endif
-#endif // BLACK_HOLES
+#endif // SINK_PARTICLES
 
         for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
         NEAREST_XYZ(xyz[0],xyz[1],xyz[2],-1);
@@ -1056,10 +1056,10 @@ void fof_exchange_group_data(void)
 #ifdef GALSF
       Group[start].Sfr += get_Group[i].Sfr;
 #endif
-#ifdef BLACK_HOLES
-      Group[start].BH_Mdot += get_Group[i].BH_Mdot;
-      Group[start].BH_Mass += get_Group[i].BH_Mass;
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_PARTICLES
+      Group[start].Sink_Mdot += get_Group[i].Sink_Mdot;
+      Group[start].Sink_Mass += get_Group[i].Sink_Mass;
+#ifdef SINK_SEED_FROM_FOF
       if(get_Group[i].MinPot < Group[start].MinPot)
         {
           Group[start].MinPot = get_Group[i].MinPot;
@@ -1378,18 +1378,18 @@ void fof_save_local_catalogue(int num)
   myfree(mass);
 #endif
 
-#ifdef BLACK_HOLES
-  /* BH_Mass */
+#ifdef SINK_PARTICLES
+  /* Sink_Mass */
   mass = (float *)mymalloc("mass", Ngroups * sizeof(float));
   for(i = 0; i < Ngroups; i++)
-    mass[i] = Group[i].BH_Mass;
+    mass[i] = Group[i].Sink_Mass;
   my_fwrite(mass, Ngroups, sizeof(float), fd);
   myfree(mass);
 
-  /* BH_Mdot */
+  /* Sink_Mdot */
   mass = (float *)mymalloc("mass", Ngroups * sizeof(float));
   for(i = 0; i < Ngroups; i++)
-    mass[i] = Group[i].BH_Mdot;
+    mass[i] = Group[i].Sink_Mdot;
   my_fwrite(mass, Ngroups, sizeof(float), fd);
   myfree(mass);
 #endif
@@ -1426,14 +1426,14 @@ void fof_find_nearest_dmparticle(void)
 
   PRINT_STATUS("Start finding nearest dm-particle (presently allocated=%g MB)",AllocatedBytes / (1024.0 * 1024.0));
   fof_nearest_distance = (float *) mymalloc("fof_nearest_distance", sizeof(float) * NumPart);
-  fof_nearest_hsml = (float *) mymalloc("fof_nearest_hsml", sizeof(float) * NumPart);
+  fof_nearest_rkern = (float *) mymalloc("fof_nearest_rkern", sizeof(float) * NumPart);
 
   for(n = 0; n < NumPart; n++)
     {
       if(((1 << P[n].Type) & (MyFOF_SECONDARY_LINK_TYPES)))
 	{
 	  fof_nearest_distance[n] = 1.0e30;
-	  fof_nearest_hsml[n] = 0.1 * LinkL;
+	  fof_nearest_rkern[n] = 0.1 * LinkL;
 	}
     }
 
@@ -1500,7 +1500,7 @@ void fof_find_nearest_dmparticle(void)
 	      FoFDataIn[j].Pos[0] = P[place].Pos[0];
 	      FoFDataIn[j].Pos[1] = P[place].Pos[1];
 	      FoFDataIn[j].Pos[2] = P[place].Pos[2];
-	      FoFDataIn[j].Hsml = fof_nearest_hsml[place];
+	      FoFDataIn[j].KernelRadius = fof_nearest_rkern[place];
 
 	      memcpy(FoFDataIn[j].NodeList,
 		     DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -1587,15 +1587,15 @@ void fof_find_nearest_dmparticle(void)
 	    {
 	      if(fof_nearest_distance[i] > 1.0e29)
 		{
-		  if(fof_nearest_hsml[i] < 4 * LinkL)	/* we only search out to a maximum distance */
+		  if(fof_nearest_rkern[i] < 4 * LinkL)	/* we only search out to a maximum distance */
 		    {
 		      /* need to redo this particle */
 		      npleft++;
-		      fof_nearest_hsml[i] *= 2.0;
+		      fof_nearest_rkern[i] *= 2.0;
 		      if(iter >= MAXITER - 10)
 			{
-			  printf("i=%d task=%d ID=%llu Hsml=%g  pos=(%g|%g|%g)\n",
-				 i, ThisTask, (unsigned long long) P[i].ID, fof_nearest_hsml[i],
+			  printf("i=%d task=%d ID=%llu KernelRadius=%g  pos=(%g|%g|%g)\n",
+				 i, ThisTask, (unsigned long long) P[i].ID, fof_nearest_rkern[i],
 				 P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 			  fflush(stdout);
 			}
@@ -1622,7 +1622,7 @@ void fof_find_nearest_dmparticle(void)
   myfree(DataIndexTable);
   myfree(Ngblist);
 
-  myfree(fof_nearest_hsml);
+  myfree(fof_nearest_rkern);
   myfree(fof_nearest_distance);
 
   PRINT_STATUS("done finding nearest dm-particle");
@@ -1641,12 +1641,12 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
   if(mode == 0)
     {
       pos = P[target].Pos;
-      h = fof_nearest_hsml[target];
+      h = fof_nearest_rkern[target];
     }
   else
     {
       pos = FoFDataGet[target].Pos;
-      h = FoFDataGet[target].Hsml;
+      h = FoFDataGet[target].KernelRadius;
     }
 
   index = -1;
@@ -1724,9 +1724,9 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 
 
 
-#ifdef BH_SEED_FROM_FOF
+#ifdef SINK_SEED_FROM_FOF
 
-void fof_make_black_holes(void)
+void fof_make_sink_particles(void)
 {
   int i, j, n, ntot;
   long nexport, nimport;
@@ -1740,9 +1740,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
-#if (BH_SEED_FROM_FOF==0)
+#if (SINK_SEED_FROM_FOF==0)
     if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
-#elif (BH_SEED_FROM_FOF==1)
+#elif (SINK_SEED_FROM_FOF==1)
     if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
 	if(Group[i].LenType[5] == 0)
@@ -1774,9 +1774,9 @@ void fof_make_black_holes(void)
 
   for(i = 0; i < Ngroups; i++)
     {
-#if (BH_SEED_FROM_FOF==0)
+#if (SINK_SEED_FROM_FOF==0)
         if(Group[i].MassType[1] >= (All.OmegaMatter - All.OmegaBaryon) / All.OmegaMatter * All.MinFoFMassForNewSeed)
-#elif (BH_SEED_FROM_FOF==1)
+#elif (SINK_SEED_FROM_FOF==1)
         if(Group[i].MassType[4] > All.MinFoFMassForNewSeed)
 #endif
 	if(Group[i].LenType[5] == 0)
@@ -1804,37 +1804,37 @@ void fof_make_black_holes(void)
     }
 
   MPI_Allreduce(&nimport, &ntot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  PRINT_STATUS("Making %d new black hole particles", ntot);
-  All.TotBHs += ntot;
+  PRINT_STATUS("Making %d new sink particle particles", ntot);
+  All.TotSinks += ntot;
 
   for(n = 0; n < nimport; n++)
     {
-#if (BH_SEED_FROM_FOF==0)
+#if (SINK_SEED_FROM_FOF==0)
         if(P[import_indices[n]].Type != 0)
-#elif (BH_SEED_FROM_FOF==1)
+#elif (SINK_SEED_FROM_FOF==1)
             if(P[import_indices[n]].Type != 4)
 #endif
                 endrun(7772);
         
-        P[import_indices[n]].Type = 5;    /* make it a black hole particle */
+        P[import_indices[n]].Type = 5;    /* make it a sink particle particle */
 #ifdef GALSF
         P[import_indices[n]].StellarAge = All.Time; /* reset formation time to match BH formation */
 #endif
         /* generate BH mass */
-        if(All.SeedBlackHoleMassSigma > 0)
+        if(All.SeedSinkMassSigma > 0)
         {
-            /* compute gaussian random number: mean=0, sigma=All.SeedBlackHoleMassSigma */
+            /* compute gaussian random number: mean=0, sigma=All.SeedSinkMassSigma */
             random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
             gsl_rng_set(random_generator_forbh, P[import_indices[n]].ID + 17 + All.NumCurrentTiStep);
-            random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedBlackHoleMassSigma);
-            P[import_indices[n]].BH_Mass = pow( 10., log10(All.SeedBlackHoleMass) + random_number_forbh );
+            random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedSinkMassSigma);
+            P[import_indices[n]].Sink_Mass = pow( 10., log10(All.SeedSinkMass) + random_number_forbh );
             unitmass_in_msun = UNIT_MASS_IN_SOLAR;
-            if( P[import_indices[n]].BH_Mass < 100./unitmass_in_msun )
-                P[import_indices[n]].BH_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
+            if( P[import_indices[n]].Sink_Mass < 100./unitmass_in_msun )
+                P[import_indices[n]].Sink_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
         } else {
-            P[import_indices[n]].BH_Mass = All.SeedBlackHoleMass;
+            P[import_indices[n]].Sink_Mass = All.SeedSinkMass;
         }
-        P[import_indices[n]].BH_Mdot = 0;
+        P[import_indices[n]].Sink_Mdot = 0;
         /* set hydro-ish variables */
         if(P[import_indices[n]].Type == 0){
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
@@ -1843,20 +1843,20 @@ void fof_make_black_holes(void)
             P[import_indices[n]].DensAroundStar = CellP[import_indices[n]].Density;
         }
         /* set some specific BH variables that are needed below */
-#ifdef BH_INCREASE_DYNAMIC_MASS
-        P[import_indices[n]].Mass *= BH_INCREASE_DYNAMIC_MASS;
+#ifdef SINK_INCREASE_DYNAMIC_MASS
+        P[import_indices[n]].Mass *= SINK_INCREASE_DYNAMIC_MASS;
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-        P[import_indices[n]].BH_Mass_AlphaDisk = All.SeedAlphaDiskMass;
+#ifdef SINK_ALPHADISK_ACCRETION
+        P[import_indices[n]].Sink_Mass_Reservoir = All.SeedReservoirMass;
 #endif
-#ifdef BH_WIND_SPAWN
+#ifdef SINK_WIND_SPAWN
         P[import_indices[n]].unspawned_wind_mass = 0;
 #endif
-#ifdef BH_COUNTPROGS
-        P[import_indices[n]].BH_CountProgs = 1;
+#ifdef SINK_COUNTPROGS
+        P[import_indices[n]].Sink_CountProgs = 1;
 #endif
         /* record that we actually made a BH, count numbers for book-keeping in domains */
-#if (BH_SEED_FROM_FOF != 1)
+#if (SINK_SEED_FROM_FOF != 1)
         Stars_converted++;
         TimeBinCountGas[P[import_indices[n]].TimeBin]--;
 #endif
@@ -1869,7 +1869,7 @@ void fof_make_black_holes(void)
   myfree(import_indices);
 }
 
-#endif // BH_SEED_FROM_FOF
+#endif // SINK_SEED_FROM_FOF
 
 
 

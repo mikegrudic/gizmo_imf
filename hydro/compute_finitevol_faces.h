@@ -24,10 +24,10 @@
 #if defined(COOLING) || (SLOPE_LIMITER_TOLERANCE==0)
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=2.*V_i*V_j/(V_i+V_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
 #else
-    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*P[j].Hsml + V_j*local.Hsml) / (local.Hsml+P[j].Hsml); // should these be H, or be -effective sizes- //
+    if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.50) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = (V_i*P[j].KernelRadius + V_j*local.KernelRadius) / (local.KernelRadius+P[j].KernelRadius); // should these be H, or be -effective sizes- //
 #endif
 #elif defined(GALSF)
-    if( (fabs(log(V_i/V_j)/NUMDIMS) > 1.25) && (kernel.r > local.Hsml || kernel.r > P[j].Hsml) ) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);}
+    if( (fabs(log(V_i/V_j)/NUMDIMS) > 1.25) && (kernel.r > local.KernelRadius || kernel.r > P[j].KernelRadius) ) {wt_i=wt_j=(V_i*Particle_Size_j+V_j*Particle_Size_i)/(Particle_Size_i+Particle_Size_j);}
 #endif
 #endif
 
@@ -117,7 +117,7 @@
 #endif
 
 
-/* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different Hsml interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
+/* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different KernelRadius interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
 #if defined(HYDRO_FACE_AREA_LIMITER) //|| !defined(PROTECT_FROZEN_FIRE)) && (HYDRO_FIX_MESH_MOTION >= 5)
     double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
     if(Face_Area_Norm > Amax) {for(k=0;k<3;k++) {Face_Area_Vec[k] *= (Amax/Face_Area_Norm);} Face_Area_Norm = Amax;} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */

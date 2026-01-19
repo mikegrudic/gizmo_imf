@@ -39,7 +39,7 @@ void ngb_treebuild(void)
  *  In the range-search this is taken into account, i.e. it is guaranteed that all particles are found that fulfill this condition, 
  *  including the (more difficult) second part of it. For this purpose, each node knows the maximum h occuring among the particles it represents.
  */
-int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
                                int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "../system/ngb_codeblock_before_condition.h"
@@ -53,10 +53,10 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat hsml, int targe
 }
 
 
-/*! This function returns neighbours with distance <= hsml and returns them in Ngblist. Actually, particles in a box of half side length hsml are
+/*! This function returns neighbours with distance <= rkern and returns them in Ngblist. Actually, particles in a box of half side length rkern are
  *  returned, i.e. the reduction to a sphere still needs to be done in the calling routine.
  */
-int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
 				  int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "../system/ngb_codeblock_before_condition.h"
@@ -74,7 +74,7 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
     TARGET_BITMASK should be set as a bitmask, i.e. SUM(2^n), where n are all the particle types desired for neighbor finding,
     so e.g. if you want particle types 0 and 4, set TARGET_BITMASK = 17 = 1 + 16 = 2^0 + 2^4
 */
-int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)
+int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "../system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
@@ -85,7 +85,7 @@ int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat hsml, int t
 #undef SEARCHBOTHWAYS
 }
 /* identical to above but includes 'both ways' search for interacting neighbors */
-int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)
+int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode, int mode, int *nexport, int *nsend_local, int TARGET_BITMASK)
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "../system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
@@ -101,7 +101,7 @@ int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat hsml, int targ
         TARGET_BITMASK should be set as a bitmask, i.e. SUM(2^n), where n are all the particle types desired for neighbor finding,
         so e.g. if you want particle types 0 and 4, set TARGET_BITMASK = 17 = 1 + 16 = 2^0 + 2^4
  */
-int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                            int *ngblist, int TARGET_BITMASK)
 {
@@ -113,7 +113,7 @@ int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat hsm
 #undef SEARCHBOTHWAYS
 }
 /* identical to above but includes 'both ways' search for interacting neighbors */
-int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode,
+int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
                                            int mode, int *exportflag, int *exportnodecount, int *exportindex,
                                            int *ngblist, int TARGET_BITMASK)
 {
@@ -136,7 +136,7 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat hsml, 
     local requirement, so we can't use our simple routines above. this is a customized version of the "ngb_treefind_variable" routine above. 
     as a result, updates to the core neighbor search routine will not alter this subroutine 
  */
-int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target, int *startnode, int mode, int *nexport, int *nsend_local, int MyFOF_PRIMARY_LINK_TYPES)
+int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode, int mode, int *nexport, int *nsend_local, int MyFOF_PRIMARY_LINK_TYPES)
 {
     int numngb, no, p, task, nexport_save;
     struct NODE *current;
@@ -165,7 +165,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
             if(mode == 0)
                 continue;
             
-            dist = hsml;
+            dist = rkern;
             dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
             if(dx > dist) continue;
             dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
@@ -249,7 +249,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
             
             no = current->u.d.sibling;	/* in case the node can be discarded */
             
-            dist = hsml + 0.5 * current->len;
+            dist = rkern + 0.5 * current->len;
             dx = NGB_PERIODIC_BOX_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
             if(dx > dist) continue;
             dy = NGB_PERIODIC_BOX_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
@@ -263,7 +263,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
             if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))) == 0)	/* only use fully local nodes */
             {
                 /* test whether the node is contained within the sphere */
-                dist = hsml - CUBE_EDGEFACTOR_2 * current->len;
+                dist = rkern - CUBE_EDGEFACTOR_2 * current->len;
                 if(dist > 0)
                     if(r2 < dist * dist)
                     {
@@ -281,7 +281,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target,
                                         dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
                                         dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
                                         dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
-                                        if(dx * dx + dy * dy + dz * dz > hsml * hsml) break;
+                                        if(dx * dx + dy * dy + dz * dz > rkern * rkern) break;
 
                                         Ngblist[numngb++] = p;
                                         break;

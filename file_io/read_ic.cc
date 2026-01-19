@@ -110,8 +110,8 @@ void read_ic(char *fname)
     for(i=0;i<6;i++) All.MassTable[i]=0;
 
 
-#if defined(BLACK_HOLES)
-#if defined(BH_SWALLOWGAS) || defined(BH_BONDI) || defined(BH_WIND_CONTINUOUS) || defined(BH_WIND_KICK) || defined(BH_GRAVACCRETION) || defined(BH_GRAVCAPTURE_GAS) || defined(BH_SEED_FROM_LOCALGAS)
+#if defined(SINK_PARTICLES)
+#if defined(SINK_SWALLOWGAS) || defined(SINK_BONDI) || defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_SEED_FROM_LOCALGAS)
     if(RestartFlag == 0) {All.MassTable[5] = 0;}
 #endif
 #endif
@@ -247,8 +247,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
 
-        case IO_HSML:		/* gas kernel length */
-            for(n = 0; n < pc; n++) {P[offset + n].Hsml = *fp++;}
+        case IO_KERNELRADIUS:		/* gas kernel length */
+            for(n = 0; n < pc; n++) {P[offset + n].KernelRadius = *fp++;}
             break;
 
         case IO_DELAYTIME:
@@ -321,36 +321,36 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-        case IO_BHMASS:
-#ifdef BLACK_HOLES
-            for(n = 0; n < pc; n++) {P[offset + n].BH_Mass = *fp++;}
+        case IO_SINKMASS:
+#ifdef SINK_PARTICLES
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mass = *fp++;}
 #endif
             break;
 
         case IO_SINKDUSTMASSACC:
-#if defined(BLACK_HOLES) && defined(GRAIN_FLUID)
-            for(n = 0; n < pc; n++) {P[offset + n].BH_Dust_Mass = *fp++;}
+#if defined(SINK_PARTICLES) && defined(GRAIN_FLUID)
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_Dust_Mass = *fp++;}
 #endif
             break;
 
-        case IO_BH_DIST:
+        case IO_SINK_DIST:
             break;
 
-        case IO_BH_ANGMOM:
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM
-            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P[offset + n].BH_Specific_AngMom[k] = *fp++;}}
+        case IO_SINK_ANGMOM:
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
+            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P[offset + n].Sink_Specific_AngMom[k] = *fp++;}}
 #endif
             break;
 
-        case IO_BHMASSALPHA:
-#ifdef BH_ALPHADISK_ACCRETION
-            for(n = 0; n < pc; n++) {P[offset + n].BH_Mass_AlphaDisk = *fp++;}
+        case IO_SINKMASSALPHA:
+#ifdef SINK_ALPHADISK_ACCRETION
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mass_Reservoir = *fp++;}
 #endif
             break;
 
-        case IO_BHMDOT:
-#ifdef BLACK_HOLES
-            for(n = 0; n < pc; n++) {P[offset + n].BH_Mdot = *fp++;}
+        case IO_SINKMDOT:
+#ifdef SINK_PARTICLES
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mdot = *fp++;}
 #endif
         case IO_R_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
@@ -389,9 +389,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #endif
             break;
 
-        case IO_BHPROGS:
-#ifdef BH_COUNTPROGS
-            for(n = 0; n < pc; n++) {P[offset + n].BH_CountProgs = *ip_int++;}
+        case IO_SINKPROGS:
+#ifdef SINK_COUNTPROGS
+            for(n = 0; n < pc; n++) {P[offset + n].Sink_CountProgs = *ip_int++;}
 #endif
             break;
 
@@ -472,13 +472,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             
             /* adaptive softening parameters */
         case IO_AGS_HKERN:
-#if defined(AGS_HSML_CALCULATION_IS_ACTIVE)
-            for(n = 0; n < pc; n++) {P[offset + n].AGS_Hsml = *fp++;}
+#if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
+            for(n = 0; n < pc; n++) {P[offset + n].AGS_KernelRadius = *fp++;}
 #endif
             break;
 
         case IO_AGS_ZETA:
-#if defined (AGS_HSML_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
+#if defined (AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
             for(n = 0; n < pc; n++) {P[offset + n].AGS_zeta = *fp++;}
 #endif
             break;
@@ -537,19 +537,19 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_UNSPMASS:
-#if defined(BH_WIND_SPAWN) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
              for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_mass = *fp++;}
 #endif
             break; 
             
         case IO_IDEN:
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
              for(n = 0; n < pc; n++) {CellP[offset + n].IniDen = *fp++;}
 #endif
             break;
             
         case IO_INIB:        
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(BH_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
              for(n = 0; n < pc; n++) {for(k=0;k<3;k++) {CellP[offset + n].IniB[k] = *fp++;}}
 #endif      
             break;  
@@ -561,13 +561,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_SINKRAD:
-#ifdef BH_GRAVCAPTURE_FIXEDSINKRADIUS
+#ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
             for(n = 0; n < pc; n++) {P[offset + n].SinkRadius = *fp++;}
 #endif
             break;
 
         case IO_SINK_FORM_MASS:
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
             for(n = 0; n < pc; n++) {P[offset + n].Sink_Formation_Mass = *fp++;}
 #endif
             break;	    
@@ -897,8 +897,8 @@ void read_file(char *fname, int readTask, int lastTask)
                 /* blocks only for restartflag == 0 */
                 if(RestartFlag == 0 && blocknr > IO_U
                    && blocknr != IO_BFLD
-#ifdef INPUT_READ_HSML
-                   && blocknr != IO_HSML
+#ifdef INPUT_READ_KERNELRADIUS
+                   && blocknr != IO_KERNELRADIUS
 #endif
 #ifdef EOS_CARRIES_TEMPERATURE
                    && blocknr != IO_EOSTEMP
@@ -915,10 +915,10 @@ void read_file(char *fname, int readTask, int lastTask)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
                    && blocknr != IO_PARTVEL
 #endif
-#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(INPUT_READ_SINKPROPS)
+#if defined(SINK_GRAVCAPTURE_FIXEDSINKRADIUS) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINKRAD
 #endif
-#if defined(BLACK_HOLES) && defined(INPUT_READ_SINKPROPS)
+#if defined(SINK_PARTICLES) && defined(INPUT_READ_SINKPROPS)
                    && blocknr != IO_SINK_FORM_MASS
 #endif		   
 #if defined(CHIMES) && !defined(CHIMES_INITIALISE_IN_EQM)
@@ -954,7 +954,7 @@ void read_file(char *fname, int readTask, int lastTask)
             if(RestartFlag == 2 && blocknr == IO_HSMS) {continue;}
 #endif
 
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
 #ifndef AGS_OUTPUTZETA
             if(blocknr == IO_AGS_ZETA) {continue;}
 #endif

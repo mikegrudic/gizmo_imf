@@ -105,7 +105,7 @@ int subfind_process_group_serial(int gr, int Offs)
     {
       part_index = Offs + i;
 
-      subfind_locngb_treefind(P[part_index].Pos, All.DesLinkNgb, P[part_index].DM_Hsml);
+      subfind_locngb_treefind(P[part_index].Pos, All.DesLinkNgb, P[part_index].DM_KernelRadius);
 
       /* note: returned neighbours are already sorted by distance */
 

@@ -24,7 +24,7 @@ static struct nearestdata_in
 {
   MyDouble Pos[3];
   MyIDType ID;
-  MyFloat Hsml;
+  MyFloat KernelRadius;
   MyFloat Density;
   MyFloat Dist[2];
   int Count;
@@ -117,7 +117,7 @@ void subfind_find_nearesttwo(void)
 	  NearestDataIn[j].Pos[0] = P[place].Pos[0];
 	  NearestDataIn[j].Pos[1] = P[place].Pos[1];
 	  NearestDataIn[j].Pos[2] = P[place].Pos[2];
-	  NearestDataIn[j].Hsml = P[place].DM_Hsml;
+	  NearestDataIn[j].KernelRadius = P[place].DM_KernelRadius;
 	  NearestDataIn[j].ID = P[place].ID;
 	  NearestDataIn[j].Density = P[place].u.DM_Density;
 	  NearestDataIn[j].Count = NgbLoc[place].count;
@@ -283,7 +283,7 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
       ID = P[target].ID;
       density = P[target].u.DM_Density;
       pos = P[target].Pos;
-      h = P[target].DM_Hsml;
+      h = P[target].DM_KernelRadius;
       count = NgbLoc[target].count;
       for(k = 0; k < count; k++)
 	{
@@ -296,7 +296,7 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
       ID = NearestDataGet[target].ID;
       density = NearestDataGet[target].Density;
       pos = NearestDataGet[target].Pos;
-      h = NearestDataGet[target].Hsml;
+      h = NearestDataGet[target].KernelRadius;
       count = NearestDataGet[target].Count;
       for(k = 0; k < count; k++)
 	{
@@ -430,7 +430,7 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
 
 
 /*!   -- this subroutine is not openmp parallelized at present, so there's not any issue about conflicts over shared memory. if you make it openmp, make sure you protect the writes to shared memory here! -- */
-int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int target, int *startnode,
+int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double rkern, int target, int *startnode,
 				    int mode, double *hmax, int *nexport, int *nsend_local)
 {
   int numngb, no, p, task, nexport_save;
@@ -459,7 +459,7 @@ int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int t
 	    continue;
 #endif
 
-        dist = hsml; double xtmp; xtmp=0;
+        dist = rkern; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
@@ -533,7 +533,7 @@ int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double hsml, int t
 
 	  no = current->u.d.sibling;	/* in case the node can be discarded */
 
-        dist = hsml + 0.5 * current->len; double xtmp; xtmp=0;
+        dist = rkern + 0.5 * current->len; double xtmp; xtmp=0;
       dx = NGB_PERIODIC_BOX_LONG_X(current->center[0] - searchcenter[0], current->center[1] - searchcenter[1], current->center[2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;

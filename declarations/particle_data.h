@@ -6,7 +6,7 @@ extern ALIGN(32) struct particle_data
     short int TimeBin;
     MyIDType ID;                    /*! < unique ID of particle (assigned at beginning of the simulation) */
     MyIDType ID_child_number;       /*! < child number for particles 'split' from main (retain ID, get new child number) */
-#ifndef BH_WIND_SPAWN
+#ifndef SINK_WIND_SPAWN
     int ID_generation;              /*! < generation (need to track for particle-splitting to ensure each 'child' gets a unique child number */
 #else
     MyIDType ID_generation;
@@ -89,9 +89,9 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
     
-    MyFloat Hsml;                   /*!< search radius around particle for neighbors/interactions */
+    MyFloat KernelRadius;           /*!< search radius around particle for neighbors/interactions */
     MyFloat NumNgb;                 /*!< neighbor number around particle */
-    MyFloat DhsmlNgbFactor;        /*!< correction factor needed for varying kernel lengths */
+    MyFloat DrkernNgbFactor;        /*!< correction factor needed for varying kernel lengths */
 #ifdef DO_DENSITY_AROUND_STAR_PARTICLES
     MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
 #endif
@@ -143,80 +143,80 @@ extern ALIGN(32) struct particle_data
     short int MHD_PIC_SubType;
 #endif
     
-#if defined(BLACK_HOLES)
+#if defined(SINK_PARTICLES)
     MyIDType SwallowID;
-    int IndexMapToTempStruc;   /*!< allows for mapping to BlackholeTempInfo struc */
-#ifdef BH_WIND_SPAWN
+    int IndexMapToTempStruc;   /*!< allows for mapping to SinkTempInfo struc */
+#ifdef SINK_WIND_SPAWN
     MyFloat unspawned_wind_mass;    /*!< tabulates the wind mass which has not yet been spawned */
 #endif
-#ifdef BH_COUNTPROGS
-    int BH_CountProgs;
+#ifdef SINK_COUNTPROGS
+    int Sink_CountProgs;
 #endif
-    MyFloat BH_Mass;
+    MyFloat Sink_Mass;
     MyFloat Sink_Formation_Mass; /* initial mass of sink (total particle) when it formed */
-#ifdef BH_RIAF_SUBEDDINGTON_MODEL
-    MyFloat BH_Mdot_ROI;
-    MyFloat BH_ROI;
+#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+    MyFloat Sink_Mdot_ROI;
+    MyFloat Sink_ROI;
 #endif
-#if defined(BH_GRAVCAPTURE_FIXEDSINKRADIUS)
+#if defined(SINK_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif
-#ifdef BH_INTERACT_ON_GAS_TIMESTEP
+#ifdef SINK_INTERACT_ON_GAS_TIMESTEP
     MyFloat dt_since_last_gas_search; /* keep track of time since the sink's last neighbor search and gas interaction (for feedback/accretion) */
     short int do_gas_search_this_timestep; /* flag for deciding whether to do gas stuff for a given timestep */
 #endif
 #ifdef GRAIN_FLUID
-    MyFloat BH_Dust_Mass;
+    MyFloat Sink_Dust_Mass;
 #endif
 #ifdef RT_REINJECT_ACCRETED_PHOTONS
-    MyFloat BH_accreted_photon_energy;
+    MyFloat Sink_accreted_photon_energy;
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     MyFloat SwallowTime; /* freefall time of a particle onto a sink particle  */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING)
-    MyFloat BH_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
+    MyFloat Sink_SurroundingGasVel; /* Relative speed of sink to surrounding gas  */
 #endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
-    int BH_Ngb_Flag; /* whether or not the gas lives in a sink's hydro stencil */
+    int Sink_Ngb_Flag; /* whether or not the gas lives in a sink's hydro stencil */
 #endif
-#ifdef BH_ALPHADISK_ACCRETION
-    MyFloat BH_Mass_AlphaDisk;
+#ifdef SINK_ALPHADISK_ACCRETION
+    MyFloat Sink_Mass_Reservoir;
 #endif
-#if defined(BH_SWALLOWGAS) && !defined(BH_GRAVCAPTURE_GAS)
-    MyFloat BH_AccretionDeficit; /* difference between continuously-accreted and discretely-accreted masses, needs to be evolved to ensure exact conservation with some modules */
+#if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
+    MyFloat Sink_AccretionDeficit; /* difference between continuously-accreted and discretely-accreted masses, needs to be evolved to ensure exact conservation with some modules */
 #endif
-#ifdef BH_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
-    int LowestBHTimeBin;
+#ifdef SINK_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
+    int LowestSinkTimeBin;
 #endif
-#ifdef BH_FOLLOW_ACCRETED_ANGMOM
-    MyFloat BH_Specific_AngMom[3];
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
+    MyFloat Sink_Specific_AngMom[3];
 #endif
-#ifdef BH_RETURN_BFLUX
+#ifdef SINK_RETURN_BFLUX
     MyDouble B[3];
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
     MyFloat Mgas_in_Kernel;
     MyFloat Jgas_in_Kernel[3];
 #endif
-    MyFloat BH_Mdot;
-    int BH_TimeBinGasNeighbor;
-#if defined(BH_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-    MyFloat BH_dr_to_NearestGasNeighbor;
+    MyFloat Sink_Mdot;
+    int Sink_TimeBinGasNeighbor;
+#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+    MyFloat Sink_dr_to_NearestGasNeighbor;
 #endif
-#ifdef BH_REPOSITION_ON_POTMIN
-    MyFloat BH_MinPotPos[3];
-    MyFloat BH_MinPot;
+#ifdef SINK_REPOSITION_ON_POTMIN
+    MyFloat Sink_PotentialMinimumOfNeighborsPos[3];
+    MyFloat Sink_PotentialMinimumOfNeighbors;
 #endif
-#endif  /* if defined(BLACK_HOLES) */
-#ifdef BH_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
+#endif  /* if defined(SINK_PARTICLES) */
+#ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
     MyFloat MencInRcrit;
 #endif
     
     
-#ifdef BH_CALC_DISTANCES
-    MyFloat min_dist_to_bh;
-    MyFloat min_xyz_to_bh[3];
+#ifdef SINK_CALC_DISTANCES
+    MyFloat Min_Distance_to_Sink;
+    MyFloat Min_xyz_to_Sink[3];
 #ifdef SPECIAL_POINT_MOTION
     MyFloat vel_of_nearest_special[3];
     MyFloat acc_of_nearest_special[3];
@@ -225,15 +225,15 @@ extern ALIGN(32) struct particle_data
 #endif
 #endif
 #if defined(SINGLE_STAR_FIND_BINARIES) || (SINGLE_STAR_TIMESTEPPING > 0)
-    MyDouble min_bh_t_orbital; //orbital time for binary
+    MyDouble Min_Sink_OrbitalTime; //orbital time for binary
     MyDouble comp_dx[3]; //position offset of binary companion - this will be evolved in the Kepler solution while we use the Pos attribute to track the binary COM
     MyDouble comp_dv[3]; //velocity offset of binary companion - this will be evolved in the Kepler solution while we use the Vel attribute to track the binary COM velocity
     MyDouble comp_Mass; //mass of binary companion
     int is_in_a_binary; // flag whether star is in a binary or not
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-    MyFloat min_bh_freefall_time;
-    MyFloat min_bh_approach_time;
+    MyFloat Min_Sink_Freefall_time;
+    MyFloat Min_Sink_Approach_Time;
 #if (SINGLE_STAR_TIMESTEPPING > 0)
     int SuperTimestepFlag; // >=2 if allowed to super-timestep (increases with each drift/kick), 1 if a candidate for super-timestepping, 0 otherwise
     MyDouble COM_dt_tidal; //timescale from tidal tensor evaluated at the center of mass without contribution from the companion
@@ -241,7 +241,7 @@ extern ALIGN(32) struct particle_data
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
     MyFloat MaxFeedbackVel; // maximum signal velocity of any feedback mechanism emanating from the star
-    MyFloat min_bh_fb_time;  // minimum time for feedback to arrive from a star
+    MyFloat Min_Sink_FeedbackTime;  // minimum time for feedback to arrive from a star
 #endif
 #endif
 #endif
@@ -274,7 +274,7 @@ extern ALIGN(32) struct particle_data
     int DM_NumNgb;
     unsigned short targettask, origintask2;
     int origintask, submark, origindex;
-    MyFloat DM_Hsml;
+    MyFloat DM_KernelRadius;
     union
     {
         MyFloat DM_Density;
@@ -308,12 +308,12 @@ extern ALIGN(32) struct particle_data
     MyFloat Time_Of_Last_SmoothedVelUpdate;
 #endif
     
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_HSML_CALCULATION_IS_ACTIVE)
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
     MyFloat AGS_zeta;               /*!< correction term for adaptive gravitational softening lengths */
 #endif
     
-#ifdef AGS_HSML_CALCULATION_IS_ACTIVE
-    MyDouble AGS_Hsml;          /*!< smoothing length (for gravitational forces) */
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
+    MyDouble AGS_KernelRadius;          /*!< smoothing length (for gravitational forces) */
     MyDouble AGS_vsig;          /*!< signal velocity of particle approach, to properly time-step */
 #endif
     

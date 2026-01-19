@@ -219,7 +219,7 @@
 #define CPU_COOLINGSFR     24
 #define CPU_SNAPSHOT       25
 #define CPU_FOF            26
-#define CPU_BLACKHOLES     27
+#define CPU_SINKS     27
 #define CPU_MISC           28
 #define CPU_DRAGFORCE      29
 #define CPU_SNIIHEATING    30

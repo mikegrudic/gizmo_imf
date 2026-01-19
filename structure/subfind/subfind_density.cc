@@ -28,7 +28,7 @@
 static struct densdata_in
 {
   MyDouble Pos[3];
-  MyFloat Hsml;
+  MyFloat KernelRadius;
   int NodeList[NODELISTLENGTH];
 }
  *DensDataIn, *DensDataGet;
@@ -155,7 +155,7 @@ void subfind_density(int j_in)
 	      DensDataIn[j].Pos[0] = P[place].Pos[0];
 	      DensDataIn[j].Pos[1] = P[place].Pos[1];
 	      DensDataIn[j].Pos[2] = P[place].Pos[2];
-	      DensDataIn[j].Hsml = P[place].DM_Hsml;
+	      DensDataIn[j].KernelRadius = P[place].DM_KernelRadius;
 
 	      memcpy(DensDataIn[j].NodeList,
 		     DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -262,39 +262,39 @@ void subfind_density(int j_in)
 		  npleft++;
 
 		  if(P[i].DM_NumNgb < All.DesLinkNgb)
-		    Left[i] = DMAX(P[i].DM_Hsml, Left[i]);
+		    Left[i] = DMAX(P[i].DM_KernelRadius, Left[i]);
 		  else
 		    {
 		      if(Right[i] != 0)
 			{
-			  if(P[i].DM_Hsml < Right[i])
-			    Right[i] = P[i].DM_Hsml;
+			  if(P[i].DM_KernelRadius < Right[i])
+			    Right[i] = P[i].DM_KernelRadius;
 			}
 		      else
-			Right[i] = P[i].DM_Hsml;
+			Right[i] = P[i].DM_KernelRadius;
 		    }
 
 		  if(iter >= MAXITER - 10)
 		    {
 		      printf
-			("i=%d task=%d ID=%llu Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-			 i, ThisTask, (unsigned long long) P[i].ID, P[i].DM_Hsml, Left[i], Right[i],
+			("i=%d task=%d ID=%llu KernelRadius=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
+			 i, ThisTask, (unsigned long long) P[i].ID, P[i].DM_KernelRadius, Left[i], Right[i],
 			 (double) P[i].DM_NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
 		      fflush(stdout);
 		    }
 
 		  if(Right[i] > 0 && Left[i] > 0)
-		    P[i].DM_Hsml = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
+		    P[i].DM_KernelRadius = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
 		  else
 		    {
 		      if(Right[i] == 0 && Left[i] == 0)
 			endrun(8187);	/* can't occur */
 
 		      if(Right[i] == 0 && Left[i] > 0)
-			P[i].DM_Hsml *= 1.26;
+			P[i].DM_KernelRadius *= 1.26;
 
 		      if(Right[i] > 0 && Left[i] == 0)
-			P[i].DM_Hsml /= 1.26;
+			P[i].DM_KernelRadius /= 1.26;
 		    }
 		}
 	      else
@@ -391,12 +391,12 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
   if(mode == 0)
     {
       pos = P[target].Pos;
-      h = P[target].DM_Hsml;
+      h = P[target].DM_KernelRadius;
     }
   else
     {
       pos = DensDataGet[target].Pos;
-      h = DensDataGet[target].Hsml;
+      h = DensDataGet[target].KernelRadius;
     }
 
   if(h == 0) endrun(5622);
@@ -430,7 +430,7 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	  if(tp >= 0)
 	    if(mode == 0 && hmax > 0)
 	      {
-              P[target].DM_Hsml = hmax;
+              P[target].DM_KernelRadius = hmax;
               h = hmax;
               if(ngb != All.DesLinkNgb) {endrun(121);}
 	      }
@@ -443,7 +443,7 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	      r2 = Dist2list[n];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	      if(tp < 0) {h = P[j].DM_Hsml;}
+	      if(tp < 0) {h = P[j].DM_KernelRadius;}
 #endif
 
 	      h2 = h * h;
@@ -526,10 +526,10 @@ void subfind_setup_smoothinglengths(int j)
 	      no = p;
 	    }
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(P[i].Type == 0) {P[i].DM_Hsml = P[i].Hsml * pow( 1.*All.DesLinkNgb / All.DesNumNgb, 1./3.);}
-	  else {P[i].DM_Hsml = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;}
+	  if(P[i].Type == 0) {P[i].DM_KernelRadius = P[i].KernelRadius * pow( 1.*All.DesLinkNgb / All.DesNumNgb, 1./3.);}
+	  else {P[i].DM_KernelRadius = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;}
 #else
-	  P[i].DM_Hsml = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;
+	  P[i].DM_KernelRadius = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;
 #endif
 
 	}
@@ -537,21 +537,21 @@ void subfind_setup_smoothinglengths(int j)
 }
 
 
-static int Nhsml;
+static int Nrkern;
 
-static struct hsml_data
+static struct rkern_data
 {
-  float Hsml;
+  float KernelRadius;
   float Density;
   float VelDisp;
   MyIDType ID;
 }
- *Hsml_list;
+ *KernelRadius_list;
 
-int subfind_compare_hsml_data(const void *a, const void *b)
+int subfind_compare_rkern_data(const void *a, const void *b)
 {
-  if(((struct hsml_data *) a)->ID < ((struct hsml_data *) b)->ID) {return -1;}
-  if(((struct hsml_data *) a)->ID > ((struct hsml_data *) b)->ID) {return +1;}
+  if(((struct rkern_data *) a)->ID < ((struct rkern_data *) b)->ID) {return -1;}
+  if(((struct rkern_data *) a)->ID > ((struct rkern_data *) b)->ID) {return +1;}
   return 0;
 }
 
@@ -568,38 +568,38 @@ void subfind_save_densities(int num)
       fflush(stdout);
     }
 
-  for(i = 0, Nhsml = 0; i < NumPart; i++)
+  for(i = 0, Nrkern = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
     if(((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
     if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
-      Nhsml++;
+      Nrkern++;
 
-  MPI_Allgather(&Nhsml, 1, MPI_INT, Send_count, 1, MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(&Nrkern, 1, MPI_INT, Send_count, 1, MPI_INT, MPI_COMM_WORLD);
   for(i = 1, Send_offset[0] = 0; i < NTask; i++)
     Send_offset[i] = Send_offset[i - 1] + Send_count[i - 1];
 
-  sumup_large_ints(1, &Nhsml, &Ntotal);
+  sumup_large_ints(1, &Nrkern, &Ntotal);
 
-  Hsml_list = (struct hsml_data *)mymalloc("Hsml_list", Nhsml * sizeof(struct hsml_data));
+  KernelRadius_list = (struct rkern_data *)mymalloc("KernelRadius_list", Nrkern * sizeof(struct rkern_data));
 
-  for(i = 0, Nhsml = 0; i < NumPart; i++)
+  for(i = 0, Nrkern = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
     if(((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
     if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
       {
-	Hsml_list[Nhsml].Hsml = P[i].DM_Hsml;
-	Hsml_list[Nhsml].Density = P[i].u.DM_Density;
-	Hsml_list[Nhsml].VelDisp = P[i].v.DM_VelDisp;
-	Hsml_list[Nhsml].ID = P[i].ID;
-	Nhsml++;
+	KernelRadius_list[Nrkern].KernelRadius = P[i].DM_KernelRadius;
+	KernelRadius_list[Nrkern].Density = P[i].u.DM_Density;
+	KernelRadius_list[Nrkern].VelDisp = P[i].v.DM_VelDisp;
+	KernelRadius_list[Nrkern].ID = P[i].ID;
+	Nrkern++;
       }
 
   t0 = my_second();
-  parallel_sort(Hsml_list, Nhsml, sizeof(struct hsml_data), subfind_compare_hsml_data);
+  parallel_sort(KernelRadius_list, Nrkern, sizeof(struct rkern_data), subfind_compare_rkern_data);
   t1 = my_second();
 
   if(ThisTask == 0)
@@ -610,7 +610,7 @@ void subfind_save_densities(int num)
 
   if(ThisTask == 0)
     {
-      snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/hsmldir_%03d", All.OutputDir, num);
+      snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/rkerndir_%03d", All.OutputDir, num);
       mkdir(buf, 02755);
     }
   MPI_Barrier(MPI_COMM_WORLD);
@@ -633,7 +633,7 @@ void subfind_save_densities(int num)
       MPI_Barrier(MPI_COMM_WORLD);	/* wait inside the group */
     }
 
-  myfree(Hsml_list);
+  myfree(KernelRadius_list);
 
 }
 
@@ -645,31 +645,31 @@ void subfind_save_local_densities(int num)
   FILE *fd;
 
 
-  snprintf(fname, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/hsmldir_%03d/%s_%03d.%d", All.OutputDir, num, "hsml", num, ThisTask);
+  snprintf(fname, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/rkerndir_%03d/%s_%03d.%d", All.OutputDir, num, "rkern", num, ThisTask);
   if(!(fd = fopen(fname, "w")))
     {
       printf("can't open file `%s`\n", fname);
       endrun(1183);
     }
 
-  my_fwrite(&Nhsml, sizeof(int), 1, fd);
+  my_fwrite(&Nrkern, sizeof(int), 1, fd);
   my_fwrite(&Send_offset[ThisTask], sizeof(int), 1, fd);	/* this is the number of IDs in previous files */
   my_fwrite(&Ntotal, sizeof(long long), 1, fd);
   my_fwrite(&NTask, sizeof(int), 1, fd);
 
-  tmp = (float *)mymalloc("tmp", Nhsml * sizeof(float));
+  tmp = (float *)mymalloc("tmp", Nrkern * sizeof(float));
 
-  for(i = 0; i < Nhsml; i++)
-    tmp[i] = Hsml_list[i].Hsml;
-  my_fwrite(tmp, sizeof(float), Nhsml, fd);
+  for(i = 0; i < Nrkern; i++)
+    tmp[i] = KernelRadius_list[i].KernelRadius;
+  my_fwrite(tmp, sizeof(float), Nrkern, fd);
 
-  for(i = 0; i < Nhsml; i++)
-    tmp[i] = Hsml_list[i].Density;
-  my_fwrite(tmp, sizeof(float), Nhsml, fd);
+  for(i = 0; i < Nrkern; i++)
+    tmp[i] = KernelRadius_list[i].Density;
+  my_fwrite(tmp, sizeof(float), Nrkern, fd);
 
-  for(i = 0; i < Nhsml; i++)
-    tmp[i] = Hsml_list[i].VelDisp;
-  my_fwrite(tmp, sizeof(float), Nhsml, fd);
+  for(i = 0; i < Nrkern; i++)
+    tmp[i] = KernelRadius_list[i].VelDisp;
+  my_fwrite(tmp, sizeof(float), Nrkern, fd);
 
   myfree(tmp);
 

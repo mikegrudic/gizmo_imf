@@ -41,14 +41,14 @@
     /* -- note that, using appropriate definitions, both forms have an identical EOM in appearance here -- */
     double p_over_rho2_j = CellP[j].Pressure / (CellP[j].EgyWtDensity * CellP[j].EgyWtDensity);
     hfc_i = kernel.p_over_rho2_i * (CellP[j].InternalEnergyPred/local.InternalEnergyPred) *
-        (1 + local.DhsmlHydroSumFactor / (P[j].Mass * CellP[j].InternalEnergyPred));
+        (1 + local.DrkernHydroSumFactor / (P[j].Mass * CellP[j].InternalEnergyPred));
     hfc_j = p_over_rho2_j * (local.InternalEnergyPred/CellP[j].InternalEnergyPred) *
-        (1 + CellP[j].DhsmlHydroSumFactor / (local.Mass * local.InternalEnergyPred));
+        (1 + CellP[j].DrkernHydroSumFactor / (local.Mass * local.InternalEnergyPred));
 #else
     /* Density-Entropy (or Density-Energy) formulation: x_tilde=1, x=mass */
     double p_over_rho2_j = CellP[j].Pressure / (CellP[j].Density * CellP[j].Density);
-    hfc_i = kernel.p_over_rho2_i * (1 + local.DhsmlHydroSumFactor / P[j].Mass);
-    hfc_j = p_over_rho2_j * (1 + CellP[j].DhsmlHydroSumFactor / local.Mass);
+    hfc_i = kernel.p_over_rho2_i * (1 + local.DrkernHydroSumFactor / P[j].Mass);
+    hfc_j = p_over_rho2_j * (1 + CellP[j].DrkernHydroSumFactor / local.Mass);
 #endif
     hfc_i *= wt_corr_i; hfc_j *= wt_corr_j; // apply tensile instability suppression //
 
@@ -84,8 +84,8 @@
     double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
     double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (CellP[j].Density * CellP[j].Density);
 #ifndef HYDRO_PRESSURE_SPH
-    mf_i *= (1 + local.DhsmlHydroSumFactor / P[j].Mass);
-    mf_j *= (1 + CellP[j].DhsmlHydroSumFactor / local.Mass);
+    mf_i *= (1 + local.DrkernHydroSumFactor / P[j].Mass);
+    mf_j *= (1 + CellP[j].DrkernHydroSumFactor / local.Mass);
 #endif
         
     /* ---------------------------------------------------------------------------------

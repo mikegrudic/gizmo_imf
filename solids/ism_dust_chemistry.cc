@@ -528,7 +528,7 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     double fH2=0., new_ISMDustChem_MassFractionInDenseMolecular=0.; // mass fraction of gas that is H2 and gas in dense MC phase
     double NH2 = 1.5E21; // cm^-2 Column density of H2 needed to be in dense MC phase
     double l_depth, x_dens; // depth into cloud to reach NH2 and radial fraction of cloud in dense MC phase
-    double surface_density = evaluate_NH_from_GradRho(P[i].GradRho,P[i].Hsml,CellP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // converts to cgs
+    double surface_density = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // converts to cgs
     // shielding length giving effective radius of gas particle
     double l_shield = surface_density / rho;
     fH2 = Get_Gas_Molecular_Mass_Fraction(i, temp, nh0, ne, 0.);

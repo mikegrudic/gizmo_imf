@@ -40,7 +40,7 @@ struct kernel_DiffFilter {
 struct INPUT_STRUCT_NAME {
     MyDouble Pos[3];
     MyFloat Mass;
-    MyFloat Hsml;
+    MyFloat KernelRadius;
     MyDouble Density;
     int NodeList[NODELISTLENGTH];
 #ifdef GALSF_SUBGRID_WINDS
@@ -53,7 +53,7 @@ struct INPUT_STRUCT_NAME {
 static inline void particle2in_DiffFilter(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {
     int k; for(k = 0; k < 3; k++) {in->Pos[k] = P[i].Pos[k]; in->VelPred[k] = CellP[i].VelPred[k];}
     in->Density = CellP[i].Density;
-    in->Hsml = P[i].Hsml;
+    in->KernelRadius = P[i].KernelRadius;
     in->Mass = DMAX(0,P[i].Mass);
 #ifdef GALSF_SUBGRID_WINDS
     in->DelayTime = CellP[i].DelayTime;
@@ -108,12 +108,12 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME));
     memset(&kernel, 0, sizeof(struct kernel_DiffFilter));
     if (mode == 0) {particle2in_DiffFilter(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
-    if (local.Hsml <= 0) {return 0;}
+    if (local.KernelRadius <= 0) {return 0;}
     if (local.Mass == 0) {return 0;}
     if (local.Density <= 0) {return 0;}
 
     /* now set particle-i centric quantities so we don't do it inside the loop */
-    kernel.h_i = local.Hsml;
+    kernel.h_i = local.KernelRadius;
     double h2_i = kernel.h_i * kernel.h_i;
     int kernel_mode_i = 0;
     kernel_hinv(kernel.h_i, &hinv, &hinv3, &hinv4);
@@ -142,7 +142,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 NEAREST_XYZ(kernel.dp[0],kernel.dp[1],kernel.dp[2],1); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
                 double mean_weight = 0.5 * (local.Density + CellP[j].Density) / (local.Density * CellP[j].Density);
-                double h_j = P[j].Hsml;
+                double h_j = P[j].KernelRadius;
                 double V_j = P[j].Mass * mean_weight;
                 if (r2 <= 0) {continue;}
 

@@ -656,7 +656,7 @@ double Get_CosmicRayGradientLength(int i, int k_CRegy)
     /* limit the scale length: if too sharp, need a slope limiter at around the particle size */
     double L_gradient_min = Get_Particle_Size(i) * All.cf_atime;
     /* limit this scale length; if the gradient is too shallow, there is no information beyond a few smoothing lengths, so we can't let streaming go that far */
-    double L_gradient_max = DMAX(1000.*L_gradient_min, 500.0*P[i].Hsml*All.cf_atime);
+    double L_gradient_max = DMAX(1000.*L_gradient_min, 500.0*P[i].KernelRadius*All.cf_atime);
 
     /* also, physically, cosmic rays cannot stream/diffuse with a faster coefficient than ~v_max*L_mean_free_path, where L_mean_free_path ~ 2.e20 * (cm^-3/n) [collisional here] */
     double nH_cgs = CellP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS;
@@ -944,22 +944,22 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
         CellP[i].DtCREgyNewInjectionFromShocks = 0; // reset to nil, we've successfully injected the energy
     }
 #endif
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-    if(CellP[i].BH_CR_Energy_Available_For_Injection > 0) {
+#if defined(SINK_CR_INJECTION_AT_TERMINATION)
+    if(CellP[i].Sink_CR_Energy_Available_For_Injection > 0) {
         /* need to determine whether or not sufficient deceleration has occurred in order to inject CRs from our 'reservoir */
         double vmag=0; int k; for(k=0;k<3;k++) {double v0=P[i].Vel[k]/All.cf_atime; vmag+=v0*v0;} /* we will base this on a simple estimate of the velocity and how much things have decelerated */
         if(vmag>0) {vmag=sqrt(vmag);}
-        double v_outflow_fast_forinjection = All.BAL_v_outflow;
-#ifdef BH_TEST_WIND_MIXED_FASTSLOW
-        v_outflow_fast_forinjection = (BH_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS;
+        double v_outflow_fast_forinjection = All.Sink_outflow_velocity;
+#ifdef SINK_TEST_WIND_MIXED_FASTSLOW
+        v_outflow_fast_forinjection = (SINK_TEST_WIND_MIXED_FASTSLOW)/UNIT_VEL_IN_KMS;
 #endif
-#ifdef BH_RIAF_SUBEDDINGTON_MODEL
+#ifdef SINK_RIAF_SUBEDDINGTON_MODEL
         v_outflow_fast_forinjection = 0.05 * C_LIGHT_CODE;
 #endif
-        if((P[i].ID != All.AGNWindID) || (vmag < ((double)(BH_CR_INJECTION_AT_TERMINATION))*v_outflow_fast_forinjection)) {
+        if((P[i].ID != All.AGNWindID) || (vmag < ((double)(SINK_CR_INJECTION_AT_TERMINATION))*v_outflow_fast_forinjection)) {
             double dir[3]; for(k=0;k<3;k++) {dir[k] = -CellP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
-            inject_cosmic_rays(CellP[i].BH_CR_Energy_Available_For_Injection, v_outflow_fast_forinjection, 5, i, dir); /* inject the energy */
-            CellP[i].BH_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
+            inject_cosmic_rays(CellP[i].Sink_CR_Energy_Available_For_Injection, v_outflow_fast_forinjection, 5, i, dir); /* inject the energy */
+            CellP[i].Sink_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected
         }
     }
 #endif
@@ -1846,11 +1846,11 @@ double cr_get_source_injection_rate(int i)
         Edot = All.CosmicRay_SNeFraction * (RSNe*UNIT_TIME_IN_MYR) * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (1.0e51/UNIT_ENERGY_IN_CGS);
     }
 #endif
-#ifdef BLACK_HOLES
+#ifdef SINK_PARTICLES
     if(P[i].Type == 5) {
-        double mdot_eff = P[i].BH_Mdot; // code units
-        mdot_eff = DMIN( mdot_eff , P[i].BH_Mass / (100./UNIT_TIME_IN_MYR) ); // if time-averaging over ~Gyr, can't have time-averaged injection rate above Mbh/<t> more or less (modulo order-one corrections for all this)
-        Edot = evaluate_blackhole_cosmicray_efficiency(P[i].BH_Mdot,P[i].BH_Mass,i) * mdot_eff * C_LIGHT_CODE*C_LIGHT_CODE; // injection in code units
+        double mdot_eff = P[i].Sink_Mdot; // code units
+        mdot_eff = DMIN( mdot_eff , P[i].Sink_Mass / (100./UNIT_TIME_IN_MYR) ); // if time-averaging over ~Gyr, can't have time-averaged injection rate above Mbh/<t> more or less (modulo order-one corrections for all this)
+        Edot = evaluate_sink_cosmicray_efficiency(P[i].Sink_Mdot,P[i].Sink_Mass,i) * mdot_eff * C_LIGHT_CODE*C_LIGHT_CODE; // injection in code units
     }
 #endif
 #endif
@@ -1861,9 +1861,9 @@ double cr_get_source_injection_rate(int i)
 double cr_get_source_shieldfac(int i)
 {
     double cr_atten_fac = 1;
-    if(P[i].Hsml > 0 && P[i].NumNgb > 0 && All.Time > All.TimeBegin)
+    if(P[i].KernelRadius > 0 && P[i].NumNgb > 0 && All.Time > All.TimeBegin)
     {
-        double dx=P[i].Hsml/P[i].NumNgb, gradrho[3], rho; // code units
+        double dx=P[i].KernelRadius/P[i].NumNgb, gradrho[3], rho; // code units
         int k; for(k=0;k<3;k++) {gradrho[k]=P[i].GradRho[k];}
         if(P[i].Type==0) {rho=CellP[i].Density;} else {rho=P[i].DensAroundStar;}
         if(rho > 0)
@@ -1894,7 +1894,7 @@ double INLINE_FUNC Get_CosmicRayEnergyDensity_cgs(int i)
     return CellP[i].SubGrid_CosmicRayEnergyDensity*All.cf_a3inv * UNIT_PRESSURE_IN_CGS;
 #endif
 #ifdef RT_ISRF_BACKGROUND
-    double column = evaluate_NH_from_GradRho(P[i].GradRho,P[i].Hsml,CellP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS, sigma_0=2.23e-3; // sigma_0 is N_H = 1e21 cm^-2 in g cm^-2
+    double column = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS, sigma_0=2.23e-3; // sigma_0 is N_H = 1e21 cm^-2 in g cm^-2
     double u_cr_0 = sqrt(All.InterstellarRadiationFieldStrength) * 1.6e-12; // unattenuated energy density; prescription for scaling here assumes ISRF ~ sigma_SFR but zeta_CR ~ t_depletion^-1 ~ sigma_SFR^0.5 assuming the Kennicutt 1998 relation
     if(column < sigma_0) {return u_cr_0;} else {
         double atten_fac = exp(DMAX(-column/100.,-90)) * (sigma_0/(column+MIN_REAL_NUMBER)); // attenuates as N_H^{-1} above column of 1e21 cm^-2, with an exponential truncation above 100 g cm^-2; fairly uncertain, closer to predictions of diffusive transport models

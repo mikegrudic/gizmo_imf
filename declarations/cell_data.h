@@ -74,8 +74,8 @@ extern struct gas_cell_data
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
     MyFloat DtCREgyNewInjectionFromShocks;              /*!< scalar to record energy injection at shock interfaces for acceleration from resolved shocks */
 #endif
-#if defined(BH_CR_INJECTION_AT_TERMINATION)
-    MyDouble BH_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
+#if defined(SINK_CR_INJECTION_AT_TERMINATION)
+    MyDouble Sink_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
 #endif
 #ifdef CRFLUID_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
@@ -144,7 +144,7 @@ extern struct gas_cell_data
 #endif
     
 #ifdef HYDRO_SPH
-    MyDouble DhsmlHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
+    MyDouble DrkernHydroSumFactor;   /* for 'traditional' SPH, we need the SPH hydro-element volume estimator */
 #endif
     
 #ifdef HYDRO_PRESSURE_SPH
@@ -159,7 +159,7 @@ extern struct gas_cell_data
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
 #endif
     
-#if defined(BH_WIND_SPAWN_SET_BFIELD_POLTOR)
+#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR)
     MyDouble IniDen;
     MyDouble IniB[3];
 #endif
@@ -175,7 +175,7 @@ extern struct gas_cell_data
 #ifdef CHIMES_TURB_DIFF_IONS
     double ChimesNIons[CHIMES_TOTSIZE];
 #endif
-#ifdef BH_COMPTON_HEATING
+#ifdef SINK_COMPTON_HEATING
     MyFloat Rad_Flux_AGN;             /*!< local AGN flux */
 #endif
     
@@ -185,8 +185,8 @@ extern struct gas_cell_data
     MyFloat SmoothedVel[3];
 #endif
     
-#if defined(BH_THERMALFEEDBACK)
-    MyDouble Injected_BH_Energy;
+#if defined(SINK_THERMALFEEDBACK)
+    MyDouble Injected_Sink_Energy;
 #endif
     
 #ifdef COOLING
@@ -209,7 +209,7 @@ extern struct gas_cell_data
     MyFloat HostHaloMass;             /*!< host halo mass estimator for wind launching velocity */
 #endif
 #if (GALSF_SUBGRID_WIND_SCALING==2)
-    MyFloat  HsmlDM;                   /*!< smoothing length to find neighboring dark matter particles */
+    MyFloat  KernelRadiusDM;                   /*!< smoothing length to find neighboring dark matter particles */
     MyDouble NumNgbDM;                /*!< number of neighbor dark matter particles */
     MyDouble DM_Vx;
     MyDouble DM_Vy;
