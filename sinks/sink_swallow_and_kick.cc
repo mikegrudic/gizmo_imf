@@ -265,7 +265,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 #endif
                 
                 
-                /* we've found a particle to be swallowed.  This could be a BH merger, DM particle, or baryon w/ feedback */
+                /* we've found a particle to be swallowed.  This could be a sink merger, DM particle, or baryon w/ feedback */
                 if(P[j].SwallowID == local.ID && Mass_j > 0 && r2 > 0)
                 {   /* accreted quantities to be added [regardless of particle type] */
                     f_accreted = 1; /* default to accreting entire particle */
@@ -275,7 +275,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         f_accreted = All.Sink_accreted_fraction; /* if particle is gas, only a fraction gets accreted in these particular modules */
 #ifndef SINK_GRAVCAPTURE_GAS
                         if((All.SinkFeedbackFactor > 0) && (All.SinkFeedbackFactor != 1.)) {f_accreted /= All.SinkFeedbackFactor;} else {if(All.Sink_outflow_velocity > 0) f_accreted = 1./(1. + fabs(1.*SINK_WIND_KICK)*All.SinkRadiativeEfficiency*C_LIGHT_CODE/(All.Sink_outflow_velocity));}
-                        if((sink_mass_withdisk - local.Mass) <= 0) {f_accreted=0;} // DAA: no need to accrete gas particle to enforce mass conservation (we will simply kick),  note that here the particle mass P.Mass is larger than the physical BH mass P.Sink_Mass
+                        if((sink_mass_withdisk - local.Mass) <= 0) {f_accreted=0;} // DAA: no need to accrete gas particle to enforce mass conservation (we will simply kick),  note that here the particle mass P.Mass is larger than the physical sink mass P.Sink_Mass
 #endif
                     }
 #endif
@@ -283,7 +283,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                     
                     /* handle accretion/conservation of certain conserved quantities, depending on whether we are intending our sub-grid model to follow them */
                     double mcount_for_conserve; mcount_for_conserve = f_accreted * Mass_j;
-#if (SINK_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from BH particles */
+#if (SINK_FOLLOW_ACCRETED_ANGMOM == 1) /* in this case we are only counting this if its coming from sink particles */
                     if(P[j].Type != 5) {mcount_for_conserve=0;} else {mcount_for_conserve=P[j].Sink_Mass;}
 #ifdef SINK_ALPHADISK_ACCRETION
                     if(P[j].Type == 5) {mcount_for_conserve += P[j].Sink_Mass_Reservoir;}
@@ -317,7 +317,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 
                     
                     
-                    if(P[j].Type == 5)  /* this is a BH-BH merger */
+                    if(P[j].Type == 5)  /* this is a sink-sink merger */
                     {
 #ifdef SINK_OUTPUT_MOREINFO
                         fprintf(FdSinkMergerDetails,"%.16g  %llu %g %2.16g %2.16g %2.16g  %llu %g %2.16g %2.16g %2.16g\n", All.Time,  (unsigned long long)local.ID,local.Sink_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,P[j].Sink_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdSinkMergerDetails);
@@ -325,7 +325,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         fprintf(FdSinksDetails,"ThisTask=%d, time=%.16g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.Sink_Mass, P[j].Sink_Mass); fflush(FdSinksDetails);
 #endif
 #ifdef SINK_INCREASE_DYNAMIC_MASS
-                        /* the true dynamical mass of the merging BH is Mass_j/SINK_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
+                        /* the true dynamical mass of the merging sink is Mass_j/SINK_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
                          - in the limit P[j].Sink_Mass > SINK_INCREASE_DYNAMIC_MASS x m_b, then sink_mass=Mass_j on average and we are good as well  */
                         out.accreted_Mass    += ( DMAX(P[j].Sink_Mass, Mass_j/SINK_INCREASE_DYNAMIC_MASS) );
 #else
@@ -369,7 +369,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 #endif
                         #pragma omp atomic
                         N_sink_swallowed++;
-                    } // if(P[j].Type == 5) -- BH + BH merger
+                    } // if(P[j].Type == 5) -- sink+sink merger
 
 
                     
@@ -384,7 +384,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 #endif
                             #pragma omp atomic
                             N_dm_swallowed++;
-                        } else { /* this is a star particle: If there is an alpha-disk, we let them go to the disk. If there is no alpha-disk, stars go to the BH directly and won't affect feedback. (Can be simply modified if we need something different.) */
+                        } else { /* this is a star particle: If there is an alpha-disk, we let them go to the disk. If there is no alpha-disk, stars go to the sink directly and won't affect feedback. (Can be simply modified if we need something different.) */
 #ifndef SINK_EXCISION_NONGAS
                             out_accreted_Sink_Mass_alphaornot += (Mass_j); /* if using simple excision, adds to the particle mass, but not assumed to actually be accreted */
 #endif
@@ -393,7 +393,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         }
                         Mass_j = 0; /* zero the mass because its been accreted now */
                     }
-#endif // close for -- BH + DM or Star merger
+#endif // close for -- sink + DM or Star merger
 
 
                     
@@ -407,7 +407,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         out_accreted_Sink_Mass_alphaornot += (f_accreted*Mass_j);
 #endif
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
-                        out.Sink_AccretionDeficit -= (f_accreted*Mass_j); /* account for this in the 'continuous accretion' budget, since it is part of the continuous Mdot onto the BH */
+                        out.Sink_AccretionDeficit -= (f_accreted*Mass_j); /* account for this in the 'continuous accretion' budget, since it is part of the continuous Mdot onto the sink */
 #endif
                         double Mass_initial = Mass_j; // save this for possible IO below
                         Mass_j *= (1-f_accreted);
@@ -422,7 +422,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 #endif
                         for(k=0,norm=0;k<3;k++) {norm+=dir[k]*dir[k];} if(norm<=0) {dir[0]=0;dir[1]=0;dir[2]=1;norm=1;} else {norm=sqrt(norm); dir[0]/=norm;dir[1]/=norm;dir[2]/=norm;}
                         for(k=0;k<3;k++) {Vel_j[k]+=v_kick*All.cf_atime*dir[k];}
-#ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the BH kick winds as well
+#ifdef GALSF_SUBGRID_WINDS // if sub-grid galactic winds are decoupled from the hydro, we decouple the sink kick winds as well
                         #pragma omp atomic write
                         CellP[j].DelayTime = All.WindFreeTravelMaxTimeFactor / All.cf_hubble_a;
 #endif
@@ -441,7 +441,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         fprintf(FdSinkSwallowDetails,"%.16g %llu %llu %llu %g %2.16g %2.16g %2.16g %llu %llu %llu %g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g %2.16g\n", All.Time, (unsigned long long)local.ID,(unsigned long long)local.ID_child_number,(unsigned long long)local.ID_generation,local.Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID, (unsigned long long)P[j].ID_child_number, (unsigned long long)P[j].ID_generation, Mass_initial, (P[j].Pos[0]-local.Pos[0]),(P[j].Pos[1]-local.Pos[1]),(P[j].Pos[2]-local.Pos[2]), (Vel_j[0]-local.Vel[0]),(Vel_j[1]-local.Vel[1]),(Vel_j[2]-local.Vel[2]), CellP[j].InternalEnergy, tempB[0], tempB[1], tempB[2], CellP[j].Density); fflush(FdSinkSwallowDetails);
 #endif
                     }  // if(P[j].Type == 0)
-                    //P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same BH again if inactive in the next timestep [PFH: no longer necessary with the new way we re-initialize the SwallowIDs] */
+                    //P[j].SwallowID = 0; /* DAA: make sure it is not accreted (or ejected) by the same sink again if inactive in the next timestep [PFH: no longer necessary with the new way we re-initialize the SwallowIDs] */
                 } // if(P[j].SwallowID == id)  -- particles being entirely or partially swallowed
 
                 
@@ -453,7 +453,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                     double r=0, dir[3]; for(k=0;k<3;k++) {dir[k]=dpos[k]; r+=dir[k]*dir[k];} // should be away from BH
                     if(r>0)
                     {
-                        r=sqrt(r); for(k=0;k<3;k++) {dir[k]/=r;} /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
+                        r=sqrt(r); for(k=0;k<3;k++) {dir[k]/=r;} /* cos_theta with respect to disk of sink is given by dot product of r and Jgas */
                         for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
                         mom_wt = sink_fb_angleweight_localcoupling(j,norm,r,h_i) / local.Sink_angle_weighted_kernel_sum;
                         if(local.Sink_angle_weighted_kernel_sum<=0) {mom_wt=0;}
@@ -481,7 +481,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         Mass_j += m_wind;
 
                         /* now add wind momentum to particle */
-                        if(dvr_gas_to_sink < All.Sink_outflow_velocity)   // gas moving away from BH at v < BAL speed
+                        if(dvr_gas_to_sink < All.Sink_outflow_velocity)   // gas moving away from sink at v < BAL speed
                         {
                             double e_wind = 0;
                             for(k=0;k<3;k++)
@@ -492,7 +492,7 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                             }
                             e_wind *= 0.5*m_wind/Mass_j; // make total wind energy, add to particle as specific energy of -particle-
                             InternalEnergy_j += e_wind;
-                        } else {    // gas moving away from BH at wind speed (or faster) already.
+                        } else {    // gas moving away from sink at wind speed (or faster) already.
                             if(InternalEnergy_j * ( Mass_j - m_wind ) / Mass_j > 0) {InternalEnergy_j = InternalEnergy_j * ( Mass_j - m_wind ) / Mass_j;}
                         }
 #endif // if defined(SINK_WIND_CONTINUOUS) && !defined(SINK_WIND_KICK)
@@ -785,7 +785,7 @@ double get_spawned_cell_launch_speed(int i)
     double Pdot_wind = Pdot_rad + Pdot_turb;
     v_magnitude = Pdot_wind / Mdot_wind; 
     /* // (older deprecated model here)
-    double MSINK_4 = P[i].Sink_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // BH mass in 1e4 Msun to scale
+    double MSINK_4 = P[i].Sink_Mass * UNIT_MASS_IN_SOLAR / 1.e4; // sink mass in 1e4 Msun to scale
     double lambda_edd_eff = DMAX( P[i].Sink_Mdot / sink_eddington_mdot(P[i].Sink_Mass) , 1.e-10 ); // eddington ratio, with floor just to prevent unphysical behaviors
     if(lambda_edd_eff > (SINK_RIAF_SUBEDDINGTON_MODEL))
     {
@@ -915,7 +915,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
     if(P[i].Type==5) {if(P[i].ProtoStellarStage == 6) {mass_of_new_particle = total_mass_in_winds/(double) n_particles_split;}} // ejecta will have the gas mass resolution except the last batch which will lower masses
 #endif
-    printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting BH %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_cell_i_to_clone);
+    printf("Task %d wants to create %g mass in wind with %d new particles each of mass %g \n .. splitting sink %d using hydro element %d\n", ThisTask,total_mass_in_winds, n_particles_split, mass_of_new_particle, i, dummy_cell_i_to_clone);
 
     if(NumPart + num_already_spawned + n_particles_split >= All.MaxPart)
     {
@@ -941,7 +941,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
     if(P[i].Type == 4) {double rmin=All.ForceSoftening[4], r=sqrt(r2), r0=0.5*(rmin+r)*(0.5+1.5*get_random_number(i+j)); d_r=r0;} // need a generous padding to ensure no overlaps
 #endif
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
-    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of BH particle for use below */
+    bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of sink particle for use below */
     bin = P[i0].TimeBin; /* make this particle active on the BH/star timestep */
 #ifdef SINK_DEBUG_SPAWN_JET_TEST
     bin = bin_0; i0 = dummy_cell_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
@@ -1012,7 +1012,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #endif    
 
     /* create the  new particles to be added to the end of the particle list :
-        i is the BH particle tag, j is the new "spawed" particle's location, dummy_cell_i_to_clone is a dummy gas cell's tag to be used to init the wind particle */
+        i is the sink particle tag, j is the new "spawed" particle's location, dummy_cell_i_to_clone is a dummy gas cell's tag to be used to init the wind particle */
     int mode_default = mode, mode_prev = mode;
     double v_magnitude_physical_default = get_spawned_cell_launch_speed(i), v_magnitude_physical=v_magnitude_physical_default, v_magnitude_physical_prev=v_magnitude_physical; /* call subroutine for this velocity */
     
@@ -1195,7 +1195,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
             CellP[j].Density = mass_of_new_particle / (4 * M_PI * d_r*d_r*d_r);
             P[j].KernelRadius = P[j].NumNgb * 2.32489404843 * d_r;
         } else { // we are spawning in the jet/wind piecemeal, so use the local density estimator around the star
-            CellP[j].Density = P[i].DensAroundStar;
+            CellP[j].Density = P[i].DensityAroundParticle;
             P[j].KernelRadius = P[i].KernelRadius;
         }
 #endif

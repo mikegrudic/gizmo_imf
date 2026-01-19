@@ -20,8 +20,6 @@
 
 #define BITFLAG_TOPLEVEL                   0
 #define BITFLAG_DEPENDS_ON_LOCAL_MASS      1
-#define BITFLAG_MAX_SOFTENING_TYPE         2    /* bits 2-4; this is a relic of the old code which used bitflags instead of variables to deal with different softenings (tons of complexity for not much gain, no longer used) */
-#define BITFLAG_MIXED_SOFTENINGS_IN_NODE   5    /* this is a relic of the old code which used bitflags instead of variables to deal with different softenings (tons of complexity for not much gain, no longer used) */
 #define BITFLAG_INTERNAL_TOPLEVEL          6
 #define BITFLAG_MULTIPLEPARTICLES          7
 #define BITFLAG_NODEHASBEENKICKED          8

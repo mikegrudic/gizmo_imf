@@ -558,7 +558,7 @@ extern struct global_data_all_processes
   double CPU_Sum[CPU_PARTS];    /*!< sums wallclock time/CPU consumption in whole run */
 
   /* tree code opening criterion */
-  double ErrTolTheta;		/*!< BH tree opening angle */
+  double ErrTolTheta;		/*!< Barnes-Hut tree opening angle */
   double ErrTolForceAcc;	/*!< parameter for relative opening criterion in tree walk */
 
   /* adjusts accuracy of time-integration */
@@ -873,34 +873,34 @@ extern struct global_data_all_processes
 #endif
 
 #ifdef SINK_PARTICLES
-  double SinkAccretionFactor;	/*!< Fraction of BH bondi accretion rate */
-  double SinkFeedbackFactor;	/*!< Fraction of the black luminosity feed into thermal feedback */
-  double SeedSinkMass;         /*!< Seed sink particle mass */
+  double SinkAccretionFactor;	/*!< Rescale sink accretion rate normaliation */
+  double SinkFeedbackFactor;	/*!< Rescale sink feedback normalization */
+  double SeedSinkMass;          /*!< Seed sink particle mass */
 #if defined(SINK_SEED_FROM_FOF) || defined(SINK_SEED_FROM_LOCALGAS)
-  double SeedSinkMassSigma;    /*!< Standard deviation of init sink particle masses */
-  double SeedSinkMinRedshift;  /*!< Minimum redshift where BH seeds are allowed */
+  double SeedSinkMassSigma;     /*!< Standard deviation of initial sink particle masses */
+  double SeedSinkMinRedshift;   /*!< Minimum redshift where sink seeds are allowed */
 #ifdef SINK_SEED_FROM_LOCALGAS
-  double SeedSinkPerUnitMass;  /*!< Defines probability per unit mass of seed BH forming */
+  double SeedSinkPerUnitMass;   /*!< Defines probability per unit mass of seed sink forming */
 #endif
 #endif
 #ifdef SINK_ALPHADISK_ACCRETION
   double SeedReservoirMass;         /*!< Seed alpha disk mass */
 #endif
 #ifdef SINK_WIND_SPAWN
-  double Sink_outflow_particlemass;        /*!< target mass for feedback particles to be spawned */
+  double Sink_outflow_particlemass; /*!< target mass for feedback particles to be spawned */
   double Sink_outflow_temperature;
   MyIDType AGNWindID;
 #ifdef SINGLE_STAR_FB_WINDS
-  double Cell_Spawn_Mass_ratio_MS;        /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
+  double Cell_Spawn_Mass_ratio_MS;  /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
 #endif
 #endif
 #ifdef SINK_SEED_FROM_FOF
   double MinFoFMassForNewSeed;      /*!< Halo mass required before new seed is put in */
 #endif
-  double SinkNgbFactor;        /*!< Factor by which the gas neighbour count should be increased/decreased */
+  double SinkNgbFactor;             /*!< Factor by which the gas neighbour count should be increased/decreased */
   double SinkMaxAccretionRadius;
-  double SinkEddingtonFactor;	/*!< Factor above Eddington */
-  double SinkRadiativeEfficiency;  /**< Radiative efficiency determined by the spin value, default value is 0.1 */
+  double SinkEddingtonFactor;	    /*!< Factor above Eddington */
+  double SinkRadiativeEfficiency;   /*!< Radiative efficiency determined by the spin value, default value is 0.1 */
 #endif
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC)
@@ -1449,7 +1449,7 @@ extern ALIGN(32) struct NODE
 
 #ifdef SINK_PHOTONMOMENTUM
     MyFloat sink_lum;		    /*!< luminosity of BHs in the node */
-    MyFloat sink_lum_grad[3];	/*!< gradient vector for gas around BH (for angular dependence) */
+    MyFloat sink_lum_grad[3];	/*!< gradient vector for gas around sink (for angular dependence) */
 #endif
     
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1457,7 +1457,7 @@ extern ALIGN(32) struct NODE
 #endif
 
 #ifdef SINK_CALC_DISTANCES
-  MyFloat sink_mass;      /*!< holds the BH mass in the node.  Used for calculating tree based dist to closest bh */
+  MyFloat sink_mass;      /*!< holds the sink mass in the node.  Used for calculating tree based dist to closest sink */
   MyFloat sink_pos[3];    /*!< holds the mass-weighted position of the the actual sink particles within the node */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SPECIAL_POINT_MOTION)
     MyFloat sink_vel[3];    /*!< holds the mass-weighted avg. velocity of sink particles in the node */
@@ -1466,7 +1466,7 @@ extern ALIGN(32) struct NODE
     MyFloat sink_acc[3]; /*!< holds the mass-weighted avg. acceleration of sink particles in the node */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
-  int N_SINK;             /*!< holds the number of BH particles in the node. Used for refinement/search criteria */
+  int N_SINK;             /*!< holds the number of sink particles in the node. Used for refinement/search criteria */
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
     MyFloat MaxFeedbackVel;

@@ -152,7 +152,7 @@ void init(void)
      number per processor is very small (less than a thousand or so), or if there are many particle pairs
      with identical or nearly identical coordinates, a higher value may be required. Since the number of
      particles on a given processor may be higher by a factor PartAllocFactor than the average particle
-     number, the total amount of memory requested for the BH tree on a single processor scales proportional
+     number, the total amount of memory requested for the Barnes-Hut tree on a single processor scales proportional
      to PartAllocFactor*TreeAllocFactor. */
 
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
@@ -260,8 +260,8 @@ void init(void)
 
         if(RestartFlag != 1)
         {
-#if defined(DO_DENSITY_AROUND_STAR_PARTICLES)
-            P[i].DensAroundStar = 0;
+#if defined(DO_DENSITY_AROUND_NONGAS_PARTICLES)
+            P[i].DensityAroundParticle = 0;
             P[i].GradRho[0]=0;
             P[i].GradRho[1]=0;
             P[i].GradRho[2]=1;
@@ -480,7 +480,7 @@ void init(void)
 #endif
 #ifdef SINK_FOLLOW_ACCRETED_ANGMOM
                 double sink_mu=2*get_random_number(P[i].ID+3)-1, sink_phi=2*M_PI*get_random_number(P[i].ID+4), sink_sin=sqrt(1-sink_mu*sink_mu);
-                double spin_prefac = All.G * P[i].Sink_Mass / C_LIGHT_CODE; // assume initially maximally-spinning BH with random orientation
+                double spin_prefac = All.G * P[i].Sink_Mass / C_LIGHT_CODE; // assume initially maximally-spinning black hole with random orientation
                 P[i].Sink_Specific_AngMom[0]=spin_prefac*sink_sin*cos(sink_phi); P[i].Sink_Specific_AngMom[1]=spin_prefac*sink_sin*sin(sink_phi); P[i].Sink_Specific_AngMom[2]=spin_prefac*sink_mu;
 #endif
 #ifdef SINK_COUNTPROGS
@@ -1127,7 +1127,7 @@ void setup_smoothinglengths(void)
     int i, no, p;
     if((RestartFlag == 0)||(RestartFlag==2)) // best for stability if we re-calc KernelRadius for snapshot restarts //
     {
-#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(GRAIN_FLUID)
+#if defined(DO_DENSITY_AROUND_NONGAS_PARTICLES) || defined(GRAIN_FLUID)
         for(i = 0; i < NumPart; i++)
 #else
         for(i = 0; i < N_gas; i++)

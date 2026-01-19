@@ -1034,7 +1034,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt > dt_ngbs && dt_ngbs > 0) {dt = 1.01 * dt_ngbs; }
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
-	    if(P[p].DensAroundStar > 0)
+	    if(P[p].DensityAroundParticle > 0)
 	    {
             double eps = DMAX( KERNEL_CORE_SIZE*ForceSoftening_KernelRadius(p), P[p].Sink_dr_to_NearestGasNeighbor);
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS

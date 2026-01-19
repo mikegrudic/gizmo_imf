@@ -1865,7 +1865,7 @@ double cr_get_source_shieldfac(int i)
     {
         double dx=P[i].KernelRadius/P[i].NumNgb, gradrho[3], rho; // code units
         int k; for(k=0;k<3;k++) {gradrho[k]=P[i].GradRho[k];}
-        if(P[i].Type==0) {rho=CellP[i].Density;} else {rho=P[i].DensAroundStar;}
+        if(P[i].Type==0) {rho=CellP[i].Density;} else {rho=P[i].DensityAroundParticle;}
         if(rho > 0)
         {
             double gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);

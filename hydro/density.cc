@@ -56,7 +56,7 @@ int density_isactive(int n)
     }
 #endif
 
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
     if(((P[n].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[n].Type == 2)||(P[n].Type==3))))&&(P[n].Mass>0))
     {
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
@@ -74,7 +74,7 @@ int density_isactive(int n)
 #endif
         
 #if defined(GALSF)
-        if(P[n].DensAroundStar <= 0) return 1;
+        if(P[n].DensityAroundParticle <= 0) return 1;
         if(All.ComovingIntegrationOn == 0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(n);
@@ -165,7 +165,7 @@ static struct OUTPUT_STRUCT_NAME
     MyFloat NV_D[3][3];
     MyFloat NV_A[3][3];
 #endif
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
     MyFloat GradRho[3];
 #endif
 #if defined(SINK_PARTICLES)
@@ -233,8 +233,8 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
     }
 #endif
 
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-    ASSIGN_ADD(P[i].DensAroundStar, out->Rho, mode);
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
+    ASSIGN_ADD(P[i].DensityAroundParticle, out->Rho, mode);
     for(k = 0; k<3; k++) {ASSIGN_ADD(P[i].GradRho[k], out->GradRho[k], mode);}
 #endif
 
@@ -442,7 +442,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 
     } // Type = 0 check
 
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
     /* this is here because for the models of BH growth and self-shielding of stars, we
      just need a quick-and-dirty, single-pass approximation for the gradients (the error from
      using this as opposed to the higher-order gradient estimators is small compared to the
@@ -469,7 +469,7 @@ void density(void)
     Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
     Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
     
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES /* define a variable for below to know which stellar types qualify here */
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES /* define a variable for below to know which stellar types qualify here */
     int valid_stellar_types = 2+4+8+16, invalid_stellar_types = 1+32; // allow types 1,2,3,4 here //
 #if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
     valid_stellar_types = 16; invalid_stellar_types = 1+2+4+8+32; // -only- type-4 sources in these special problems
@@ -496,7 +496,7 @@ void density(void)
 #endif
 #endif
             double maxsoft = All.MaxKernelRadius; /* before the first pass, need to ensure the particles do not exceed the maximum KernelRadius allowed */
-#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) && defined(GALSF)
+#if defined(DO_DENSITY_AROUND_NONGAS_PARTICLES) && defined(GALSF)
             if( ((1 << P[i].Type) & (valid_stellar_types)) && !((1 << P[i].Type) & (invalid_stellar_types)) ) {maxsoft = 2.0 / (UNIT_LENGTH_IN_KPC*All.cf_atime);}
 #endif
 #ifdef SINK_PARTICLES
@@ -632,7 +632,7 @@ void density(void)
                 double minsoft = All.MinKernelRadius;
                 double maxsoft = All.MaxKernelRadius;
 
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
                 /* use a much looser check for N_neighbors when the central point is a star particle,
                  since the accuracy is limited anyways to the coupling efficiency -- the routines use their
                  own estimators+neighbor loops, anyways, so this is just to get some nearby particles */

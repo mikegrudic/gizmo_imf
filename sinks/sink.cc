@@ -277,7 +277,7 @@ void set_sink_mdot(int i, int n, double dt)
             rmax_for_accrate_units = rmax_for_accrate * UNIT_LENGTH_IN_PC / 100.; /* r0/100pc */
             f0_for_accrate = 0.31*f_disk_for_accrate*f_disk_for_accrate*pow(mdisk_for_accrate_units,-1./3.); /* dimensionless factor for equations */
             mgas_in_racc = SinkTempInfo[i].Mgas_in_Kernel; r0_accretion = rmax_for_accrate; // -total- gas mass inside of search radius [rmax_for_accrate]
-            mgas_in_racc = (4.*M_PI/3.) * (P[n].DensAroundStar*All.cf_a3inv) * r0_accretion*r0_accretion*r0_accretion; // use -local- estimator of gas mass in accretion radius //
+            mgas_in_racc = (4.*M_PI/3.) * (P[n].DensityAroundParticle*All.cf_a3inv) * r0_accretion*r0_accretion*r0_accretion; // use -local- estimator of gas mass in accretion radius //
 
             fac = 5.0 / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR); // basic normalization (use alpha=5, midpoint of values alpha=[1,10] from Hopkins and Quataert 2011 //
             fac *= pow(f_disk_for_accrate, 3./2.) * pow(sink_mass_units,1./6.) / (1. + f0_for_accrate/fgas_for_accrate); // dimensionless dependence on f_disk and m_sink (latter is weak)
@@ -295,14 +295,14 @@ void set_sink_mdot(int i, int n, double dt)
 #endif
 #if (SINK_GRAVACCRETION == 4) || (SINK_GRAVACCRETION == 6) || (SINK_GRAVACCRETION == 7) // accrete constant fraction per free-fall time from accretion radius set to minimum of BH radius of gravitational dominance over Vc or cs (basically where gas more tightly bound to BH) - has Bondi-like form
             double Vc2_rmax = All.G * menc_all / rmax_for_accrate; // this is in physical units now
-            mdot = 4.*M_PI * All.G*All.G * P[n].Sink_Mass*menc_all * (P[n].DensAroundStar*All.cf_a3inv) / pow(soundspeed2 + Vc2_rmax, 1.5);
+            mdot = 4.*M_PI * All.G*All.G * P[n].Sink_Mass*menc_all * (P[n].DensityAroundParticle*All.cf_a3inv) / pow(soundspeed2 + Vc2_rmax, 1.5);
 #if (SINK_GRAVACCRETION == 6) || (SINK_GRAVACCRETION == 7)
             double bhvel2=0; for(k=0;k<3;k++) {bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];}
             double veldisp2_eff = bhvel2/3. + soundspeed2, masscorrfac = pow( menc_all/(1.e-10*menc_all + P[n].Sink_Mass) , 0.25 );
-            mdot = masscorrfac * 4.*M_PI * All.G*All.G * P[n].Sink_Mass*menc_all * (P[n].DensAroundStar*All.cf_a3inv) / pow(1.e-5*soundspeed2 + Vc2_rmax, 1.5);
+            mdot = masscorrfac * 4.*M_PI * All.G*All.G * P[n].Sink_Mass*menc_all * (P[n].DensityAroundParticle*All.cf_a3inv) / pow(1.e-5*soundspeed2 + Vc2_rmax, 1.5);
             mdot /= 1 + sqrt(veldisp2_eff/Vc2_rmax) * DMIN( veldisp2_eff/Vc2_rmax , masscorrfac );
 #if (SINK_GRAVACCRETION == 7)
-            mdot = 4.*M_PI * All.G*All.G * menc_all*menc_all * (P[n].DensAroundStar*All.cf_a3inv) / pow(veldisp2_eff + Vc2_rmax, 1.5);
+            mdot = 4.*M_PI * All.G*All.G * menc_all*menc_all * (P[n].DensityAroundParticle*All.cf_a3inv) / pow(veldisp2_eff + Vc2_rmax, 1.5);
 #endif
 #endif
 #endif
@@ -313,7 +313,7 @@ void set_sink_mdot(int i, int n, double dt)
             if(j_tmp_for_accrate < jcirc_crit) /* circularization within BH-dominated region, Bondi accretion valid */
             {
                 double bhvel2=0; for(k=0;k<3;k++) {bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];}
-                double rho = P[n].DensAroundStar*All.cf_a3inv; /* we want all quantities in physical units */
+                double rho = P[n].DensityAroundParticle*All.cf_a3inv; /* we want all quantities in physical units */
                 double vcs_fac = pow(soundspeed2+bhvel2, 1.5);
                 mdot = 4.*M_PI * All.G*All.G * P[n].Sink_Mass*P[n].Sink_Mass * rho / vcs_fac;
             } /* otherwise, circularization outside BH-dominated region, efficiency according to usual [above] */
@@ -343,7 +343,7 @@ void set_sink_mdot(int i, int n, double dt)
 
 
 #ifdef SINK_BONDI /* heres where we calculate the Bondi accretion rate, if that's going to be used */
-    double bhvel2 = 0, rho = P[n].DensAroundStar * All.cf_a3inv; /* we want all quantities in physical units */
+    double bhvel2 = 0, rho = P[n].DensityAroundParticle * All.cf_a3inv; /* we want all quantities in physical units */
 #if (SINK_BONDI != 1)
     for(k=0;k<3;k++) bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];
 #endif
@@ -468,9 +468,9 @@ void set_sink_mdot(int i, int n, double dt)
 
 
 #ifdef SINK_SUBGRIDBHVARIABILITY /* account for sub-grid accretion rate variability */
-    if((mdot>0)&&(dt>0)&&(P[n].DensAroundStar>0))
+    if((mdot>0)&&(dt>0)&&(P[n].DensityAroundParticle>0))
     {
-        omega_ri=sqrt(All.G*P[n].DensAroundStar*All.cf_a3inv); /* dynamical frequency in physical units */
+        omega_ri=sqrt(All.G*P[n].DensityAroundParticle*All.cf_a3inv); /* dynamical frequency in physical units */
         n0_sgrid_elements=10.0; norm_subgrid=0.55*3.256/sqrt(n0_sgrid_elements);
         nsubgridvar=(long)P[n].ID + (long)(All.Time/((All.TimeMax-All.TimeBegin)/1000.));
         /* this line just allows 'resetting' the time constants every so often, while generally keeping them steady */
@@ -937,12 +937,12 @@ void sink_final_operations(void)
 #if defined(SINK_OUTPUT_MOREINFO)
 #ifdef SINGLE_STAR_STARFORGE_DEFAULTS
         fprintf(FdSinksDetails, "%.16g %llu  %g %g %g %g %g  %g %g %g %g %g %g  %2.16g %2.16g %2.16g  %2.16g %2.16g %2.16g  %g %g %g  %g %g %g\n",
-                All.Time, (unsigned long long)P[n].ID,  P[n].Mass, P[n].Sink_Mass, mass_disk, P[n].Sink_Mdot, mdot_disk, dt, P[n].DensAroundStar*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy,
+                All.Time, (unsigned long long)P[n].ID,  P[n].Mass, P[n].Sink_Mass, mass_disk, P[n].Sink_Mdot, mdot_disk, dt, P[n].DensityAroundParticle*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy,
                 SinkTempInfo[i].Mgas_in_Kernel, SinkTempInfo[i].Mstar_in_Kernel, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
                 SinkTempInfo[i].Jgas_in_Kernel[0], SinkTempInfo[i].Jgas_in_Kernel[1], SinkTempInfo[i].Jgas_in_Kernel[2], P[n].Sink_Specific_AngMom[0]*P[n].Mass, P[n].Sink_Specific_AngMom[1]*P[n].Mass, P[n].Sink_Specific_AngMom[2]*P[n].Mass ); fflush(FdSinksDetails);
 #else
         fprintf(FdSinksDetails, "%.16g %llu  %g %g %g %g %g %g  %g %g %g %g %g %g %g %g  %2.16g %2.16g %2.16g  %2.16g %2.16g %2.16g  %g %g %g  %g %g %g\n",
-                All.Time, (unsigned long long)P[n].ID,  P[n].Mass, P[n].Sink_Mass, mass_disk, P[n].Sink_Mdot, mdot_disk, dt, P[n].DensAroundStar*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy, SinkTempInfo[i].Sfr_in_Kernel,
+                All.Time, (unsigned long long)P[n].ID,  P[n].Mass, P[n].Sink_Mass, mass_disk, P[n].Sink_Mdot, mdot_disk, dt, P[n].DensityAroundParticle*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy, SinkTempInfo[i].Sfr_in_Kernel,
                 SinkTempInfo[i].Mgas_in_Kernel, SinkTempInfo[i].Mstar_in_Kernel, MgasBulge, MstarBulge, r0, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2],  P[n].Vel[0], P[n].Vel[1], P[n].Vel[2],
                 SinkTempInfo[i].Jgas_in_Kernel[0], SinkTempInfo[i].Jgas_in_Kernel[1], SinkTempInfo[i].Jgas_in_Kernel[2], SinkTempInfo[i].Jstar_in_Kernel[0], SinkTempInfo[i].Jstar_in_Kernel[1], SinkTempInfo[i].Jstar_in_Kernel[2] ); fflush(FdSinksDetails);
 #endif
@@ -950,7 +950,7 @@ void sink_final_operations(void)
 
 #ifdef OUTPUT_ADDITIONAL_RUNINFO
         fprintf(FdSinksDetails, "BH=%llu %.16g %g %g %g %g %g %g %g   %2.16g %2.16g %2.16g\n", (unsigned long long)P[n].ID, All.Time, P[n].Sink_Mass, mass_disk, P[n].Mass, P[n].Sink_Mdot, mdot_disk,
-                P[n].DensAroundStar*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]); fflush(FdSinksDetails);
+                P[n].DensityAroundParticle*All.cf_a3inv, SinkTempInfo[i].Sink_SurroudingGasInternalEnergy, P[n].Pos[0], P[n].Pos[1], P[n].Pos[2]); fflush(FdSinksDetails);
 #endif
 #endif
 

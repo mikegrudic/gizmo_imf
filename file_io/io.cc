@@ -659,11 +659,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_CHIMES_STAR_SIGMA:
-#if defined(CHIMES_NH_OUTPUT) && defined(OUTPUT_DENS_AROUND_STAR)
+#if defined(CHIMES_NH_OUTPUT) && defined(OUTPUT_DENS_AROUND_NONGAS)
             for (n = 0; n < pc; pindex++)
                 if (P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].KernelRadius,P[pindex].DensAroundStar,P[pindex].NumNgb,0,pindex) * UNIT_SURFDEN_IN_CGS);  // g cm^-2
+                    *fp++ = (MyOutputFloat) (evaluate_NH_from_GradRho(P[pindex].GradRho,P[pindex].KernelRadius,P[pindex].DensityAroundParticle,P[pindex].NumNgb,0,pindex) * UNIT_SURFDEN_IN_CGS);  // g cm^-2
                     n++;
                 }
 #endif
@@ -704,11 +704,11 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
             break;
 
         case IO_DENS_AROUND_STAR:
-#ifdef OUTPUT_DENS_AROUND_STAR
+#ifdef OUTPUT_DENS_AROUND_NONGAS
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
-                    *fp++ = (MyOutputFloat) P[pindex].DensAroundStar;
+                    *fp++ = (MyOutputFloat) P[pindex].DensityAroundParticle;
                     n++;
                 }
 #endif
@@ -2651,7 +2651,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_CHIMES_STAR_SIGMA:
-#if defined(CHIMES_NH_OUTPUT) && defined(OUTPUT_DENS_AROUND_STAR)
+#if defined(CHIMES_NH_OUTPUT) && defined(OUTPUT_DENS_AROUND_NONGAS)
             return 1;
 #endif
             break;
@@ -2669,7 +2669,7 @@ int blockpresent(enum iofields blocknr)
             break;
 
         case IO_DENS_AROUND_STAR:
-#ifdef OUTPUT_DENS_AROUND_STAR
+#ifdef OUTPUT_DENS_AROUND_NONGAS
             return 1;
 #endif
             break;

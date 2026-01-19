@@ -298,7 +298,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     double f_uv=All.PhotonMomentum_fUV, f_op=All.PhotonMomentum_fOPT;
     double L = evaluate_light_to_mass_ratio(star_age, i) * m_sol / UNIT_LUM_IN_SOLAR; if(L<=0 || isnan(L)) {L=0;}
 #ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
-    double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,P[i].DensAroundStar,P[i].NumNgb,0,i); if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;} // sigma here is in code units
+    double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,P[i].DensityAroundParticle,P[i].NumNgb,0,i); if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;} // sigma here is in code units
     if(star_age <= 0.0025) {f_op=0.09;} else {if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));} else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
     /* note that the metallicity doing attenuation is the -gas- opacity around the star, while here we only know the stellar metallicity,
         so we use this as a guess, but this could substantially under-estimate opacities for old stars in MW-like galaxies. But for young stars (which dominate) this is generally ok. */

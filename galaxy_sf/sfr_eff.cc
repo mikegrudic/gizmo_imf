@@ -517,7 +517,7 @@ void star_formation_parent_routine(void)
                         P[i].SinkRadius = ForceSoftening_KernelRadius(i);
 #endif
                         P[i].Sink_Mdot = 0;
-                        P[i].DensAroundStar = CellP[i].Density;
+                        P[i].DensityAroundParticle = CellP[i].Density;
                     } else {
 #endif /* closes ifdef(SINK_SEED_FROM_LOCALGAS) */
                         
@@ -539,8 +539,8 @@ void star_formation_parent_routine(void)
                             
                             P[i].StellarAge = All.Time;
                             
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-                            P[i].DensAroundStar = CellP[i].Density;
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
+                            P[i].DensityAroundParticle = CellP[i].Density;
 #endif
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             P[i].Mass = CellP[i].MassTrue + CellP[i].dMass;
@@ -604,7 +604,7 @@ void star_formation_parent_routine(void)
                                 P[i].Sink_TimeBinGasNeighbor = P[i].TimeBin;
 #endif
                                 P[i].Sink_Mdot = 0;
-                                P[i].DensAroundStar = CellP[i].Density;
+                                P[i].DensityAroundParticle = CellP[i].Density;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
                                 P[i].ProtoStellarAge = All.Time; // record the proto-stellar age instead of age
                                 P[i].StellarAge = All.Time; // record the time at which point the sink entered the current stage of stellar evolution (will become actual stellar age when reaching MS)
@@ -643,8 +643,8 @@ void star_formation_parent_routine(void)
                             
                             P[NumPart + stars_spawned] = P[i];
                             P[NumPart + stars_spawned].Type = 4;
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-                            P[NumPart + stars_spawned].DensAroundStar = CellP[i].Density;
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
+                            P[NumPart + stars_spawned].DensityAroundParticle = CellP[i].Density;
 #endif
                             NextActiveParticle[NumPart + stars_spawned] = FirstActiveParticle;
                             FirstActiveParticle = NumPart + stars_spawned;
@@ -710,7 +710,7 @@ void star_formation_parent_routine(void)
     MPI_Allreduce(&num_sink_formed, &tot_sink_formed, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if( (ThisTask==0) && (tot_sink_formed > 0) )
     {
-        printf("BH/Sink formation: %d gas particles converted into sinks\n",tot_sink_formed);
+        printf("Sink formation: %d gas particles converted into sinks\n",tot_sink_formed);
         All.TotSinks += tot_sink_formed;
     } // if(tot_sink_formed > 0)
 #endif

@@ -35,7 +35,7 @@ void radiation_pressure_winds_consolidated(void)
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
             double star_age = evaluate_stellar_age_Gyr(i);
-            if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0) )
+            if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensityAroundParticle > 0) )
             {
                 /* calculate some basic luminosity properties of the stars */
                 double lm_ssp = evaluate_light_to_mass_ratio(star_age, i); // light-to-mass ratio in solar
@@ -50,7 +50,7 @@ void radiation_pressure_winds_consolidated(void)
 #if defined(GALSF_FB_FIRE_RT_LOCALRP_OPTIMIZERS_TEST)
                 double RtauMax = DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , 4.*P[i].KernelRadius );
 #else
-                double RtauMax = P[i].KernelRadius * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].KernelRadius*P[i].DensAroundStar*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
+                double RtauMax = P[i].KernelRadius * (5. + 2.0 * rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * P[i].KernelRadius*P[i].DensityAroundParticle*All.cf_a2inv); // guess search radius which is a few H, plus larger factor if optically thick //
                 RtauMax = DMAX( 1./(UNIT_LENGTH_IN_KPC*All.cf_atime) , DMIN( 10./(UNIT_LENGTH_IN_KPC*All.cf_atime) , RtauMax )); // restrict to 1-10 kpc here
 #endif
                 
@@ -60,7 +60,7 @@ void radiation_pressure_winds_consolidated(void)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
                 v_wind_threshold = 0.2 / UNIT_VEL_IN_KMS; // for this module use lower unit mass for kicks
 #endif
-                double rho_phys=P[i].DensAroundStar*All.cf_a3inv, h_phys=P[i].KernelRadius*All.cf_atime; // density and h in -physical- units
+                double rho_phys=P[i].DensityAroundParticle*All.cf_a3inv, h_phys=P[i].KernelRadius*All.cf_atime; // density and h in -physical- units
                 double v_grav_guess; v_grav_guess = DMIN( 1.82*(65.748/UNIT_VEL_IN_KMS)*pow(1.+rho_phys*UNIT_DENSITY_IN_NHCGS,-0.25) , sqrt(All.G*(P[i].Mass + VOLUME_NORM_COEFF_FOR_NDIMS*rho_phys*h_phys*h_phys*h_phys)/h_phys) ); // don't want to 'under-kick' if there are small local characteristic velocities in the region of interest
                 delta_v_imparted_rp = v_wind_threshold; // always couple this 'discrete' kick, to avoid having to couple every single timestep for every single star particle
                 double dv_imparted_perpart_guess = (dE_over_c/P[i].Mass); // estimate of summed dv_imparted [in code units] from single-scattering: = momentum/mass of particle
@@ -189,7 +189,7 @@ void radiation_pressure_winds_consolidated(void)
                         } /* for(n=0; n<numngb_inbox; n++) */
                     } /* if (rho>0) */
                 } // // within loop
-            } // star age, mass check:: (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensAroundStar > 0)
+            } // star age, mass check:: (star_age < 0.1) && (P[i].Mass > 0) && (P[i].DensityAroundParticle > 0)
         } // particle type check::  if((P[i].Type == 4)....
     } // main particle loop for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
     myfree(Ngblist);
@@ -265,7 +265,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
             stellum = chimes_ion_luminosity(evaluate_stellar_age_Gyr(i)*1000.,P[i].Mass*UNIT_MASS_IN_SOLAR) * 4.68e-11; // chimes ionizing photon flux rescaled to mean spectrum here appropriately (~29eV per photon)
 #endif
             if(stellum <= 0) {continue;}
-            pos = P[i].Pos; rho = P[i].DensAroundStar; h_i = P[i].KernelRadius;
+            pos = P[i].Pos; rho = P[i].DensityAroundParticle; h_i = P[i].KernelRadius;
             RHII = 4.78e-9*pow(stellum,0.333)*pow(rho*All.cf_a3inv*UNIT_DENSITY_IN_CGS,-0.66667); // Stromgren radius, RHII, computed using a case B recombination coefficient at 10^4 K of 2.59e-13 cm^3 s^-1, and assuming a Hydrogen mass fraction ~0.74.
             RHII /= All.cf_atime*UNIT_LENGTH_IN_CGS; // convert to code units
             RHIIMAX = 2. * 240.0*pow(stellum,0.5) / (All.cf_atime*UNIT_LENGTH_IN_CGS); // crude estimate of where flux falls below cosmic background, x2 safety factor

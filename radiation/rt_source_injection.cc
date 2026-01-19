@@ -47,7 +47,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
     int k;
     for(k=0; k<3; k++) {in->Pos[k] = P[i].Pos[k];}
     in->KernelRadius = P[i].KernelRadius;
-    //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = CellP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensAroundStar;}
+    //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = CellP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensityAroundParticle;}
     in->KernelSum_Around_RT_Source = P[i].KernelSum_Around_RT_Source;
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
     double lum[N_RT_FREQ_BINS];
@@ -68,7 +68,7 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
-    if(P[i].Type>0) {in->Density = P[i].DensAroundStar;} else {in->Density = CellP[i].Density;}
+    if(P[i].Type>0) {in->Density = P[i].DensityAroundParticle;} else {in->Density = CellP[i].Density;}
 #endif
 }
 

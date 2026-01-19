@@ -671,7 +671,7 @@ void force_update_node_recursive(int no, int sib, int father)
 #ifdef SINK_PHOTONMOMENTUM
                     if(pa->Type == 5)
                     {
-                        if((pa->Mass>0)&&(pa->DensAroundStar>0)&&(pa->Sink_Mdot>0))
+                        if((pa->Mass>0)&&(pa->DensityAroundParticle>0)&&(pa->Sink_Mdot>0))
                         {
                             double BHLum = sink_lum_bol(pa->Sink_Mdot, pa->Sink_Mass, p);
                             sink_lum += BHLum;

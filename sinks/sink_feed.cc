@@ -56,7 +56,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 {
     int k, j_tempinfo; j_tempinfo=P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
     for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k]; in->Vel[k]=P[i].Vel[k];} /* good example - always needed */
-    in->KernelRadius = P[i].KernelRadius; in->Mass = P[i].Mass; in->Sink_Mass = P[i].Sink_Mass; in->ID = P[i].ID; in->Density = P[i].DensAroundStar; in->Mdot = P[i].Sink_Mdot;
+    in->KernelRadius = P[i].KernelRadius; in->Mass = P[i].Mass; in->Sink_Mass = P[i].Sink_Mass; in->ID = P[i].ID; in->Density = P[i].DensityAroundParticle; in->Mdot = P[i].Sink_Mdot;
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
     in->SinkRadius = P[i].SinkRadius;
 #endif

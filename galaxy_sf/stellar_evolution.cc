@@ -1047,7 +1047,7 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     if ( set_mode && (wind_mass_loss_rate>0) ) {
         // let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
         double v_wind = single_star_wind_velocity(n);
-        double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
+        double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensityAroundParticle)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / target_mass_for_wind_spawning(n);
 
         int old_wind_mode = P[n].wind_mode;
@@ -1100,21 +1100,21 @@ double single_star_feedback_velocity_fortimestep(int n) {
     return 0; 
 #endif    
     if(P[n].Type != 5) {return 0;}
-    double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensAroundStar; v_shell=0;
+    double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensityAroundParticle; v_shell=0;
 #ifdef SINGLE_STAR_FB_WINDS
     double v_wind = single_star_wind_velocity(n);
     double mdot = single_star_wind_mdot(n, 0);
     force += mdot * v_wind;
     double Lwind = 0.5 * mdot * v_wind * v_wind;
     // estimate the velocity of a wind shell swept up on the scale of a single resolution element in the similarity solution R ~ (L/rho)^1/3 t^(3/5) - use this if slower than v_wind (ie the free-expansion phase is unresolved)
-    if(P[n].DensAroundStar) {
+    if(P[n].DensityAroundParticle) {
       v_shell = 0.38 * cbrt(Lwind/(rho*h*h));
     } else {v_shell = MAX_REAL_NUMBER;}
     v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
 #endif
 #if defined(RADTRANSFER) || defined(SINGLE_STAR_FB_LOCAL_RP)
     v_shell = 0;
-    if(P[n].DensAroundStar) {
+    if(P[n].DensityAroundParticle) {
       force += sink_lum_bol(P[n].Sink_Mdot, P[n].Sink_Mass, n) / C_LIGHT_CODE;
       v_shell = sqrt(0.053 * force / rho) / h; // terminal velocity assuming momentum-conserving solution R ~ (F / rho)^(1/4) t^1/2 = h
     } else {v_shell = 0;}

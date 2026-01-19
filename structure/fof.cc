@@ -1840,7 +1840,7 @@ void fof_make_sink_particles(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
             P[import_indices[n]].Mass = CellP[import_indices[n]].MassTrue + CellP[import_indices[n]].dMass;
 #endif
-            P[import_indices[n]].DensAroundStar = CellP[import_indices[n]].Density;
+            P[import_indices[n]].DensityAroundParticle = CellP[import_indices[n]].Density;
         }
         /* set some specific BH variables that are needed below */
 #ifdef SINK_INCREASE_DYNAMIC_MASS

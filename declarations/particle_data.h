@@ -92,10 +92,10 @@ extern ALIGN(32) struct particle_data
     MyFloat KernelRadius;           /*!< search radius around particle for neighbors/interactions */
     MyFloat NumNgb;                 /*!< neighbor number around particle */
     MyFloat DrkernNgbFactor;        /*!< correction factor needed for varying kernel lengths */
-#ifdef DO_DENSITY_AROUND_STAR_PARTICLES
-    MyFloat DensAroundStar;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
+    MyFloat DensityAroundParticle;         /*!< gas density in the neighborhood of the collisionless particle (evaluated from neighbors) */
 #endif
-#if defined(DO_DENSITY_AROUND_STAR_PARTICLES) || defined(COOLING)
+#if defined(DO_DENSITY_AROUND_NONGAS_PARTICLES) || defined(COOLING)
     MyFloat GradRho[3];             /*!< gas density gradient evaluated simply from the neighboring particles, for collisionless centers */
 #endif
 #ifdef RT_USE_TREECOL_FOR_NH
