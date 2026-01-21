@@ -842,9 +842,7 @@ void init(void)
         for(k=0;k<N_CR_PARTICLE_BINS;k++)
         {
             CellP[i].CosmicRayEnergyPred[k]=CellP[i].CosmicRayEnergy[k]; CellP[i].CosmicRayDiffusionCoeff[k]=0; CellP[i].DtCosmicRayEnergy[k]=0;
-#ifdef CRFLUID_M1
             for(j=0;j<3;j++) {CellP[i].CosmicRayFlux[k][j]=0; CellP[i].CosmicRayFluxPred[k][j]=0;}
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(j=0;j<2;j++) {CellP[i].CosmicRayAlfvenEnergy[k][j]=0; CellP[i].CosmicRayAlfvenEnergyPred[k][j]=0; CellP[i].DtCosmicRayAlfvenEnergy[k][j]=0;}
 #endif

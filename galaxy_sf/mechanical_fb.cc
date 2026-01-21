@@ -250,9 +250,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(r2<=0) {continue;} // same particle //
                 double h2j = P[j].KernelRadius * P[j].KernelRadius;
                 if((r2>h2)&&(r2>h2j)) {continue;} // outside kernel (in both 'directions') //
-#ifdef FIRE1_SNE_COUPLING
-                if(r2>h2) {continue;} // only search 'one way' for particles seen by the BH
-#endif
                 if(r2 > r2max_phys) {continue;} // outside long-range cutoff //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) {continue;}
                 
@@ -268,10 +265,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 if(V_j<0 || isnan(V_j)) {V_j=0;}
                 double face_area = fabs(local.V_i*local.V_i*kernel.dwk + V_j*V_j*dwk_j); // effective face area //
                 wk = 0.5 * (1 - 1/sqrt(1 + face_area / (M_PI*kernel.r*kernel.r))); // corresponding geometric weight //
-#ifdef FIRE1_SNE_COUPLING
-                if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 0);} else {kernel.wk=kernel.dwk=0;}
-                wk = (Mass_j/rho_j) * kernel.wk;
-#endif
                 if((wk <= 0)||(isnan(wk))) continue; // no point in going further, there's no physical weight here
                 double wk_vec[AREA_WEIGHTED_SUM_ELEMENTS]={0}, wk_tmp=0;
                 wk_vec[0] = wk;
@@ -318,9 +311,6 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                     double q; q = 0; int i1=2*k+1, i2=i1+1;
                     double q_i1 = fabs(local.Area_weighted_sum[i1]);
                     double q_i2 = fabs(local.Area_weighted_sum[i2]);
-#ifdef FIRE1_SNE_COUPLING
-                    q_i1=q_i2=1;
-#endif
                     if((q_i1>MIN_REAL_NUMBER)&&(q_i2>MIN_REAL_NUMBER))
                     {
                         double rr = q_i2/q_i1;

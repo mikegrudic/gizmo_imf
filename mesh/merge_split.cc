@@ -658,13 +658,11 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
             CellP[j].CosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * CellP[i].CosmicRay_Number_in_Bin[k_CRegy]; CellP[i].CosmicRay_Number_in_Bin[k_CRegy] -= CellP[j].CosmicRay_Number_in_Bin[k_CRegy];
             CellP[j].DtCosmicRay_Number_in_Bin[k_CRegy] = mass_of_new_particle * CellP[i].DtCosmicRay_Number_in_Bin[k_CRegy]; CellP[i].DtCosmicRay_Number_in_Bin[k_CRegy] -= CellP[j].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef CRFLUID_M1
             for(k=0;k<3;k++)
             {
                 CellP[j].CosmicRayFlux[k_CRegy][k] = mass_of_new_particle * CellP[i].CosmicRayFlux[k_CRegy][k]; CellP[i].CosmicRayFlux[k_CRegy][k] -= CellP[j].CosmicRayFlux[k_CRegy][k];
                 CellP[j].CosmicRayFluxPred[k_CRegy][k] = mass_of_new_particle * CellP[i].CosmicRayFluxPred[k_CRegy][k]; CellP[i].CosmicRayFluxPred[k_CRegy][k] -= CellP[j].CosmicRayFluxPred[k_CRegy][k];
             }
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<2;k++)
             {
@@ -1007,13 +1005,11 @@ int merge_particles_ij(int i, int j)
         CellP[j].CosmicRay_Number_in_Bin[k_CRegy] += CellP[i].CosmicRay_Number_in_Bin[k_CRegy];
         CellP[j].DtCosmicRay_Number_in_Bin[k_CRegy] += CellP[i].DtCosmicRay_Number_in_Bin[k_CRegy];
 #endif
-#ifdef CRFLUID_M1
         for(k=0;k<3;k++)
         {
             CellP[j].CosmicRayFlux[k_CRegy][k] += CellP[i].CosmicRayFlux[k_CRegy][k];
             CellP[j].CosmicRayFluxPred[k_CRegy][k] += CellP[i].CosmicRayFluxPred[k_CRegy][k];
         }
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         for(k=0;k<3;k++)
         {

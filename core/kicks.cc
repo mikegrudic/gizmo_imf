@@ -436,9 +436,7 @@ void set_predicted_quantities_for_extra_physics(int i)
         for(kf=0;kf<N_CR_PARTICLE_BINS;kf++)
         {
             CellP[i].CosmicRayEnergyPred[kf] = CellP[i].CosmicRayEnergy[kf];
-#ifdef CRFLUID_M1
             for(k=0;k<3;k++) {CellP[i].CosmicRayFluxPred[kf][k] = CellP[i].CosmicRayFlux[kf][k];}
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<2;k++) {CellP[i].CosmicRayAlfvenEnergyPred[kf][k] = CellP[i].CosmicRayAlfvenEnergy[kf][k];}
 #endif
@@ -580,9 +578,7 @@ void apply_special_boundary_conditions(int i, double mass_for_dp, int mode)
 #ifdef RT_EVOLVE_FLUX
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(CellP[i].Rad_Flux[kf][j]<0) {CellP[i].Rad_Flux[kf][j]=-CellP[i].Rad_Flux[kf][j]; CellP[i].Rad_Flux_Pred[kf][j]=CellP[i].Rad_Flux[kf][j];}}}
 #endif
-#ifdef CRFLUID_M1
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_CR_PARTICLE_BINS;kf++) {if(CellP[i].CosmicRayFlux[kf][j]<0) {CellP[i].CosmicRayFlux[kf][j]=-CellP[i].CosmicRayFlux[kf][j]; CellP[i].CosmicRayFluxPred[kf][j]=CellP[i].CosmicRayFlux[kf][j];}}}
-#endif
             }
             if(special_boundary_condition_xyz_def_outflow[j] == 0 || special_boundary_condition_xyz_def_outflow[j] == -1) {P[i].Mass=0; if(mode==1) {P[i].dp[0]=P[i].dp[1]=P[i].dp[2]=0;}}
         }
@@ -595,9 +591,7 @@ void apply_special_boundary_conditions(int i, double mass_for_dp, int mode)
 #ifdef RT_EVOLVE_FLUX
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {if(CellP[i].Rad_Flux[kf][j]>0) {CellP[i].Rad_Flux[kf][j]=-CellP[i].Rad_Flux[kf][j]; CellP[i].Rad_Flux_Pred[kf][j]=CellP[i].Rad_Flux[kf][j];}}}
 #endif
-#ifdef CRFLUID_M1
                 if(P[i].Type==0) {int kf; for(kf=0;kf<N_CR_PARTICLE_BINS;kf++) {if(CellP[i].CosmicRayFlux[kf][j]>0) {CellP[i].CosmicRayFlux[kf][j]=-CellP[i].CosmicRayFlux[kf][j]; CellP[i].CosmicRayFluxPred[kf][j]=CellP[i].CosmicRayFlux[kf][j];}}}
-#endif
             }
             if(special_boundary_condition_xyz_def_outflow[j] == 0 || special_boundary_condition_xyz_def_outflow[j] == 1) {P[i].Mass=0; if(mode==1) {P[i].dp[0]=P[i].dp[1]=P[i].dp[2]=0;}}
         }

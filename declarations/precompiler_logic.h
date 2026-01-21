@@ -131,11 +131,6 @@
 /* set 'default' options for FIRE module packages as a whole */
 #ifdef FIRE_PHYSICS_DEFAULTS
 
-#if !(CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS)) /* no numerical value is set, so set one as our 'default' */
-#undef FIRE_PHYSICS_DEFAULTS
-#define FIRE_PHYSICS_DEFAULTS 2             /*! defaults currently to FIRE-2 baseline */
-#endif
-
 #define COOLING                             /*! top-level switch for cooling */
 #define COOL_LOW_TEMPERATURES               /*! include low-temperature (<1e4 K) cooling */
 #define COOL_METAL_LINES_BY_SPECIES         /*! include high-temperature metal-line cooling, species-by-species */
@@ -148,10 +143,6 @@
 #define MULTIPLEDOMAINS 32                  /*! slightly closer to our usual default, but users should feel free to adjust */
 #endif
 
-#define GALSF_SFR_MOLECULAR_CRITERION       /*! molecular criterion for star formation */
-#if !defined(GALSF_SFR_VIRIAL_SF_CRITERION)
-#define GALSF_SFR_VIRIAL_SF_CRITERION 0     /*! sink-particle like self-gravity requirement for star formation: original implementation */
-#endif
 #define GALSF_FB_MECHANICAL                 /*! top-level switch for mechanical feedback modules */
 #define GALSF_FB_FIRE_STELLAREVOLUTION (FIRE_PHYSICS_DEFAULTS) /*! turns on default FIRE processes+lookup tables including gas return, SNe, R-process, etc. this carries a number matching the defaults set you choose */
 #define GALSF_FB_FIRE_RT_HIIHEATING         /*! gas within HII regions around young stars is photo-heated to 10^4 K - local stromgren approximation */
@@ -159,20 +150,17 @@
 #define GALSF_FB_FIRE_RT_LONGRANGE          /*! continuous acceleration from starlight (uses luminosity tree) to propagate FIRE RT */
 #define GALSF_FB_FIRE_RT_UVHEATING          /*! use estimate of local spectral information from FIRE RT for photoionization and photoelectric heating */
 #define GALSF_FB_FIRE_AGE_TRACERS 16        /*! tracks a set of passive scalars corresponding to stellar ages for chemical evolution model postprocessing */
-#define PROTECT_FROZEN_FIRE                 /*! protect code so FIRE runs are not modified by various code updates, etc -- default FIRE-2 code locked */
 
 #if !(defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL))
 #define ADAPTIVE_GRAVSOFT_FORGAS            /*! default choice is adaptive force softening for gas, but not stars [since ambiguously defined] */
 #endif
 
-#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_PHYSICS_DEFAULTS) /* check if a numerical value is set */
-#if (FIRE_PHYSICS_DEFAULTS == 1)
-#define FIRE1_SNE_COUPLING      /* reverts to old mass-scalar-weight, 1-way-search, non-tensor-renormalized SNe model */
-#define EOS_TRUELOVE_PRESSURE   /* uses effective EOS for gas near resolution limit */
-#undef GALSF_SFR_VIRIAL_SF_CRITERION    /* can't be used reliably with effective EOS, will give bogus results */
+#if (FIRE_PHYSICS_DEFAULTS == 2)
+#define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
+#define GALSF_SFR_CRITERION (0+256) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
+#define GALSF_SFR_VIRIAL_SCALING (-1) // old threshold modification with exception when densities 100x above threshold density
 #endif
-#if (FIRE_PHYSICS_DEFAULTS == 2)  /* currently uses default settings above, but keep this here for future use */
-#endif
+
 #if (FIRE_PHYSICS_DEFAULTS == 3)
 #define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
@@ -180,42 +168,11 @@
 #define OUTPUT_COOLRATE
 #define RT_USE_GRAVTREE_SAVE_RAD_FLUX
 #define OUTPUT_POTENTIAL
-#undef PROTECT_FROZEN_FIRE  /* undefine protections to test new code */
-#undef GALSF_SFR_VIRIAL_SF_CRITERION
-#undef GALSF_SFR_MOLECULAR_CRITERION
-#if !defined(GALSF_SFR_CRITERION)
 #define GALSF_SFR_CRITERION (0+1+2+64) // 0=density threshold, 1=virial criterion (strict), 2=convergent flow, 4=local extremum, 8=no sink in kernel, 16=not falling into sink, 32=hill (tidal) criterion, 64=Jeans criterion, 128=converging flow along all principle axes, 256=self-shielding/molecular, 512=multi-free-fall (smooth dependence on virial), 1024='catch' for un-resolvable densities
-#endif
 #define ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT (0.1/UNIT_LENGTH_IN_KPC)
 #define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
 #define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
 #endif // defaults = 3
-#endif // closes CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_ check
-
-#if defined(FIRE_MODULE_TESTS) // currently convenience-only for pure testing by PFH
-//#define GALSF_SFR_IMF_SAMPLING /* use the IMF-sampling discrete number of O-star scheme, no penalty at low mass-res */
-#define GALSF_FB_FIRE_PROTOSTELLARJETS /* use jet feedback per mike grudic's simple parameterization; zero cost, easy to add, not big large-scale effects */
-#define GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF (2.0) /* spread SF over a couple free-fall times when a cell becomes a star, as compared to doing it instantly when the probability roll comes up */
-//#define FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT (1) /* ramp the SNe rate and massive stellar feedback fraction of total mass (essentially L/M) at low metallicities, leaves no dwarf stars below [Z/H]<-7 or so ramping down to -5 */
-#if !defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
-#define ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION (2) /* use tidal softening for dark matter, where its well-defined, more accurate subhalo/center/caustic evolution, minimal cost */
-#endif
-#if defined(FIRE_BHS)
-//#define SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
-#define MAINTAIN_TREE_IN_REARRANGE /* optimization when using cell-spawning */
-//#define SINK_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
-#endif
-/* more aggressive module experiments here, only enabled if this module is active and set to a numerical value >= 3 */
-#if CHECK_IF_PREPROCESSOR_HAS_NUMERICAL_VALUE_(FIRE_MODULE_TESTS)
-#if (FIRE_MODULE_TESTS >= 3) /* more aggressive module experiments here */
-#define GALSF_MERGER_STARCLUSTER_PARTICLES /* merge bound star clusters together into super-star-clusters. works, but bit more experimental, could in principle eat too much, so needs some testing */
-#if defined(FIRE_BHS)
-#define SINK_EXCISION_NONGAS /* merge over-bound particles into BH [non-gas]. works but could be over-aggressive in some cases, needs bit more testing */
-#define SINK_EXCISION_GAS /* merge over-bound particles into BH [gas]. works but could be over-aggressive in some cases, needs bit more testing */
-#endif
-#endif
-#endif
-#endif
 
 #if defined(FIRE_MHD)
 #define MAGNETIC            /* top-level flag */
@@ -227,46 +184,32 @@
 #endif // FIRE_MHD
 
 #if defined(FIRE_CRS)
+#if !defined(CRFLUID_SPEEDOFLIGHT_REDUCTION)
+#define CRFLUID_SPEEDOFLIGHT_REDUCTION (1.0e8/C_LIGHT_CGS) /*! maximum CR transport speed: 1000 km/s safe for our default diffusivities in constant/variable-kappa model */
+#endif
 #if (FIRE_CRS == -2)
 #define COSMIC_RAY_SUBGRID_LEBRON   /*! this simply uses the sub-grid model */
-#else /* use 'explicit' CR integration in one of the code formulations */
-#define COSMIC_RAY_FLUID /*! top-level flag */
-#if (FIRE_CRS >= 0) && !defined(CRFLUID_EVOLVE_SPECTRUM) /* enable multi-spectrum CRs if this set and FIRE version high enough */
+#else
+#define COSMIC_RAY_FLUID            /*! use 'explicit' CR integration in one of the code formulations */
+#endif // closes whether to do cr fluid or subgrid
+#if !defined(CRFLUID_EVOLVE_SPECTRUM) /*! check to enable flags for which CR spectrum or single-bin to evolve */
+#if (FIRE_CRS >= 0) || (FIRE_CRS <= 1)
+#define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum */
+#endif
 #if (FIRE_CRS >= 2)
 #define CRFLUID_EVOLVE_SPECTRUM 2   /*! evolve full set of 10 different CR species */
-#else
-#define CRFLUID_EVOLVE_SPECTRUM 1   /*! evolve proton + electron spectrum by default */
 #endif
-#endif
-#if (FIRE_CRS <= 0)
-#if !defined(CRFLUID_M1)
-#define CRFLUID_M1 (500.)           /*! maximum CR transport speed: 500 safe for our default diffusivities in constant-kappa model */
-#endif
+#endif // closes which spectrum check
 #if !defined(CRFLUID_DIFFUSION_MODEL)
-#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
+#if (FIRE_CRS <= 0)
 #define CRFLUID_DIFFUSION_MODEL 0   /*! constant diffusivity (set by params file) */
 #else
-#if (CRFLUID_DIFFUSION_MODEL > 0)
-#define CRFLUID_ION_ALFVEN_SPEED    /*! default to use use appropriate ion Alfven speed */
+#define CRFLUID_DIFFUSION_MODEL 8   /*! best-guess for an empirical model which varies as a function of CR gradient scale length from ISM-to-CGM, but not with real plasma properties. lots of options for that. */
+//#define CRFLUID_DIFFUSION_MODEL 6   /*! best-guess for variable-kappa model, combining updated SC+ET */
+//#define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS, and best model for extrinsic driving of CRs */
+//#define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
 #endif
-#endif
-#else
-#if !defined(CRFLUID_M1)
-#define CRFLUID_M1 (1000.)          /*! maximum CR transport speed: 1000 safe for our default diffusivities in variable-kappa model */
-#endif
-#if !defined(CRFLUID_DIFFUSION_MODEL)
-#define CRFLUID_DIFFUSION_MODEL 6   /*! best-guess for variable-kappa model, combining updated SC+ET */
-#endif
-#define CRFLUID_ION_ALFVEN_SPEED    /*! use appropriate ion Alfven speed */
-#if !defined(CRFLUID_SET_SC_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
-#define CRFLUID_SET_SC_MODEL (7)    /*! set mode for SC model using best-estimate of fQLT and fCAS, and best model for extrinsic driving of CRs */
-#endif
-#if !defined(CRFLUID_SET_ET_MODEL) && (CRFLUID_DIFFUSION_MODEL > 0)
-#define CRFLUID_SET_ET_MODEL (-1)   /*! set mode for ET model using best-estimate of fturb from Alfven-wave scattering */
-#endif
-#endif
-#endif
-#define DIFFUSION_OPTIMIZERS /* custom fire-related optimizations for timestepping */
+#endif // closes which diffusion model[s] to enable
 #endif // FIRE_CRS
 
 #if defined(FIRE_BHS)
@@ -317,15 +260,8 @@
 #endif
 #endif // PMGRID check
 
-#else
 #endif // FIRE_PHYSICS_DEFAULTS clauses
 
-
-
-
-#ifdef PROTECT_FROZEN_FIRE
-#define GALSF_USE_SNE_ONELOOP_SCHEME // set to use the 'base' FIRE-2 SNe coupling. if commented out, will user newer version that more accurately manages the injected energy with neighbors moving to inject a specific target
-#endif
 
 
 #ifdef GALSF_SFR_CRITERION // flag for pure cross-compatibility [identical functionality, just ease-of-use for galaxy simulators here]
@@ -335,6 +271,9 @@
 
 /* set default modules for different cosmic ray transport settings/packages */
 #ifdef COSMIC_RAY_FLUID
+#if !defined(CRFLUID_SPEEDOFLIGHT_REDUCTION)
+#define CRFLUID_SPEEDOFLIGHT_REDUCTION (1.0)
+#endif
 #if !defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) (4.0/3.0)
 #endif
@@ -609,13 +548,6 @@
 #endif // SINGLE_STAR_SINK_DYNAMICS
 
 
-#if (SINGLE_STAR_SINK_FORMATION & 1) || (SINGLE_STAR_SINK_FORMATION & 2048) // figure out flags needed for the chosen sink formation model [note these CAN be used even if single-star top-level flag is off, as additional SF/sink formation criteria for e.g. GALSF sims]
-#if (SINGLE_STAR_SINK_FORMATION & 2048)
-#define GALSF_SFR_VIRIAL_SF_CRITERION 2
-#else
-#define GALSF_SFR_VIRIAL_SF_CRITERION 1
-#endif
-#endif
 #if (SINGLE_STAR_SINK_FORMATION & 16)
 #ifndef SINGLE_STAR_TIMESTEPPING
 #define SINGLE_STAR_TIMESTEPPING 0
@@ -624,7 +556,17 @@
 #if (SINGLE_STAR_SINK_FORMATION & 32)
 #define GALSF_SFR_TIDAL_HILL_CRITERION
 #endif
-
+#if (SINGLE_STAR_SINK_FORMATION & 512)
+#define GALSF_SFR_VIRIAL_SCALING 2
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 1)
+#ifndef GALSF_SFR_VIRIAL_SCALING
+#define GALSF_SFR_VIRIAL_SCALING 0
+#endif
+#endif
+#if (SINGLE_STAR_SINK_FORMATION & 2048)
+#define GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED
+#endif
 
 #ifdef GRAVITY_ACCURATE_FEWBODY_INTEGRATION /* utility flag to enable a few different extra-conservative time-integration flags for gravity */
 #if !defined(GRAVITY_HYBRID_OPENING_CRIT)
@@ -750,14 +692,8 @@
 #endif
 
 
-#if defined(CRFLUID_M1)
-#if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define CRFLUID_REDUCED_C_CODE(k) (return_CRbin_M1speed(k)) // allow for bin-to-bin variations in RSOL
-#else
-#define CRFLUID_REDUCED_C_CODE(k) (CRFLUID_M1) // single-bin -- compiles to simply replace this macro with the M1 value, trivially
-#endif
-#endif // M1 cosmic rays
-#if defined(CRFLUID_ALT_RSOL_FORM) && defined(CRFLUID_M1)
+#if defined(CRFLUID_ALT_RSOL_FORM)
 #define CosmicRayFluid_RSOL_Corrfac(k) (((CRFLUID_REDUCED_C_CODE(k))/(C_LIGHT_CODE))) // this needs to be defined after the code SOL for obvious reasons
 #else
 #define CosmicRayFluid_RSOL_Corrfac(k) (1.0) // this is always unity, macro is trivial
@@ -1018,14 +954,6 @@
 #define DO_DENSITY_AROUND_NONGAS_PARTICLES
 #if !defined(ALLOW_IMBALANCED_GASPARTICLELOAD)
 #define ALLOW_IMBALANCED_GASPARTICLELOAD
-#endif
-#endif
-#if defined(GALSF_SFR_VIRIAL_SF_CRITERION)
-#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 5)
-#define GALSF_SFR_TIDAL_HILL_CRITERION
-#endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION >= 2)
-#define GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED
 #endif
 #endif
 

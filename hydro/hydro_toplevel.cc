@@ -124,9 +124,7 @@ struct Conserved_var_Riemann
 #endif
 #ifdef COSMIC_RAY_FLUID
     MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
-#ifdef CRFLUID_M1
     MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
     MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
@@ -207,9 +205,6 @@ struct INPUT_STRUCT_NAME
 #ifdef DIVBCLEANING_DEDNER
         MyDouble Phi[3];
 #endif
-#endif
-#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_M1)
-        MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS][3];
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         MyDouble Metallicity[NUM_METAL_SPECIES][3];
@@ -294,9 +289,7 @@ struct INPUT_STRUCT_NAME
 #ifdef COSMIC_RAY_FLUID
     MyDouble CosmicRayPressure[N_CR_PARTICLE_BINS];
     MyDouble CosmicRayDiffusionCoeff[N_CR_PARTICLE_BINS];
-#ifdef CRFLUID_M1
     MyDouble CosmicRayFlux[N_CR_PARTICLE_BINS][3];
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
     MyDouble CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];
 #endif
@@ -459,9 +452,6 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         in->Gradients.Phi[k] = CellP[i].Gradients.Phi[k];
 #endif
 #endif
-#if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_M1)
-        for(j=0;j<N_CR_PARTICLE_BINS;j++) {in->Gradients.CosmicRayPressure[j][k] = CellP[i].Gradients.CosmicRayPressure[j][k];}
-#endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
         for(j=0;j<NUM_METAL_SPECIES;j++) {in->Gradients.Metallicity[j][k] = CellP[i].Gradients.Metallicity[j][k];}
 #endif
@@ -543,8 +533,9 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     {
         in->CosmicRayPressure[j] = Get_Gas_CosmicRayPressure(i,j);
         in->CosmicRayDiffusionCoeff[j] = CellP[i].CosmicRayDiffusionCoeff[j];
-#ifdef CRFLUID_M1
         for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = CellP[i].CosmicRayFluxPred[j][k];}
+#if defined(CRFLUID_ALT_PUREDIFFUSION)
+        for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = CellP[i].Gradients.CosmicRayPressure[j][k];}
 #endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = CellP[i].CosmicRayAlfvenEnergyPred[j][k];}
@@ -865,7 +856,7 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             }
 #endif
-#if defined(CRFLUID_M1) && !defined(CRFLUID_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
+#if !defined(CRFLUID_ALT_PUREDIFFUSION) && !defined(CRFLUID_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
             /* 'residual' term from parallel scattering of CRs being not-necessarily-in-equilibrium with a two-moment form of the equations */
             double vA_eff=Get_Gas_ion_Alfven_speed_i(i), vol_i=CellP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
             for(k=0;k<3;k++) {bhat[k]=CellP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below

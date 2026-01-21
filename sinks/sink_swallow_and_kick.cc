@@ -1220,9 +1220,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #ifdef CRFLUID_EVOLVE_SPECTRUM
             CellP[j].CosmicRay_Number_in_Bin[k_CRegy]=CellP[j].DtCosmicRay_Number_in_Bin[k_CRegy]=0;
 #endif
-#ifdef CRFLUID_M1
             for(k=0;k<3;k++) {CellP[j].CosmicRayFlux[k_CRegy][k]=CellP[j].CosmicRayFluxPred[k_CRegy][k]=0;}
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(k=0;k<3;k++) {CellP[j].CosmicRayAlfvenEnergy[k_CRegy][k]=CellP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k]=CellP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k]=0;}
 #endif

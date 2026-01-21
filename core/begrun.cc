@@ -561,11 +561,6 @@ void set_units(void)
      density given above. use the dimensionless SfEffPerFreeFall (which has been read in) to calculate this. This must be done -BEFORE- calling set_units_sfr) */
 #ifndef GALSF_EFFECTIVE_EQS
     All.MaxSfrTimescale = (1/All.MaxSfrTimescale) * sqrt(3.*M_PI / (32. * All.G * (All.CritPhysDensity / UNIT_DENSITY_IN_NHCGS)));
-#if defined(PROTECT_FROZEN_FIRE) && defined(GALSF_FB_FIRE_STELLAREVOLUTION)
-#if (GALSF_FB_FIRE_STELLAREVOLUTION < 3)
-    All.MaxSfrTimescale /= sqrt(meanweight);
-#endif
-#endif
 #endif
     set_units_sfr();
 #endif

@@ -25,7 +25,7 @@
 #ifndef ALLVARS_H
 #define ALLVARS_H
 
-#define GIZMO_VERSION     2025  /*!< code version (should be an int corresponding to the year) */
+#define GIZMO_VERSION     2026  /*!< code version (should be an int corresponding to the year) */
 
 #include <mpi.h>
 #include <stdio.h>

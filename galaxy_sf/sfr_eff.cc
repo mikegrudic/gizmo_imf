@@ -201,7 +201,7 @@ double get_starformation_rate(int i, int mode)
 #endif
     if(All.ComovingIntegrationOn && CellP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
     if(CellP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
-#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS)
+#if defined(GALSF_SFR_VIRIAL_CRITERION_TIMEAVERAGED) && (GALSF_SFR_VIRIAL_SCALING <= 0)
     if(flag==0) {CellP[i].AlphaVirial_SF_TimeSmoothed=0;} /* for time-smoothed virial param, reset to nil if fall below threshold */
 #endif
     tsfr = sqrt(All.PhysDensThresh / (CellP[i].Density * All.cf_a3inv)) * All.MaxSfrTimescale; /* set default SFR timescale to scale appropriately with the gas dynamical time */
@@ -210,9 +210,6 @@ double get_starformation_rate(int i, int mode)
     
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION)
     int cell_can_be_singlestar = is_particle_single_star_eligible(i); // call function to determine if we're actually eligible to be a true single-star element
-#if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) && defined(FIRE_SUPERLAGRANGIAN_JEANS_REFINEMENT)
-    //if(cell_can_be_singlestar<=0) {return 0;} // for special cases, where we want to temporarily de-activate the FIRE SF modules [but not in general, only for our tests]
-#endif
 #endif
 
 #ifdef GALSF_EFFECTIVE_EQS /* do the SFR calc for the Springel-Hernquist EOS, before any 'fancy' sf criteria, when above-threshold, or else risk incorrect entropies */
@@ -248,7 +245,7 @@ double get_starformation_rate(int i, int mode)
     if(nHcgs > 1e13) {v_fast = DMIN(v_fast, 0.2/UNIT_VEL_IN_KMS);} // limiter to permit sink formation in simulations that really resolve the opacity limit and bog down when an optically-thick core forms. Modify this if you want to follow first collapse more/less - scale as c_s ~ n^(1/5)
 #endif
 
-#if defined(GALSF_SFR_VIRIAL_SF_CRITERION) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
+#if defined(GALSF_SFR_VIRIAL_SCALING) /* apply standard virial-parameter criteria here. note that our definition of virial parameter here is ratio of [Kinetic+Internal Energy]/|Gravitational Energy| -- so <1=bound, >1=unbound, 1/2=bound-and-virialized, etc. */
     double v_eff_touse = v_fast;
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     v_eff_touse = cs_eff;
@@ -257,7 +254,7 @@ double get_starformation_rate(int i, int mode)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) & !defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
     if(cell_can_be_singlestar) {k_cs *= M_PI;} // use a stricter version here, because the relevant pre-factor depends on whether we expect Jeans collapse at the thermal limit to be resolved or un-resolved
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0)
+#if (GALSF_SFR_VIRIAL_SCALING >= 0)
     if(divv < 0) {dv2abs -= divv*divv/3.;} // this is mathematically identical to taking the Frobenius norm of the divergence-free (trace-free) part of the shear tensor instead of the whole tensor. when using the stricter criterion, if the gas is in inflow (divv<0), don't want to count the inflow motion itself against the virial criterion, since this could if close to free-fall artificially bias us against recognizing real star formation
 #endif
     double Mach_eff_2=0, cs2_contrib=2.*k_cs*k_cs; Mach_eff_2=dv2abs/cs2_contrib; dv2abs+=2.*k_cs*k_cs; // account for thermal+magnetic pressure with standard Jeans criterion (k^2*cs^2 vs 4pi*G*rho) //
@@ -269,35 +266,33 @@ double get_starformation_rate(int i, int mode)
     alpha_vir = 1./CellP[i].AlphaVirial_SF_TimeSmoothed - 1.; /* use the rolling average below */
 #endif
     if(exceeds_force_softening_threshold) {alpha_vir /= 10.;} /* account for gravitational softening effects here, making this threshold less steep */
-#if (GALSF_SFR_VIRIAL_SF_CRITERION <= 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'weakest' mode: reduce [do not zero] SFR if above alpha_crit, and not -too- dense */
+#if (GALSF_SFR_VIRIAL_SCALING == -1)
     if((alpha_vir>alpha_crit) && (CellP[i].Density*All.cf_a3inv<100.*All.PhysDensThresh)) {rateOfSF *= 0.0015;} /* PFH: note the 100x threshold limit here is an arbitrary choice currently set -by hand- to prevent runaway densities from this prescription! */
 #endif
-#if (GALSF_SFR_VIRIAL_SF_CRITERION > 0) && !defined(GALSF_SFR_VIRIAL_CONTINUOUS) && !(SINGLE_STAR_SINK_FORMATION & 512) /* 'normal' mode: zero SF if don't meet virial threshold */
+#if (GALSF_SFR_VIRIAL_SCALING == 0)
     if(alpha_vir>alpha_crit) {rateOfSF=0;} /* simple 'hard' threshold here */
 #endif
-#if (SINGLE_STAR_SINK_FORMATION & 512) || defined(GALSF_SFR_VIRIAL_CONTINUOUS) /* semi-continuous SF as a function of alpha_vir */
-    double sf_eff_multiplier = 1;
-    if(alpha_vir>alpha_crit) {sf_eff_multiplier = 0.01;}
-#if (GALSF_SFR_VIRIAL_CONTINUOUS == 1)
-    sf_eff_multiplier = exp(-1.4 * DMIN(DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10),22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 [limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan] */
+#if (GALSF_SFR_VIRIAL_SCALING == 1)
+    rateOfSF *= exp(-1.4 * DMIN(DMIN(DMAX(sqrt(DMAX(MIN_REAL_NUMBER,alpha_vir)), 1.e-4), 1.e10),22.)); /* continuous cutoff of rateOfSF with increasing virial parameter as ~exp[-1.4*sqrt(alpha_vir)], following fitting function from Padoan 2012 [limit the values of sqrt(alpha_vir) here since we'll take an exponential so don't want a nan] */
 #endif
-#if (GALSF_SFR_VIRIAL_CONTINUOUS == 2) || (SINGLE_STAR_SINK_FORMATION & 512)
+#if (GALSF_SFR_VIRIAL_SCALING == 2)
     Mach_eff_2 = DMIN(DMAX(1.e-5, Mach_eff_2/3.), 1.e4); if(!isfinite(Mach_eff_2)) {Mach_eff_2=1.e4;}
     double S_ln=log(1.+Mach_eff_2/4.), S_crit=log(alpha_vir*(1.+2.*Mach_eff_2*Mach_eff_2/(1.+Mach_eff_2*Mach_eff_2))); // Mach_eff_2 is determined by the ratio of the kinetic to the thermal terms in the virial parameter, corrected to the 1D dispersion here
-    sf_eff_multiplier *= 0.5 * exp(3.*S_ln/8.) * (1. + erf((S_ln-S_crit)/sqrt(2.*S_ln))); // multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter [K+T used a definition which gives the wrong value for thermally-supported clouds]
+    rateOfSF *= 0.5 * exp(3.*S_ln/8.) * (1. + erf((S_ln-S_crit)/sqrt(2.*S_ln))); // multi-free-fall model, as in e.g. Federrath+Klessen 2012/2013 ApJ 761,156; 763,51 (similar to that implemented in e.g. Kretschmer+Teyssier 2020), based on the analytic models in Hopkins MNRAS 2013, 430 1653, with correct virial parameter [K+T used a definition which gives the wrong value for thermally-supported clouds]
 #endif
-    rateOfSF *= sf_eff_multiplier;
+#if (GALSF_SFR_VIRIAL_SCALING == 3)
+    if(alpha_vir>alpha_crit) {rateOfSF *= 0.01;} /* Krumholz-McKee type model where assumed to be always 1% even above threshold */
 #endif
-#endif
+#endif // virial sf criteria/scaling block
 
-#if (SINGLE_STAR_SINK_FORMATION & 256) || defined(GALSF_SFR_MOLECULAR_CRITERION) /* scale SFR to fraction of 'molecular' gas in cell */
+#if (SINGLE_STAR_SINK_FORMATION & 256) /* scale SFR to fraction of 'molecular' gas in cell */
     double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temperature, mu_meanwt=1, rho=CellP[i].Density*All.cf_a3inv, u0=CellP[i].InternalEnergyPred; // pull various known thermal properties, prepare to extract others //
     temperature = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp); // get thermodynamic properties, like neutral fraction, temperature, etc, that we will use below //
     rateOfSF *= Get_Gas_Molecular_Mass_Fraction(i, temperature, nh0, ne, 0.);
 #endif
 
-#if (SINGLE_STAR_SINK_FORMATION & 2) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* restrict to convergent flows */
-#if !defined(GALSF_SFR_VIRIAL_SF_CRITERION) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if (SINGLE_STAR_SINK_FORMATION & 2) /* restrict to convergent flows */
+#if defined(SINGLE_STAR_SINK_DYNAMICS)
     if(divv >= 0) {rateOfSF=0;} /* diverging flow, no SF [simplest version of this] */
 #else
     if(divv < 0) { // here need to more carefully account for the fact that we are not trying to capture laminar collapse, but whether a patch should or should not -fragment-
@@ -309,7 +304,7 @@ double get_starformation_rate(int i, int mode)
 #endif
 #endif
 
-#if (SINGLE_STAR_SINK_FORMATION & 128) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 4) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */
+#if (SINGLE_STAR_SINK_FORMATION & 128) /* check that the velocity gradient is negative-definite, ie. converging along all principal axes, which is much stricter than div v < 0 */
     for(j=0;j<3;j++){ // symmetrize the velocity gradient
       for(k=0;k<j;k++){double temp = gradv[3*j + k]; gradv[3*j + k] = 0.5*(gradv[3*j + k] + gradv[3*k + j]); gradv[3*k + j] = 0.5*(temp + gradv[3*k + j]);}}
     gsl_matrix_view M = gsl_matrix_view_array(gradv, 3, 3); gsl_vector *eval1 = gsl_vector_alloc(3);
@@ -318,7 +313,7 @@ double get_starformation_rate(int i, int mode)
     gsl_eigen_symm_free(v); gsl_vector_free(eval1);
 #endif
 
-#if (SINGLE_STAR_SINK_FORMATION & 64) || (GALSF_SFR_VIRIAL_SF_CRITERION >= 3) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
+#if (SINGLE_STAR_SINK_FORMATION & 64) /* check if Jeans mass is low enough for conceivable formation of 'stars' */
     double cs_touse=cs_eff, MJ_crit=DMAX(DMIN(1.e6, 1.*P[i].Mass*UNIT_MASS_IN_SOLAR), 100.); /* for galaxy-scale SF, default to large ~1000 Msun threshold */
     if(exceeds_force_softening_threshold) {MJ_crit = DMAX(1.e6 , 100.*P[i].Mass*UNIT_MASS_IN_SOLAR);}
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && defined(SINGLE_STAR_SINK_FORMATION)

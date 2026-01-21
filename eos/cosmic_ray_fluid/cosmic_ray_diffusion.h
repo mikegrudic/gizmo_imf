@@ -24,9 +24,9 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     
     if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
-#ifndef CRFLUID_M1
+#if defined(CRFLUID_ALT_PUREDIFFUSION) // use the older and less accurate single-moment formulation of CR transport
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
-        double *grad_i = local.Gradients.CosmicRayPressure[k_CRegy]; // units = E/[L_comoving^4]
+        double *grad_i = local.CosmicRayFlux[k_CRegy]; // units = E/[L_comoving^4]
         double *grad_j = CellP[j].Gradients.CosmicRayPressure[k_CRegy];
         double flux_wt = 1;
         double diffusion_wt = 0.5*(kappa_i+kappa_j);
@@ -117,8 +117,8 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         } // if(diffusion_wt > 0)
         
         
-#else // CRFLUID_M1 is active
-        
+#else // use the more physical and accurate two-moment formulation
+
         /* calculate the eigenvalues for the HLLE flux-weighting */
         double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
         for(k=0;k<3;k++)
@@ -196,7 +196,8 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {CellP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
         
-#endif // CRFLUID_M1
+#endif // check for whether to use single or two-moment formulation of CR transport
+        
     } // close check that kappa and particle masses are positive
     // actually assign the fluxes //
     out.DtCosmicRayEnergy[k_CRegy] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayPressure[k_CRegy];

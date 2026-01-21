@@ -11,8 +11,7 @@
 %        GALSF
 %
 %        and e.g. flags like:
-%        GALSF_SFR_MOLECULAR_CRITERION
-%        GALSF_SFR_VIRIAL_SF_CRITERION=0
+%        GALSF_SFR_CRITERION=(1+256)
 %
 %        and/or:
 %        GALSF_EFFECTIVE_EQS

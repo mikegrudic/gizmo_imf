@@ -77,10 +77,8 @@ extern struct gas_cell_data
 #if defined(SINK_CR_INJECTION_AT_TERMINATION)
     MyDouble Sink_CR_Energy_Available_For_Injection;     /*!< Energy reservoir from CRs */
 #endif
-#ifdef CRFLUID_M1
     MyFloat CosmicRayFlux[N_CR_PARTICLE_BINS][3];       /*!< CR flux vector [explicitly evolved] - conserved-variable */
     MyFloat CosmicRayFluxPred[N_CR_PARTICLE_BINS][3];   /*!< CR flux vector [explicitly evolved] - conserved-variable */
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
     MyFloat CosmicRayAlfvenEnergy[N_CR_PARTICLE_BINS][2];       /*!< forward and backward-traveling Alfven wave-packet energies */
     MyFloat CosmicRayAlfvenEnergyPred[N_CR_PARTICLE_BINS][2];   /*!< drifted forward and backward-traveling Alfven wave-packet energies */

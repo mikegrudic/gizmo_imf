@@ -615,20 +615,12 @@ integertime get_timestep(int p,		/*!< particle index */
             {
                 if(Get_Gas_CosmicRayPressure(p,k_CRegy) > 1.0e-20)
                 {
-                    int explicit_timestep_on, cr_diffusion_opt = 0;
-#if defined(DIFFUSION_OPTIMIZERS) || defined(CRFLUID_M1)
-                    cr_diffusion_opt = 1;
-#endif
-                    if(All.ComovingIntegrationOn) {cr_diffusion_opt = 1;}
+                    int explicit_timestep_on, cr_diffusion_opt = 1;
                     double CRPressureGradScaleLength = Get_CosmicRayGradientLength(p,k_CRegy);
                     double L_cr_weak; L_cr_weak = CRPressureGradScaleLength;
                     double kappa_cr_eff = fabs(CellP[p].CosmicRayDiffusionCoeff[k_CRegy]);
-#if defined(CRFLUID_M1)
                     kappa_cr_eff *= CosmicRayFluid_RSOL_Corrfac(k_CRegy); // account for RSOL factor as it actually appears in the flux eqn in code units with this RSOL form
                     double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + 1./(L_particle*All.cf_atime)));
-#else
-                    double L_cr_strong = DMAX(L_particle*All.cf_atime , 1./(1./CRPressureGradScaleLength + (1.-0.5*cr_diffusion_opt)/(L_particle*All.cf_atime)));
-#endif
                     double coeff_inv = 0.67 * L_cr_strong * dt_prefac_diffusion / (1.e-33 + kappa_cr_eff * (GAMMA_COSMICRAY(k_CRegy)-1.));
                     double dt_conduction =  L_cr_strong * coeff_inv; /* true diffusion requires the stronger timestep criterion be applied */
                     explicit_timestep_on = 1;
@@ -670,9 +662,8 @@ integertime get_timestep(int p,		/*!< particle index */
                         if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
                     }
 #else
-#ifdef CRFLUID_M1
-                    //double cr_m1_speed = CRFLUID_REDUCED_C_CODE(k_CRegy); // pull for use below
-                    double cr_m1_speed = CRFLUID_M1; // if used stricter flux-limiter, can use stricter version here
+#if !defined(CRFLUID_ALT_PUREDIFFUSION)
+                    double cr_m1_speed = CRFLUID_REDUCED_C_CODE(k_CRegy); // pull for use below
                     if(cr_diffusion_opt==1)
                     {
                         if(CellP[p].CosmicRayEnergy[k_CRegy] > 0)
