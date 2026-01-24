@@ -320,9 +320,9 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                     if(P[j].Type == 5)  /* this is a sink-sink merger */
                     {
 #ifdef SINK_OUTPUT_MOREINFO
-                        fprintf(FdSinkMergerDetails,"%.16g  %llu %g %2.16g %2.16g %2.16g  %llu %g %2.16g %2.16g %2.16g\n", All.Time,  (unsigned long long)local.ID,local.Sink_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,P[j].Sink_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdSinkMergerDetails);
+                        fprintf(FdSinkMergerDetails,"%.16g  %llu %llu %llu %g %2.16g %2.16g %2.16g  %llu %llu %llu %g %2.16g %2.16g %2.16g\n",All.Time,(unsigned long long)local.ID,(unsigned long long)local.ID_child_number,(unsigned long long)local.ID_generation,local.Sink_Mass,local.Pos[0],local.Pos[1],local.Pos[2],  (unsigned long long)P[j].ID,(unsigned long long)P[j].ID_child_number,(unsigned long long)P[j].ID_generation,P[j].Sink_Mass,P[j].Pos[0],P[j].Pos[1],P[j].Pos[2]); fflush(FdSinkMergerDetails);
 #elif defined(OUTPUT_ADDITIONAL_RUNINFO)
-                        fprintf(FdSinksDetails,"ThisTask=%d, time=%.16g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.Sink_Mass, P[j].Sink_Mass); fflush(FdSinksDetails);
+                        fprintf(FdSinksDetails,"Sink-Sink Merger Occuring: ThisTask=%d, time=%.16g: id=%llu swallows %llu (%g %g)\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, local.Sink_Mass, P[j].Sink_Mass); fflush(FdSinksDetails);
 #endif
 #ifdef SINK_INCREASE_DYNAMIC_MASS
                         /* the true dynamical mass of the merging sink is Mass_j/SINK_INCREASE_DYNAMIC_MASS unless exceeded by physical growth
@@ -1029,6 +1029,8 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
             frac_clight_jet = (SINK_TEST_WIND_MIXED_FASTSLOW/UNIT_VEL_IN_KMS) / C_LIGHT_CODE;
 #endif
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL
+            double frac_clight_jet_max = 1.0; // don't let the jet be too fast, for physical (superluminal) or numerical (timestep) reasons
+            double frac_clight_jet_min = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
             double Mdot_wind = P[i].Sink_Mdot_ROI - P[i].Sink_Mdot;
             if(Mdot_wind > 0)
             {
@@ -1040,11 +1042,10 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
                 double Mdot_jet = (fraction_to_spawn_in_jet/masscorrfac_fast) * Mdot_wind;
                 double eta_jet = Mdot_jet / P[i].Sink_Mdot;
                 frac_clight_jet = sqrt(2.*eff_jet/eta_jet); /* scaling so that KE of jet = desired */
-                if(frac_clight_jet > 1.) { /* superluminal - need more mass in jet to make this make sense */
-                    frac_clight_jet = 1.; // cap this at luminal
+                if(frac_clight_jet > frac_clight_jet_max) { /* superluminal - need more mass in jet to make this make sense */
+                    frac_clight_jet = frac_clight_jet_max; // cap this at luminal
                     masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].Sink_Mdot); // boost this term to make up the difference
                 }
-                double frac_clight_jet_min = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
                 if(frac_clight_jet < frac_clight_jet_min) {
                     frac_clight_jet = frac_clight_jet_min; // cap this at minimum
                     masscorrfac_fast = frac_clight_jet*frac_clight_jet * (fraction_to_spawn_in_jet/(2.*eff_jet)) * (Mdot_wind / P[i].Sink_Mdot); // boost this term to make up the difference

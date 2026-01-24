@@ -308,10 +308,10 @@ extern FILE
 *FdTimings,    /*!< file handle for timings.txt log-file. */
 *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-*FdRad,        /*!< file handle for radtransfer.txt log-file. */
+*FdPhotoIonChemStats,        /*!< file handle for photoionization chemistry log-file. */
 #endif
 #ifdef TURB_DRIVING
-*FdTurb,       /*!< file handle for turb.txt log-file */
+*FdTurb,       /*!< file handle for turbulent driving log-file */
 #endif
 #ifdef GR_TABULATED_COSMOLOGY
 *FdDE,         /*!< file handle for darkenergy.txt log-file. */
@@ -319,25 +319,22 @@ extern FILE
 #endif
 *FdCPU;        /*!< file handle for cpu.txt log-file. */
 #ifdef GALSF
-extern FILE *FdSfr;        /*!< file handle for sfr.txt log-file. */
+extern FILE *FdSfr;        /*!< file handle for star formation log-file. */
 #endif
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
-extern FILE *FdMomWinds;    /*!< file handle for MomWinds.txt log-file */
+extern FILE *FdMomWinds;    /*!< file handle for local photon-momentum subgrid model log-file */
 #endif
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
-extern FILE *FdHIIHeating;    /*!< file handle for HIIheating.txt log-file */
+extern FILE *FdHIIHeating;    /*!< file handle for local HII model log-file */
 #endif
 #ifdef GALSF_FB_MECHANICAL
-extern FILE *FdSneIIHeating;    /*!< file handle for SNIIheating.txt log-file */
+extern FILE *FdSNeFBLogFile;    /*!< file handle for mechanical feedback log-file */
 #endif
 #ifdef SINK_PARTICLES
 extern FILE *FdSinks;    /*!< file handle for sinks.txt log-file. */
 #endif
 #ifdef OUTPUT_SINK_ACCRETION_HIST
 extern FILE *FdSinkSwallowDetails;
-#endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-extern FILE *FdSinkSNDetails;
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
 extern FILE *FdSinkFormationDetails;

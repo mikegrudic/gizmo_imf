@@ -3847,9 +3847,9 @@ Models with the short-range local radiation pressure (`GALSF_FB_FIRE_RT_LOCALRP`
 Columns are (1) simulation time, (2) number of cells affected by short-range radiation pressure, (3) total photon momentum ("$dt\,L / c$") of the active stars for which the radiation pressure is being calculated (code units) for the timestep (4) total momentum actually coupled to gas (5) average velocity of the discretized "kicks" assigned to gas particles (acceleration $*$ dt) from the momentum, (6) mean infrared optical depth $\tau_{\rm IR}$ of the incident gas being illuminated (directly calculated from the IR opacity, metallicity, density of the gas). 
 
 
-### SNeIIheating.txt
+### MechFeedbackEvents.txt
 
-Models with mechanical feedback from SNe and stellar winds (`GALSF_FB_MECHANICAL`) will write 'SNeIIheating.txt'
+Models with mechanical feedback from SNe and stellar winds (`GALSF_FB_MECHANICAL`) will write 'MechFeedbackEvents.txt'
 
     0.00482178 2546 9 9 7.00321 5.71995e-05 1.74019e-06  
 

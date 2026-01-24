@@ -3761,7 +3761,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "Sink_Dust_Mass");
             break;
         case IO_SINK_DIST:
-            strcpy(buf, "SINK_Dist");
+            strcpy(buf, "Sink_Distance");
             break;
         case IO_SINKMASSALPHA:
             strcpy(buf, "Sink_Mass_Reservoir");
@@ -3770,13 +3770,13 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "Sink_Specific_AngMom");
             break;
         case IO_ACRB:
-            strcpy(buf, "SINK_AccretionLength");
+            strcpy(buf, "Sink_AccretionLength");
             break;
         case IO_SINKRAD:
-            strcpy(buf, "SinkRadius");
+            strcpy(buf, "Sink_Radius");
             break;
         case IO_SINK_FORM_MASS:
-            strcpy(buf, "SinkInitialMass");
+            strcpy(buf, "Sink_InitialMass");
             break;	    
         case IO_SINKMDOT:
             strcpy(buf, "Sink_Mdot");
@@ -3800,7 +3800,7 @@ void get_dataset_name(enum iofields blocknr, char *buf)
             strcpy(buf, "StarLuminosity_Solar");
             break;
         case IO_SINKPROGS:
-            strcpy(buf, "SINK_NProgs");
+            strcpy(buf, "Sink_NProgenitors");
             break;
         case IO_TIDALTENSORPS:
             strcpy(buf, "TidalTensor");

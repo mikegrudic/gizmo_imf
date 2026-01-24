@@ -349,7 +349,7 @@ double get_starformation_rate(int i, int mode)
     if(P[i].Sink_Ngb_Flag) {rateOfSF=0;} /* cell cannot be 'seen' by -any- sink as a potential interacting neighbor */
     if(P[i].Min_Distance_to_Sink < P[i].KernelRadius) {rateOfSF=0;} /* cell does not overlap with a sink */
 #if (defined(COOLING) || defined(EOS_GMC_BAROTROPIC)) // if the simulation has opacity limit physics
-    if(P[i].Min_Distance_to_Sink * UNIT_LENGTH_IN_AU < 0.1){rateOfSF=0;} /* distance to nearest sink is much greater than the size of a Larson core (at least a few AU), else the core should be accreted by the pre-existing protostar star */
+    if(P[i].Min_Distance_to_Sink * All.cf_atime * UNIT_LENGTH_IN_AU < 0.1) {rateOfSF=0;} /* distance to nearest sink is much greater than the size of a Larson core (at least a few AU), else the core should be accreted by the pre-existing protostar star */
 #endif
 #endif
 
@@ -612,9 +612,11 @@ void star_formation_parent_routine(void)
 #endif
                                 
 #ifdef OUTPUT_SINK_FORMATION_PROPS //save the at-formation properties of sink particles
-                                MyDouble tempB[3]={0,0,0}; double NH = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i); double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+                                double NH = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i);
+                                double dv2_abs = 0; /* calculate local velocity dispersion (including hubble-flow correction) in physical units */
+                                MyDouble tempB[3]={0,0,0};
 #ifdef MAGNETIC
-                                tempB[0]=CellP[i].B[0];tempB[1]=CellP[i].B[1];tempB[2]=CellP[i].B[2]; //use particle magnetic field
+                                {int kB; for(kB=0;kB<3;kB++) {tempB[kB]=Get_Gas_BField(i,kB);}} // use particle magnetic field
 #endif
                                 dv2_abs = ((1./2.)*((CellP[i].Gradients.Velocity[1][0]+CellP[i].Gradients.Velocity[0][1])*(CellP[i].Gradients.Velocity[1][0]+CellP[i].Gradients.Velocity[0][1]) // squared norm of the trace-free symmetric [shear] component of the velocity gradient tensor //
                                                     + (CellP[i].Gradients.Velocity[2][0]+CellP[i].Gradients.Velocity[0][2])*(CellP[i].Gradients.Velocity[2][0]+CellP[i].Gradients.Velocity[0][2]) + (CellP[i].Gradients.Velocity[2][1]+CellP[i].Gradients.Velocity[1][2])*(CellP[i].Gradients.Velocity[2][1]+CellP[i].Gradients.Velocity[1][2])) +

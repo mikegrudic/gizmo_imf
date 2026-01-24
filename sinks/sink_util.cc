@@ -79,7 +79,7 @@ void sink_end(void)
         double mass_real, total_mass_real, medd, total_mdoteddington;
         double mass_holes, total_mass_holes, total_mdot;
 
-        /* sum up numbers to print for summary of the BH step (sinks.txt) */
+        /* sum up numbers to print for summary of the sink step  */
         mdot = mass_holes = mass_real = medd = 0;
         for(bin = 0; bin < TIMEBINS; bin++)
         {

@@ -235,7 +235,7 @@ FILE
 *FdTimings,    /*!< file handle for timings.txt log-file. */
 *FdBalance,    /*!< file handle for balance.txt log-file. */
 #ifdef RT_CHEM_PHOTOION
-*FdRad,         /*!< file handle for radtransfer.txt log-file. */
+*FdPhotoIonChemStats,         /*!< file handle for radtransfer.txt log-file. */
 #endif
 #ifdef TURB_DRIVING
 *FdTurb,        /*!< file handle for turb.txt log-file */
@@ -256,16 +256,13 @@ FILE *FdMomWinds;	/*!< file handle for MomWinds.txt log-file */
 FILE *FdHIIHeating;	/*!< file handle for HIIheating.txt log-file */
 #endif
 #ifdef GALSF_FB_MECHANICAL
-FILE *FdSneIIHeating;	/*!< file handle for SNIIheating.txt log-file */
+FILE *FdSNeFBLogFile;	/*!< file handle for SNIIheating.txt log-file */
 #endif
 
 #ifdef SINK_PARTICLES
 FILE *FdSinks;		/*!< file handle for sinks.txt log-file. */
 #ifdef OUTPUT_SINK_ACCRETION_HIST
 FILE *FdSinkSwallowDetails;
-#endif
-#if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-FILE *FdSinkSNDetails;
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
 FILE *FdSinkFormationDetails;

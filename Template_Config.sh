@@ -579,7 +579,6 @@
 #SINK_DEBUG_SPAWN_JET_TEST=(30.)    # BH outflow/particle spawn in jet  (initial position isotropic around BH, vel within narrow angle specified in () in degree, testing/early-dev, doesn't work for general problems!).  Cite Su et al., arXiv:2102.02206, for methods.
 #SINK_DEBUG_FIX_MDOT_MASS=(0.2)     # fix sink fb mass flux and fixed mass.  Cite Su et al., arXiv:2102.02206, for methods.
 #SINK_WAKEUP_GAS                    # force all gas within the interaction radius of a BH/sink particle to timestep at the same rate (set to lowest timebin of any of the interacting neighbors)
-#SINK_RIAF_SUBEDDINGTON_MODEL=(0.01) # enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties, with the critical transition to the jet mode at this eddington ratio (defined in terms of mdot/mdot_crit)
 #SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS # rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
 #SINK_EXCISION_NONGAS               # excise non-gas elements too close to a sink if they meet various criteria including being bound, sufficiently old (if stars), within and with maximum possible apocentric radii within the sink softening (which is rescaled appropriately). mass is added to the sink dynamical mass reservoir, not disk or sink itself. developed by PFH; cite arXiv:2203.00040
 #SINK_EXCISION_GAS                  # excise gas elements too close to a sink with a similar criterion to SINK_EXCISION_NONGAS (same references and details apply)
@@ -661,9 +660,7 @@
 #RT_SPEEDOFLIGHT_REDUCTION_VARIABLE_RSL     #- allow variable RSL with different strategies for setting it
 #USE_TIMESTEP_DILATION_FOR_ZOOMS            #- enable time dilation modules, need to customize for applications, cannot be simply generically turned on without coding how they will work
 #DILATION_FOR_STELLAR_KINEMATICS_ONLY       #- special version of time dilation designed for stellar kinematics in e.g. dense star clusters or galaxy centers
-#SINK_RIAF_SUBEDDINGTON_MODEL=(0.01) # enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties, with the critical transition to the jet mode at this eddington ratio (defined in terms of mdot/mdot_crit)
-#SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS # rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
-#FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT=0 # experiment with modified supernova energies as a function of metallicity - freely modify this module as desired. used for numerical experiments only.
+#SINK_RIAF_SUBEDDINGTON_MODEL=(0.01)        #- enable an arbitrary modular variation in the radiative efficiency of BHs as a function of eddington ratio or other particle properties, with the critical transition to the jet mode at this eddington ratio (defined in terms of mdot/mdot_crit)
 ####################################################################################################-
 
 ############################################################################################################################-

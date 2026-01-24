@@ -858,7 +858,7 @@ void write_cpu_log(void)
 	      " coolchmimbal %10.2f  %5.1f%%\n"
 #endif
 #ifdef SINK_PARTICLES
-	      "sinks    %10.2f  %5.1f%%\n"
+	      "sinks         %10.2f  %5.1f%%\n"
 #endif
 #ifdef GRAIN_FLUID
           "grains        %10.2f  %5.1f%%\n"

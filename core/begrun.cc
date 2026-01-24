@@ -611,6 +611,7 @@ void open_outputfiles(void)
   if(RestartFlag == 0) {strcpy(mode, "w");} else {strcpy(mode, "a");}
   if(ThisTask == 0) {mkdir(All.OutputDir, 02755);}
   MPI_Barrier(MPI_COMM_WORLD);
+  char prefix_char[100] = "###";
 
 #ifdef SINK_PARTICLES /* Note: This is done by everyone [all tasks can write to these log-files], even if it might be empty */
   if(ThisTask == 0) {snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details", All.OutputDir); mkdir(buf, 02755);}
@@ -622,17 +623,69 @@ void open_outputfiles(void)
 #ifdef OUTPUT_SINK_ACCRETION_HIST
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_swallow_%d.txt", All.OutputDir, ThisTask);
   if(!(FdSinkSwallowDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0 && ThisTask == 0) {
+      fprintf(FdSinkSwallowDetails,"%s Logfiles [1 per MPI task] for sink-gas capture/swallow events. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (2,3,4) Particle ID, child ID number, ID generation number of primary (sink) \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (5) Particle mass of primary (sink) [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (6,7,8) Coordinate (x,y,z) position of primary (sink) [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (9,10,11) Particle ID, child ID number, ID generation number of secondary \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (12) Initial (pre-swallow) particle mass of secondary [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (13,14,15) Coordinate (x,y,z) position of secondary, relative to primary (Pos[sec]-Pos[prim]) [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (16,17,18) Velocity (x,y,z) difference of secondary, relative to primary (Vel[sec]-Vel[prim]) [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (19) Specific internal energy of secondary gas [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (20,21,22) Magnetic field of secondary gas [code units] \n",prefix_char);
+      fprintf(FdSinkSwallowDetails,"%s   (23) Density of secondary gas [code units] \n",prefix_char);
+  }
 #endif
 #ifdef OUTPUT_SINK_FORMATION_PROPS
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_formation_%d.txt", All.OutputDir, ThisTask);
   if(!(FdSinkFormationDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0 && ThisTask == 0) {
+      fprintf(FdSinkFormationDetails,"%s Logfiles [1 per MPI task] for sink-formation events. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (2) Particle ID becoming a sink \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (3) Mass [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (4,5,6) x,y,z Coordinates [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (7,8,9) x,y,z Velocity [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (10,11,12) x,y,z Magnetic field [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (13) Specific internal energy [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (14) Density [physical code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (15) Effective sound Speed [code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (16) Cell linear size [physical code units] \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (17) Column density [physical code units of mass/area] integrated to infinity \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (18) Turbulent velocity variance dv*dv [physical code units] from deviatoric shear tensor \n",prefix_char);
+      fprintf(FdSinkFormationDetails,"%s   (19) Minimum distance to nearest (other) sink [code units] \n",prefix_char);
+  }
 #endif
 #ifdef SINK_OUTPUT_MOREINFO
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_mergers_%d.txt", All.OutputDir, ThisTask);
   if(!(FdSinkMergerDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0 && ThisTask == 0) {
+      fprintf(FdSinkMergerDetails,"%s Logfiles [1 per MPI task] for sink merger events. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (2,3,4) Particle ID, child ID number, ID generation number of primary \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (5) Sink mass of primary [code units] \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (6,7,8) Coordinate (x,y,z) position of primary (sink) [code units] \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (9,10,11) Particle ID, child ID number, ID generation number of secondary \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (12) Sink mass of secondary [code units] \n",prefix_char);
+      fprintf(FdSinkMergerDetails,"%s   (13,14,15) Coordinate (x,y,z) position of secondary [code units] \n",prefix_char);
+  }
 #ifdef SINK_WIND_KICK
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%ssink_details/sink_winds_%d.txt", All.OutputDir, ThisTask);
   if(!(FdSinkWindDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0 && ThisTask == 0) {
+      fprintf(FdSinkWindDetails,"%s Logfiles [1 per MPI task] for sink wind-kick [SINK_WIND_KICK] events. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (2) Particle ID of kicked (gas) element \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (3) Mass of kicked element [code units] \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (4,5,6) Coordinate (x,y,z) position of kicked element [code units] \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (7,8,9) Velocity (x,y,z) of kicked element [code units] \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (10,11,12) Directional unit vector (x,y,z) of kick \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (13,14,15) Coordinate (x,y,z) position of secondary [code units] \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (16) ID of kicking sink \n",prefix_char);
+      fprintf(FdSinkWindDetails,"%s   (17,18,19) Coordinate (x,y,z) position of kicking sink [code units] \n",prefix_char);
+  }
 #endif
 #endif // output-more-info if
 #endif // SINK_PARTICLES if
@@ -707,41 +760,107 @@ void open_outputfiles(void)
 #ifdef GALSF
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "sfr.txt");
   if(!(FdSfr = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0) {
+      fprintf(FdSfr,"%s Star formation log-file [GALSF]. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSfr,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSfr,"%s   (2) Expectation value of stellar mass formed this timestep [code units] \n",prefix_char);
+      fprintf(FdSfr,"%s   (3) Total star formation rate [SFR] summed over gas cells [code units] \n",prefix_char);
+      fprintf(FdSfr,"%s   (4) Discretized mass formed / timestep, in solar masses per year \n",prefix_char);
+      fprintf(FdSfr,"%s   (5) Total mass actually formed this timestep [code units] \n",prefix_char);
+  }
 #endif
 
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "MomWinds.txt");
     if(!(FdMomWinds = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    else if(RestartFlag == 0) {
+        fprintf(FdMomWinds,"%s Local Photon-momentum model log-file [GALSF_FB_FIRE_RT_LOCALRP]. See User Guide for details. Columns represent: \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (1) Simulation time [code units] \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (2) Number of cells affected by short-range radiation pressure \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (3) Total photon momentum (L/c x dt) for which this is being calculated (code units) in timestep \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (4) Total momentum actually coupled to gas [code units] \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (5) Average velocity of the discretized kicks assigned to gas cells from photon momentum \n",prefix_char);
+        fprintf(FdMomWinds,"%s   (6) Mean infrared optical depth of incident gas being illuminated \n",prefix_char);
+    }
 #endif
 
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
     snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "HIIheating.txt");
     if(!(FdHIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    else if(RestartFlag == 0) {
+        fprintf(FdHIIHeating,"%s Stochastic HII region model log-file [GALSF_FB_FIRE_RT_HIIHEATING]. See User Guide for details. Columns represent: \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (1) Simulation time [code units] \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (2) Number of sources emitting ionizing photons (very young stars active that timestep) \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (3) Total ionizing photon emission in photons/s \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (4) Total number of gas cells ionized (all or in part) by those stars this timestep \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (5) Total gas mass (in solar) ionized this timestep \n",prefix_char);
+        fprintf(FdHIIHeating,"%s   (6) Average size of the HII regions being created (distance from source to ionized gas element, in code units) \n",prefix_char);
+    }
 #endif
 
 #ifdef GALSF_FB_MECHANICAL
-    snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "SNeIIheating.txt");
-    if(!(FdSneIIHeating = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "MechFeedbackEvents.txt");
+    if(!(FdSNeFBLogFile = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+    else if(RestartFlag == 0) {
+        fprintf(FdSNeFBLogFile,"%s Mechanical feedback log-file [GALSF_FB_MECHANICAL]. See User Guide for details. Columns represent: \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (1) Simulation time [code units] \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (2) Number of active particles which could (potentially) have mechanical injection events \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (3) Number of particles with at least one such event this timestep \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (4) Total number of injection events (one particle can have multiple, and different types) \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (5) Integral of the rate functions over timestep: number should (on average) reflect this \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (6) Mean timestep of active particles [code units] \n",prefix_char);
+        fprintf(FdSNeFBLogFile,"%s   (7) Mean event rates of active particles [code units] \n",prefix_char);
+    }
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && defined(OUTPUT_ADDITIONAL_RUNINFO)
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "rt_photoion_chem.txt");
-  if(!(FdRad = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  if(!(FdPhotoIonChemStats = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
 #endif
 
 #if defined(SINGLE_STAR_FB_SNE) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
+  FILE *FdSinkSNDetails;
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "SN_details.txt");
   if(!(FdSinkSNDetails = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0) {
+      fprintf(FdSinkSNDetails,"%s Sink Supernova/Explosion log-file [SINK_PARTICLES]. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinkSNDetails,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinkSNDetails,"%s   (2) Sink ID to explode/implode \n",prefix_char);
+      fprintf(FdSinkSNDetails,"%s   (3) Sink mass [code units] \n",prefix_char);
+      fprintf(FdSinkSNDetails,"%s   (4,5,6) Sink x,y,z position [code units] \n",prefix_char);
+      fprintf(FdSinkSNDetails,"%s   (7,8,9) Sink x,y,z velocity [code units] \n",prefix_char);
+  }
+  fclose(FdSinkSNDetails); /* this is special and we close it because we'll risk collisions re-opening it from each task when needed, since it's rare enough we don't need separate files for each */
 #endif
 
 #ifdef SINK_PARTICLES
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "sinks.txt");
   if(!(FdSinks = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0) {
+      fprintf(FdSinks,"%s Sink particle log-file [SINK_PARTICLES]. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdSinks,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdSinks,"%s   (2) Number of sink particles in the simulation \n",prefix_char);
+      fprintf(FdSinks,"%s   (3) Total mass [code units] of the sinks (using the sink central mass, not particle/reservoir masses) \n",prefix_char);
+      fprintf(FdSinks,"%s   (4) Total sink accretion rate [code units] (using sink central Mdot) \n",prefix_char);
+      fprintf(FdSinks,"%s   (5) Total sink accretion rate in solar masses per year \n",prefix_char);
+      fprintf(FdSinks,"%s   (6) Total sink particle dynamical mass in simulation [code units] \n",prefix_char);
+      fprintf(FdSinks,"%s   (7) Mean Eddington ratio of accretion onto all sinks \n",prefix_char);
+  }
 #endif
 
 #if defined(TURB_DRIVING) && defined(OUTPUT_ADDITIONAL_RUNINFO)
   snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "turb.txt");
   if(!(FdTurb = fopen(buf, mode))) {printf("error in opening file '%s'\n", buf); endrun(1);}
+  else if(RestartFlag == 0) {
+      fprintf(FdTurb,"%s Turbulent driving log [TURB_DRIVING]. See User Guide for details. Columns represent: \n",prefix_char);
+      fprintf(FdTurb,"%s   (1) Simulation time [code units] \n",prefix_char);
+      fprintf(FdTurb,"%s   (2) Energy-weighted rms Mach number in the simulation \n",prefix_char);
+      fprintf(FdTurb,"%s   (3) Mean specific total thermal plus kinetic energy [code units] \n",prefix_char);
+      fprintf(FdTurb,"%s   (4) Mean specific kinetic energy injection rate per unit mass [code units] \n",prefix_char);
+      fprintf(FdTurb,"%s   (5) Mean specific dissipated energy rate per unit mass [code units] \n",prefix_char);
+      fprintf(FdTurb,"%s   (6) Integrated kinetic energy injection per unit mass [code units] \n",prefix_char);
+      fprintf(FdTurb,"%s   (7) Integrated dissipated energy per unit mass [code units] \n",prefix_char);
+  }
 #endif
 
 #if defined(GR_TABULATED_COSMOLOGY) && defined(OUTPUT_ADDITIONAL_RUNINFO)

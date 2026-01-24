@@ -396,26 +396,26 @@ void rt_write_chemistry_stats(void)
     {
         if(All.Time == All.TimeBegin)
         {
-            fprintf(FdRad, "time, nHI");
+            fprintf(FdPhotoIonChemStats, "time, nHI");
 #ifndef RT_PHOTOION_MULTIFREQUENCY
-            fprintf(FdRad, ", N_photons");
+            fprintf(FdPhotoIonChemStats, ", N_photons");
 #endif
 #ifdef RT_CHEM_PHOTOION_HE
-            fprintf(FdRad, ", nHeI, nHeII \n");
+            fprintf(FdPhotoIonChemStats, ", nHeI, nHeII \n");
 #else
-            fprintf(FdRad, "\n");
+            fprintf(FdPhotoIonChemStats, "\n");
 #endif
         }
-        fprintf(FdRad, "%.16g %g ", All.Time, total_nHI_all / total_V_all);
+        fprintf(FdPhotoIonChemStats, "%.16g %g ", All.Time, total_nHI_all / total_V_all);
 #ifndef RT_PHOTOION_MULTIFREQUENCY
-        fprintf(FdRad, "%g ", total_ng_all / total_V_all);
+        fprintf(FdPhotoIonChemStats, "%g ", total_ng_all / total_V_all);
 #endif
 #ifdef RT_CHEM_PHOTOION_HE
-        fprintf(FdRad, "%g %g\n", total_nHeI_all / total_V_all, total_nHeII_all / total_V_all);
+        fprintf(FdPhotoIonChemStats, "%g %g\n", total_nHeI_all / total_V_all, total_nHeII_all / total_V_all);
 #else
-        fprintf(FdRad, "\n");
+        fprintf(FdPhotoIonChemStats, "\n");
 #endif
-        fflush(FdRad);
+        fflush(FdPhotoIonChemStats);
     }
 #endif
 }
