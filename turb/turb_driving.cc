@@ -37,9 +37,7 @@ void init_turb(void)
     int ikx, iky, ikz; double kx,ky,kz,k, ampl;
     
     double kmin = All.TurbDriving_Global_DrivingScaleKMinVar, kmax = All.TurbDriving_Global_DrivingScaleKMaxVar;
-#if !defined(TURB_DRIVING_OLDFORMAT)
     kmin = 2.*M_PI / All.TurbDriving_Global_DrivingScaleKMinVar; kmax = 2.*M_PI / All.TurbDriving_Global_DrivingScaleKMaxVar; // convert these from spatial lengths to wavenumbers in the new convention we are using
-#endif
     
     int ikxmax = boxSize_X * kmax/2./M_PI, ikymax = 0, ikzmax = 0;
 #if (NUMDIMS > 1)
@@ -172,9 +170,7 @@ void init_turb(void)
             }
         }
     }
-#if !defined(TURB_DRIVING_OLDFORMAT)
     int i; for(i=0; i<StNModes; i++) {StAmpl[i] *= sqrt(1./amplitude_integrated_allmodes);} // normalize total driving amplitude across all modes here
-#endif
     StTPrev = -1; // mark some arbitrarily old time as last update of turb driving fields
     StRng = gsl_rng_alloc(gsl_rng_ranlxd1); // allocate seed variables
     gsl_rng_set(StRng, All.TurbDriving_Global_DrivingRandomNumberKey); // initialize seed
@@ -196,33 +192,21 @@ void st_turbdrive_init_ouseq(void)
 /* return the rms acceleration we expect, using either the 'dissipation rate' or 'turbulent velocity' conventions for our variables */
 double st_return_rms_acceleration(void)
 {
-#if !defined(TURB_DRIVING_OLDFORMAT)
     return All.TurbDriving_Global_AccelerationPowerVariable / st_return_mode_correlation_time(); // new convention, hoping this is more clear re: meaning of variable
-#else
-    return sqrt(All.TurbDriving_Global_AccelerationPowerVariable / st_return_mode_correlation_time()); // old convention, very confusing about what this variable meant: the numerator is the "D = sigma^2 / 2" in the classic OU form, but confusing b/c this is acceleration not v for Brownian motion, so this is not an energy in any sense
-#endif
 }
 
 
 /* return the driving scale needed for scaling some other quantities below, corresponding to our global variable convention */
 double st_return_driving_scale(void)
 {
-#if !defined(TURB_DRIVING_OLDFORMAT)
     return All.TurbDriving_Global_DrivingScaleKMinVar; // this is now spatial scale
-#else
-    return 2.*M_PI / All.TurbDriving_Global_DrivingScaleKMinVar; // this was K before
-#endif
 }
 
 
 /* return the coherence time of the driving scale modes. if global variable negative, it uses the eddy turnover time of the driving-scale modes */
 double st_return_mode_correlation_time(void)
 {
-#if !defined(TURB_DRIVING_OLDFORMAT)
     if(All.TurbDriving_Global_DecayTime > 0) {return All.TurbDriving_Global_DecayTime;} else {return st_return_driving_scale() / All.TurbDriving_Global_AccelerationPowerVariable;}
-#else
-    if(All.TurbDriving_Global_DecayTime > 0) {return All.TurbDriving_Global_DecayTime;} else {return pow(st_return_driving_scale(), 2./3.) / pow(All.TurbDriving_Global_AccelerationPowerVariable, 1./3.);}
-#endif
 }
 
 

@@ -260,7 +260,7 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat rkern, int target
             dist += CUBE_EDGEFACTOR_1 * current->len;
             if((r2 = (dx * dx + dy * dy + dz * dz)) > dist * dist) continue;
             
-            if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))) == 0)	/* only use fully local nodes */
+            if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT))) == 0)	/* only use fully local nodes */
             {
                 /* test whether the node is contained within the sphere */
                 dist = rkern - CUBE_EDGEFACTOR_2 * current->len;

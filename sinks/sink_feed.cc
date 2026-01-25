@@ -36,7 +36,7 @@ struct INPUT_STRUCT_NAME
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
     MyFloat SinkRadius;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     MyFloat AGS_KernelRadius;
 #endif
 #ifdef SINK_ALPHADISK_ACCRETION
@@ -60,7 +60,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
     in->SinkRadius = P[i].SinkRadius;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     in->AGS_KernelRadius = ForceSoftening_KernelRadius(i);
 #endif
 #ifdef SINK_ALPHADISK_ACCRETION
@@ -134,7 +134,7 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINK_REPOSITION_ON_POTMIN
     out.Sink_PotentialMinimumOfNeighbors = SINK_MINPOTVALUE_INIT;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_KernelRadius;
 #endif
 #if defined(SINK_CALC_LOCAL_ANGLEWEIGHTS)
@@ -192,29 +192,21 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINK_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
                         double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
-#if (SINK_REPOSITION_ON_POTMIN == 2)
                         if( boundedness_function < 0 )
                         {
                             double wt_rsoft = r / (3.*SinkParticle_GravityKernelRadius); // normalization arbitrary here, just using for convenience for function below
                             boundedness_function *= 1./(1. + wt_rsoft*wt_rsoft); // this down-weights particles which are very far away, relative to the user-defined force softening scale, which should define some 'confidence radius' of resolution around the BH particle
                         }
                         potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)
-#endif
                         if(potential_function < out.Sink_PotentialMinimumOfNeighbors)
-#if (SINK_REPOSITION_ON_POTMIN == 1)
-                        if( P[j].Type == 4 && vrel <= vesc )   // DAA: only if it is a star particle & bound
-#endif
-#if (SINK_REPOSITION_ON_POTMIN == 2)
                         if( (P[j].Type != 0) && (P[j].Type != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
-#endif
                         {
                             out.Sink_PotentialMinimumOfNeighbors=potential_function; for(k=0;k<3;k++) {out.Sink_PotentialMinimumOfNeighborsPos[k] = P[j].Pos[k];}
                         }
-#endif // SINK_REPOSITION_ON_POTMIN
+#endif
 			
                         
                         
-#if !defined(SINK_DEBUG_DISABLE_MERGERS)
                         if(P[j].Type == 5)  /* we may have a sink particle merger -- check below if allowed */
                         {
                             if(((local.ID != P[j].ID) || (r2>0)) && (SwallowID_j == 0) && (P[j].Sink_Mass < local.Sink_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
@@ -259,16 +251,7 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 } // if eligible for bh-bh mergers //
                             } // unique BH, merging from higher (swallowing lower) mass
                         } // type == 5
-#endif // SINK_DEBUG_DISABLE_MERGERS
                         
-                        
-#if defined(SINK_EXCISION_NONGAS) /* for the excision of non-gas particles which are 'too close', we can follow a very simple procedure here */
-                        if((P[j].Type > 0) && (P[j].Type < 5) && (SwallowID_j < local.ID)) // valid [non-gas, non-bh] particle not already marked to swallow
-                        {
-                            if((P[j].Mass < 0.01*local.Mass) && (vrel < 0.7*vesc) && (r < DMIN(SinkParticle_GravityKernelRadius,All.ForceSoftening[P[j].Type]))) { // generous criterion on velocity and distance
-                                if(P[j].Type != 4) {SwallowID_j = local.ID;} else {if(evaluate_stellar_age_Gyr(j)>0.05) {SwallowID_j = local.ID;}}} // avoid very young stars, so feedback isn't perturbed too strongly
-                        }
-#endif
                         
                         /* This is a similar loop to what we already did in sink_environment, but here we stochastically
                          reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
@@ -302,7 +285,7 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                                     {
 #if defined(SINK_ENFORCE_EDDINGTON_LIMIT) && !defined(SINK_ALPHADISK_ACCRETION) /* if Eddington-limited and NO alpha-disk, do this stochastically */
                                         p = 1. / eddington_factor;
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK)
+#if defined(SINK_WIND_KICK)
                                         p /= All.Sink_accreted_fraction; // we need to accrete more, then remove the mass in winds
 #endif
                                         w = get_random_number(P[j].ID);
@@ -340,9 +323,6 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINK_ACCRETE_NEARESTFIRST /* put all the weight on the single nearest gas particle, instead of spreading it in a kernel-weighted fashion */
                                 p=0; if(dm_toacc>0 && P[j].Mass>0 && r<1.0001*local.Sink_dr_to_NearestGasNeighbor) {p=dm_toacc/P[j].Mass;}
-#endif
-#ifdef SINK_EXCISION_GAS /* accrete gas elements which have gotten too close to the central BH purely on the basis of resolution criteria */
-                                if((P[j].Mass>0) && (r<SinkParticle_GravityKernelRadius) && (vrel<0.7*vesc) && (P[j].Mass<0.01*local.Mass)) {p=2.;}
 #endif
                                 w = get_random_number(P[j].ID);
                                 if(w < p)

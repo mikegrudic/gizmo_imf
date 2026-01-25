@@ -436,9 +436,6 @@ void init(void)
 
 
 #ifdef SINK_PARTICLES
-#ifdef SINK_WAKEUP_GAS
-	    if(P[i].Type == 0) {P[i].LowestSinkTimeBin = TIMEBINS;}
-#endif
 #if (SINGLE_STAR_SINK_FORMATION & 8)
         P[i].Sink_Ngb_Flag = 0;
 #endif
@@ -518,10 +515,8 @@ void init(void)
         {
             CellP[i].VelPred[j] = P[i].Vel[j];
             CellP[i].HydroAccel[j] = 0;
-            //CellP[i].dMomentum[j] = 0;//manifest-indiv-timestep-debug//
         }
 
-        //CellP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         P[i].Particle_DivVel = 0;
         CellP[i].ConditionNumber = 1;
         CellP[i].DtInternalEnergy = 0;
@@ -856,7 +851,6 @@ void init(void)
             for(k=0;k<3;k++) {for(j=0;j<3;j++) {CellP[i].Elastic_Stress_Tensor_Pred[j][k] = CellP[i].Elastic_Stress_Tensor[j][k]; CellP[i].Dt_Elastic_Stress_Tensor[j][k] = 0;}}
         }
 #endif
-        //CellP[i].dInternalEnergy = 0;//manifest-indiv-timestep-debug//
         CellP[i].DtInternalEnergy = 0;
 #if defined(COOLING) && !defined(COOLING_OPERATOR_SPLIT)
         CellP[i].CoolingIsOperatorSplitThisTimestep = 1; /* default to more conservative split */
@@ -972,18 +966,6 @@ void init(void)
         }
 #endif
     }
-
-
-#ifdef PM_HIRES_REGION_CLIPDM
-    if(RestartFlag != 1)
-    {
-        double mpi_m_hires_max, m_hires_max=0.0;
-        for(i=0; i<NumPart; i++) {if(P[i].Type==1) {if(P[i].Mass > m_hires_max) {m_hires_max=P[i].Mass;}}}
-        MPI_Allreduce(&m_hires_max, &mpi_m_hires_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        All.MassOfClippedDMParticles = mpi_m_hires_max;
-    }
-#endif
-
 
     if(RestartFlag == 3)
     {

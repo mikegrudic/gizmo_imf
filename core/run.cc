@@ -204,8 +204,6 @@ void run(void)
             All.TimeLastRestartFile += report_time();
         }
 
-        set_random_numbers();	/* draw a new list of random numbers */
-
         report_memory_usage(&HighMark_run, "RUN");
     }
 
@@ -291,7 +289,7 @@ void calculate_non_standard_physics(void)
 #if defined(RT_DIFFUSION_CG) /* use the CG method to solve the RT diffusion equation implicitly for all particles; do only on full timesteps, requires synchronous timestepping right now */
     if(Flag_FullStep) {All.Radiation_Ti_endstep = All.Ti_Current; rt_diffusion_cg_solve(); All.Radiation_Ti_begstep = All.Radiation_Ti_endstep;}
 #endif
-#if defined(RT_CHEM_PHOTOION) && (!defined(COOLING) || defined(RT_COOLING_PHOTOHEATING_OLDFORMAT))
+#if defined(RT_CHEM_PHOTOION) && !defined(COOLING)
     rt_update_chemistry(); /* chemistry updated at sub-stepping as well */
 #ifdef OUTPUT_ADDITIONAL_RUNINFO
     if(Flag_FullStep) {rt_write_chemistry_stats();}

@@ -876,13 +876,6 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             P[n].ProtoStellarRadius_inSolar = r * UNIT_LENGTH_IN_SOLAR;
             P[n].Mass_D = mass_D;
             // Debug message
-#ifdef PS_EVOL_OUTPUT_MOREINFO
-            if (n_subcycle>1){
-                dm_D = mass_D - P[n].Mass_D; // get the tota change in D mass in the protostar
-                rel_dr = r/(P[n].ProtoStellarRadius_inSolar/UNIT_LENGTH_IN_SOLAR)-1.0; // get the actual relative change over the whole timestep
-            }
-            printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g t_acc: %g t_KH: %g mD: %g rel_dr: %g dm: %g dm_D: %g Tc: %g Pc: %g rhoc: %g beta: %g dt: %g n_ad: %g lum_int: %g lum_I: %g lum_D: %g age_Myr: %g StarLuminosity_Solar: %g Sink_Mass_Reservoir: %g SinkRadius: %g dlogbeta_dlogm: %g n_subcycle: %d.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,m_solar,P[n].ProtoStellarRadius_inSolar,stage, mdot_m_solar_per_year, t_acc, t_KH, P[n].Mass_D*UNIT_MASS_IN_SOLAR,rel_dr,dm*UNIT_MASS_IN_SOLAR, dm_D*UNIT_MASS_IN_SOLAR, Tc, Pc*UNIT_PRESSURE_IN_CGS, rhoc*UNIT_DENSITY_IN_CGS, beta, dt*UNIT_TIME_IN_MYR, n_ad, lum_int*UNIT_LUM_IN_SOLAR, lum_I*UNIT_LUM_IN_SOLAR, lum_D*UNIT_LUM_IN_SOLAR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, P[n].StarLuminosity_Solar, P[n].Sink_Mass_Reservoir, P[n].SinkRadius, dlogbeta_dlogm, n_subcycle, P[n].ZAMS_Mass );
-#endif
             // Check whether the star can progress to the next state
             // move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
             if ( (stage==1) && (Tc >= 1.5e6) && ((All.Time-P[n].StellarAge) > DMAX(3.*dt, 1e-4/(UNIT_TIME_IN_MYR)) ) ){ // further check that the sink has been promoted at least a couple of timesteps and 100 yr ago, so that we don't start D burning immediately after forming the sink (relevant in low res cases)
@@ -914,9 +907,6 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             P[n].ProtoStellarStage += stage_increase;
             P[n].StellarAge = All.Time; // store the time of the last promotion
             if(P[n].ProtoStellarStage == 5) {P[n].ZAMS_Mass = P[n].Sink_Mass;} // store the mass at which we reached the main sequence
-#ifdef PS_EVOL_OUTPUT_MOREINFO
-            printf("%llu promoted to %d \n",(unsigned long long)P[n].ID,(stage+stage_increase)); //Debug message
-#endif
         } //increase evolutionary stage if the particle satisfies the requirements
     }
     else{ // for main sequence stars or SNe or relics
@@ -978,12 +968,6 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     P[n].MaxFeedbackVel = single_star_feedback_velocity_fortimestep(n);
 #endif
     
-#ifdef PS_EVOL_OUTPUT_MOREINFO // print out the basic star info
-#if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-    if(P[n].ProtoStellarStage >= 5) //only for MS stars, for previous stages we will print out the properties before
-#endif
-    {printf("PS evolution t: %g sink ID: %llu mass: %g radius_solar: %g stage: %d mdot_m_solar_per_year: %g mD: 0 rel_dr: 0 dm: %g dm_D: 0 Tc: 0 Pc: 0 rhoc: 0 beta: 0 dt: %g n_ad: 0 lum_int: 0 lum_I: 0 lum_D: 0 age_Myr: %g StarLuminosity_Solar: %g Sink_Mass_Reservoir: %g SinkRadius: %g dlogbeta_dlogm: 0 n_subcycle: 0.ZAMS_Mass %g PS_end\n",All.Time, (unsigned long long)P[n].ID,P[n].Sink_Mass*UNIT_MASS_IN_SOLAR,P[n].ProtoStellarRadius_inSolar,P[n].ProtoStellarStage, P[n].Sink_Mdot*UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR , dm*UNIT_MASS_IN_SOLAR, dt*UNIT_TIME_IN_MYR, (All.Time-P[n].ProtoStellarAge)*UNIT_TIME_IN_MYR, P[n].StarLuminosity_Solar, P[n].Sink_Mass_Reservoir*UNIT_MASS_IN_SOLAR, P[n].SinkRadius, P[n].ZAMS_Mass );}
-#endif
     return;
 }
 

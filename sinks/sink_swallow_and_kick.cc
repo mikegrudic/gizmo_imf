@@ -374,20 +374,16 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
 
                     
                     
-#if defined(SINK_GRAVCAPTURE_NONGAS) || defined(SINK_EXCISION_NONGAS) /* DM and star particles can only be accreted ifdef SINK_GRAVCAPTURE_NONGAS */
+#if defined(SINK_GRAVCAPTURE_NONGAS) /* DM and star particles can only be accreted ifdef SINK_GRAVCAPTURE_NONGAS */
                     if((P[j].Type > 0) && (P[j].Type < 5))
                     {
                         out.accreted_Mass += (Mass_j); /* account for the swallowed mass in the total mass budget */
                         if((P[j].Type == 1) || (All.ComovingIntegrationOn && (P[j].Type==2||P[j].Type==3)) ) { /* this is a DM particle: In this case, no kick, so just zero out the mass and 'get rid of' the particle (preferably by putting it somewhere irrelevant) */
-#ifndef SINK_EXCISION_NONGAS
                             out.accreted_Sink_Mass += (Mass_j); /* if using simple excision, adds to the particle mass, but not assumed to actually be accreted */
-#endif
                             #pragma omp atomic
                             N_dm_swallowed++;
                         } else { /* this is a star particle: If there is an alpha-disk, we let them go to the disk. If there is no alpha-disk, stars go to the sink directly and won't affect feedback. (Can be simply modified if we need something different.) */
-#ifndef SINK_EXCISION_NONGAS
                             out_accreted_Sink_Mass_alphaornot += (Mass_j); /* if using simple excision, adds to the particle mass, but not assumed to actually be accreted */
-#endif
                             #pragma omp atomic
                             N_star_swallowed++;
                         }
@@ -457,45 +453,10 @@ int sink_swallow_and_kick_evaluate(int target, int mode, int *exportflag, int *e
                         for(norm=0,k=0;k<3;k++) {norm+=dir[k]*J_dir[k];}
                         mom_wt = sink_fb_angleweight_localcoupling(j,norm,r,h_i) / local.Sink_angle_weighted_kernel_sum;
                         if(local.Sink_angle_weighted_kernel_sum<=0) {mom_wt=0;}
-
 #ifdef SINK_PHOTONMOMENTUM /* inject radiation pressure: add initial L/c optical/UV coupling to the gas at the dust sublimation radius */
                         double v_kick = All.Sink_Rad_MomentumFactor * mom_wt * mom / Mass_j;
                         for(k=0;k<3;k++) {Vel_j[k]+=v_kick*All.cf_atime*dir[k];}
 #endif
-#if defined(COSMIC_RAY_FLUID) && defined(SINK_COSMIC_RAYS) && defined(SINK_WIND_CONTINUOUS) /* inject cosmic rays alongside continuous wind injection */
-                        double dEcr = (evaluate_sink_cosmicray_efficiency(local.Mdot,local.Sink_Mass,-1)) * mom_wt * C_LIGHT_CODE*C_LIGHT_CODE * local.Mdot*local.Dt;
-                        inject_cosmic_rays(dEcr,All.Sink_outflow_velocity,5,j,dir);
-#endif
-#if defined(SINK_WIND_CONTINUOUS) && !defined(SINK_WIND_KICK) /* inject BAL winds, this is the more standard smooth feedback model */
-                        double m_wind = mom_wt * (1-All.Sink_accreted_fraction)/(All.Sink_accreted_fraction) * local.Mdot*local.Dt; /* mass to couple */
-                        if(local.Sink_angle_weighted_kernel_sum<=0) {m_wind=0;}
-                        //1. check if (Vw-V0)*rhat <= 0   [ equivalently, check if   |Vw| <= V0*rhat ]
-                        //2. if (1) is False, the wind will catch the particle, couple mass, momentum, energy, according to the equations above
-                        //3. if (1) is True, the wind will not catch the particle, or will only asymptotically catch it. For the sake of mass conservation in the disk, I think it is easiest to treat this like the 'marginal' case where the wind barely catches the particle. In this case, add the mass normally, but no momentum, and no energy, giving:
-                        //dm = m_wind, dV = 0, du = -mu*u0   [decrease the thermal energy slightly to account for adding more 'cold' material to it]
-                        double dvr_gas_to_sink, dr_gas_to_sink;
-                        for(dvr_gas_to_sink=dr_gas_to_sink=0, k=0;k<3;k++) {dvr_gas_to_sink += dvel[k]*dpos[k]; dr_gas_to_sink += dpos[k]*dpos[k];}
-                        dvr_gas_to_sink /= dr_gas_to_sink ;
-
-                        /* add wind mass to particle. here we ignore the density correction to the particle from the updated mass, relying on the next-step to catch this. if injected mass is very large, this can cause problems! */
-                        Mass_j += m_wind;
-
-                        /* now add wind momentum to particle */
-                        if(dvr_gas_to_sink < All.Sink_outflow_velocity)   // gas moving away from sink at v < BAL speed
-                        {
-                            double e_wind = 0;
-                            for(k=0;k<3;k++)
-                            {
-                                norm = All.cf_atime*All.Sink_outflow_velocity*dir[k] - dvel[k]; // relative wind-particle velocity (in code units) including BH-particle motion;
-                                Vel_j[k] += All.SinkFeedbackFactor * norm * m_wind/Mass_j; // momentum conservation gives updated velocity
-                                e_wind += (norm/All.cf_atime)*(norm/All.cf_atime); // -specific- shocked wind energy
-                            }
-                            e_wind *= 0.5*m_wind/Mass_j; // make total wind energy, add to particle as specific energy of -particle-
-                            InternalEnergy_j += e_wind;
-                        } else {    // gas moving away from sink at wind speed (or faster) already.
-                            if(InternalEnergy_j * ( Mass_j - m_wind ) / Mass_j > 0) {InternalEnergy_j = InternalEnergy_j * ( Mass_j - m_wind ) / Mass_j;}
-                        }
-#endif // if defined(SINK_WIND_CONTINUOUS) && !defined(SINK_WIND_KICK)
                     } // r > 0
                 } // (check if valid gas neighbor of interest)
 #endif // defined(SINK_CALC_LOCAL_ANGLEWEIGHTS)
@@ -728,14 +689,6 @@ void get_wind_spawn_direction(int i, int num_spawned_this_call, int mode, double
         }
     }
 #endif
-#if defined(SINK_DEBUG_SPAWN_JET_TEST)
-    else if (mode==4) { // old-style of jet being initialized as a cylinder around the BH
-        phi=2.*M_PI*get_random_number(num_spawned_this_call+1+ThisTask), cos_theta=2.*(get_random_number(num_spawned_this_call+3+2*ThisTask)-0.5); sin_theta=sqrt(1-cos_theta*cos_theta), sin_phi=sin(phi), cos_phi=cos(phi);
-        if(P[i].ID_generation % 2 == 0) {cos_theta=fabs(cos_theta);} else {cos_theta=-1.0*fabs(cos_theta);} // balance vertical directions
-        double ct_v=1.-(1-cos((SINK_DEBUG_SPAWN_JET_TEST)*(M_PI/180.)))*(1.-fabs(cos_theta)), st_v=sqrt(1-ct_v*ct_v); if(cos_theta<0) {ct_v*=-1;}
-        for(k=0;k<3;k++) {dpdir[k] = sin_theta*cos_phi*nx[k] + sin_theta*sin_phi*ny[k] + cos_theta*nz[k]; veldir[k] = st_v*cos_phi*nx[k] + st_v*sin_phi*ny[k] + ct_v*nz[k];}
-    }
-#endif
     return;
 }
 
@@ -943,17 +896,10 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
     long bin, bin_0; for(bin = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin] > 0) break;} /* gives minimum active timebin of any particle */
     bin_0 = bin; int i0 = i; /* save minimum timebin, also save ID of sink particle for use below */
     bin = P[i0].TimeBin; /* make this particle active on the BH/star timestep */
-#ifdef SINK_DEBUG_SPAWN_JET_TEST
-    bin = bin_0; i0 = dummy_cell_i_to_clone; /* make this particle active on the minimum timestep, and order with respect to the cloned particle */
-#endif
-
     double veldir[3], dpdir[3]; // velocity direction to spawn in - declare outside the loop so we remember it from the last iteration
     int mode = 0; // 0 if doing totally random directions, 1 if collimated, 2 for 3-axis isotropized, and 3 if using an angular grid,  4 old collimatation script, position isotropic velicity coliminated within certain open angle (might be useful to still keep this option owing to the free open angle choice and better sampling the magnetic field geometry)
 #if defined(SINGLE_STAR_FB_JETS) || defined(JET_DIRECTION_FROM_KERNEL_AND_SINK) || defined(SINK_FB_COLLIMATED)
     mode = 1; // collimated mode
-#endif
-#if defined(SINK_DEBUG_SPAWN_JET_TEST)
-    mode = 4;
 #endif
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL
     mode=0; // broad-angle default, but will modify below
@@ -1072,12 +1018,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
         ActiveParticleList[ActiveParticleNumber] = j; ActiveParticleNumber++;
         NumForceUpdate++;
         TimeBinCount[bin]++; TimeBinCountGas[bin]++; PrevInTimeBin[j] = i0; /* likewise add it to the counters that register how many particles are in each timebin */
-#ifndef SINK_DEBUG_SPAWN_JET_TEST
         NextInTimeBin[j] = NextInTimeBin[i0]; if(NextInTimeBin[i0] >= 0) {PrevInTimeBin[NextInTimeBin[i0]] = j;} NextInTimeBin[i0] = j; if(LastInTimeBin[bin] == i0) {LastInTimeBin[bin] = j;}
-#else
-        if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
-            else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
-#endif
         P[j].Ti_begstep = All.Ti_Current; P[j].Ti_current = All.Ti_Current;
 #ifdef WAKEUP /* note - you basically MUST have this flag on for this routine to work at all -- */
         P[j].dt_step = GET_INTEGERTIME_FROM_TIMEBIN(bin);
@@ -1164,9 +1105,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
         CellP[j].MassTrue = P[j].Mass;
 #endif
-#ifndef SINK_DEBUG_FIX_MDOT_MASS
         P[i].Mass -= P[j].Mass; /* make sure the operation is mass conserving! */
-#endif
         P[i].unspawned_wind_mass -= P[j].Mass; /* remove the mass successfully spawned, to update the remaining unspawned mass */
 
 #if defined(METALS) && (defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS) || defined(SINGLE_STAR_FB_SNE) || defined(SNE_NONSINK_SPAWN) || (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4))
@@ -1202,9 +1141,6 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #endif
 #endif
         /* note, if you want to use this routine to inject magnetic flux or cosmic rays, do this below */
-#ifdef SINK_DEBUG_SPAWN_JET_TEST
-        P[j].KernelRadius=5.*d_r; CellP[j].Density=mass_of_new_particle/pow(KERNEL_CORE_SIZE*P[j].KernelRadius,NUMDIMS); /* PFH: need to write this in a way that does not make assumptions about units/problem structure */
-#endif
 #if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR)
         CellP[j].IniDen = -1. * CellP[j].Density; /* this is essentially acting like a bitflag, to signal to the code that the density needs to be recalculated because a spawn event just occurred */
 #endif

@@ -33,11 +33,8 @@ struct INPUT_STRUCT_NAME
 #if defined(SINK_GRAVCAPTURE_FIXEDSINKRADIUS)
     MyFloat SinkRadius;
 #endif  
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     MyFloat AGS_KernelRadius;
-#endif
-#ifdef SINK_WAKEUP_GAS
-    MyFloat TimeBin;
 #endif
 #if defined(SINK_RETURN_ANGMOM_TO_GAS)
     MyFloat Sink_Specific_AngMom[3];
@@ -56,11 +53,8 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
     in->SinkRadius = P[i].SinkRadius;
 #endif
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     in->AGS_KernelRadius = ForceSoftening_KernelRadius(i);
-#endif
-#ifdef SINK_WAKEUP_GAS
-    in->TimeBin = P[i].TimeBin;
 #endif
 #if defined(SINK_RETURN_ANGMOM_TO_GAS)
     for(k=0;k<3;k++) {in->Sink_Specific_AngMom[k]=P[i].Sink_Specific_AngMom[k];}
@@ -73,13 +67,13 @@ struct OUTPUT_STRUCT_NAME
 { /* define variables below as e.g. "double X;" */
 MyFloat Sink_SurroudingGasInternalEnergy, Mgas_in_Kernel, Mstar_in_Kernel, Malt_in_Kernel;
 MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angular momentum for GAS/STAR/TOTAL components computed always now
-#ifdef SINK_DYNFRICTION
+#ifdef SINK_REPOSITION_ON_POTMIN
     MyFloat DF_rms_vel, DF_mean_vel[3], DF_mmax_particles;
 #endif
 #if defined(SINK_OUTPUT_MOREINFO)
     MyFloat Sfr_in_Kernel;
 #endif
-#if defined(SINK_BONDI) || defined(SINK_DRAG) || (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Sink_SurroundingGasVel[3];
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -114,7 +108,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].Jgas_in_Kernel[k],out->Jgas_in_Kernel[k],mode);}
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].Jstar_in_Kernel[k],out->Jstar_in_Kernel[k],mode);}
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].Jalt_in_Kernel[k],out->Jalt_in_Kernel[k],mode);}
-#ifdef SINK_DYNFRICTION
+#ifdef SINK_REPOSITION_ON_POTMIN
     ASSIGN_ADD(SinkTempInfo[target].DF_rms_vel,out->DF_rms_vel,mode);
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].DF_mean_vel[k],out->DF_mean_vel[k],mode);}
     if(mode==0) {SinkTempInfo[target].DF_mmax_particles = out->DF_mmax_particles;}
@@ -123,7 +117,7 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(SINK_OUTPUT_MOREINFO)
     ASSIGN_ADD(SinkTempInfo[target].Sfr_in_Kernel,out->Sfr_in_Kernel,mode);
 #endif
-#if defined(SINK_BONDI) || defined(SINK_DRAG) || (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
     for(k=0;k<3;k++) {ASSIGN_ADD(SinkTempInfo[target].Sink_SurroundingGasVel[k],out->Sink_SurroundingGasVel[k],mode);}
 #endif
 #if defined(JET_DIRECTION_FROM_KERNEL_AND_SINK)
@@ -157,7 +151,7 @@ void sink_normalize_temp_info_struct_after_environment_loop(int i)
     if(SinkTempInfo[i].Mgas_in_Kernel > 0)
     {
         SinkTempInfo[i].Sink_SurroudingGasInternalEnergy /= SinkTempInfo[i].Mgas_in_Kernel;
-#if defined(SINK_BONDI) || defined(SINK_DRAG) || (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
         for(k=0;k<3;k++) {SinkTempInfo[i].Sink_SurroundingGasVel[k] /= SinkTempInfo[i].Mgas_in_Kernel * All.cf_atime;}
 #endif
     }
@@ -165,25 +159,9 @@ void sink_normalize_temp_info_struct_after_environment_loop(int i)
     // DAA: add GAS/STAR mass/angular momentum to the TOTAL mass/angular momentum in kernel
     SinkTempInfo[i].Malt_in_Kernel += (SinkTempInfo[i].Mgas_in_Kernel + SinkTempInfo[i].Mstar_in_Kernel);
     for(k=0;k<3;k++) {SinkTempInfo[i].Jalt_in_Kernel[k] += (SinkTempInfo[i].Jgas_in_Kernel[k] + SinkTempInfo[i].Jstar_in_Kernel[k]);}
-#ifdef SINK_DYNFRICTION  // DAA: normalize by the appropriate MASS in kernel depending on selected option
-    double Mass_in_Kernel;
-#if (SINK_DYNFRICTION == 1)    // DAA: dark matter + stars
-    Mass_in_Kernel = SinkTempInfo[i].Malt_in_Kernel - SinkTempInfo[i].Mgas_in_Kernel;
-#elif (SINK_DYNFRICTION == 2)  // DAA: stars only
-    Mass_in_Kernel = SinkTempInfo[i].Mstar_in_Kernel;
-#else
-    Mass_in_Kernel = SinkTempInfo[i].Malt_in_Kernel;
-#endif
-    if(Mass_in_Kernel > 0)
-    {
-#if (SINK_REPOSITION_ON_POTMIN == 2)
-        Mass_in_Kernel = SinkTempInfo[i].DF_rms_vel;
-#else
-        SinkTempInfo[i].DF_rms_vel /= Mass_in_Kernel;
-        SinkTempInfo[i].DF_rms_vel = sqrt(SinkTempInfo[i].DF_rms_vel) / All.cf_atime;
-#endif
-        for(k=0;k<3;k++) {SinkTempInfo[i].DF_mean_vel[k] /= Mass_in_Kernel * All.cf_atime;}
-    }
+#ifdef SINK_REPOSITION_ON_POTMIN  // DAA: normalize by the appropriate MASS in kernel depending on selected option
+    double Mass_in_Kernel = SinkTempInfo[i].DF_rms_vel; // normalize by mass in kernel - this variable was used here as a placeholder for this
+    if(Mass_in_Kernel > 0) {for(k=0;k<3;k++) {SinkTempInfo[i].DF_mean_vel[k] /= Mass_in_Kernel * All.cf_atime;}}
 #endif
 }
 
@@ -196,7 +174,7 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
     int startnode, numngb, listindex = 0, j, k, n; struct INPUT_STRUCT_NAME local; struct OUTPUT_STRUCT_NAME out; memset(&out, 0, sizeof(struct OUTPUT_STRUCT_NAME)); /* define variables and zero memory and import data for local target*/
     if(mode == 0) {INPUTFUNCTION_NAME(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];} /* imports the data to the correct place and names */
     double ags_h_i, h_i, hinv, hinv3, wk, dwk, u; wk=0; dwk=0; u=0; h_i=local.KernelRadius; hinv=1./h_i; hinv3=hinv*hinv*hinv; ags_h_i=SinkParticle_GravityKernelRadius;
-#if (ADAPTIVE_GRAVSOFT_FORALL & 32) || defined(SINK_EXCISION_GAS) || defined(SINK_EXCISION_NONGAS)
+#if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_KernelRadius;
 #endif
 #ifdef SINK_ACCRETE_NEARESTFIRST
@@ -211,12 +189,6 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-#ifdef SINK_WAKEUP_GAS
-                if (local.TimeBin < P[j].LowestSinkTimeBin) {
-                    #pragma omp atomic write
-                    P[j].LowestSinkTimeBin = local.TimeBin;
-                }
-#endif
                 if( (P[j].Mass > 0) && (P[j].Type != 5) && (P[j].ID != local.ID) )
                 {
                     double wt = P[j].Mass;
@@ -224,30 +196,16 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
                     NEAREST_XYZ(dP[0],dP[1],dP[2],-1); /*  find the closest image in the given box size  */
                     NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv,-1); /* wrap velocities for shearing boxes if needed */
 
-#ifdef SINK_DYNFRICTION
-#if (SINK_DYNFRICTION == 1)    // DAA: dark matter + stars
-                    if( !(P[j].Type==0) )
-#if (SINK_REPOSITION_ON_POTMIN == 2)
-                    if( (P[j].Type != 5) )
-#endif
-#elif (SINK_DYNFRICTION == 2)  // DAA: stars only
-                    if( P[j].Type==4 || ((P[j].Type==2||P[j].Type==3) && !(All.ComovingIntegrationOn)) )
-#endif
+#ifdef SINK_REPOSITION_ON_POTMIN
+                    if( (P[j].Type != 0) && (P[j].Type != 5) )
                     {
-                        double wtfac = wt;
-#if (SINK_REPOSITION_ON_POTMIN == 2)
-                        double rfac = (dP[0]*dP[0] + dP[1]*dP[1] + dP[2]*dP[2]) * (10./(h_i*h_i) + 0.1/(SinkParticle_GravityKernelRadius*SinkParticle_GravityKernelRadius));
+                        double wtfac = wt, rfac = (dP[0]*dP[0] + dP[1]*dP[1] + dP[2]*dP[2]) * (10./(h_i*h_i) + 0.1/(SinkParticle_GravityKernelRadius*SinkParticle_GravityKernelRadius));
                         wtfac = wt / (1. + rfac); // simple function scaling ~ 1/r^2 for large r, to weight elements closer to the BH, so doesnt get 'pulled' by far-away elements //
-#endif
                         if(P[j].Mass>out.DF_mmax_particles) out.DF_mmax_particles=P[j].Mass;
                         for (k=0;k<3;k++)
                         {
                             out.DF_mean_vel[k] += wtfac*dv[k];
-#if (SINK_REPOSITION_ON_POTMIN == 2)
                             out.DF_rms_vel += wtfac;
-#else
-                            out.DF_rms_vel += wtfac*dv[k]*dv[k];
-#endif
                         }
                     }
 #endif
@@ -263,7 +221,7 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
 #if defined(SINK_OUTPUT_MOREINFO)
                         out.Sfr_in_Kernel += CellP[j].Sfr;
 #endif
-#if defined(SINK_BONDI) || defined(SINK_DRAG) || (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
                         for(k=0;k<3;k++) {out.Sink_SurroundingGasVel[k] += wt*dv[k];}
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK

@@ -85,11 +85,6 @@ void begrun(void)
 
   mymalloc_init();
 
-#ifdef DEBUG
-  write_pid_file();
-  enable_core_dumps_and_fpu_exceptions();
-#endif
-
 #ifdef GR_TABULATED_COSMOLOGY
 #ifdef GR_TABULATED_COSMOLOGY_W
   fwa_init();
@@ -195,8 +190,6 @@ void begrun(void)
 
   gsl_rng_set(random_generator, 42 + ThisTask);	/* start-up seed */
 
-  set_random_numbers();
-
 #ifdef PMGRID
   if(RestartFlag != 3 && RestartFlag != 4) {long_range_init();}
 #endif
@@ -212,11 +205,6 @@ void begrun(void)
 
 #ifdef EOS_TILLOTSON
     tillotson_eos_init();
-#endif
-
-#ifdef NUCLEAR_NETWORK
-    network_init(All.EosSpecies, All.NetworkRates, All.NetworkPartFunc, All.NetworkMasses, All.NetworkWeakrates, &All.nd);
-    network_workspace_init(&All.nd, &All.nw);
 #endif
 
 #ifdef TURB_DRIVING
@@ -248,8 +236,6 @@ void begrun(void)
 				   copied in the way below.
 				   Note:  All.PartAllocFactor is treated in restart() separately.
 				 */
-
-      set_random_numbers();
 
       All.MinSizeTimestep = all.MinSizeTimestep;
       All.MaxSizeTimestep = all.MaxSizeTimestep;
@@ -344,7 +330,7 @@ void begrun(void)
 #ifdef SINK_SEED_FROM_FOF
         All.MinFoFMassForNewSeed = all.MinFoFMassForNewSeed;
 #endif
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
         All.Sink_accreted_fraction = all.Sink_accreted_fraction;
         All.Sink_outflow_velocity = all.Sink_outflow_velocity;
 #endif
@@ -428,17 +414,6 @@ void begrun(void)
 
 #ifdef EOS_TABULATED
         strcpy(All.EosTable, all.EosTable);
-#endif
-
-#ifdef NUCLEAR_NETWORK
-      strcpy(All.EosSpecies, all.EosSpecies);
-      strcpy(All.NetworkRates, all.NetworkRates);
-      strcpy(All.NetworkPartFunc, all.NetworkPartFunc);
-      strcpy(All.NetworkMasses, all.NetworkMasses);
-      strcpy(All.NetworkWeakrates, all.NetworkWeakrates);
-      All.nd = all.nd;
-      All.nw = all.nw;
-      All.NetworkTempThreshold = all.NetworkTempThreshold;
 #endif
 
       if(All.TimeMax != all.TimeMax) {readjust_timebase(All.TimeMax, all.TimeMax);}
@@ -1599,7 +1574,7 @@ void read_parameter_file(char *fname)
         id[nt++] = REAL;
 #endif
 
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
         strcpy(tag[nt],"Sink_accreted_fraction");
         strcpy(alternate_tag[nt], "Sink_f_accretion");
         addr[nt] = &All.Sink_accreted_fraction;
@@ -1831,15 +1806,6 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.Sink_jet_precess_period;
       id[nt++] = REAL;
 #endif
-#ifdef SINK_DEBUG_FIX_MDOT_MASS
-      strcpy(tag[nt], "Sink_fb_duty_cycle");
-      addr[nt] = &All.Sink_fb_duty_cycle;
-      id[nt++] = REAL;
-
-      strcpy(tag[nt], "Sink_fb_period");
-      addr[nt] = &All.Sink_fb_period;
-      id[nt++] = REAL;
-#endif
 
 #ifdef EOS_TABULATED
         strcpy(tag[nt], "EosTable");
@@ -1897,33 +1863,6 @@ void read_parameter_file(char *fname)
         strcpy(tag[nt], "Tillotson_EOS_params_Y0");
         addr[nt] = &All.Tillotson_EOS_params[0][11];
         id[nt++] = REAL;
-#endif
-
-
-#ifdef NUCLEAR_NETWORK
-      strcpy(tag[nt], "EosSpecies");
-      addr[nt] = All.EosSpecies;
-      id[nt++] = STRING;
-
-        strcpy(tag[nt], "NetworkRates");
-      addr[nt] = All.NetworkRates;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "NetworkPartFunc");
-      addr[nt] = All.NetworkPartFunc;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "NetworkMasses");
-      addr[nt] = All.NetworkMasses;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "NetworkWeakrates");
-      addr[nt] = All.NetworkWeakrates;
-      id[nt++] = STRING;
-
-      strcpy(tag[nt], "NetworkTempThreshold");
-      addr[nt] = &All.NetworkTempThreshold;
-      id[nt++] = REAL;
 #endif
 
 #if defined(RT_CHEM_PHOTOION) && !(defined(GALSF_FB_FIRE_RT_HIIHEATING) || defined(GALSF))

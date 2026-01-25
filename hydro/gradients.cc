@@ -1224,16 +1224,6 @@ void hydro_gradient_calc(void)
 #endif
             local_slopelimiter(CellP[i].Gradients.InternalEnergy,GasGradDataPasser[i].Maxima.InternalEnergy,GasGradDataPasser[i].Minima.InternalEnergy,a_limiter,h_lim,stol_tmp, 1,d_max,CellP[i].InternalEnergyPred);
 #endif
-#ifdef COSMIC_RAY_FLUID
-            stol_tmp = stol;
-#ifdef CRFLUID_ALT_PUREDIFFUSION
-            for(k1=0;k1<N_CR_PARTICLE_BINS;k1++)
-            {
-                local_slopelimiter(CellP[i].Gradients.CosmicRayPressure[k1],GasGradDataPasser[i].Maxima.CosmicRayPressure[k1],GasGradDataPasser[i].Minima.CosmicRayPressure[k1],DMAX(1.,a_limiter),h_lim,0., 1,d_max,Get_Gas_CosmicRayPressure(i,k1));
-                if((GasGradDataPasser[i].Maxima.CosmicRayPressure[k1]==0)||(GasGradDataPasser[i].Minima.CosmicRayPressure[k1]==0)) {is_particle_local_extremum[k1] = 1;}
-            }
-#endif
-#endif
 #ifdef DOGRAD_SOUNDSPEED
             local_slopelimiter(CellP[i].Gradients.SoundSpeed,GasGradDataPasser[i].Maxima.SoundSpeed,GasGradDataPasser[i].Minima.SoundSpeed,a_limiter,h_lim,stol, 1,d_max,Get_Gas_effective_soundspeed_i(i));
 #endif
@@ -1276,9 +1266,6 @@ void hydro_gradient_calc(void)
 #if defined(COSMIC_RAY_FLUID) && !defined(CRFLUID_EVOLVE_SCATTERINGWAVES) /* note that because of the way this depends on the gradient scale-length, we should calculate it -after- the slope-limiters are applied */
             for(k=0;k<N_CR_PARTICLE_BINS;k++) {CellP[i].CosmicRayDiffusionCoeff[k]=0;}
             if(CellP[i].Density > 0 && P[i].Mass > 0) {CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(i);}/* only assign diffusivities to 'valid' gas particles */
-#ifdef CRFLUID_ALT_PUREDIFFUSION
-            for(k=0;k<N_CR_PARTICLE_BINS;k++) {if(is_particle_local_extremum[k]==1) {CellP[i].CosmicRayDiffusionCoeff[k] *= -1;}} // negative here codes for local extrema
-#endif
 #endif
 
 

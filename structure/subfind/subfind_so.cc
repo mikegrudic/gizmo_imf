@@ -653,7 +653,7 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat rkern, int t
 	  if((r2 = (dx * dx + dy * dy + dz * dz)) > dist * dist)
 	    continue;
 
-	  if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))) == 0)	/* only use fully local nodes */
+	  if((current->u.d.bitflags & ((1 << BITFLAG_TOPLEVEL) + (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT))) == 0)	/* only use fully local nodes */
 	    {
 	      /* test whether the node is contained within the sphere */
 	      dist = rkern - CUBE_EDGEFACTOR_2 * current->len;

@@ -24,12 +24,7 @@
 
 
 /* by default, always use snapshot format for outputs, otherwise these get unwieldy very fast */
-#if !defined(IO_SUBFIND_IN_OLD_ASCII_FORMAT)
-#define SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
-#endif
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
 #include <hdf5.h>
-#endif
 #include "../../declarations/allvars.h"
 #include "../../core/proto.h"
 #include "../../domain/domain.h"
@@ -1093,29 +1088,21 @@ void subfind_save_local_catalogue(int num)
 
   int i, j;
 
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
   unsigned int nextblock;
 #define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
-
   hid_t hdf5_file = 0, hdf5_grp[3], hdf5_headergrp = 0, hdf5_dataspace_memory;
   hid_t hdf5_datatype = 0, hdf5_dataspace_in_file = 0, hdf5_dataset = 0;
   herr_t hdf5_status;
   hsize_t dims[2], count[2], start[2];
   int rank = 0;
 
-#endif
-
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
   if(NTask == 1)
     snprintf(fname, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/groups_%03d/%s_%03d", All.OutputDir, num, "sub", num);
   else
     snprintf(fname, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "sub", num, ThisTask);
-#else
-  snprintf(fname, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "subhalo_tab", num, ThisTask);
-#endif
-  strcpy(buf, fname);
 
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
+    strcpy(buf, fname);
+
   if(All.SnapFormat == 3)
     {
 
@@ -1128,18 +1115,13 @@ void subfind_save_local_catalogue(int num)
     }
   else
     {
-#endif
       if(!(fd = fopen(buf, "w")))
-
 	{
 	  printf("can't open file `%s`\n", buf);
 	  endrun(1183);
 	}
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
     }
-#endif
 
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
   for(i = 0; i < 6; i++)
     {
       header.npart[i] = 0;
@@ -1177,7 +1159,6 @@ void subfind_save_local_catalogue(int num)
   header.OmegaLambda = All.OmegaLambda;
   header.HubbleParam = All.HubbleParam;
 
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
   if(All.SnapFormat == 2)
     {
       blksize = sizeof(int) + 4 * sizeof(char);
@@ -1193,17 +1174,13 @@ void subfind_save_local_catalogue(int num)
     }
   else
     {
-#endif
       blksize = sizeof(header);
       SKIP;
       my_fwrite(&header, sizeof(header), 1, fd);
       SKIP;
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
     }
-#endif
 
 
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
   if(All.SnapFormat == 2)
     {
       if(!(InfoBlock = (struct info_block *) mymalloc("InfoBlock", bytes = sizeof(struct info_block) * 1000)))
@@ -1282,18 +1259,6 @@ void subfind_save_local_catalogue(int num)
 
       myfree(InfoBlock);
     }
-#endif
-
-#else
-  my_fwrite(&Ngroups, sizeof(int), 1, fd);
-  my_fwrite(&TotNgroups, sizeof(int), 1, fd);
-  my_fwrite(&Nids, sizeof(int), 1, fd);
-  my_fwrite(&TotNids, sizeof(long long), 1, fd);
-  my_fwrite(&NTask, sizeof(int), 1, fd);
-  my_fwrite(&Nsubgroups, sizeof(int), 1, fd);
-  my_fwrite(&TotNsubgroups, sizeof(int), 1, fd);
-#endif
-
 
   for(bnr = 0; bnr < 1000; bnr++)
     {
@@ -1320,7 +1285,6 @@ void subfind_save_local_catalogue(int num)
 
 	  ndim = get_values_per_sub(blocknr);
 
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
 	  if(All.SnapFormat == 3)
 	    {
 	      dims[0] = nwrite;
@@ -1350,7 +1314,6 @@ void subfind_save_local_catalogue(int num)
 	      hdf5_dataset =
 		H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
 	    }
-#endif
 
 	  datatype = get_datatype_in_sub(blocknr);
 	  switch (datatype)
@@ -1372,7 +1335,6 @@ void subfind_save_local_catalogue(int num)
 	      break;
 	    }
 
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
 	  get_IO_Label_sub(blocknr, label);
 
 	  if(nwrite > 0)
@@ -1395,10 +1357,8 @@ void subfind_save_local_catalogue(int num)
 	    }
 	  else
 	    blksize = 0;
-#else
-	  blksize = nwrite * bytes_per_blockelement * ndim;
-#endif
-	  if(ThisTask == 0)
+
+        if(ThisTask == 0)
 	    printf("Writing block %d (%c%c%c%c), n=%d, ptype=%d, dtype=%d, ndim=%d, bpb=%d bytes=%ud\n", bnr,
 		   label[0], label[1], label[2], label[3], nwrite, type, datatype, ndim,
 		   bytes_per_blockelement, blksize);
@@ -1532,22 +1492,6 @@ void subfind_save_local_catalogue(int num)
 	      break;
 #ifdef SUBFIND_SAVE_PARTICLEDATA
 	    case SIO_PPOS:
-#ifndef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT	/* open new file in case of old format */
-	      fclose(fd);
-	      snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "subhalo_posvel", num, ThisTask);
-	      if(!(fd = fopen(buf, "w")))
-		{
-		  printf("can't open file `%s`\n", buf);
-		  endrun(1184);
-		}
-	      my_fwrite(&Ngroups, sizeof(int), 1, fd);
-	      my_fwrite(&TotNgroups, sizeof(int), 1, fd);
-	      my_fwrite(&Nids, sizeof(int), 1, fd);
-	      my_fwrite(&TotNids, sizeof(long long), 1, fd);
-	      my_fwrite(&NTask, sizeof(int), 1, fd);
-	      my_fwrite(&Send_offset[ThisTask], sizeof(int), 1, fd);
-	      my_fwrite(&All.Time, sizeof(double), 1, fd);
-#endif
 	      for(i = 0; i < nwrite; i++)
 		for(j = 0; j < 3; j++)
 		  fp[i * 3 + j] = (MyOutputFloat) ID_list[i].Pos[j];
@@ -1567,21 +1511,6 @@ void subfind_save_local_catalogue(int num)
 	      break;
 #endif
 	    case SIO_PID:
-#ifndef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT	/* open new file in case of old format */
-	      fclose(fd);
-	      snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/groups_%03d/%s_%03d.%d", All.OutputDir, num, "subhalo_ids", num, ThisTask);
-	      if(!(fd = fopen(buf, "w")))
-		{
-		  printf("can't open file `%s`\n", buf);
-		  endrun(1184);
-		}
-	      my_fwrite(&Ngroups, sizeof(int), 1, fd);
-	      my_fwrite(&TotNgroups, sizeof(int), 1, fd);
-	      my_fwrite(&Nids, sizeof(int), 1, fd);
-	      my_fwrite(&TotNids, sizeof(long long), 1, fd);
-	      my_fwrite(&NTask, sizeof(int), 1, fd);
-	      my_fwrite(&Send_offset[ThisTask], sizeof(int), 1, fd);
-#endif
 	      for(i = 0; i < nwrite; i++)
 		fp_id[i] = ID_list[i].ID;
 	      break;
@@ -1592,16 +1521,10 @@ void subfind_save_local_catalogue(int num)
 
 	  if(blksize > 0)
 	    {
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
 	      if(All.SnapFormat != 3)
 		{
-#endif
 		  my_fwrite(IOBuffer, blksize, sizeof(char), fd);
-#ifdef SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT
 		  SKIP;
-#endif
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
-
 		}
 	      else if(All.SnapFormat == 3)
 		{
@@ -1623,7 +1546,6 @@ void subfind_save_local_catalogue(int num)
 
 		  H5Sclose(hdf5_dataspace_memory);
 		}
-#endif
 
 	    }
 	  myfree(IOBuffer);
@@ -1631,7 +1553,6 @@ void subfind_save_local_catalogue(int num)
 	}			/* closing if block exist */
 
     }				/* closing for bnr loop */
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
 
   if(All.SnapFormat == 3)
     {
@@ -1643,12 +1564,8 @@ void subfind_save_local_catalogue(int num)
     }
   else
     {
-#endif
       fclose(fd);
-#if defined(SUBFIND_WRITE_OUTPUTS_IN_SNAPSHOT_FORMAT)
-
     }
-#endif
 }
 
 

@@ -8,7 +8,6 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 #include "../mesh/kernel.h"
-#define NDEBUG
 
 /*! \file hydro_toplevel.c
  *  \brief This contains the "primary" hydro loop, where the hydro fluxes are computed.
@@ -534,17 +533,12 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
         in->CosmicRayPressure[j] = Get_Gas_CosmicRayPressure(i,j);
         in->CosmicRayDiffusionCoeff[j] = CellP[i].CosmicRayDiffusionCoeff[j];
         for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = CellP[i].CosmicRayFluxPred[j][k];}
-#if defined(CRFLUID_ALT_PUREDIFFUSION)
-        for(k=0;k<3;k++) {in->CosmicRayFlux[j][k] = CellP[i].Gradients.CosmicRayPressure[j][k];}
-#endif
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
         for(k=0;k<2;k++) {in->CosmicRayAlfvenEnergy[j][k] = CellP[i].CosmicRayAlfvenEnergyPred[j][k];}
 #endif
 #ifdef CRFLUID_EVOLVE_SPECTRUM
         in->CR_number_to_energy_ratio[j] = CellP[i].CosmicRay_Number_in_Bin[j] / (CellP[i].CosmicRayEnergy[j] + MIN_REAL_NUMBER);
-#if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
         in->CR_number_to_energy_ratio[j] *= CellP[i].Flux_Number_to_Energy_Correction_Factor[j];
-#endif
 #endif
     }
 #endif
@@ -688,10 +682,6 @@ void hydro_final_operations_and_cleanup(void)
             double tolerance_for_correction,db_vsig_h_norm;
             tolerance_for_correction = 10.0;
             db_vsig_h_norm = 0.1; // can be as low as 0.03 //
-#ifdef PM_HIRES_REGION_CLIPPING
-            tolerance_for_correction = 0.5; // could be as high as 0.75 //
-#endif
-
             double DtB_PhiCorr=0,DtB_UnCorr=0,db_vsig_h=0,PhiCorr_Norm=1.0;
             for(k=0; k<3; k++)
             {
@@ -772,7 +762,7 @@ void hydro_final_operations_and_cleanup(void)
             // = du/dlna -3*(gamma-1)*u ; then dlna/dt = H(z) =  All.cf_hubble_a //
 
 
-#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO) //#elif defined(RT_COMPGRAD_EDDINGTON_TENSOR) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
+#if defined(RT_RAD_PRESSURE_FORCES) && defined(RT_EVOLVE_FLUX) && !defined(RT_RADPRESSURE_IN_HYDRO) /* // -- moved for OTVET+FLD to drift-kick operation to deal with limiters more accurately -- // */
             /* calculate the radiation pressure force */
             double radacc[3]; radacc[0]=radacc[1]=radacc[2]=0; int kfreq;
             for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++)
@@ -856,16 +846,14 @@ void hydro_final_operations_and_cleanup(void)
 #endif
             }
 #endif
-#if !defined(CRFLUID_ALT_PUREDIFFUSION) && !defined(CRFLUID_ALT_FLUX_FORM_JOCH) && defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
+#if defined(MAGNETIC) // only makes sense to include parallel correction below if all these terms enabled //
             /* 'residual' term from parallel scattering of CRs being not-necessarily-in-equilibrium with a two-moment form of the equations */
             double vA_eff=Get_Gas_ion_Alfven_speed_i(i), vol_i=CellP[i].Density*All.cf_a3inv/P[i].Mass, Bmag=0, bhat[3]={0}; // define some useful variables
             for(k=0;k<3;k++) {bhat[k]=CellP[i].BPred[k]; Bmag+=bhat[k]*bhat[k];} // get direction vector for B-field needed below
             if(Bmag>0) {Bmag=sqrt(Bmag); for(k=0;k<3;k++) {bhat[k] /= Bmag;}} // make dimensionless
             if(Bmag>0) {for(k=0;k<N_CR_PARTICLE_BINS;k++) {
                 int target_for_cr_betagamma = i; // if this = -1, use the gamma factor at the bin-center for evaluating this, if this = i, use the mean gamma of the bin, weighted by the CR energy -- won't give exactly the same result here
-#ifdef CRFLUID_DIFFUSION_CORRECTION_TERMS
                 target_for_cr_betagamma = -1; // the correction terms depend on these being evaluated at their bin-centered locations
-#endif
                 double three_chi = return_cosmic_ray_anisotropic_closure_function_threechi(i,k);
                 int m; double grad_P_dot_B=0, gradpcr[3]={0}, F_dot_B=0, e0_cr=CellP[i].CosmicRayEnergyPred[k]*vol_i, p0_cr=(GAMMA_COSMICRAY(k)-1.)*e0_cr, vA_k=vA_eff*return_CRbin_nuplusminus_asymmetry(i,k), fcorr[3]={0}, beta_fac=return_CRbin_beta_factor(target_for_cr_betagamma,k);
                 for(m=0;m<3;m++) {gradpcr[m] = CellP[i].Gradients.CosmicRayPressure[k][m] * (All.cf_a3inv/All.cf_atime);}
@@ -939,25 +927,6 @@ void hydro_final_operations_and_cleanup(void)
 #endif    
 #endif
 
-#ifdef NUCLEAR_NETWORK
-    PRINT_STATUS("Doing nuclear network");
-    MPI_Barrier(MPI_COMM_WORLD); int nuc_particles=0,nuc_particles_sum=0; double dedt_nuc;
-    for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
-        if(P[i].Type == 0)
-        {   /* evaluate network here, but do it only for high enough temperatures */
-            if(CellP[i].Temperature > All.NetworkTempThreshold)
-            {
-                nuc_particles++;
-                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i) * UNIT_TIME_IN_CGS;
-                network_integrate(CellP[i].Temperature, CellP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS, CellP[i].xnuc,
-                                  CellP[i].dxnuc, dt, &dedt_nuc, NULL, &All.nd, &All.nw);
-                CellP[i].DtInternalEnergy += dedt_nuc * UNIT_ENERGY_IN_CGS / UNIT_TIME_IN_CGS;
-            }
-            else {for(k = 0; k < EOS_NSPECIES; k++) {CellP[i].dxnuc[k] = 0;}}
-        }
-    MPI_Allreduce(&nuc_particles, &nuc_particles_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    PRINT_STATUS("Nuclear network done for %d particles", nuc_particles_sum);
-#endif
 }
 
 

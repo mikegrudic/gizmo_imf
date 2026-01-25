@@ -37,7 +37,7 @@ void sink_accretion(void)
 {
     if(All.TimeStep == 0.) return; /* no evolution */
     PRINT_STATUS("Sink operations begin...");
-#if defined(SINK_EXCISION_NONGAS) || defined(SINK_GRAVCAPTURE_NONGAS)
+#if defined(SINK_GRAVCAPTURE_NONGAS)
     long i; for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* zero out accretion */ // This zero-out loop is effectively performed in density.c now, only on -gas- particles that are actually going to be looked at this timestep, to reduce overhead when only a few particles are active. But it still needs to be done for non-gas particles.
 #endif
     sink_start();              /* allocates and cleans SinkTempInfo struct */
@@ -72,7 +72,7 @@ void sink_accretion(void)
     sink_final_operations(); /* final operations on the sink with tabulated quantities (not a neighbor loop) */
     sink_end();            /* frees SinkTempInfo; cleans up */
     PRINT_STATUS(" ..closing sink operations");
-#if defined(SINK_EXCISION_NONGAS) || defined(SINK_GRAVCAPTURE_NONGAS)
+#if defined(SINK_GRAVCAPTURE_NONGAS)
     for(i = 0; i < NumPart; i++) {P[i].SwallowID = 0;} /* re-zero accretion */
 #endif
 }
@@ -85,7 +85,7 @@ void sink_accretion(void)
 double sink_vesc(int j, double mass, double r_code, double sink_softening)
 {
     double cs_to_add = 10. / UNIT_VEL_IN_KMS; /* we can optionally add a 'fudge factor' to v_esc to set a minimum value; useful for -some- galaxy applications */
-#if defined(SINK_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINK_GRAVCAPTURE_FIXEDSINKRADIUS) || defined(SINK_EXCISION_NONGAS)
+#if defined(SINK_SEED_GROWTH_TESTS) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINK_GRAVCAPTURE_FIXEDSINKRADIUS)
     cs_to_add = 0;
 #endif
     double m_eff = mass + P[j].Mass; // acount for 2-body mass
@@ -97,7 +97,7 @@ double sink_vesc(int j, double mass, double r_code, double sink_softening)
     if(gas_density > 0) {m_eff += 4.*M_PI * r_code*r_code*r_code * gas_density;} // assume an isothermal sphere interior, for Shu-type solution
 #endif
     double hinv = 1./sink_softening, fac=2.*All.G*m_eff/All.cf_atime;
-#if defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_EXCISION_NONGAS)
+#if defined(SINK_REPOSITION_ON_POTMIN)
     return sqrt(fac/r_code + cs_to_add*cs_to_add); // in this case BH dynamics are intentionally inexact and gravitational BH velocities not well-resolved, so use the larger Keplerian term here
 #endif
     return sqrt(fac*fabs(kernel_gravity(r_code*hinv,hinv,hinv*hinv*hinv,-1)) + cs_to_add*cs_to_add); // accounts for softening [non-Keplerian inside softening]
@@ -338,27 +338,24 @@ void set_sink_mdot(int i, int n, double dt)
         } // if(fgas_for_accrate<=0)
     } // if(SinkTempInfo[i].Mgas_in_Kernel > 0)
     mdot *= All.SinkAccretionFactor; // this is a pure normalization multiplier here
-#endif // ifdef SINK_GRAVACCRETION
 
-
-
-#ifdef SINK_BONDI /* heres where we calculate the Bondi accretion rate, if that's going to be used */
+#if (SINK_GRAVACCRETION >= 9) && (SINK_GRAVACCRETION <= 11) /* heres where we calculate the Bondi accretion rate, if that's going to be used */
     double bhvel2 = 0, rho = P[n].DensityAroundParticle * All.cf_a3inv; /* we want all quantities in physical units */
-#if (SINK_BONDI != 1)
-    for(k=0;k<3;k++) bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];
+    for(k=0;k<3;k++) {bhvel2 += SinkTempInfo[i].Sink_SurroundingGasVel[k]*SinkTempInfo[i].Sink_SurroundingGasVel[k];}
+#if (SINK_GRAVACCRETION == 10)
+    bhvel2 = 0;
 #endif
     double fac = pow(soundspeed2+bhvel2, 1.5);
-    if(fac > 0)
-    {
+    if(fac > 0) {
         double AccretionFactor = All.SinkAccretionFactor;
-#if (SINK_BONDI == 2) /* variable-alpha model (Booth&Schaye 2009): now All.SinkAccretionFactor is the slope of the density dependence */
+#if (SINK_GRAVACCRETION == 11) /* variable-alpha model (Booth&Schaye 2009): now All.SinkAccretionFactor is the slope of the density dependence */
         AccretionFactor = 1.0; if(rho > All.PhysDensThresh) {AccretionFactor = pow(rho/All.PhysDensThresh, All.SinkAccretionFactor);}
 #endif
         mdot = 4. * M_PI * AccretionFactor * All.G * All.G * P[n].Sink_Mass * P[n].Sink_Mass * rho / fac;
-    }
-#endif // ifdef SINK_BONDI
+    } else {mdot=0;}
+#endif
 
-
+#endif // ifdef SINK_GRAVACCRETION
 
 
 /* DAA: note that we should have mdot=0 here , otherwise the mass accreted is counted twice [mdot*dt in set_sink_new_mass, accreted mass in sink_swallow_and_kick] */
@@ -495,19 +492,19 @@ void set_sink_mdot(int i, int n, double dt)
     /* if there -is- an alpha-disk, protect the alpha-disk not to be over-depleted (i.e. overshooting into negative alpha-disk masses) */
     if(dt>0)
     {
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_SPAWN)
         if(mdot > P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction) mdot = P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction;
 #else
         if(mdot > P[n].Sink_Mass_Reservoir/dt) mdot = P[n].Sink_Mass_Reservoir/dt;
 #endif
     }
-#ifdef SINK_WIND_KICK /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds Note that for SINK_WIND_CONTINUOUS the wind mass is removed in the final loop */
+#ifdef SINK_WIND_KICK /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds */
     SinkTempInfo[i].mdot_reservoir *= All.Sink_accreted_fraction;
 #endif
 
 #else // SINK_ALPHADISK_ACCRETION
 
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
     mdot *= All.Sink_accreted_fraction; /* if there is no alpha-disk, the BHAR defined above is really an mdot into the accretion disk. the rate -to the hole- should be corrected for winds */
 #endif
 #endif // SINK_ALPHADISK_ACCRETION
@@ -548,7 +545,7 @@ void set_sink_new_mass(int i, int n, double dt)
     for(k=0;k<3;k++) {P[n].Sink_Specific_AngMom[k] = (m_tot_for_j*P[n].Sink_Specific_AngMom[k] + dm_acc_for_j*SinkTempInfo[i].Jgas_in_Kernel[k]/(MIN_REAL_NUMBER + SinkTempInfo[i].Mgas_in_Kernel)) / (m_tot_for_j + dm_acc_for_j);}
 #endif
 
-/*  for SINK_WIND_CONTINUOUS or SINK_WIND_SPAWN
+/*  for SINK_WIND_SPAWN
         - we accrete the winds first, either explicitly to the BH or implicitly into the disk -
         - then we remove the wind mass in the final loop
     for SINK_WIND_KICK
@@ -566,7 +563,7 @@ void set_sink_new_mass(int i, int n, double dt)
     if(P[n].Mass<0) {P[n].Mass=0;}
     dMSINK_continuous_accretion += dm_reservoir;
 #else // #ifdef SINK_ALPHADISK_ACCRETION
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_SPAWN)
     P[n].Sink_Mass += dMSINK_continuous_accretion / All.Sink_accreted_fraction; // accrete the winds first, then remove the wind mass in the final loop
 #else
     P[n].Sink_Mass += dMSINK_continuous_accretion;
@@ -592,26 +589,10 @@ void set_sink_new_mass(int i, int n, double dt)
 
 
 
-#if defined(SINK_DRAG) || defined(SINK_DYNFRICTION)
 void set_sink_drag(int i, int n, double dt)
 {
+#if defined(SINK_REPOSITION_ON_POTMIN)
     int k;
-#ifdef SINK_DRAG /* add a drag force for the sinks, accounting for the accretion */
-    if((dt>0)&&(P[n].Sink_Mass>0))
-    {
-        double fac = P[n].Sink_Mdot * dt / P[n].Sink_Mass;
-#if (SINK_DRAG == 2)
-        double meddington = sink_eddington_mdot(P[n].Sink_Mass);
-        fac = meddington * dt / P[n].Sink_Mass; /* make the force stronger to keep the BH from wandering */
-#endif
-        if(fac>1) fac=1;
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac * SinkTempInfo[i].Sink_SurroundingGasVel[k] / dt;} // currently incompatible with hermite integrator -- need to update to Other_Accel
-    } // if((dt>0)&&(P[n].Sink_Mass>0))
-#endif
-
-
-
-#ifdef SINK_DYNFRICTION
     double sink_mass, x;
     if(SinkTempInfo[i].DF_mmax_particles>0) /* found something in the kernel, we can proceed */
     {
@@ -644,20 +625,11 @@ void set_sink_drag(int i, int n, double dt)
         fac_friction *= 1 / (1 + sink_mass / (5.*SinkTempInfo[i].DF_mmax_particles));
         /* now the dimensional part of the force */
         double Mass_in_Kernel = SinkTempInfo[i].Malt_in_Kernel;
-#if (SINK_DYNFRICTION == 1)    // DAA: dark matter + stars
         Mass_in_Kernel = SinkTempInfo[i].Malt_in_Kernel - SinkTempInfo[i].Mgas_in_Kernel;
-#elif (SINK_DYNFRICTION == 2)  // DAA: stars only
-        Mass_in_Kernel = SinkTempInfo[i].Mstar_in_Kernel;
-#endif
-#if (SINK_DYNFRICTION > 2)
-        Mass_in_Kernel *= SINK_DYNFRICTION;
-#endif
-        //fac = SinkTempInfo[i].Malt_in_Kernel / ( (4*M_PI/3) * pow(P[n].KernelRadius*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac = Mass_in_Kernel / ( (4*M_PI/3) * pow(P[n].KernelRadius*All.cf_atime,3) ); /* mean density of all mass inside kernel */
         fac_friction *= 4*M_PI * All.G * All.G * fac * sink_mass / (bhvel2_df*sqrt(bhvel2_df));
         /* now apply this to the actual acceleration */
         if(fac_friction<0) fac_friction=0; if(isnan(fac_friction)) fac_friction=0;
-#if (SINK_REPOSITION_ON_POTMIN == 2)
         /* ok, here we have a special catch - the friction isn't standard dynamical friction, but rather we are already moving
             towards a potential mininum and want to be sure that we don't overshoot or retain large velocities that will
             launch us out, so we want the BH to 'relax' towards moving with the local flow */
@@ -670,14 +642,9 @@ void set_sink_drag(int i, int n, double dt)
             if(fac_vel > 1.e-4) {fac_vel = 1.-exp(-fac_vel);}
             for(k = 0; k < 3; k++) {P[n].Vel[k] += SinkTempInfo[i].DF_mean_vel[k]*All.cf_atime * fac_vel;}
         }
-#else
-        for(k = 0; k < 3; k++) {P[n].GravAccel[k] += All.cf_atime*All.cf_atime * fac_friction * SinkTempInfo[i].DF_mean_vel[k];} // currently incompatible with hermite integrator -- need to update to Other_Accel
-#endif
     }
-#endif // SINK_DYNFRICTION
-
+#endif // repositioning algorithm active
 }
-#endif // SINK_DRAG) || SINK_DYNFRICTION
 
 
 
@@ -731,10 +698,9 @@ void sink_final_operations(void)
             if(P[n].Sink_PotentialMinimumOfNeighbors < 0.5 * SINK_MINPOTVALUE_INIT)
             {
                 double fac_sink_shift=0;
-#if (SINK_REPOSITION_ON_POTMIN == 2)
                 dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(n);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-		dt = P[n].dt_since_last_gas_search;
+                dt = P[n].dt_since_last_gas_search;
 #endif
                 double dr_min=0; for(k=0;k<3;k++) {dr_min+=(P[n].Sink_PotentialMinimumOfNeighborsPos[k]-P[n].Pos[k])*(P[n].Sink_PotentialMinimumOfNeighborsPos[k]-P[n].Pos[k]);}
                 if(dr_min > 0 && dt > 0)
@@ -746,11 +712,6 @@ void sink_final_operations(void)
                     fac_sink_shift = dv_shift * dt / dr_min; // dimensionless shift factor
                     if(fac_sink_shift > 1.e-4) {fac_sink_shift = 1.-exp(-fac_sink_shift);} // make sure we can't overshoot by using this smooth interpolation function
                 }
-#elif (SINK_REPOSITION_ON_POTMIN == 1)
-                fac_sink_shift = 0.5; // jump a bit more smoothly, still instantly but not the whole way
-#else
-                fac_sink_shift = 1.0; // jump all the way
-#endif
                 for(k = 0; k < 3; k++) {P[n].Pos[k] += (P[n].Sink_PotentialMinimumOfNeighborsPos[k]-P[n].Pos[k]) * fac_sink_shift;}
             }
 #endif
@@ -825,33 +786,12 @@ void sink_final_operations(void)
         dt = P[n].dt_since_last_gas_search;
 #endif
         double dm = P[n].Sink_Mdot * dt;
-#ifdef SINK_DEBUG_FIX_MDOT_MASS
-        dm=0; double period_sink=All.Sink_fb_period/UNIT_TIME_IN_GYR, period_sink_on=All.Sink_fb_duty_cycle*period_sink;
-        if(All.Sink_fb_duty_cycle>=1) {dm=SINK_DEBUG_FIX_MDOT_MASS*dt;} else {if(fmod(All.Time, period_sink) < period_sink_on) {dm = 2.*(SINK_DEBUG_FIX_MDOT_MASS/All.Sink_fb_duty_cycle) *  pow(sin(M_PI*All.Time/period_sink_on),2) * dt;}}
-#endif
         double radiation_loss = evaluate_sink_radiative_efficiency(P[n].Sink_Mdot,P[n].Sink_Mass,n) * dm;
         if(radiation_loss > DMIN(P[n].Mass,P[n].Sink_Mass)) radiation_loss = DMIN(P[n].Mass,P[n].Sink_Mass);
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
         if(All.SinkRadiativeEfficiency > 0 && All.SinkRadiativeEfficiency < 1 && P[n].ProtoStellarStage != 7) {radiation_loss = 0;} // negligible radiation loss term unless the object is actually a compact relic
 #endif
-#ifndef SINK_DEBUG_FIX_MDOT_MASS
         P[n].Mass -= radiation_loss; P[n].Sink_Mass -= radiation_loss;
-#endif
-        /* subtract the BAL wind mass from P[n].Mass && (P[n].Sink_Mass || P[n].Sink_Mass_Reservoir) // DAA: note that the mass loss in winds for SINK_WIND_KICK has already been taken into account */
-#ifdef SINK_WIND_CONTINUOUS
-        double dm_wind = (1.-All.Sink_accreted_fraction) / All.Sink_accreted_fraction * dm;
-        if(dm_wind > P[n].Mass) {dm_wind = P[n].Mass;}
-#ifdef SINK_ALPHADISK_ACCRETION
-        if(dm_wind > P[n].Sink_Mass_Reservoir) {dm_wind = P[n].Sink_Mass_Reservoir;}
-        P[n].Mass -= dm_wind;
-        P[n].Sink_Mass_Reservoir -= dm_wind;
-#else
-        if(dm_wind > P[n].Sink_Mass) {dm_wind = P[n].Sink_Mass;}
-#ifndef SINK_DEBUG_FIX_MDOT_MASS
-        P[n].Mass -= dm_wind; P[n].Sink_Mass -= dm_wind;
-#endif
-#endif
-#endif // ifdef SINK_WIND_CONTINUOUS
 
 
 #if defined(SINGLE_STAR_TIMESTEPPING)
@@ -877,9 +817,7 @@ void sink_final_operations(void)
         P[n].Sink_Mass_Reservoir -= dm_wind;
 #else
         if(dm_wind > P[n].Sink_Mass) {dm_wind = P[n].Sink_Mass;}
-#ifndef SINK_DEBUG_FIX_MDOT_MASS
         P[n].Sink_Mass -= dm_wind;
-#endif
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
 #if defined(SINGLE_STAR_FB_WINDS)
@@ -964,10 +902,6 @@ void sink_final_operations(void)
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
         if((P[n].Type!=5) || (P[n].Mass==0)) {count_sink_elim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
-#endif
-#if defined(PM_HIRES_REGION_CLIPPING) && defined(FIRE_BHS)
-        if((All.ComovingIntegrationOn==1) && (All.Time>All.TimeBegin) && (P[n].Type==5) && (P[n].KernelRadius>=0.5*All.SinkMaxAccretionRadius/All.cf_atime)
-           && (P[n].NumNgb<=0) && (SinkTempInfo[i].Mgas_in_Kernel + SinkTempInfo[i].Mstar_in_Kernel <= 0)) {P[n].Mass=0;} // clip BH - if near max radius and sees no gas -or- star particles, basically can't be in high-res region (or at least in a galaxy)
 #endif
         
     } // for(i=0; i<N_active_loc_Sink; i++)

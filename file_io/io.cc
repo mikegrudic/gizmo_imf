@@ -344,31 +344,9 @@ void fill_write_buffer(enum iofields blocknr, int *startindex, int pc, int type)
                 }
 #endif
             break;
-            
-        case IO_INIB:
-#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    for(k=0;k<3;k++) {*fp++ = (MyOutputFloat) CellP[pindex].IniB[k];}
-                    n++;
-                }
-#endif               
-            break;
-            
-        case IO_IDEN:
-#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
-            for(n = 0; n < pc; pindex++)
-                if(P[pindex].Type == type)
-                {
-                    *fp++ = (MyOutputFloat) CellP[pindex].IniDen;
-                    n++;
-                }
-#endif                
-            break;
-            
+                        
         case IO_UNSPMASS:
-#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS)
             for(n = 0; n < pc; pindex++)
                 if(P[pindex].Type == type)
                 {
@@ -1750,7 +1728,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_AMBIPOLAR:
         case IO_HALL:
         case IO_OHMIC:
-        case IO_INIB:
         case IO_GRADPHI:
         case IO_GRADRHO:
         case IO_RAD_ACCEL:
@@ -1787,7 +1764,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         case IO_HeII:
         case IO_RAD_TEMP:
         case IO_DUST_TEMP:
-        case IO_IDEN:
         case IO_UNSPMASS:
         case IO_CRATE:
         case IO_HRATE:
@@ -2063,7 +2039,6 @@ int get_values_per_blockelement(enum iofields blocknr)
     {
         case IO_POS:
         case IO_VEL:
-        case IO_INIB:
         case IO_PARTVEL:
         case IO_ACCEL:
         case IO_HYDROACCEL:
@@ -2090,7 +2065,6 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_HeII:
         case IO_RAD_TEMP:
         case IO_DUST_TEMP:
-        case IO_IDEN:
         case IO_UNSPMASS:
         case IO_CRATE:
         case IO_HRATE:
@@ -2359,8 +2333,6 @@ long get_particles_in_block(enum iofields blocknr, int *typelist)
         case IO_HII:
         case IO_HeI:
         case IO_HeII:
-        case IO_INIB:
-        case IO_IDEN:
         case IO_CRATE:
         case IO_HRATE:
         case IO_NHRATE:
@@ -2705,15 +2677,8 @@ int blockpresent(enum iofields blocknr)
 #endif
             break;
             
-        case IO_IDEN:
-        case IO_INIB:
-#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
-            return 1;
-#endif         
-            break;
-
         case IO_UNSPMASS:
-#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS)
             return 1;
 #endif   
             break;
@@ -3170,12 +3135,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
         case IO_HeII:
             strncpy(label, "HeII", 4);
             break;
-        case IO_INIB:
-            strncpy(label, "INIB", 4);
-            break;
-        case IO_IDEN:
-            strncpy(label, "IDEN", 4);
-            break; 
         case IO_UNSPMASS:
             strncpy(label, "USPM", 4);
             break;     
@@ -3583,12 +3542,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
         case IO_HeII:
             strcpy(buf, "HeII");
             break;
-        case IO_IDEN:
-            strcpy(buf, "IniDen");
-            break;
-        case IO_INIB:
-            strcpy(buf, "IniB");
-            break;    
         case IO_UNSPMASS:
             strcpy(buf, "Unspawned_Wind_Mass");
             break;     
@@ -4732,7 +4685,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.InterstellarRadiationFieldStrength); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
 #endif
     
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_accreted_fraction", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_accreted_fraction); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_outflow_velocity", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);

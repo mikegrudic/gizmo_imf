@@ -137,9 +137,6 @@ static inline double ForceSoftening_KernelRadius(int p)
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
     if(P[p].Type == 4) {return All.ForceSoftening[4] * pow(P[p].Mass*UNIT_MASS_IN_SOLAR / (GALSF_MERGER_STARCLUSTER_PARTICLES),0.333);}
 #endif
-#ifdef SINK_EXCISION_NONGAS
-    if(P[p].Type==5) {if(P[p].Mass > P[p].Sink_Mass+P[p].Sink_Formation_Mass) {return All.ForceSoftening[P[p].Type] * pow((P[p].Mass-P[p].Sink_Mass)/P[p].Sink_Formation_Mass,1./3.);} else {return All.ForceSoftening[P[p].Type];}} // scale the force softening to the excess mass to avoid a runaway divergence in the galaxy center from artificially collapsing the potential to that of a point mass
-#endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
     if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P[p].AGS_KernelRadius;}
 #endif
@@ -339,7 +336,6 @@ double Get_CosmicRayIonizationRate_cgs(int i);
 void CalculateAndAssign_CosmicRay_DiffusionAndStreamingCoefficients(int i);
 double INLINE_FUNC Get_Gas_CosmicRayPressure(int i, int k_CRegy);
 double Get_CosmicRayGradientLength(int i, int k_CRegy);
-double Get_CosmicRayStreamingVelocity(int i, int k_CRegy);
 double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode);
 double CR_cooling_and_gas_heating(int target, double n_elec, double nH_cgs, double dtime_cgs, int mode);
 double CR_energy_spectrum_injection_fraction(int k_CRegy, int source_type, double shock_vel, int return_index_in_bin, int target);
@@ -503,37 +499,25 @@ int evaluate_starstar_merger_for_starcluster_eligibility(int i);
 
 
 void long_range_init_regionsize(void);
-
 int find_files(char *fname);
-
 int metals_compare_key(const void *a, const void *b);
 void enrichment_evaluate(int target, int mode);
-
 void pm_init_nonperiodic_allocate(void);
-
 void  pm_init_nonperiodic_free(void);
-
-double get_random_number(MyIDType id);
-void set_random_numbers(void);
-
 int grav_tree_compare_key(const void *a, const void *b);
 int dens_compare_key(const void *a, const void *b);
 int hydro_compare_key(const void *a, const void *b);
-
 int data_index_compare(const void *a, const void *b);
 int peano_compare_key(const void *a, const void *b);
-
 void mysort_dataindex(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *));
 void mysort_domain(void *b, size_t n, size_t s);
 void mysort_idlist(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *));
 void mysort_pmperiodic(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *));
 void mysort_pmnonperiodic(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *));
 void mysort_peano(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *));
-
 void check_wind_creation(void);
 void treat_outflowing_particles(void);
 void set_injection_accel(void);
-
 
 int density_isactive(int n);
 int GasGrad_isactive(int i);
@@ -557,9 +541,6 @@ void catch_fatal(int sig);
 void terminate_processes(void);
 void enable_core_dumps_and_fpu_exceptions(void);
 void write_pid_file(void);
-#ifdef PAUSE_RUN_TO_ATTACH_DEBUGGER
-void pause_run_to_attach_debugger();
-#endif
 void pm_init_periodic_allocate(void);
 void pm_init_periodic_free(void);
 void move_particles(integertime time1);
@@ -846,7 +827,6 @@ MyFloat total_ionization_rate_C(int i, MyFloat shieldfac);
 MyFloat cosmic_ray_ionization_rate_C(int i);
 MyFloat photoionization_rate_C(int i, MyFloat shieldfac);
 int ion_name_to_index(char *ion_name);
-void apply_pm_hires_region_clipping_selection(int i);
 double get_starformation_rate(int i, int mode);
 void update_internalenergy_for_galsf_effective_eos(int i, double tcool, double tsfr, double cloudmass_fraction, double rateOfSF);
 void init_clouds(void);
@@ -974,11 +954,6 @@ double rt_return_photon_number_density(int i, int k);
 double rt_photoion_chem_return_temperature(int i, double internal_energy);
 void rt_update_chemistry(void);
 void rt_get_sigma(void);
-double rt_GetCoolingTime(int i, double u, double rho);
-double rt_cooling_photoheating(int i, double dt);
-double rt_DoCooling(int i, double dt);
-double rt_DoHeating(int i, double dt);
-double rt_get_cooling_rate(int i, double internal_energy);
 void rt_write_chemistry_stats(void);
 #endif
 

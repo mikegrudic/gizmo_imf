@@ -297,7 +297,6 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     SET_ACTIVE_RT_CHECK();
     double f_uv=All.PhotonMomentum_fUV, f_op=All.PhotonMomentum_fOPT;
     double L = evaluate_light_to_mass_ratio(star_age, i) * m_sol / UNIT_LUM_IN_SOLAR; if(L<=0 || isnan(L)) {L=0;}
-#ifndef RT_FIRE_FIX_SPECTRAL_SHAPE
     double sigma_eff = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,P[i].DensityAroundParticle,P[i].NumNgb,0,i); if((sigma_eff <= 0)||(isnan(sigma_eff))) {sigma_eff=0;} // sigma here is in code units
     if(star_age <= 0.0025) {f_op=0.09;} else {if(star_age <= 0.006) {f_op=0.09*(1+((star_age-0.0025)/0.004)*((star_age-0.0025)/0.004));} else {f_op=1-0.8410937/(1+sqrt((star_age-0.006)/0.3));}}
     /* note that the metallicity doing attenuation is the -gas- opacity around the star, while here we only know the stellar metallicity,
@@ -306,7 +305,6 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
     f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/(1+0.8*tau_uv+0.85*tau_uv*tau_uv));
     f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/(1+0.8*tau_op+0.85*tau_op*tau_op); /* this is a fitting function for tau_disp~0.22 'tail' w. exp(-tau) 'core', removes expensive functions [f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)*exp(-tau_uv)); f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)*exp(-tau_op);]
      :: accounting for leakage for P(tau) ~ exp(-|logtau/tau0|/sig), following Hopkins et al. 2011, we have: [f_uv = (1-f_op)*(All.PhotonMomentum_fUV + (1-All.PhotonMomentum_fUV)/ (1 + pow(tau_uv,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_uv,1./tau_disp))); f_op *= All.PhotonMomentum_fOPT + (1-All.PhotonMomentum_fOPT)/ (1 + pow(tau_op,1./(4.*tau_disp))/(3.*tau_disp) + pow(2.*tau_disp*tau_op,1./tau_disp));] */
-#endif
     lum[RT_FREQ_BIN_FIRE_UV]  = L * f_uv;
     lum[RT_FREQ_BIN_FIRE_OPT] = L * f_op;
     lum[RT_FREQ_BIN_FIRE_IR]  = L * (1-f_uv-f_op);

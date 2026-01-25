@@ -22,21 +22,7 @@
 #ifdef PMGRID
 #if !defined (BOX_PERIODIC) || defined (PM_PLACEHIGHRESREGION)
 
-#ifndef USE_FFTW3
-#ifdef NOTYPEPREFIX_FFTW
-#include        <rfftw_mpi.h>
-#else
-#ifdef DOUBLEPRECISION_FFTW
-#include     <drfftw_mpi.h>	/* double precision FFTW */
-#else
-#include     <srfftw_mpi.h>
-#endif
-#endif
-#define cmplx_re(c) ((c).re)
-#define cmplx_im(c) ((c).im)
-#else  /* FFTW3 */
-#include "myfftw3.h" 
-#endif
+#include "myfftw3.h"
 
 #ifndef GRIDBOOST
 #define GRIDBOOST 2
@@ -53,40 +39,27 @@ typedef unsigned int large_array_offset;
 
 #define d_fftw_real fftw_real
 
-#ifndef USE_FFTW3
-static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
-#else 
 static fftw_plan fft_forward_plan, fft_inverse_plan;
 static fftw_plan fft_forward_kernel1_plan;
+static int slab_to_task[GRID];
+static ptrdiff_t *slabs_per_task;
+static ptrdiff_t *first_slab_of_task;
+static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y;
+static ptrdiff_t fftsize, maxfftsize;
+static MPI_Datatype MPI_TYPE_PTRDIFF; 
+static fftw_real *kernel[2], *rhogrid, *forcegrid, *workspace;
+static fftw_complex *fft_of_kernel[2], *fft_of_rhogrid;
+static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
+void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch);
+void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch);
+int pm_nonperiodic_compare_sortindex(const void *a, const void *b);
+
 #if !defined(BOX_PERIODIC)
 static fftw_plan fft_forward_kernel0_plan;
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
-static fftw_plan fft_forward_kernel_scalarfield0_plan, fft_forward_kernel_scalarfield1_plan; 
+static fftw_plan fft_forward_kernel_scalarfield0_plan, fft_forward_kernel_scalarfield1_plan;
 #endif
-#endif
-
-static int slab_to_task[GRID];
-#ifndef USE_FFTW3
-static int *slabs_per_task;
-static int *first_slab_of_task;
-#endif
-
-#ifndef USE_FFTW3
-static int slabstart_x, nslab_x, slabstart_y, nslab_y;
-static int fftsize, maxfftsize;
-#else 
-static ptrdiff_t *slabs_per_task;
-static ptrdiff_t *first_slab_of_task;
-
-static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
-static ptrdiff_t fftsize, maxfftsize;
-static MPI_Datatype MPI_TYPE_PTRDIFF; 
-#endif
-
-static fftw_real *kernel[2], *rhogrid, *forcegrid, *workspace;
-static fftw_complex *fft_of_kernel[2], *fft_of_rhogrid;
-static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 static fftw_real *tidal_workspace;
@@ -97,10 +70,6 @@ static fftw_real *d_tidal_workspace;
 static fftw_real *kernel_scalarfield[2];
 static fftw_complex *fft_of_kernel_scalarfield[2];
 #endif
-
-void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch);
-void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch);
-int pm_nonperiodic_compare_sortindex(const void *a, const void *b);
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch);
@@ -261,21 +230,7 @@ void pm_init_nonperiodic(void)
   int i, slab_to_task_local[GRID];
   double bytes_tot = 0;
   size_t bytes;
-
-#ifndef USE_FFTW3
-  /* Set up the FFTW plan files. */
-
-  fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
-					     FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE | FFTW_IN_PLACE);
-  fft_inverse_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, GRID, GRID, GRID,
-					     FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE | FFTW_IN_PLACE);
-
-  /* Workspace out the ranges on each processor. */
-
-  rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize); 
-#else 
   // define MPI_TYPE_PTRDIFF */
-
   if (sizeof(ptrdiff_t) == sizeof(long long)) {
     MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
   } else if (sizeof(ptrdiff_t) == sizeof(long)) {
@@ -285,11 +240,8 @@ void pm_init_nonperiodic(void)
   }
 
   /* get local data size and allocate */
-  //fftsize = fftw_mpi_local_size_3d(GRID, GRID, GRID2, MPI_COMM_WORLD, &nslab_x, &slabstart_x); 
-  fftsize = fftw_mpi_local_size_3d_transposed(GRID, GRID, GRID2, MPI_COMM_WORLD, 
-	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
-#endif
-
+  fftsize = fftw_mpi_local_size_3d_transposed(GRID, GRID, GRID2, MPI_COMM_WORLD,
+	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y);
 
   for(i = 0; i < GRID; i++)
     slab_to_task_local[i] = 0;
@@ -299,15 +251,6 @@ void pm_init_nonperiodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, GRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-#ifndef USE_FFTW3
-  slabs_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
-  MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_per_task, 1, MPI_INT, MPI_COMM_WORLD);
-
-  first_slab_of_task = (int *) mymalloc("first_slab_of_task", NTask * sizeof(int));
-  MPI_Allgather(&slabstart_x, 1, MPI_INT, first_slab_of_task, 1, MPI_INT, MPI_COMM_WORLD);
-
-  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-#else 
   slabs_per_task = (ptrdiff_t *) mymalloc("slabs_per_task", NTask * sizeof(ptrdiff_t));
   MPI_Allgather(&nslab_x, 1, MPI_TYPE_PTRDIFF, slabs_per_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
 
@@ -315,7 +258,6 @@ void pm_init_nonperiodic(void)
   MPI_Allgather(&slabstart_x, 1, MPI_TYPE_PTRDIFF, first_slab_of_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD);
-#endif
 
 
   /* now allocate memory to hold the FFT fields */
@@ -329,10 +271,9 @@ void pm_init_nonperiodic(void)
   bytes_tot += bytes;
   fft_of_kernel[0] = (fftw_complex *) kernel[0];
 
-#ifdef USE_FFTW3 
-  fft_forward_kernel0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[0], fft_of_kernel[0], 
+  fft_forward_kernel0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[0], fft_of_kernel[0],
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
-#endif
+
 #ifdef DM_SCALARFIELD_SCREENING
   if(!
      (kernel_scalarfield[0] =
@@ -345,11 +286,10 @@ void pm_init_nonperiodic(void)
   bytes_tot += bytes;
   fft_of_kernel_scalarfield[0] = (fftw_complex *) kernel_scalarfield[0];
 
-#ifdef USE_FFTW3 
-  fft_forward_kernel_scalarfield0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, 
+  fft_forward_kernel_scalarfield0_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID,
 	  kernel_scalarfield[0], fft_of_kernel_scalarfield[0], 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
-#endif
+
 #endif
 #endif
 
@@ -362,10 +302,8 @@ void pm_init_nonperiodic(void)
   bytes_tot += bytes;
   fft_of_kernel[1] = (fftw_complex *) kernel[1];
 
-#ifdef USE_FFTW3 
-  fft_forward_kernel1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[1], fft_of_kernel[1], 
+  fft_forward_kernel1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, kernel[1], fft_of_kernel[1],
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
-#endif
  
 #ifdef DM_SCALARFIELD_SCREENING
   if(!
@@ -379,18 +317,13 @@ void pm_init_nonperiodic(void)
   bytes_tot += bytes;
   fft_of_kernel_scalarfield[1] = (fftw_complex *) kernel_scalarfield[1];
 
-#ifdef USE_FFTW3 
-  fft_forward_kernel_scalarfield1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID, 
+  fft_forward_kernel_scalarfield1_plan = fftw_mpi_plan_dft_r2c_3d(GRID, GRID, GRID,
 	  kernel_scalarfield[1], fft_of_kernel_scalarfield[1], 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
-#endif
+
 #endif
 #endif
 
-#ifndef USE_FFTW3
-  if(ThisTask == 0) printf("\nAllocated %g MByte for FFT kernel(s).\n", bytes_tot / (1024.0 * 1024.0));
-#else
-  
   if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
       printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
@@ -408,7 +341,6 @@ void pm_init_nonperiodic(void)
 
   fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(GRID, GRID, GRID, fft_of_rhogrid, rhogrid, 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
-#endif
 
 }
 
@@ -423,17 +355,6 @@ void pm_init_nonperiodic_allocate(void)
 {
   double bytes_tot = 0;
   size_t bytes;
-
-#ifndef USE_FFTW3
-  if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
-    {
-      printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
-      endrun(1);
-    }
-  bytes_tot += bytes;
-
-  fft_of_rhogrid = (fftw_complex *) rhogrid;
-#endif
 
   if(!(forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
@@ -493,9 +414,6 @@ void pm_init_nonperiodic_free(void)
   myfree(part_sortindex);
   myfree(part);
   myfree(forcegrid);
-#ifndef USE_FFTW3
-  myfree(rhogrid);
-#endif
 }
 
 
@@ -551,16 +469,9 @@ void pm_setup_nonperiodic_kernel(void)
 	}
 
   /* do the forward transform of the kernel */
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, kernel[0], workspace, FFTW_TRANSPOSED_ORDER);
-#ifdef DM_SCALARFIELD_SCREENING
-  rfftwnd_mpi(fft_forward_plan, 1, kernel_scalarfield[0], workspace, FFTW_TRANSPOSED_ORDER);
-#endif
-#else  /* FFTW3 */
-  fftw_execute(fft_forward_kernel0_plan); 
+  fftw_execute(fft_forward_kernel0_plan);
 #ifdef DM_SCALARFIELD_SCREENING
   fftw_execute(fft_forward_kernel_scalarfield0_plan); 
-#endif
 #endif
 #endif
 
@@ -617,16 +528,9 @@ void pm_setup_nonperiodic_kernel(void)
   report_memory_usage(&HighMark_pmnonperiodic, "PM_NONPERIODIC_SETUP");
 
   /* do the forward transform of the kernel */
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, kernel[1], workspace, FFTW_TRANSPOSED_ORDER);
-#ifdef DM_SCALARFIELD_SCREENING
-  rfftwnd_mpi(fft_forward_plan, 1, kernel_scalarfield[1], workspace, FFTW_TRANSPOSED_ORDER);
-#endif
-#else /* FFTW3 */
-  fftw_execute(fft_forward_kernel1_plan); 
+  fftw_execute(fft_forward_kernel1_plan);
 #ifdef DM_SCALARFIELD_SCREENING
   fftw_execute(fft_forward_kernel_scalarfield1_plan); 
-#endif
 #endif
 #endif
 
@@ -995,12 +899,7 @@ int pmforce_nonperiodic(int grnr)
       report_memory_usage(&HighMark_pmnonperiodic, "PM_NONPERIODIC");
 
       /* Do the FFT of the density field */
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_forward_plan); 
-#endif
+      fftw_execute(fft_forward_plan);
 
       /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -1038,15 +937,9 @@ int pmforce_nonperiodic(int grnr)
 	    }
 
       /* get the potential by inverse FFT */
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_inverse_plan); 
-#endif
+      fftw_execute(fft_inverse_plan);
 
       /* Now rhogrid holds the potential */
-
 
 #ifdef EVALPOTENTIAL		/* get the potential if desired */
 
@@ -1343,29 +1236,7 @@ void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch)
 	      field[GRID2 * (GRID * x + y) + z];
 	  }
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(scratch + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(field + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1380,8 +1251,6 @@ void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
-
 }
 
 
@@ -1389,32 +1258,7 @@ void pm_nonperiodic_transposeA(fftw_real * field, fftw_real * scratch)
 void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
-
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(field + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(scratch + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-
-#else
-
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1429,8 +1273,6 @@ void pm_nonperiodic_transposeB(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-
-#endif
 
   for(task = 0; task < NTask; task++)
     for(x = 0; x < nslab_x; x++)
@@ -1459,29 +1301,7 @@ void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch)
 	      field[GRID2 * (GRID * x + y) + z];
 	  }
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(scratch + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(field + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1496,8 +1316,6 @@ void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
-
 }
 
 
@@ -1505,32 +1323,7 @@ void pm_nonperiodic_transposeAz(fftw_real * field, fftw_real * scratch)
 void pm_nonperiodic_transposeBz(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
-
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(field + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(scratch + GRID / 2 * first_slab_of_task[task] * nslab_x,
-		GRID / 2 * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-
-#else
-
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1545,8 +1338,6 @@ void pm_nonperiodic_transposeBz(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-
-#endif
 
   for(task = 0; task < NTask; task++)
     for(x = 0; x < nslab_x; x++)
@@ -1874,12 +1665,7 @@ int pmpotential_nonperiodic(int grnr)
   report_memory_usage(&HighMark_pmnonperiodic, "PM_NONPERIODIC_POTENTIAL");
 
   /* Do the FFT of the density field */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_forward_plan); 
-#endif
+  fftw_execute(fft_forward_plan);
 
   /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -1902,12 +1688,7 @@ int pmpotential_nonperiodic(int grnr)
 	}
 
   /* get the potential by inverse FFT */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_inverse_plan); 
-#endif
+  fftw_execute(fft_inverse_plan);
 
   /* Now rhogrid holds the potential */
 
@@ -2369,13 +2150,7 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
       report_memory_usage(&HighMark_pmnonperiodic, "PM_NONPERIODIC");
 
       /* Do the FFT of the density field */
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_forward_plan); 
-#endif
-
+      fftw_execute(fft_forward_plan);
 
       /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -2413,15 +2188,9 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	    }
 
       /* get the potential by inverse FFT */
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_inverse_plan); 
-#endif
+      fftw_execute(fft_inverse_plan);
 
       /* Now rhogrid holds the potential */
-
 
 #ifdef EVALPOTENTIAL		/* get the potential if desired */
 
@@ -3062,12 +2831,7 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
     }
 
   /* Do the FFT of the density field */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_forward_plan); 
-#endif
+  fftw_execute(fft_forward_plan);
 
   /* multiply with the Fourier transform of the Green's function (kernel) */
 
@@ -3156,12 +2920,7 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
 
 
   /* get the tidalfield by inverse FFT */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_inverse_plan); 
-#endif
+  fftw_execute(fft_inverse_plan);
 
   /* Now rhogrid holds the tidalfield */
 

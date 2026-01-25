@@ -39,9 +39,6 @@ static int last;
 #if (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(GRAVITY_ACCURATE_FEWBODY_INTEGRATION) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION))
 #define NEIGHBORS_MUST_BE_COMPUTED_EXPLICITLY_IN_FORCETREE
 #endif
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)
-#define FORCETREE_VARIABLE_SOFTENINGS /* general flag for any module which will use variable softenings and therefore need some of the options below */
-#endif
 
 /*! length of look-up table for short-range force kernel in TreePM algorithm */
 #define NTAB 1000
@@ -196,11 +193,7 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
                 {
                     /* seems like we're dealing with particles at identical (or extremely close) locations. Randomize subnode index to allow tree construction. Note: Multipole moments
                      * of tree are still correct, but this will only happen well below gravitational softening length-scale anyway. */
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-                    subnode = (int) (8.0 * get_random_number((P[i].ID + rep) % (RNDTABLE + (rep & 3))));
-#else
                     subnode = (int) (8.0 * get_random_number(P[i].ID));
-#endif
                     if(subnode >= 8) {subnode = 7;}
                 }
 #endif
@@ -263,11 +256,7 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
                 {
                     /* seems like we're dealing with particles at identical (or extremely close) locations. Randomize subnode index to allow tree construction. Note: Multipole moments
                      * of tree are still correct, but this will only happen well below gravitational softening length-scale anyway. */
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-                    subnode = (int) (8.0 * get_random_number((P[th].ID + rep) % (RNDTABLE + (rep & 3))));
-#else
                     subnode = (int) (8.0 * get_random_number(P[th].ID));
-#endif
                     if(subnode >= 8) {subnode = 7;}
                 }
 #endif
@@ -596,15 +585,7 @@ void force_update_node_recursive(int no, int sib, int father)
                         vs_dm[1] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[1]);
                         vs_dm[2] += (Nodes[p].mass_dm * Extnodes[p].vs_dm[2]);
 #endif
-                        if(Nodes[p].u.d.mass > 0)
-                        {
-#ifdef SINK_DYNFRICTION_FROMTREE
-                            count_particles += Nodes[p].N_part; // we're saving the number of particles in the node, so simply add it
-#else
-                            if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // we will assume 1 particle unless the node has multiples then 2
-#endif
-                        }
-
+                        if(Nodes[p].u.d.mass > 0) {count_particles += Nodes[p].N_part;} // we're saving the number of particles in the node, so simply add it
                         if(Extnodes[p].hmax > hmax) {hmax = Extnodes[p].hmax;}
                         if(Extnodes[p].vmax > vmax) {vmax = Extnodes[p].vmax;}
                         if(Extnodes[p].divVmax > divVmax) {divVmax = Extnodes[p].divVmax;}
@@ -908,11 +889,7 @@ void force_update_node_recursive(int no, int sib, int father)
         Extnodes[no].dp[1] = 0;
         Extnodes[no].dp[2] = 0;
 
-#ifdef SINK_DYNFRICTION_FROMTREE
         Nodes[no].N_part = count_particles; /* save this value */
-#endif
-        if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;} /* this flags that the node represents more than one particle */
-        Nodes[no].u.d.bitflags = multiple_flag;
         Nodes[no].maxsoft = maxsoft;
         Nodes[no].u.d.sibling = sib;
         Nodes[no].u.d.father = father;
@@ -950,12 +927,8 @@ void force_exchange_pseudodata(void)
         MyFloat hmax;
         MyFloat vmax;
         MyFloat divVmax;
-#ifdef SINK_DYNFRICTION_FROMTREE
         long N_part;
-#endif
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
         MyFloat maxsoft;
-#endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
         MyFloat cr_injection;
 #endif
@@ -1023,12 +996,8 @@ void force_exchange_pseudodata(void)
             DomainMoment[i].vmax = Extnodes[no].vmax;
             DomainMoment[i].divVmax = Extnodes[no].divVmax;
             DomainMoment[i].bitflags = Nodes[no].u.d.bitflags;
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
-            DomainMoment[i].maxsoft = Nodes[no].maxsoft;
-#endif
-#ifdef SINK_DYNFRICTION_FROMTREE
             DomainMoment[i].N_part = Nodes[no].N_part;
-#endif
+            DomainMoment[i].maxsoft = Nodes[no].maxsoft;
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
             DomainMoment[i].cr_injection = Nodes[no].cr_injection;
 #endif
@@ -1103,13 +1072,7 @@ void force_exchange_pseudodata(void)
              1) * sizeof(struct DomainNODE);
             recvoffset[recvTask] = DomainStartList[recvTask * MULTIPLEDOMAINS + m] * sizeof(struct DomainNODE);
         }
-#ifdef USE_MPI_IN_PLACE
-        MPI_Allgatherv(MPI_IN_PLACE, recvcounts[ThisTask],
-                       MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
-#else
-        MPI_Allgatherv(&DomainMoment[DomainStartList[ThisTask * MULTIPLEDOMAINS + m]], recvcounts[ThisTask],
-                       MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
-#endif
+        MPI_Allgatherv(MPI_IN_PLACE, recvcounts[ThisTask], MPI_BYTE, &DomainMoment[0], recvcounts, recvoffset, MPI_BYTE, MPI_COMM_WORLD);
     }
 
     myfree(recvoffset);
@@ -1133,13 +1096,9 @@ void force_exchange_pseudodata(void)
                     Extnodes[no].hmax = DomainMoment[i].hmax;
                     Extnodes[no].vmax = DomainMoment[i].vmax;
                     Extnodes[no].divVmax = DomainMoment[i].divVmax;
-                    Nodes[no].u.d.bitflags = (Nodes[no].u.d.bitflags & (~BITFLAG_MASK)) | (DomainMoment[i].bitflags & BITFLAG_MASK);
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
-                    Nodes[no].maxsoft = DomainMoment[i].maxsoft;
-#endif
-#ifdef SINK_DYNFRICTION_FROMTREE
+                    Nodes[no].u.d.bitflags = (Nodes[no].u.d.bitflags & (~(1 << BITFLAG_MULTIPLEPARTICLES))) | (DomainMoment[i].bitflags & (1 << BITFLAG_MULTIPLEPARTICLES));
                     Nodes[no].N_part = DomainMoment[i].N_part;
-#endif
+                    Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
                     Nodes[no].cr_injection = DomainMoment[i].cr_injection;
 #endif
@@ -1361,16 +1320,7 @@ void force_treeupdate_pseudos(int no)
             if(Extnodes[p].hmax > hmax) {hmax = Extnodes[p].hmax;}
             if(Extnodes[p].vmax > vmax) {vmax = Extnodes[p].vmax;}
             if(Extnodes[p].divVmax > divVmax) {divVmax = Extnodes[p].divVmax;}
-
-            if(Nodes[p].u.d.mass > 0)
-            {
-#ifdef SINK_DYNFRICTION_FROMTREE
-                count_particles += Nodes[p].N_part; // saved, so directly add
-#else
-                if(Nodes[p].u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)) {count_particles += 2;} else {count_particles++;} // not recorded so save =1 minimum or 2 if multiples flag set
-#endif
-            }
-
+            if(Nodes[p].u.d.mass > 0) {count_particles += Nodes[p].N_part;} // saved, so directly add
             if(Nodes[p].maxsoft > maxsoft) {maxsoft = Nodes[p].maxsoft;}
         }
         else
@@ -1527,13 +1477,7 @@ void force_treeupdate_pseudos(int no)
     Extnodes[no].vmax = vmax;
     Extnodes[no].divVmax = divVmax;
     Extnodes[no].Flag = GlobFlag;
-
-#ifdef SINK_DYNFRICTION_FROMTREE
     Nodes[no].N_part = count_particles; // record
-#endif
-    if(count_particles > 1) {multiple_flag = (1 << BITFLAG_MULTIPLEPARTICLES);} else {multiple_flag = 0;}
-    Nodes[no].u.d.bitflags &= (~BITFLAG_MASK);	/* this clears the bits */
-    Nodes[no].u.d.bitflags |= multiple_flag;
     Nodes[no].maxsoft = maxsoft;
 }
 
@@ -1588,9 +1532,9 @@ void force_flag_localnodes(void)
 
             while(no >= 0)
             {
-                if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS)) {break;}
+                if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT)) {break;}
 
-                Nodes[no].u.d.bitflags |= (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS);
+                Nodes[no].u.d.bitflags |= (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT);
 
                 no = Nodes[no].u.d.father;
             }
@@ -1644,6 +1588,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     long bunchSize = All.BunchSize; int maxNodes = MaxNodes; integertime ti_Current = All.Ti_Current;
     double soft, r2, dx, dy, dz, mass, r, fac_accel, u, h=0, h_p=0, h_inv, h3_inv, h_p_inv, h_p3_inv, u_p, xtmp, pos_x, pos_y, pos_z, aold; xtmp=0; soft=0;
     MyDouble acc_x=0, acc_y=0, acc_z=0; // cache some global vars in local vars to help compiler with alias analysis
+    double pmass;
+    double zeta=0, zeta_sec=0; int ptype_sec=-1;
 #ifdef RT_USE_TREECOL_FOR_NH
     double angular_bin_size = 4*M_PI / RT_USE_TREECOL_FOR_NH, treecol_angular_bins[RT_USE_TREECOL_FOR_NH] = {0};
 #endif
@@ -1730,12 +1676,6 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #if defined(SINK_DYNFRICTION_FROMTREE)
     double sink_mass = 0, m_j_eff_for_df = 0;
 #endif
-#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
-    double pmass;
-#endif
-#if defined(FORCETREE_VARIABLE_SOFTENINGS)
-    double zeta=0, zeta_sec=0; int ptype_sec=-1;
-#endif
 #ifdef EVALPOTENTIAL
     double fac_pot; MyDouble pot; pot = 0;
 #endif
@@ -1756,9 +1696,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         ptype = P[target].Type;
         soft = ForceSoftening_KernelRadius(target);
         aold = All.ErrTolForceAcc * P[target].OldAcc;
-#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = P[target].Mass;
-#endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
         vel_x = P[target].Vel[0]; vel_y = P[target].Vel[1]; vel_z = P[target].Vel[2];
 #endif
@@ -1783,9 +1721,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
         ptype = GravDataGet[target].Type;
         soft = GravDataGet[target].Soft;
         aold = All.ErrTolForceAcc * GravDataGet[target].OldAcc;
-#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
         pmass = GravDataGet[target].Mass;
-#endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
         vel_x = GravDataGet[target].Vel[0]; vel_y = GravDataGet[target].Vel[1]; vel_z = GravDataGet[target].Vel[2];
 #endif
@@ -1801,12 +1737,8 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     }
     
     
-#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
     if(pmass<=0) {return 0;} /* quick check if particle has mass: if not, we won't deal with it */
-#endif
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
     int AGS_kernel_shared_BITFLAG = ags_gravity_kernel_shared_BITFLAG(ptype); // determine allowed particle types for correction terms for adaptive gravitational softening terms
-#endif
 #ifdef PMGRID
     rcut2 = rcut * rcut; asmthfac = 0.5 / asmth * (NTAB / 3.0);
 #endif
@@ -1994,13 +1926,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 
                 h_p = ForceSoftening_KernelRadius(no);
-#ifdef FORCETREE_VARIABLE_SOFTENINGS /* set secondary softening and zeta term */
-                ptype_sec=P[no].Type; zeta_sec=0;
+                ptype_sec=P[no].Type; zeta_sec=0; /* set secondary softening and zeta term */
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                 if(ptype_sec==0) {zeta_sec=P[no].AGS_zeta;}
 #elif defined(ADAPTIVE_GRAVSOFT_FORALL)
                 zeta_sec=P[no].AGS_zeta;
-#endif
 #endif
                 } // closes (if((r2 > 0) && (mass > 0))) check
 
@@ -2165,9 +2095,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 
                 /* ok we will be using this node, can now set variables that depend on it */
                 h_p = nop->maxsoft;
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
                 zeta_sec = 0; ptype_sec = -1; /* set secondary softening and zeta terms */
-#endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
                 gasmass = nop->gasmass;
 #endif
@@ -2312,11 +2240,10 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 if(h_p > 0) // first, appropriately symmetrize the forces between particles. only do this is secondary is a particle, so has a type and softening! //
                 {
                     int symmetrize_by_averaging = 0; // default here to symmetrize by taking the maximum, but this will vary below //
-#if defined(FORCETREE_VARIABLE_SOFTENINGS) // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
+                    // the 'zeta' terms for conservation with adaptive softening assume kernel-scale forces are averaged to symmetrize, to make them continuous
                     if(ptype_sec>=0) {if((1 << ptype_sec) & (AGS_kernel_shared_BITFLAG)) {symmetrize_by_averaging=1;}} // symmetrize by averaging only for particles which have a shared AGS structure since this is how our correction terms are derived //
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                     if((ptype!=0) || (ptype_sec!=0)) {symmetrize_by_averaging=0;} // we don't want to do the symmetrization below for sink interactions because it can create very noisy interactions between tiny sink particles and diffuse gas. However we do want it for gas-gas interactions so we keep the below
-#endif
 #endif
                     double prefac_corr_p=1., prefac_corr_orig=1.; // this will give a symmetrized pair by linear averaging
                     if(symmetrize_by_averaging==0) {prefac_corr_p=2; prefac_corr_orig=0.;} // symmetrize instead with the old method of simply taking the larger of the pair. here only act if the softening of the particle whose force is being summed is greater than the target //
@@ -3347,10 +3274,6 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             if(no < All.MaxPart)
             {
                 h = soft; /* set softening */
-#ifndef FORCETREE_VARIABLE_SOFTENINGS
-                double h_p = ForceSoftening_KernelRadius(no);
-                if(h < h_p) {h = h_p;} /* set to larger value */
-#endif
                 no = Nextnode[no];
             }
             else			/* we have an internal node. Need to check opening criterion */
@@ -3447,12 +3370,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                 }
 
                 h = soft; // set h if not already set above
-#ifdef FORCETREE_VARIABLE_SOFTENINGS
                 if(h < nop->maxsoft) {if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;}}
-#else
-                if(h < nop->maxsoft) {h = nop->maxsoft; // only applies if symmetrizing with MAX(h_i,h_j)
-                    if(r2 < nop->maxsoft * nop->maxsoft) {no = nop->u.d.nextnode; continue;}}
-#endif
                 no = nop->u.d.sibling;	/* node can be used */
             }
 

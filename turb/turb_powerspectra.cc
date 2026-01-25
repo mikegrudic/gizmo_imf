@@ -17,39 +17,14 @@
  */
 
 #if defined(TURB_DRIVING_SPECTRUMGRID) && defined(BOX_PERIODIC) && (defined(TURB_DRIVING))
-
-
-#ifndef USE_FFTW3
-#ifdef NOTYPEPREFIX_FFTW
-#include        <rfftw_mpi.h>
-#else
-#ifdef DOUBLEPRECISION_FFTW
-#include     <drfftw_mpi.h>	/* double precision FFTW */
-#else
-#include     <srfftw_mpi.h>
-#endif
-#endif
-#define cmplx_re(c) ((c).re)
-#define cmplx_im(c) ((c).im)
-#else /* FFTW3 */
-#include "../gravity/myfftw3.h"
-#endif
-
 #define  TURB_DRIVING_SPECTRUMGRID2 (2*(TURB_DRIVING_SPECTRUMGRID/2 + 1))
+#include "../gravity/myfftw3.h"
 
 #if (TURB_DRIVING_SPECTRUMGRID > 1024)
 typedef long long large_array_offset;
 #else
 typedef unsigned int large_array_offset;
 #endif
-
-#ifndef USE_FFTW3
-static rfftwnd_mpi_plan fft_forward_plan;
-static int slabstart_x, nslab_x, slabstart_y, nslab_y;
-
-static int fftsize, maxfftsize;
-#else 
-//static fftw_plan fft_forward_plan;
 static fftw_plan fft_velx_plan, fft_vely_plan, fft_velz_plan;
 static fftw_plan fft_svelx_plan, fft_svely_plan, fft_svelz_plan;
 static fftw_plan fft_vrhox_plan, fft_vrhoy_plan, fft_vrhoz_plan;
@@ -57,12 +32,9 @@ static fftw_plan fft_vortx_plan, fft_vorty_plan, fft_vortz_plan;
 static fftw_plan fft_dis1field_plan, fft_dis2field_plan; 
 static fftw_plan fft_rand_plan; 
 static fftw_plan fft_dens_plan; 
-
 static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y;
-
 static ptrdiff_t fftsize, maxfftsize;
 static MPI_Datatype MPI_TYPE_PTRDIFF; 
-#endif
 static fftw_real *velfield[3];
 #ifdef TURB_DIFF_DYNAMIC
 static fftw_real *velbarfield[3];
@@ -74,22 +46,12 @@ static fftw_real *velrhofield[3];
 static fftw_real *dis1field;
 static fftw_real *dis2field;
 static fftw_real *densityfield;
-
 static fftw_real *randomfield;
 static fftw_real *workspace;
-
 static float    *RandomValue;
-
 static fftw_complex *fft_of_field;
-
 static float *powerspec_turb_nearest_distance, *powerspec_turb_nearest_rkern;
-
-#ifndef USE_FFTW3
-void powerspec_turb_calc_and_bin_spectrum(fftw_real *field, int flag);
-#else 
 void powerspec_turb_calc_and_bin_spectrum(fftw_plan plan, fftw_real *field, int flag);
-#endif
-
 
 static struct data_in
 {
@@ -148,16 +110,7 @@ void powerspec_turb(int filenr)
   double tstart, tend;
   tstart = my_second();
 
-#ifndef USE_FFTW3
-  /* Set up the FFTW plan  */
-  fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID,
-					     FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE | FFTW_IN_PLACE);
-
-  /* Workspace out the ranges on each processor. */
-  rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize);
-  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-#else 
-  // define MPI_TYPE_PTRDIFF */  
+  // define MPI_TYPE_PTRDIFF */
   if (sizeof(ptrdiff_t) == sizeof(long long)) {
     MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
   } else if (sizeof(ptrdiff_t) == sizeof(long)) {
@@ -169,7 +122,6 @@ void powerspec_turb(int filenr)
   fftsize = fftw_mpi_local_size_3d_transposed(TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID/2 + 1, 
 	  MPI_COMM_WORLD, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_TYPE_PTRDIFF, MPI_MAX, MPI_COMM_WORLD); 
-#endif 
 
   /* allocate the memory to hold the FFT fields */
 
@@ -205,8 +157,7 @@ void powerspec_turb(int filenr)
 
   densityfield = (fftw_real *) mymalloc("densityfield", maxfftsize * sizeof(fftw_real));
 
-#ifdef USE_FFTW3 /* create plans */
-  fft_velx_plan = fftw_mpi_plan_dft_r2c_3d(TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, 
+  fft_velx_plan = fftw_mpi_plan_dft_r2c_3d(TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID,
 	  velfield[0], (fftw_complex *) velfield[0], 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
 
@@ -269,7 +220,6 @@ void powerspec_turb(int filenr)
   fft_dens_plan = fftw_mpi_plan_dft_r2c_3d(TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, TURB_DRIVING_SPECTRUMGRID, 
 	  densityfield, (fftw_complex *) densityfield, 
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
-#endif
 
   workspace = (fftw_real *) mymalloc("workspace", maxfftsize * sizeof(fftw_real));
 
@@ -327,15 +277,9 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(velfield[0], 1);   /* only here the modes are counted */
-  powerspec_turb_calc_and_bin_spectrum(velfield[1], 0);
-  powerspec_turb_calc_and_bin_spectrum(velfield[2], 0);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_velx_plan, velfield[0], 1);   /* only here the modes are counted */
   powerspec_turb_calc_and_bin_spectrum(fft_vely_plan, velfield[1], 0);
   powerspec_turb_calc_and_bin_spectrum(fft_velz_plan, velfield[2], 0);
-#endif
 
   powerspec_turb_collect();
 
@@ -387,15 +331,9 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(smoothedvelfield[0], 1);   /* only here the modes are counted */
-  powerspec_turb_calc_and_bin_spectrum(smoothedvelfield[1], 0);
-  powerspec_turb_calc_and_bin_spectrum(smoothedvelfield[2], 0);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_svelx_plan, smoothedvelfield[0], 1);   /* only here the modes are counted */
   powerspec_turb_calc_and_bin_spectrum(fft_svely_plan, smoothedvelfield[1], 0);
   powerspec_turb_calc_and_bin_spectrum(fft_svelz_plan, smoothedvelfield[2], 0);
-#endif
 
   powerspec_turb_collect();
 
@@ -414,15 +352,9 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(velrhofield[0], 1);
-  powerspec_turb_calc_and_bin_spectrum(velrhofield[1], 0);
-  powerspec_turb_calc_and_bin_spectrum(velrhofield[2], 0);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_vrhox_plan, velrhofield[0], 1);
   powerspec_turb_calc_and_bin_spectrum(fft_vrhoy_plan, velrhofield[1], 0);
   powerspec_turb_calc_and_bin_spectrum(fft_vrhoz_plan, velrhofield[2], 0);
-#endif
 
   powerspec_turb_collect();
 
@@ -439,15 +371,9 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(vorticityfield[0], 1);
-  powerspec_turb_calc_and_bin_spectrum(vorticityfield[1], 0);
-  powerspec_turb_calc_and_bin_spectrum(vorticityfield[2], 0);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_vortx_plan, vorticityfield[0], 1);
   powerspec_turb_calc_and_bin_spectrum(fft_vorty_plan, vorticityfield[1], 0);
   powerspec_turb_calc_and_bin_spectrum(fft_vortz_plan, vorticityfield[2], 0);
-#endif
 
   powerspec_turb_collect();
 
@@ -465,11 +391,7 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(dis1field, 1);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_dis1field_plan, dis1field, 1);
-#endif
 
   powerspec_turb_collect();
 
@@ -487,11 +409,7 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(dis2field, 1);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_dis2field_plan, dis2field, 1);
-#endif
 
   powerspec_turb_collect();
 
@@ -507,11 +425,7 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(randomfield, 1);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_rand_plan, randomfield, 1);
-#endif
 
   powerspec_turb_collect();
 
@@ -526,11 +440,7 @@ void powerspec_turb(int filenr)
       CountModes[i] = 0;
     }
 
-#ifndef USE_FFTW3
-  powerspec_turb_calc_and_bin_spectrum(densityfield, 1);
-#else 
   powerspec_turb_calc_and_bin_spectrum(fft_dens_plan, densityfield, 1);
-#endif
 
   powerspec_turb_collect();
 
@@ -565,10 +475,7 @@ void powerspec_turb(int filenr)
   myfree(velfield[1]);
   myfree(velfield[0]);
 
-#ifndef USE_FFTW3
-  rfftwnd_mpi_destroy_plan(fft_forward_plan);
-#else 
-  fftw_destroy_plan(fft_dens_plan); 
+  fftw_destroy_plan(fft_dens_plan);
   fftw_destroy_plan(fft_rand_plan); 
 
   fftw_destroy_plan(fft_dis2field_plan); 
@@ -589,7 +496,6 @@ void powerspec_turb(int filenr)
   fftw_destroy_plan(fft_velz_plan); 
   fftw_destroy_plan(fft_vely_plan); 
   fftw_destroy_plan(fft_velx_plan); 
-#endif
 
   tend = my_second();
   
@@ -597,70 +503,6 @@ void powerspec_turb(int filenr)
 }
 
 
-#ifndef USE_FFTW3
-void powerspec_turb_calc_and_bin_spectrum(fftw_real *field, int flag)
-{
-  double k2, kx, ky, kz;
-  int x, y, z, zz, ip;
-  
-  K0 = 2 * M_PI / All.BoxSize;	                        /* minimum k */
-  K1 = K0 * TURB_DRIVING_SPECTRUMGRID / 2;	                                /* maximum k */
-  binfac = BINS_PS / (log(K1) - log(K0));
-
-  /* Do the FFT of the velocity_field */  /* rhogrid -> velfield */
-  
-  rfftwnd_mpi(fft_forward_plan, 1, field, workspace, FFTW_TRANSPOSED_ORDER);
-  
-  fft_of_field = (fftw_complex *) field;
-
-  for(y = slabstart_y; y < slabstart_y + nslab_y; y++)
-    for(x = 0; x < TURB_DRIVING_SPECTRUMGRID; x++)
-      for(z = 0; z < TURB_DRIVING_SPECTRUMGRID; z++)
-	{
-	  zz = z;
-	  if(z >= TURB_DRIVING_SPECTRUMGRID / 2 + 1)
-	    zz = TURB_DRIVING_SPECTRUMGRID - z;
-	  
-	  if(x > TURB_DRIVING_SPECTRUMGRID / 2)
-	    kx = x - TURB_DRIVING_SPECTRUMGRID;
-	  else
-	    kx = x;
-	  if(y > TURB_DRIVING_SPECTRUMGRID / 2)
-	    ky = y - TURB_DRIVING_SPECTRUMGRID;
-	  else
-	    ky = y;
-	  if(z > TURB_DRIVING_SPECTRUMGRID / 2)
-	    kz = z - TURB_DRIVING_SPECTRUMGRID;
-	  else
-	    kz = z;
-
-	  k2 = kx * kx + ky * ky + kz * kz;
-	  
-	  ip = TURB_DRIVING_SPECTRUMGRID * (TURB_DRIVING_SPECTRUMGRID / 2 + 1) * (y - slabstart_y) + (TURB_DRIVING_SPECTRUMGRID / 2 + 1) * x + zz;
-	  
-	  double po = (cmplx_re(fft_of_field[ip]) * cmplx_re(fft_of_field[ip])
-		       + cmplx_im(fft_of_field[ip]) * cmplx_im(fft_of_field[ip])) / pow(TURB_DRIVING_SPECTRUMGRID, 6);
-	  	  
-	  if(k2 > 0)
-	    {
-	      if(k2 < (TURB_DRIVING_SPECTRUMGRID / 2.0) * (TURB_DRIVING_SPECTRUMGRID / 2.0))
-		{
-		  double k = sqrt(k2) * 2 * M_PI / All.BoxSize;
-		  
-		  if(k >= K0 && k < K1)
-		    {
-		      int bin = log(k / K0) * binfac;
-		      
-		      SumPower[bin] += po;
-		      
-		      if(flag)
-			CountModes[bin] += 1;
-		    }
-		}
-	    }
-	}
-}
-#else /* FFTW3 */
 void powerspec_turb_calc_and_bin_spectrum(fftw_plan fplan, fftw_real *field, int flag)
 {
   double k2, kx, ky, kz;
@@ -723,7 +565,6 @@ void powerspec_turb_calc_and_bin_spectrum(fftw_plan fplan, fftw_real *field, int
 	    }
 	}
 }
-#endif
 
 
 

@@ -100,12 +100,6 @@ void do_cbe_drift_kick(int i, double dt)
             dmoment[k] += dt*P[i].CBE_basis_moments_dt[j][k];
         }
     }
-#ifdef CBE_DEBUG
-    // total mass flux should vanish identically -- check this //
-    if(ThisTask==0) {printf("Total mass flux == %g (Task=%d i=%d)\n",dmoment[0],ThisTask,i);}
-    if(ThisTask==0) {printf("Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmoment[1],dmoment[2],dmoment[3],ThisTask,i);}
-    if(fabs(minv*dmoment[0]) > 0.05) {printf("MF=%g/%g/%g.",minv*dt*P[i].CBE_basis_moments_dt[0][0],minv*dt*P[i].CBE_basis_moments_dt[1][0],minv*dmoment[0]); endrun(91918282);}
-#endif
     // define the current velocity, force-sync update to match it //
     for(k=0;k<3;k++) {v0[k] = P[i].Vel[k] / All.cf_atime;} // physical units //
     double biggest_dm = 1.e10;
@@ -127,21 +121,6 @@ void do_cbe_drift_kick(int i, double dt)
         {
             // second moments need some checking //
             for(k=4;k<CBE_INTEGRATOR_NMOMENTS;k++) {P[i].CBE_basis_moments[j][k] += nfac * (dt*P[i].CBE_basis_moments_dt[j][k]);} // pure dispersion, no re-normalization here
-#ifdef CBE_DEBUG
-            // check against negatives //
-            if(P[i].CBE_basis_moments[j][0]<0 || P[i].CBE_basis_moments[j][4]<0 || P[i].CBE_basis_moments[j][5]<0 || P[i].CBE_basis_moments[j][6]<0)
-            {
-                printf("ZZa: Task=%d i=%d j=%d   : m=%g v=%g/%g/%g Sxx,yy,zz=%g/%g/%g Sxy,xz,yz=%g/%g/%g \n",ThisTask,i,j,
-                       P[i].CBE_basis_moments[j][0],P[i].CBE_basis_moments[j][1],P[i].CBE_basis_moments[j][2],P[i].CBE_basis_moments[j][3],
-                       P[i].CBE_basis_moments[j][4],P[i].CBE_basis_moments[j][5],P[i].CBE_basis_moments[j][6],P[i].CBE_basis_moments[j][7],
-                       P[i].CBE_basis_moments[j][8],P[i].CBE_basis_moments[j][9]);
-                printf("ZZb: Task=%d i=%d j=%d dt: m=%g v=%g/%g/%g Sxx,yy,zz=%g/%g/%g Sxy,xz,yz=%g/%g/%g \n",ThisTask,i,j,
-                       P[i].CBE_basis_moments_dt[j][0],P[i].CBE_basis_moments_dt[j][1],P[i].CBE_basis_moments_dt[j][2],P[i].CBE_basis_moments_dt[j][3],
-                       P[i].CBE_basis_moments_dt[j][4],P[i].CBE_basis_moments_dt[j][5],P[i].CBE_basis_moments_dt[j][6],P[i].CBE_basis_moments_dt[j][7],
-                       P[i].CBE_basis_moments_dt[j][8],P[i].CBE_basis_moments_dt[j][9]);
-                fflush(stdout);
-            }
-#endif
         }
 
         // now a series of checks for ensuring the second-moments retain positive-definite higher-order moments (positive-definite determinants, etc)
@@ -287,15 +266,6 @@ void do_postgravity_cbe_calcs(int i)
 {
     int j,k; double dmom_tot[CBE_INTEGRATOR_NMOMENTS]={0}, m_inv = 1./P[i].Mass;
     for(j=0;j<CBE_INTEGRATOR_NBASIS;j++) {for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++) {dmom_tot[k] += P[i].CBE_basis_moments_dt[j][k];}} // total change for each moment
-#ifdef CBE_DEBUG
-#if (CBE_INTEGRATOR_NMOMENTS > 4)
-    if(ThisTask==0) {printf("P[i].CBE_basis_moments=%g/%g/%g/%g \n",P[i].CBE_basis_moments[0][3],P[i].CBE_basis_moments[2][7],P[i].CBE_basis_moments[1][5],P[i].CBE_basis_moments[0][8]);}
-    if(ThisTask==0) {printf("P[i].CBE_basis_moments_dt=%g/%g/%g/%g \n",P[i].CBE_basis_moments_dt[0][3],P[i].CBE_basis_moments_dt[2][7],P[i].CBE_basis_moments_dt[1][5],P[i].CBE_basis_moments_dt[0][8]);}
-#endif
-    /* total mass change should be zero to floating-point accuracy, so don't need to worry about it, but check! */
-    if(ThisTask==0) {printf("PG: Total mass flux == %g (Task=%d i=%d)\n",dmom_tot[0],ThisTask,i);}
-    if(ThisTask==0) {printf("PG: Momentum flux == %g/%g/%g (Task=%d i=%d)\n",dmom_tot[1],dmom_tot[2],dmom_tot[3],ThisTask,i);}
-#endif
     /* total momentum flux will be transferred */
     double dv0[3];
     for(k=0;k<3;k++)
@@ -321,16 +291,6 @@ void do_postgravity_cbe_calcs(int i)
             dS[5] = P[i].CBE_basis_moments_dt[j][9] - m_inv * (P[i].CBE_basis_moments_dt[j][2]*P[i].CBE_basis_moments[j][3] + P[i].CBE_basis_moments[j][2]*P[i].CBE_basis_moments_dt[j][3]) + m_inv*m_inv * P[i].CBE_basis_moments_dt[j][0] * P[i].CBE_basis_moments[j][2]*P[i].CBE_basis_moments[j][3]; // yz
             if(P[i].CBE_basis_moments_dt[j][0]>0) {for(k=0;k<3;k++) {dS[k]=DMAX(dS[k],0.);}}
             for(k=4;k<CBE_INTEGRATOR_NMOMENTS;k++) {P[i].CBE_basis_moments_dt[j][k] = dS[k-4];} // set the flux of the stress terms to the change in the dispersion alone //
-#ifdef CBE_DEBUG
-            if(ThisTask==0)
-                if((P[i].CBE_basis_moments[j][0] > 0) && (P[i].CBE_basis_moments[j][4]+P[i].CBE_basis_moments[j][5]+P[i].CBE_basis_moments[j][6] < 0))
-                {
-                    printf("FLX: i=%d m=%g P[i].CBE_basis_moments_dt=%g %g/%g/%g %g/%g/%g %g/%g/%g \n",i,P[i].Mass,P[i].CBE_basis_moments_dt[j][0],
-                           P[i].CBE_basis_moments_dt[j][1],P[i].CBE_basis_moments_dt[j][2],P[i].CBE_basis_moments_dt[j][3],P[i].CBE_basis_moments_dt[j][4],P[i].CBE_basis_moments_dt[j][5],P[i].CBE_basis_moments_dt[j][6],P[i].CBE_basis_moments_dt[j][7],
-                           P[i].CBE_basis_moments_dt[j][8],P[i].CBE_basis_moments_dt[j][9]);
-                    fflush(stdout);
-                }
-#endif
         }
 #endif
     } // for(j=0;j<CBE_INTEGRATOR_NBASIS;j++)

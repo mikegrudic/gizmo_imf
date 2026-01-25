@@ -96,9 +96,6 @@ void do_second_halfstep_kick(void)
 int eligible_for_hermite(int i)
 {
     if(!(HERMITE_INTEGRATION & (1<<P[i].Type))) {return 0;} // hermite flag said to not include these types
-#if defined(SINK_DRAG) || defined(SINK_DYNFRICTION)
-    if(P[i].Type==5) {return 0;} // not compatible with these flags for these types
-#endif
 #if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
     if(P[i].Type==1) {return 0;} // not compatible with these flags for these types
 #endif
@@ -530,11 +527,6 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
     if(isnan(CellP[i].PhiPred)) {CellP[i].PhiPred=CellP[i].Phi;}
 #endif
 #endif
-#endif
-    
-#ifdef NUCLEAR_NETWORK
-    for(j = 0; j < EOS_NSPECIES; j++) {CellP[i].xnuc[j] += CellP[i].dxnuc[j] * dt_entr * UNIT_TIME_IN_CGS;}    
-    network_normalize(CellP[i].xnuc, &CellP[i].InternalEnergy, &All.nd, &All.nw);
 #endif
     
 #ifdef COSMIC_RAY_FLUID

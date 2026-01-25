@@ -87,9 +87,7 @@ extern struct gas_cell_data
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
     MyFloat CosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];         /*!< effective number of CRs in the bin, which we evolve alongside total energy. */
     MyFloat DtCosmicRay_Number_in_Bin[N_CR_PARTICLE_BINS];       /*!< time derivative of effective number of CRs in the bin, which we evolve alongside total energy. */
-#if defined(CRFLUID_DIFFUSION_CORRECTION_TERMS)
     MyFloat Flux_Number_to_Energy_Correction_Factor[N_CR_PARTICLE_BINS]; /*!< correction term to compute correct flux of number versus energy, since not identical for finite-bin-width effects. */
-#endif
 #endif
 #endif
     
@@ -370,11 +368,6 @@ extern struct gas_cell_data
     MyDouble Elastic_Stress_Tensor_Pred[3][3];
     MyDouble Dt_Elastic_Stress_Tensor[3][3];
 #endif
-#endif
-    
-#ifdef NUCLEAR_NETWORK
-    MyDouble Temperature;
-    MyDouble xnuc[EOS_NSPECIES], dxnuc[EOS_NSPECIES];
 #endif
     
 #if defined(OUTPUT_COOLRATE_DETAIL) && defined(COOLING)

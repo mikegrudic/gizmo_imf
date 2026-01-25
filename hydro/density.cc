@@ -78,11 +78,7 @@ int density_isactive(int n)
         if(All.ComovingIntegrationOn == 0) // only do stellar age evaluation if we have to //
         {
             double star_age = evaluate_stellar_age_Gyr(n);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(SINK_PARTICLES) && defined(PM_HIRES_REGION_CLIPPING)
-            if(star_age < 0.0035) return 1;
-#else
             if(star_age < 0.035) return 1;
-#endif
         }
 #endif
 #if (defined(GRAIN_FLUID) || defined(RADTRANSFER)) && (!defined(GALSF) && !(defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)))
@@ -1028,8 +1024,6 @@ void density(void)
                 }
             }
 #endif
-
-            apply_pm_hires_region_clipping_selection(i);
 
          /* finally, convert NGB to the more useful format, NumNgb^(1/NDIMS),
             which we can use to obtain the corrected particle sizes. Because of how this number is used above, we --must-- make

@@ -76,10 +76,6 @@
 #define  CONDITION_NUMBER_DANGER  1.0e3 /*!< condition number above which we will not trust matrix-based gradients */
 #endif
 
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-#define  RNDTABLE 16384 /*!< this is arbitrary, but some power of 2 makes much easier */
-#endif
-
 /* ... often used physical constants (cgs units). note many of these are defined to better precision with different units in e.g. the GSL package, these are purely for user convenience */
 #define  GRAVITY_G_CGS      (6.672e-8)
 #define  SOLAR_MASS_CGS     (1.989e33)

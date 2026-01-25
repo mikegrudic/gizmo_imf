@@ -186,9 +186,6 @@ extern ALIGN(32) struct particle_data
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
     MyFloat Sink_AccretionDeficit; /* difference between continuously-accreted and discretely-accreted masses, needs to be evolved to ensure exact conservation with some modules */
 #endif
-#ifdef SINK_WAKEUP_GAS /* force all gas within the interaction radius of a sink to timestep at the same rate */
-    int LowestSinkTimeBin;
-#endif
 #ifdef SINK_FOLLOW_ACCRETED_ANGMOM
     MyFloat Sink_Specific_AngMom[3];
 #endif

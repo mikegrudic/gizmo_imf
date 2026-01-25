@@ -47,10 +47,10 @@ extern struct sink_temp_particle_data       // sinkdata_topass
 #ifdef SINK_CALC_LOCAL_ANGLEWEIGHTS
     MyFloat Sink_angle_weighted_kernel_sum;
 #endif
-#ifdef SINK_DYNFRICTION
+#ifdef SINK_REPOSITION_ON_POTMIN
     MyFloat DF_rms_vel, DF_mean_vel[3], DF_mmax_particles;
 #endif
-#if defined(SINK_BONDI) || defined(SINK_DRAG) || (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
+#if (SINK_GRAVACCRETION >= 5) || defined(SINGLE_STAR_SINK_DYNAMICS) || defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Sink_SurroundingGasVel[3];
 #endif
 #ifdef JET_DIRECTION_FROM_KERNEL_AND_SINK
@@ -115,9 +115,7 @@ int sink_check_boundedness(int j, double vrel, double vesc, double dr_code, doub
 double sink_vesc(int j, double mass, double r_code, double sink_softening);
 void set_sink_mdot(int i, int n, double dt);
 void set_sink_new_mass(int i, int n, double dt);
-#if defined(SINK_DRAG) || defined(SINK_DYNFRICTION)
 void set_sink_drag(int i, int n, double dt);
-#endif
 void set_sink_long_range_rp(int i, int n);
 
 

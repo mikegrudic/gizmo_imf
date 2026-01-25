@@ -55,12 +55,7 @@ int does_particle_need_to_be_merged(int i)
 #ifdef SINK_WIND_SPAWN
     if(P[i].ID==All.AGNWindID && P[i].Type==0)
     {
-#ifdef SINK_DEBUG_SPAWN_JET_TEST
-        MyFloat vr2 = (P[i].Vel[0]*P[i].Vel[0] + P[i].Vel[1]*P[i].Vel[1] + P[i].Vel[2]*P[i].Vel[2]) * All.cf_a2inv; // physical
-        if(vr2 <= 0.01 * All.Sink_outflow_velocity*All.Sink_outflow_velocity) {return 1;} else {return 0;} // merge only if velocity condition satisfied, even if surrounded by more massive particles //
-#else
         if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i,0)) {return 1;}
-#endif
     }
 #endif
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
@@ -104,9 +99,6 @@ int does_particle_need_to_be_split(int i)
 #endif
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
     if(P[i].Type==4) {return 0;}
-#endif
-#ifdef SINK_DEBUG_SPAWN_JET_TEST
-    if(P[i].ID==All.AGNWindID && P[i].Type==0) {return 0;}
 #endif
     if(P[i].Mass >= (All.MaxMassForParticleSplit*target_mass_renormalization_factor_for_mergesplit(i,1))) {return 1;}
 #ifdef PARTICLE_MERGE_SPLIT_TRUELOVE_REFINEMENT
@@ -289,69 +281,6 @@ void merge_and_split_particles(void)
     {
         int Pi_BITFLAG = (1 << (int)P[i].Type); // bitflag for particles of type matching "i", used for restricting neighbor search
         if (P[i].Mass <= 0) continue;
-
-#ifdef PM_HIRES_REGION_CLIPDM
-        /* here we need to check whether a low-res DM particle is surrounded by all high-res particles,
-            in which case we clip its mass down or split it to prevent the most problematic contamination artifacts */
-        if(((P[i].Type == 2)||(P[i].Type == 3)||(P[i].Type == 5))&&(TimeBinActive[P[i].TimeBin]))
-        {
-#ifdef SINK_PARTICLES
-            if(P[i].Type == 5) continue;
-#endif
-            /* do a neighbor loop ON THE SAME DOMAIN to determine the neighbors */
-            int n_search_min = 32;
-            int n_search_max = 320;
-            double h_search_max = 10. * ForceSoftening_KernelRadius(i);
-            double h_search_min = 0.1 * ForceSoftening_KernelRadius(i);
-            double h_guess; numngb_inbox=0; int NITER=0, NITER_MAX=30;
-#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
-            h_guess = P[i].AGS_KernelRadius; if(h_guess > h_search_max) {h_search_max=h_guess;} if(h_guess < h_search_min) {h_search_min=h_guess;}
-#else
-            h_guess = 5.0 * ForceSoftening_KernelRadius(i);
-#endif
-            startnode=All.MaxPart;
-            do {
-                numngb_inbox = ngb_treefind_variable_targeted(P[i].Pos,h_guess,-1,&startnode,0,&dummy,&dummy,62); // search for all particle types -except- gas: 62=2^1+2^2+2^3+2^4+2^5
-                if((numngb_inbox < n_search_min) && (h_guess < h_search_max) && (NITER < NITER_MAX))
-                {
-                    h_guess *= 1.27;
-                    startnode=All.MaxPart; // this will trigger the while loop to continue
-                }
-                if((numngb_inbox > n_search_max) && (h_guess > h_search_min) && (NITER < NITER_MAX))
-                {
-                    h_guess /= 1.25;
-                    startnode=All.MaxPart; // this will trigger the while loop to continue
-                }
-                NITER++;
-            } while(startnode >= 0);
-            int do_clipping = 0;
-            if(numngb_inbox >= n_search_min-1) // if can't find enough neighbors, don't clip //
-            {
-                do_clipping = 1;
-                for(n=0; n<numngb_inbox; n++)
-                {
-                    j = Ngblist[n];
-                    if(j == i) {if(numngb_inbox > 1) continue;}
-#ifdef SINK_PARTICLES
-                    if((P[j].Type == 2) || (P[j].Type == 3))
-#else
-                    if((P[j].Type == 2) || (P[j].Type == 3) || (P[j].Type == 5))
-#endif
-                    {
-                        /* found a neighbor with a low-res particle type, so don't clip this particle */
-                        do_clipping = 0;
-                        break;
-                    }
-                } // for(n=0; n<numngb_inbox; n++)
-            }
-            if(do_clipping)
-            {
-                /* ok, the particle has neighbors but is completely surrounded by high-res particles, it should be clipped */
-                printf("Particle %d clipping low/hi-res DM: neighbors=%d h_search=%g soft=%g iterations=%d \n",i,numngb_inbox,h_guess,ForceSoftening_KernelRadius(i),NITER);
-                Ptmp[i].flag = -1;
-            }
-        }
-#endif
 #if defined(GALSF)
         if(((P[i].Type==0)||(P[i].Type==4))&&(TimeBinActive[P[i].TimeBin])) /* if SF active, allow star particles to merge if they get too small */
 #else
@@ -438,12 +367,6 @@ void merge_and_split_particles(void)
     // actual merge-splitting loop loop. No tree-walk is allowed below here
     int failed_splits = 0; /* record failed splits to output warning message */
     for (i = 0; i < NumPart; i++) {
-#ifdef PM_HIRES_REGION_CLIPDM
-        if (Ptmp[i].flag == -1) { // clipping
-            P[i].Type = 1; // 'graduate' to high-res DM particle
-            P[i].Mass = All.MassOfClippedDMParticles; // set mass to the 'safe' mass of typical high-res particles
-        }
-#endif
         if (Ptmp[i].flag == 1) { // merge this particle
             int did_merge = merge_particles_ij(i, Ptmp[i].target_index);
             if(did_merge == 1) {n_particles_merged++;}
@@ -1260,46 +1183,6 @@ void rearrange_particle_sequence(void)
     MPI_Allreduce(&flag, &flag_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     if(flag_sum) {reconstruct_timebins();}
 }
-
-
-/* function to apply -optional- cell excision for special cases where e.g. cells go far outside of the desired 'zoom-in region' or target region of a multi-scale simulation */
-void apply_pm_hires_region_clipping_selection(int i)
-{
-#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-    if(is_particle_a_special_zoom_target(i)) {return;}
-#endif
-#ifdef PM_HIRES_REGION_CLIPPING
-    int clip_flag = 0; // flag for clipping
-    if(All.Time <= All.TimeBegin) {return;} // no clips before run properly starts
-    if(P[i].Type == 5) {return;} // no clips for sinks
-    if(P[i].Type == 0 && density_isactive(i)) {if((CellP[i].Density <= 0) || (P[i].NumNgb <= 0)) {clip_flag=1;}} // undefined density behavior
-    if(density_isactive(i)) {if(P[i].KernelRadius >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
-#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
-    if(ags_density_isactive(i)) {if(P[i].AGS_KernelRadius >= PM_HIRES_REGION_CLIPPING) {clip_flag=1;}} // far too big a kernel, outside valid domain, clip
-#endif
-#ifdef GALSF
-    if((All.ComovingIntegrationOn) && (P[i].Type==0) && (P[i].Mass>0)) // clip material outside of a hires zoom-in region [unphysically well below cosmic mean density]
-        if((CellP[i].Density>0) && (P[i].KernelRadius>0))
-        {
-            double rho_igm = COSMIC_BARYON_DENSITY_CGS * DMIN(1., 1000./All.cf_a3inv); /* density of IGM: cap scaling with z at z=10, so that we don't accidentally rule out very dense real stuff b/c IGM is also very dense */
-            double rho_gas = DMAX( CellP[i].Density , All.DesNumNgb*P[i].Mass/(4.*M_PI/3.*P[i].KernelRadius*P[i].KernelRadius*P[i].KernelRadius) )* All.cf_a3inv * UNIT_DENSITY_IN_CGS;
-            if(rho_gas < 1.e-6*rho_igm) {clip_flag=1;} // clip
-        }
-#endif
-#ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-    if(All.ComovingIntegrationOn)
-    {
-        int k; double v_i=0; for(k=0;k<3;k++) {v_i+=P[i].Vel[k]*P[i].Vel[k];}
-        v_i=sqrt(v_i)/All.cf_atime*UNIT_VEL_IN_KMS; // check for unphysical velocities
-        if(v_i>1.e5) {clip_flag=1;} // clip
-        if(v_i>3.e4) {for(k=0;k<3;k++) {P[i].Vel[k]*=3.e4/v_i;}} // limit
-    }
-#endif
-    if(clip_flag==1) {P[i].Mass=0;} // clip
-#endif
-    return; // done
-}
-
 
 
 

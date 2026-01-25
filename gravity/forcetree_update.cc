@@ -208,7 +208,7 @@ void force_finish_kick_nodes(void)
     {
       no = domainList_all[i];
 
-      if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))	/* to avoid that the local one is kicked twice */
+      if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT))	/* to avoid that the local one is kicked twice */
 	no = Nodes[no].u.d.father;
 
       while(no >= 0)
@@ -437,7 +437,7 @@ void force_update_hmax(void)
   for(i = 0; i < totDomainNumChanged; i++)
     {
         no = domainList_all[i];
-        if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_MASS))    {no = Nodes[no].u.d.father;} /* to avoid that the hmax is updated twice */
+        if(Nodes[no].u.d.bitflags & (1 << BITFLAG_DEPENDS_ON_LOCAL_ELEMENT))    {no = Nodes[no].u.d.father;} /* to avoid that the hmax is updated twice */
         
         while(no >= 0)
         {

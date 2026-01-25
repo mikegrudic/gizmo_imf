@@ -64,15 +64,9 @@
 #include "../cooling/chimes/chimes_proto.h"
 #endif
 
-#ifdef NUCLEAR_NETWORK
-#include "../nuclear/nuclear_network.h"
-#endif
-
-
 /*********************************************************/
 /*  Global variables                                     */
 /*********************************************************/
-
 
 #ifdef BOX_PERIODIC
 extern MyDouble boxSize, boxHalf;
@@ -290,13 +284,7 @@ extern gsl_rng* StRng; // random number generator key
 #define GEOFACTOR_TABLE_LENGTH 1000    /*!< length of the table used for the geometric factor spline */
 extern MyDouble GeoFactorTable[GEOFACTOR_TABLE_LENGTH];
 #endif
-
-
 extern int NTopnodes, NTopleaves;
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-extern double RndTable[RNDTABLE];
-#endif
-
 
 /* variables for input/output , usually only used on process 0 */
 extern char ParameterFile[100];    /*!< file name of parameterfile used for starting the simulation */
@@ -464,10 +452,6 @@ extern struct global_data_all_processes
   double MinEgySpec;		/*!< the minimum allowed temperature expressed as energy per unit mass */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
   double ArtCondConstant;
-#endif
-
-#ifdef PM_HIRES_REGION_CLIPDM
-    double MassOfClippedDMParticles; /*!< the mass of high-res DM particles which the low-res particles will target if they enter the highres region */
 #endif
 #ifdef SINGLE_STAR_SINK_DYNAMICS
     double MeanGasParticleMass; /*!< the mean gas particle mass */
@@ -761,7 +745,7 @@ extern struct global_data_all_processes
     double InitStellarAgeinGyr;
 #endif
     
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
+#if defined(SINK_WIND_KICK) || defined(SINK_WIND_SPAWN)
     double Sink_accreted_fraction;
     double Sink_outflow_velocity;
 #endif
@@ -914,17 +898,6 @@ extern struct global_data_all_processes
     double Mass_of_SpecialParticle[SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM];
 #endif
 
-#ifdef NUCLEAR_NETWORK
-  char EosSpecies[100];
-  char NetworkRates[100];
-  char NetworkPartFunc[100];
-  char NetworkMasses[100];
-  char NetworkWeakrates[100];
-  struct network_data nd;
-  struct network_workspace nw;
-  double NetworkTempThreshold;
-#endif
-
 #ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
   double AGS_DesNumNgb;
   double AGS_MaxNumNgbDeviation;
@@ -958,11 +931,6 @@ extern struct global_data_all_processes
   double Sink_jet_precess_degree;
   double Sink_jet_precess_period;
 #endif
-#ifdef SINK_DEBUG_FIX_MDOT_MASS
-  double Sink_fb_duty_cycle;
-  double Sink_fb_period;
-#endif
-
 }
 All;
 
@@ -1021,10 +989,7 @@ extern struct gravdata_in
     int Type;
     MyFloat Pos[3];
     MyFloat Soft;
-#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(RT_USE_GRAVTREE) || defined(SINGLE_STAR_TIMESTEPPING) || defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) || defined(COSMIC_RAY_SUBGRID_LEBRON)
-#define GRAVDATA_IN_INCLUDES_MASS_FIELD
     MyFloat Mass;
-#endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
     MyFloat Vel[3];
 #endif
@@ -1266,8 +1231,6 @@ enum iofields
   IO_HII,
   IO_HeI,
   IO_HeII,
-  IO_IDEN,
-  IO_INIB,
   IO_UNSPMASS,
   IO_CRATE,
   IO_HRATE,
@@ -1428,13 +1391,12 @@ extern ALIGN(32) struct NODE
   }
   u;
 
-  double GravCost;
-  integertime Ti_current;
+    double GravCost;
+    integertime Ti_current;
+    long N_part;   /*!< number of particles+cells in the tree node */
+    MyFloat maxsoft;        /*!< hold the maximum gravitational softening of particle in the node */
 #if defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
   MyFloat gasmass;
-#endif
-#ifdef SINK_DYNFRICTION_FROMTREE
-  long N_part;   /*!< number of particles+cells in the tree node */
 #endif
 #ifdef RT_USE_GRAVTREE
   MyFloat stellar_lum[N_RT_FREQ_BINS]; /*!< luminosity in the node*/
@@ -1470,11 +1432,6 @@ extern ALIGN(32) struct NODE
 #endif
 #endif
 
-#ifdef RT_SEPARATELY_TRACK_LUMPOS
-    MyFloat rt_source_lum_s[3];     /*!< center of luminosity for sources in the node*/
-#endif
-
-  MyFloat maxsoft;		/*!< hold the maximum gravitational softening of particle in the node */
 
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     MyFloat tidal_tensorps_prevstep[3][3];

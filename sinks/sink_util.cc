@@ -123,13 +123,11 @@ void sink_end(void)
 }
 
 
-
 /* return the eddington accretion-rate = L_edd/(epsilon_r*c*c) - for a variable radiative efficiency, this scales off of the 'canonical' value given as the constant in the parameterfile, per usual convention in the literature */
 double sink_eddington_mdot(double sink_mass)
 {
     return (4*M_PI * GRAVITY_G_CGS * PROTONMASS_CGS / (All.SinkRadiativeEfficiency * C_LIGHT_CGS * THOMPSON_CX_CGS)) * sink_mass * UNIT_TIME_IN_CGS;
 }
-
 
 
 /* return the bh luminosity given some accretion rate and mass (allows for non-standard models: radiatively inefficient flows, stellar sinks, etc) */
@@ -148,7 +146,6 @@ double evaluate_sink_radiative_efficiency(double mdot, double mass, long pindex)
 {
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL /* simple classic model where radiative efficiency declines linearly below critical eddington ratio of order 1% eddington, and super-Eddington accretion is also radiatively inefficient  */
     double lambda_0 = 0.01, lambda_1 = 2., lambda_eff = mdot/sink_eddington_mdot(mass), qfac = lambda_eff/lambda_0, qfac_he = lambda_eff/lambda_1;
-    //double lambda_0 = (SINK_RIAF_SUBEDDINGTON_MODEL), lambda_1 = 2., lambda_eff = mdot/sink_eddington_mdot(mass), qfac = lambda_eff/lambda_0, qfac_he = lambda_eff/lambda_1;
     return All.SinkRadiativeEfficiency * (qfac/(1.+qfac)) * (1./(1.+qfac_he));
 #endif
     return All.SinkRadiativeEfficiency; // default to constant
@@ -162,8 +159,6 @@ double evaluate_sink_cosmicray_efficiency(double mdot, double mass, long pindex)
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL /* experiment with functions here to explore more/less efficient CR injection at lower/higher eddington ratios, reflecting hard/soft-type transition */
     /* current version with this flag scales this relative to the jet kinetic power */
     if(mdot/sink_eddington_mdot(mass) < 0.01) {return 0.5;} else {return 0.1;} /* high-Mdot uses standard SNe kinetic power, otherwise give unity power here */
-    // double lambda_0 = (SINK_RIAF_SUBEDDINGTON_MODEL), enhancement_fac=10., m_exp=1., lambda_eff = mdot/sink_eddington_mdot(mass), qfac = 1.+pow(lambda_eff/lambda_0, m_exp); // eddington accretion ratio in units of 0.01
-    // return All.Sink_CosmicRay_Injection_Efficiency * (1. + enhancement_fac/qfac); // older deprecated experiment
 #endif
     return All.Sink_CosmicRay_Injection_Efficiency; // default to constant
 #endif
@@ -184,9 +179,7 @@ void sink_properties_loop(void) /* Note, normalize_temp_info_struct is now done 
         P[n].Sink_Mdot=0;  /* always initialize/default to zero accretion rate */
         set_sink_long_range_rp(i, n);
         set_sink_mdot(i, n, dt);
-#if defined(SINK_DRAG) || defined(SINK_DYNFRICTION)
         set_sink_drag(i, n, dt);
-#endif
         set_sink_new_mass(i, n, dt);
         /* results dumped to 'sink_details' files at the end of sink_final_operations so that BH mass is corrected for mass loss to radiation/bal outflows */
     }// for(i=0; i<N_active_loc_Sink; i++)

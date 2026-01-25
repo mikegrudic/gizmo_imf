@@ -557,7 +557,6 @@ void ags_density(void)
             } else {
                 P[i].AGS_zeta = 0; P[i].NumNgb = 0; P[i].AGS_KernelRadius = All.ForceSoftening[P[i].Type];
             }
-            apply_pm_hires_region_clipping_selection(i);
         }
     }
     myfree(AGS_Prev);
@@ -699,9 +698,6 @@ double do_cbe_nvt_inversion_for_faces(int i)
         conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
     } // end of loop broken when condition number is sufficiently small
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].NV_T[j][k] = Tinv[j][k] / dimensional_NV_T_normalizer;}} // now P[i].NV_T holds the inverted matrix elements //
-#ifdef CBE_DEBUG
-    if((ThisTask==0)&&(ConditionNumber>1.0e10)) {printf("Condition number == %g (Task=%d i=%d)\n",ConditionNumber,ThisTask,i);}
-#endif
     return ConditionNumber;
 }
 

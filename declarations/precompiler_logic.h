@@ -220,8 +220,8 @@
 #if (defined(GALSF_SFR_IMF_SAMPLING) || (FIRE_PHYSICS_DEFAULTS > 2)) && !defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_DYNFRICTION_FROMTREE)
 #define SINK_DYNFRICTION_FROMTREE /* use the dynamical friction model instead of pinning/forcing BHs to potential minimum */
 #endif
-#if !defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_DYNFRICTION_FROMTREE) && !defined(SINK_DYNFRICTION)
-#define SINK_REPOSITION_ON_POTMIN 2   /* anchor BHs to centers smoothly */
+#if !defined(SINK_REPOSITION_ON_POTMIN) && !defined(SINK_DYNFRICTION_FROMTREE)
+#define SINK_REPOSITION_ON_POTMIN   /* anchor BHs to centers smoothly */
 #endif
 #if (FIRE_PHYSICS_DEFAULTS > 2)
 #define SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS /* purely a convention-choice when doing spawning, to use fraction of original BH mass -- this one more useful if using multi-resolution (hyper-refinement) techniques */
@@ -238,9 +238,7 @@
 #define SINK_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
 #define SINK_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
 #define SINK_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
-#if !defined(SINK_WIND_CONTINUOUS)
 #define SINK_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
-#endif
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
 #define SINK_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
@@ -282,9 +280,6 @@
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
 #define GAMMA_COSMICRAY(k) ((4.0+gamma_eos_of_crs_in_bin(k))/3.0)
-#if !defined(CRFLUID_DIFFUSION_CORRECTION_TERMS) && !defined(CRFLUID_BINCENTERED_TRANSPORT)
-#define CRFLUID_DIFFUSION_CORRECTION_TERMS
-#endif
 #if (CRFLUID_EVOLVE_SPECTRUM == 2)
 #define N_CR_PARTICLE_BINS 70       /*<! set default bin number here -- needs to match hard-coded list in function 'CR_spectrum_define_bins', for now> */
 #define N_CR_PARTICLE_SPECIES 8     /*<! total number of CR species to be evolved. must be set here because of references below*/
@@ -482,14 +477,8 @@
 #ifndef SINK_ALPHADISK_ACCRETION
 #define SINK_ALPHADISK_ACCRETION (2.) // all models will use a 'reservoir' of some kind to smooth out accretion rates (and represent unresolved disk)
 #endif
-#if (SINGLE_STAR_ACCRETION <= 8)
+#if (SINGLE_STAR_ACCRETION <= 10)
 #define SINK_GRAVACCRETION (SINGLE_STAR_ACCRETION) // use one of these pre-built accretion models
-#endif
-#if (SINGLE_STAR_ACCRETION == 9)
-#define SINK_BONDI 0 // use 'normal' Bondi-Hoyle accretion rate
-#endif
-#if (SINGLE_STAR_ACCRETION == 10)
-#define SINK_BONDI 1 // use Bondi rate ignoring local relative velocities
 #endif
 #if (SINGLE_STAR_ACCRETION == 11)
 #define SINK_GRAVCAPTURE_GAS // use gravitational capture swallow criterion for resolved gravitational capture
@@ -776,7 +765,7 @@
 /* check if we are -explicitly- evolving the radiation energy density [0th moment], in which case we need to carry time-derivatives of the field */
 #if defined(RT_SOLVER_EXPLICIT) && !defined(RT_EVOLVE_INTENSITIES) // only needed if we are -not- evolving intensities and -are- solving explicitly
 #define RT_EVOLVE_ENERGY
-#if !defined(RT_EVOLVE_FLUX) && !defined(RT_DISABLE_FLUXLIMITER) // evolving energy explicitly but not flux, flux-limiting is not disabled
+#if !defined(RT_EVOLVE_FLUX) // evolving energy explicitly but not flux, flux-limiting is not disabled
 #define RT_FLUXLIMITER // default to include flux-limiter under these conditions
 #endif
 #endif
@@ -829,11 +818,6 @@
 #endif
 #ifndef RT_SOURCES
 #define RT_SOURCES 1+2+4+8+16+32 // default to allowing all types to act as sources //
-#endif
-
-/* cooling must be enabled for RT cooling to function */
-#if defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) && !defined(COOLING)
-#define COOLING
 #endif
 
 #if !defined(RT_USE_GRAVTREE) && defined(RT_SELFGRAVITY_OFF) && !defined(SELFGRAVITY_OFF)
@@ -992,18 +976,9 @@
 #define EVALPOTENTIAL
 #endif
 
-#if defined(SINK_REPOSITION_ON_POTMIN)
-#if (SINK_REPOSITION_ON_POTMIN < 0)
-#undef SINK_REPOSITION_ON_POTMIN // this is a key to un-define this variable if it is set, useful for some of the preset variable packages above //
-#endif
-#endif
-
 #if defined(SINK_PARTICLES) && (defined(SINK_REPOSITION_ON_POTMIN) || defined(SINK_SEED_FROM_FOF))
 #ifndef EVALPOTENTIAL
 #define EVALPOTENTIAL
-#endif
-#if !defined(SINK_DYNFRICTION) && (SINK_REPOSITION_ON_POTMIN == 2)
-#define SINK_DYNFRICTION 1 // use for local damping of anomalous velocities wrt background medium //
 #endif
 #endif
 
@@ -1157,10 +1132,10 @@
 #ifdef SINK_PARTICLES
 #define SINK_COUNTPROGS /* carries a counter for each BH that gives the total number of seeds that merged into it */
 #define SINK_ENFORCE_EDDINGTON_LIMIT /* put a hard limit on the maximum accretion rate (set SinkEddingtonFactor>>1 to allow super-eddington) */
-#if defined(SINK_PHOTONMOMENTUM) || defined(SINK_WIND_CONTINUOUS) || defined(RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION)
+#if defined(SINK_PHOTONMOMENTUM) || defined(RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION)
 #define SINK_CALC_LOCAL_ANGLEWEIGHTS
 #endif
-#if defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_NONGAS) || defined(SINK_CALC_LOCAL_ANGLEWEIGHTS) || defined(SINK_DYNFRICTION) || defined(SINK_EXCISION_NONGAS)
+#if defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_NONGAS) || defined(SINK_CALC_LOCAL_ANGLEWEIGHTS) || defined(SINK_REPOSITION_ON_POTMIN)
 #define SINK_NEIGHBOR_BITFLAG 63 /* allow all particle types in the BH search: 63=2^0+2^1+2^2+2^3+2^4+2^5 */
 #else
 #define SINK_NEIGHBOR_BITFLAG 33 /* only search for particles of types 0 and 5 (gas and sinks) around a primary BH particle */

@@ -151,8 +151,6 @@ void do_the_cooling_for_particle(int i)
         if(CellP[i].CoolingIsOperatorSplitThisTimestep==0) {CellP[i].DtInternalEnergy = DtInternalEnergyEffCGS;} // if unsplit, send this converted variable to cooling below
 #endif
 
-
-#if !defined(RT_COOLING_PHOTOHEATING_OLDFORMAT) /* standard behavior, call the actual cooling subroutine */
 #if !defined(CHIMES)
         ne_in = CellP[i].Ne; ne_out = ne_in; /* this variable is not defined if chimes is on */
 #endif
@@ -160,10 +158,6 @@ void do_the_cooling_for_particle(int i)
 #if !defined(CHIMES)
         CellP[i].Ne = ne_out; /* update the free electron variable */
 #endif
-#else
-        unew = uold + dtime * (rt_DoHeating(i, dtime) + rt_DoCooling(i, dtime));  /* call this special subroutine for cooling for the rt 'oldformat' [limited applications] */
-#endif
-
 
 #if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(CellP[i].DelayTimeHII > 0)

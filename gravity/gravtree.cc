@@ -214,9 +214,7 @@ void gravity_tree(void)
                 GravDataIn[j].Type = P[place].Type;
                 GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
                 GravDataIn[j].OldAcc = P[place].OldAcc;
-#ifdef GRAVDATA_IN_INCLUDES_MASS_FIELD
                 GravDataIn[j].Mass = P[place].Mass;
-#endif
 #if defined(SINK_DYNFRICTION_FROMTREE)
                 if(P[place].Type==5) {GravDataIn[j].Sink_Mass = P[place].Sink_Mass;}
 #endif

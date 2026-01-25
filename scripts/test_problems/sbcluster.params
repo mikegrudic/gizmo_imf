@@ -8,7 +8,6 @@
 % The following parameters are recommended, but not strictly necessary: 
 %
 %        PMGRID=32
-%        PM_HIRES_REGION_CLIPPING=1000
 %        MULTIPLEDOMAINS=16
 %        ADAPTIVE_GRAVSOFT_FORGAS
 %

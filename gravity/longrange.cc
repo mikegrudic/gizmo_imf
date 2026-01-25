@@ -20,18 +20,14 @@
 
 #ifdef PMGRID
 
-#ifdef USE_FFTW3
 #include <fftw3-mpi.h>
 #include "myfftw3.h"
-#endif
 
 
 /*! Driver routine to call initializiation of periodic or/and non-periodic FFT routines. */
 void long_range_init(void)
 {
-#ifdef USE_FFTW3
-  fftw_mpi_init(); 
-#endif
+  fftw_mpi_init();
 #ifdef BOX_PERIODIC
   pm_init_periodic();
 #ifdef PM_PLACEHIGHRESREGION

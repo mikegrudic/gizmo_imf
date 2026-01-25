@@ -20,21 +20,7 @@
 #ifdef PMGRID
 #ifdef BOX_PERIODIC
 
-#ifndef USE_FFTW3
-#ifdef NOTYPEPREFIX_FFTW
-#include        <rfftw_mpi.h>
-#else
-#ifdef DOUBLEPRECISION_FFTW
-#include     <drfftw_mpi.h>	/* double precision FFTW */
-#else
-#include     <srfftw_mpi.h>
-#endif
-#endif
-#define cmplx_re(c) ((c).re)
-#define cmplx_im(c) ((c).im)
-#else 
 #include "myfftw3.h"
-#endif
 
 #define  PMGRID2 (2*(PMGRID/2 + 1))
 
@@ -46,47 +32,25 @@ typedef unsigned int large_array_offset;
 
 #define d_fftw_real fftw_real
 
-#ifndef USE_FFTW3
-static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
-#else 
 static fftw_plan fft_forward_plan, fft_inverse_plan;
-#endif
-
-
 static int slab_to_task[PMGRID];
-#ifndef USE_FFTW3
-static int *slabs_per_task;
-static int *first_slab_of_task;
-#endif
-
-#ifndef USE_FFTW3
-static int slabstart_x, nslab_x, slabstart_y, nslab_y; //, smallest_slab;
-static int fftsize, maxfftsize;
-#else 
 static ptrdiff_t *slabs_per_task;
 static ptrdiff_t *first_slab_of_task;
 static ptrdiff_t slabstart_x, nslab_x, slabstart_y, nslab_y; 
 static ptrdiff_t fftsize, maxfftsize;
 static MPI_Datatype MPI_TYPE_PTRDIFF; 
-#endif
-
 static fftw_real *rhogrid, *forcegrid, *workspace;
 static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
+static fftw_complex *fft_of_rhogrid;
+static MyFloat to_slab_fac;
+void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch);
+void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch);
+int pm_periodic_compare_sortindex(const void *a, const void *b);
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 static fftw_real *tidal_workspace;
 static fftw_real *d_tidal_workspace;
 #endif
-
-
-static fftw_complex *fft_of_rhogrid;
-
-
-static MyFloat to_slab_fac;
-
-void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch);
-void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch);
-int pm_periodic_compare_sortindex(const void *a, const void *b);
 
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
 void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch);
@@ -109,27 +73,12 @@ static int *part_sortindex;
 void pm_init_periodic(void)
 {
   int i, slab_to_task_local[PMGRID];
-#ifdef USE_FFTW3
   double bytes_tot; bytes_tot = 0; size_t bytes;
-#endif
     
   All.Asmth[0] = PM_ASMTH * All.BoxSize / PMGRID; /* note that these routines REQUIRE a uniform (BOX_LONG_X=BOX_LONG_Y=BOX_LONG_Z=1) box, so we can just use 'BoxSize' */
   All.Rcut[0] = PM_RCUT * All.Asmth[0];
 
-#ifndef USE_FFTW3
-  /* Set up the FFTW plan files. */
-
-  fft_forward_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, PMGRID, PMGRID, PMGRID,
-					     FFTW_REAL_TO_COMPLEX, FFTW_ESTIMATE | FFTW_IN_PLACE);
-  fft_inverse_plan = rfftw3d_mpi_create_plan(MPI_COMM_WORLD, PMGRID, PMGRID, PMGRID,
-					     FFTW_COMPLEX_TO_REAL, FFTW_ESTIMATE | FFTW_IN_PLACE);
-
-  /* Workspace out the ranges on each processor. */
-
-  rfftwnd_mpi_local_sizes(fft_forward_plan, &nslab_x, &slabstart_x, &nslab_y, &slabstart_y, &fftsize);
-#else 
   /* define MPI_TYPE_PTRDIFF */
-
   if (sizeof(ptrdiff_t) == sizeof(long long)) {
     MPI_TYPE_PTRDIFF = MPI_LONG_LONG; 
   } else if (sizeof(ptrdiff_t) == sizeof(long)) {
@@ -139,11 +88,8 @@ void pm_init_periodic(void)
   }
 
   /* get local data size and allocate */
-
-  //fftsize = fftw_mpi_local_size_3d(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, &nslab_x, &slabstart_x); 
-  fftsize = fftw_mpi_local_size_3d_transposed(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD, 
+  fftsize = fftw_mpi_local_size_3d_transposed(PMGRID, PMGRID, PMGRID2, MPI_COMM_WORLD,
 	  &nslab_x, &slabstart_x, &nslab_y, &slabstart_y); 
-#endif
 
   for(i = 0; i < PMGRID; i++)
     slab_to_task_local[i] = 0;
@@ -153,22 +99,6 @@ void pm_init_periodic(void)
 
   MPI_Allreduce(slab_to_task_local, slab_to_task, PMGRID, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-#ifndef USE_FFTW3 
-  /* not used */
-  /*
-  MPI_Allreduce(&nslab_x, &smallest_slab, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-  */
-
-  slabs_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
-  MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_per_task, 1, MPI_INT, MPI_COMM_WORLD);
-
-  first_slab_of_task = (int *) mymalloc("first_slab_of_task", NTask * sizeof(int));
-  MPI_Allgather(&slabstart_x, 1, MPI_INT, first_slab_of_task, 1, MPI_INT, MPI_COMM_WORLD);
-
-  to_slab_fac = PMGRID / All.BoxSize;
-
-  MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-#else 
   slabs_per_task = (ptrdiff_t *) mymalloc("slabs_per_task", NTask * sizeof(ptrdiff_t));
   MPI_Allgather(&nslab_x, 1, MPI_TYPE_PTRDIFF, slabs_per_task, 1, MPI_TYPE_PTRDIFF, MPI_COMM_WORLD);
 
@@ -196,10 +126,7 @@ void pm_init_periodic(void)
 	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT); 
 
   fft_inverse_plan = fftw_mpi_plan_dft_c2r_3d(PMGRID, PMGRID, PMGRID, fft_of_rhogrid, rhogrid, 
-	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN); 
-
-#endif
-
+	  MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN);
 }
 
 
@@ -216,15 +143,6 @@ void pm_init_periodic_allocate(void)
   size_t bytes;
 
   /* allocate the memory to hold the FFT fields */
-
-#ifndef USE_FFTW3
-  if(!(rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real))))
-    {
-      printf("failed to allocate memory for `FFT-rhogrid' (%g MB).\n", bytes / (1024.0 * 1024.0));
-      endrun(1);
-    }
-  bytes_tot += bytes;
-#endif
 
   if(!(forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real))))
     {
@@ -264,10 +182,6 @@ void pm_init_periodic_allocate(void)
 
   workspace = forcegrid;
 
-#ifndef USE_FFTW3
-  fft_of_rhogrid = (fftw_complex *) & rhogrid[0];
-#endif
-
   d_rhogrid = (d_fftw_real *) rhogrid;
   d_forcegrid = (d_fftw_real *) forcegrid;
   d_workspace = (d_fftw_real *) workspace;
@@ -289,9 +203,6 @@ void pm_init_periodic_free(void)
   myfree(part_sortindex);
   myfree(part);
   myfree(forcegrid);
-#ifndef USE_FFTW3
-  myfree(rhogrid);
-#endif
 }
 
 #ifdef ALT_QSORT
@@ -599,12 +510,7 @@ void pmforce_periodic(int mode, int *typelist)
       /* Do the FFT of the density field */
 
       report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC");
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_forward_plan); 
-#endif
+      fftw_execute(fft_forward_plan);
 
       if(mode != 0)
 	{
@@ -676,12 +582,7 @@ void pmforce_periodic(int mode, int *typelist)
 	    cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
 	  /* Do the inverse FFT to get the potential */
-
-#ifndef USE_FFTW3
-	  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-	  fftw_execute(fft_inverse_plan);  
-#endif
+	  fftw_execute(fft_inverse_plan);
 
 	  /* Now rhogrid holds the potential */
 
@@ -1215,14 +1116,9 @@ void pmpotential_periodic(void)
   report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC_POTENTIAL");
 
   /* Do the FFT of the density field */
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_forward_plan); 
-#endif
+  fftw_execute(fft_forward_plan);
 
   /* multiply with Green's function for the potential */
-
   for(y = slabstart_y; y < slabstart_y + nslab_y; y++)
     for(x = 0; x < PMGRID; x++)
       for(z = 0; z < PMGRID / 2 + 1; z++)
@@ -1279,17 +1175,10 @@ void pmpotential_periodic(void)
     cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
   /* Do the inverse FFT to get the potential */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_inverse_plan); 
-#endif
-
+  fftw_execute(fft_inverse_plan);
   /* Now rhogrid holds the potential */
 
-
-  /* now read out the potential */
+    /* now read out the potential */
 
   /* send the force components to the right processors */
 
@@ -1471,28 +1360,7 @@ void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch)
 	      field[PMGRID2 * (PMGRID * x + y) + z];
 	  }
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(scratch + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(field + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1507,7 +1375,6 @@ void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
 }
 
 
@@ -1515,31 +1382,7 @@ void pm_periodic_transposeA(fftw_real * field, fftw_real * scratch)
 void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
-
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(field + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(scratch + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1554,7 +1397,6 @@ void pm_periodic_transposeB(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
 
   for(task = 0; task < NTask; task++)
     for(x = 0; x < nslab_x; x++)
@@ -1583,28 +1425,7 @@ void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch)
 	      field[PMGRID2 * (PMGRID * x + y) + z];
 	  }
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(scratch + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(field + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1619,7 +1440,6 @@ void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
 }
 
 
@@ -1627,31 +1447,7 @@ void pm_periodic_transposeAz(fftw_real * field, fftw_real * scratch)
 void pm_periodic_transposeBz(fftw_real * field, fftw_real * scratch)
 {
   int x, y, z, task;
-
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  MPI_Request *requests;
-  int nrequests = 0;
-
-  requests = (MPI_Request *) mymalloc("requests", 2 * NTask * sizeof(MPI_Request));
-
-  for(task = 0; task < NTask; task++)
-    {
-      MPI_Isend(field + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-
-      MPI_Irecv(scratch + PMGRID * first_slab_of_task[task] * nslab_x,
-		PMGRID * nslab_x * slabs_per_task[task] * sizeof(fftw_real),
-		MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
-    }
-
-
-  MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
-  myfree(requests);
-
-#else
   int ngrp;
-
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
     {
       task = ThisTask ^ ngrp;
@@ -1666,8 +1462,6 @@ void pm_periodic_transposeBz(fftw_real * field, fftw_real * scratch)
 		       MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-#endif
-
   for(task = 0; task < NTask; task++)
     for(x = 0; x < nslab_x; x++)
       for(y = 0; y < PMGRID; y++)
@@ -1954,15 +1748,9 @@ void pmtidaltensor_periodic_diff(void)
       /* Do the FFT of the density field */
 
       report_memory_usage(&HighMark_pmperiodic, "PM_PERIODIC");
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_forward_plan); 
-#endif
+      fftw_execute(fft_forward_plan);
 
       /* multiply with Green's function for the potential */
-
       for(y = slabstart_y; y < slabstart_y + nslab_y; y++)
 	for(x = 0; x < PMGRID; x++)
 	  for(z = 0; z < PMGRID / 2 + 1; z++)
@@ -2024,13 +1812,7 @@ void pmtidaltensor_periodic_diff(void)
 	cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
       /* Do the inverse FFT to get the potential */
-
-#ifndef USE_FFTW3
-      rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-      fftw_execute(fft_inverse_plan); 
-#endif
-
+      fftw_execute(fft_inverse_plan);
       /* Now rhogrid holds the potential */
 
 
@@ -2669,15 +2451,9 @@ void pmtidaltensor_periodic_fourier(int component)
     }
 
   /* Do the FFT of the density field */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_forward_plan); 
-#endif
-
+  fftw_execute(fft_forward_plan);
+    
   /* multiply with Green's function for the potential */
-
   for(y = slabstart_y; y < slabstart_y + nslab_y; y++)
     for(x = 0; x < PMGRID; x++)
       for(z = 0; z < PMGRID / 2 + 1; z++)
@@ -2771,15 +2547,8 @@ void pmtidaltensor_periodic_fourier(int component)
     cmplx_re(fft_of_rhogrid[0]) = cmplx_im(fft_of_rhogrid[0]) = 0.0;
 
   /* Do the inverse FFT to get the tidal tensor component */
-
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
-  fftw_execute(fft_inverse_plan); 
-#endif
-
+  fftw_execute(fft_inverse_plan);
   /* Now rhogrid holds the tidal tensor componet */
-
 
   /* now read out the tidal tensor component */
 
@@ -3455,11 +3224,7 @@ void foldonitself(int *typelist)
   tstart = my_second();
 
   /* Do the FFT of the self-folded density field */
-#ifndef USE_FFTW3
-  rfftwnd_mpi(fft_forward_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
-#else 
   fftw_execute(fft_forward_plan);
-#endif
 
   tend = my_second();
 

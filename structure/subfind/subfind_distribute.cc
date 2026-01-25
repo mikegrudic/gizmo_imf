@@ -168,70 +168,9 @@ void subfind_distribute_particles(int mode)
 	}
     }
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-  int n_requests = 0, max_requests = 2;
-
-  MPI_Request *requests = (MPI_Request *) mymalloc("requests", max_requests * NTask * sizeof(MPI_Request));
-
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
       target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(Recv_count[target] > 0)
-	    MPI_Irecv(P + NumPart + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data),
-		      MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	}
-    }
-
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(Send_count[target] > 0)
-	    MPI_Isend(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data),
-		      MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	}
-    }
-
-  MPI_Waitall(n_requests, requests, MPI_STATUSES_IGNORE);
-
-  if(n_requests > max_requests * NTask)
-    {
-      printf("Not enough memory reserved for requests: %d > %d !\n", n_requests, max_requests * NTask);
-      endrun(52099);
-    }
-
-  myfree(requests);
-
-#else
-
-  /*
-     double t0, t1;
-
-     t0 = my_second();
-   */
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      /*
-         if(NTask > 512)
-         {
-         if(ThisTask == 0)
-         {
-         t1 = my_second();
-         printf("ngrp=%d %g sec\n", ngrp, timediff(t0, t1));
-         fflush(stdout);
-         t0 = my_second();
-         }
-         }
-       */
-      target = ThisTask ^ ngrp;
-
       if(target < NTask)
 	{
 	  MPI_Sendrecv(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data),
@@ -240,9 +179,6 @@ void subfind_distribute_particles(int mode)
 		       MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
     }
-
-#endif
-
   NumPart += nimport;
 
   myfree(partBuf);
@@ -409,78 +345,6 @@ void subfind_exchange(void)
     offset_recv[i] = offset_recv[i - 1] + count_recv[i - 1];
 
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-
-  int n_requests = 0, max_requests = 6;
-  MPI_Request *requests;
-
-  requests = (MPI_Request *) mymalloc("requests", max_requests * NTask * sizeof(MPI_Request));
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(count_recv_gas[target] > 0)
-	    {
-	      MPI_Irecv(P + offset_recv_gas[target], count_recv_gas[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(CellP + offset_recv_gas[target],
-			count_recv_gas[target] * sizeof(struct gas_cell_data), MPI_BYTE, target,
-			TAG_GASDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-
-
-	  if(count_recv[target] > 0)
-	    {
-	      MPI_Irecv(P + offset_recv[target], count_recv[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-	}
-    }
-
-
-  MPI_Barrier(MPI_COMM_WORLD);	/* not really necessary, but this will guarantee that all receives are
-				   posted before the sends, which helps the stability of MPI on
-				   bluegene, and perhaps some mpich1-clusters */
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(count_gas[target] > 0)
-	    {
-	      MPI_Isend(partBuf + offset_gas[target], count_gas[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(gasBuf + offset_gas[target], count_gas[target] * sizeof(struct gas_cell_data),
-			MPI_BYTE, target, TAG_GASDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-
-	  if(count[target] > 0)
-	    {
-	      MPI_Isend(partBuf + offset[target], count[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-	}
-    }
-
-  MPI_Waitall(n_requests, requests, MPI_STATUSES_IGNORE);
-
-  if(n_requests > max_requests * NTask)
-    {
-      printf("Not enough memory reserved for requests: %d > %d !\n", n_requests, max_requests * NTask);
-      endrun(52098);
-    }
-
-  myfree(requests);
-
-#else /* NO_ISEND_IRECV_IN_DOMAIN */
-
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
       target = ThisTask ^ ngrp;
@@ -511,10 +375,6 @@ void subfind_exchange(void)
 	    }
 	}
     }
-
-
-#endif
-
 
   NumPart += count_get;
   if(NumPart > All.MaxPart)

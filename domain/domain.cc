@@ -747,124 +747,6 @@ void domain_exchange(void)
     {offset_recv[i] = offset_recv[i - 1] + count_recv[i - 1];}
 
 
-#ifndef NO_ISEND_IRECV_IN_DOMAIN
-
-  int n_requests = 0, max_requests = 10;
-  MPI_Request *requests;
-
-#ifdef CHIMES
-  max_requests += 4; 
-#endif 
-
-  requests = (MPI_Request *) mymalloc("requests", max_requests * NTask * sizeof(MPI_Request));
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(count_recv_gas[target] > 0)
-	    {
-	      MPI_Irecv(P + offset_recv_gas[target], count_recv_gas[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(Key + offset_recv_gas[target], count_recv_gas[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(CellP + offset_recv_gas[target],
-			count_recv_gas[target] * sizeof(struct gas_cell_data), MPI_BYTE, target,
-			TAG_GASDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-#ifdef CHIMES 
-	      MPI_Irecv(ChimesGasVars + offset_recv_gas[target],
-			count_recv_gas[target] * sizeof(struct gasVariables), MPI_BYTE, target,
-			TAG_CHIMESDATA, MPI_COMM_WORLD, &requests[n_requests++]); 
-
-#ifdef CHIMES_USE_DOUBLE_PRECISION
-	      MPI_Irecv(gasAbundancesRecvBuf + ((offset_recv_gas[target] - offset_recv_gas[0]) * ChimesGlobalVars.totalNumberOfSpecies),
-			count_recv_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, TAG_ABUNDATA, 
-			MPI_COMM_WORLD, &requests[n_requests++]); 
-#else 
-	      MPI_Irecv(gasAbundancesRecvBuf + ((offset_recv_gas[target] - offset_recv_gas[0]) * ChimesGlobalVars.totalNumberOfSpecies),
-			count_recv_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, TAG_ABUNDATA, 
-			MPI_COMM_WORLD, &requests[n_requests++]); 
-#endif
-#endif 
-	    }
-
-
-	  if(count_recv[target] > 0)
-	    {
-	      MPI_Irecv(P + offset_recv[target], count_recv[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Irecv(Key + offset_recv[target], count_recv[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-	}
-    }
-
-
-  MPI_Barrier(MPI_COMM_WORLD);	/* not really necessary, but this will guarantee that all receives are
-				   posted before the sends, which helps the stability of MPI on 
-				   bluegene, and perhaps some mpich1-clusters */
-
-  for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
-    {
-      target = ThisTask ^ ngrp;
-
-      if(target < NTask)
-	{
-	  if(count_gas[target] > 0)
-	    {
-	      MPI_Isend(partBuf + offset_gas[target], count_gas[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(keyBuf + offset_gas[target], count_gas[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY_GAS, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(gasBuf + offset_gas[target], count_gas[target] * sizeof(struct gas_cell_data),
-			MPI_BYTE, target, TAG_GASDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-#ifdef CHIMES 
-	      MPI_Isend(gasChimesBuf + offset_gas[target], count_gas[target] * sizeof(struct gasVariables),
-			MPI_BYTE, target, TAG_CHIMESDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-
-#ifdef CHIMES_USE_DOUBLE_PRECISION
-	      MPI_Isend(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
-			count_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_DOUBLE, target, 
-			TAG_ABUNDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-#else 
-	      MPI_Isend(gasAbundancesBuf + (offset_gas[target] * ChimesGlobalVars.totalNumberOfSpecies),
-			count_gas[target] * ChimesGlobalVars.totalNumberOfSpecies, MPI_FLOAT, target, 
-			TAG_ABUNDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-#endif 
-#endif 
-	    }
-
-
-
-	  if(count[target] > 0)
-	    {
-	      MPI_Isend(partBuf + offset[target], count[target] * sizeof(struct particle_data),
-			MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, &requests[n_requests++]);
-
-	      MPI_Isend(keyBuf + offset[target], count[target] * sizeof(peanokey),
-			MPI_BYTE, target, TAG_KEY, MPI_COMM_WORLD, &requests[n_requests++]);
-	    }
-	}
-    }
-
-  MPI_Waitall(n_requests, requests, MPI_STATUSES_IGNORE);
-
-  if(n_requests > max_requests * NTask)
-    {
-      printf("Not enough memory reserved for requests: %d > %d !\n", n_requests, max_requests * NTask);
-      endrun(52097);
-    }
-
-  myfree(requests);
-#else
-
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
       target = ThisTask ^ ngrp;
@@ -925,9 +807,6 @@ void domain_exchange(void)
 	    }
 	}
     }
-
-
-#endif
 
 #ifdef CHIMES 
   /* Loop through received gas cells and read in abundances from the buffer. */ 
@@ -1299,78 +1178,27 @@ void domain_findSplit_load_balanced(int ncpu, int ndomain)
 {
   int i, start, end;
   double load, loadavg, load_before, loadavg_before, fac_load, fac;
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-   double loadGas=0, fac_loadGas=0;
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-  double loadStars=0, fac_loadStars=0;
-#endif
-
   for(i = 0, load = 0; i < ndomain; i++)
     {
       load += domainCount[i];
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-      loadGas += domainCountGas[i];
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-      loadStars += domainCountStars[i];
-#endif
     }
-
   fac = 1;
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-  if(loadGas > 0) {fac = fac + 1;}
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-  if(loadStars > 0) {fac = fac + 1;}
-#endif
-  fac = 1./fac;
-
   fac_load = fac / load;
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-  if(loadGas > 0) {fac_loadGas = fac / loadGas;}
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-  if(loadStars > 0) {fac_loadStars = fac / loadStars;}
-#endif
-
   loadavg = 1.0 / ncpu;
-
   load_before = loadavg_before = 0;
-
   start = 0;
-
   for(i = 0; i < ncpu; i++)
     {
       load = 0;
       end = start;
-
       load += fac_load * domainCount[end];
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-      load += fac_loadGas * domainCountGas[end];
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-      load += fac_loadStars * domainCountStars[end];
-#endif
       while((load + load_before < loadavg + loadavg_before) || (i == ncpu - 1 && end < ndomain - 1))
 	{
-	  if((ndomain - end) > (ncpu - i))
-	    {end++;}
-	  else
-	    {break;}
-
+	  if((ndomain - end) > (ncpu - i)) {end++;} else {break;}
 	  load += fac_load * domainCount[end];
-#ifdef KD_COUNT_GAS_IN_DOMAIN
-	  load += fac_loadGas * domainCountGas[end];
-#endif
-#ifdef KD_COUNT_STARS_IN_DOMAIN
-	  load += fac_loadStars * domainCountStars[end];
-#endif
 	}
-
       DomainStartList[i] = start;
       DomainEndList[i] = end;
-
       load_before += load;
       loadavg_before += loadavg;
       start = end + 1;

@@ -111,7 +111,7 @@ void read_ic(char *fname)
 
 
 #if defined(SINK_PARTICLES)
-#if defined(SINK_SWALLOWGAS) || defined(SINK_BONDI) || defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_SEED_FROM_LOCALGAS)
+#if defined(SINK_SWALLOWGAS) || defined(SINK_WIND_KICK) || defined(SINK_GRAVACCRETION) || defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_SEED_FROM_LOCALGAS)
     if(RestartFlag == 0) {All.MassTable[5] = 0;}
 #endif
 #endif
@@ -537,22 +537,10 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_UNSPMASS:
-#if defined(SINK_WIND_SPAWN) && defined(SINK_DEBUG_SPAWN_JET_TEST)
+#if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS)
              for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_mass = *fp++;}
 #endif
             break; 
-            
-        case IO_IDEN:
-#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
-             for(n = 0; n < pc; n++) {CellP[offset + n].IniDen = *fp++;}
-#endif
-            break;
-            
-        case IO_INIB:        
-#if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) && defined(SINK_DEBUG_SPAWN_JET_TEST)
-             for(n = 0; n < pc; n++) {for(k=0;k<3;k++) {CellP[offset + n].IniB[k] = *fp++;}}
-#endif      
-            break;  
             
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC

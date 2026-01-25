@@ -628,11 +628,6 @@ integertime get_timestep(int p,		/*!< particle index */
                     dt_conduction = L_cr_weak * coeff_inv; /* streaming allows weaker timestep criterion because it's really an advection equation */
                     explicit_timestep_on = 0;
 #endif
-#ifndef CRFLUID_ALT_DISABLE_STREAMING
-                    /* estimate whether diffusion is streaming-dominated: use stronger/weaker criterion accordingly */
-                    double diffusion_from_streaming = (GAMMA_COSMICRAY(k_CRegy)/(GAMMA_COSMICRAY(k_CRegy)-1.)) * Get_CosmicRayStreamingVelocity(p,k_CRegy) * CRPressureGradScaleLength;
-                    if(diffusion_from_streaming > 0.75*kappa_cr_eff) {dt_conduction = L_cr_weak * coeff_inv; explicit_timestep_on = 0;}
-#endif
 #ifdef GALSF
                     /* for multi-physics problems, we will use a more aggressive timestep criterion
                      based on whether or not the cosmic ray physics are relevant for what we are modeling */
@@ -662,7 +657,6 @@ integertime get_timestep(int p,		/*!< particle index */
                         if(dt_conduction < dt) dt = dt_conduction; // this is an advective timestep and super-stepping doesn't apply
                     }
 #else
-#if !defined(CRFLUID_ALT_PUREDIFFUSION)
                     double cr_m1_speed = CRFLUID_REDUCED_C_CODE(k_CRegy); // pull for use below
                     if(cr_diffusion_opt==1)
                     {
@@ -678,7 +672,6 @@ integertime get_timestep(int p,		/*!< particle index */
                         double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_m1_speed;
                         dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                     }
-#endif
                     if(dt_conduction < dt) dt = dt_conduction; // normal explicit time-step
 #endif
                 }
@@ -834,33 +827,6 @@ integertime get_timestep(int p,		/*!< particle index */
             }
 
 
-#ifdef NUCLEAR_NETWORK
-            double dt_network, dt_species;
-            if(CellP[p].Temperature > 1e7)
-            {
-                /* check if the new timestep blows up our abundances */
-                dt_network = dt * UNIT_TIME_IN_CGS;
-                for(k = 0; k < EOS_NSPECIES; k++)
-                {
-                    if(CellP[p].dxnuc[k] > 0)
-                    {
-                        dt_species = (1.0 - CellP[p].xnuc[k]) / CellP[p].dxnuc[k];
-                        if(dt_species < dt_network) {dt_network = dt_species;}
-                    }
-                    else if(CellP[p].dxnuc[k] < 0)
-                    {
-                        dt_species = (0.0 - CellP[p].xnuc[k]) / CellP[p].dxnuc[k];
-                        if(dt_species < dt_network) {dt_network = dt_species;}
-                    }
-
-                }
-
-                dt_network /= UNIT_TIME_IN_CGS;
-                if(dt_network < dt) {dt = dt_network;}
-            }
-#endif
-
-
 #if defined(TURB_DRIVING) && !defined(TURB_DRIVING_UPDATE_FORCE_ON_TURBUPDATE)
                 /* gas cannot step larger than major updates to turbulent driving routine */
                 double dt_turb_driving = 1.9 * st_return_dt_between_updates();
@@ -984,11 +950,6 @@ integertime get_timestep(int p,		/*!< particle index */
     
     
 #ifdef SINK_PARTICLES
-
-#ifdef SINK_WAKEUP_GAS
-    if(P[p].Type == 0) {double dt_sink = 2.*GET_PHYSICAL_TIMESTEP_FROM_TIMEBIN(P[p].LowestSinkTimeBin,p); if(dt>dt_sink) {dt=0.99*dt_sink; P[p].LowestSinkTimeBin=TIMEBINS;}}
-#endif
-
     if(P[p].Type == 5)
     {
 #if !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF)
@@ -998,14 +959,13 @@ integertime get_timestep(int p,		/*!< particle index */
 #endif
         if(P[p].Sink_Mdot > 0 && P[p].Sink_Mass > 0 && All.Time > All.TimeBegin)
         {
-#if (defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
+#if (defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_WIND_KICK)) && !defined(SINGLE_STAR_SINK_DYNAMICS)
             /* really want prefactor to be ratio of median gas mass to sink mass */
             dt_accr = 0.001 * DMAX(P[p].Sink_Mass, All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
-#if defined(SINK_WIND_CONTINUOUS) || defined(SINK_WIND_KICK)
+#if defined(SINK_WIND_KICK)
             dt_accr *= DMAX(0.1, All.Sink_accreted_fraction);
 #endif
 #else
-            //dt_accr = 0.05 * DMAX(P[p].Sink_Mass , All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
             dt_accr = 0.001 * DMIN(P[p].Sink_Mass, All.MaxMassForParticleSplit) / P[p].Sink_Mdot;
 #endif
 #ifdef SINGLE_STAR_FB_JETS	    

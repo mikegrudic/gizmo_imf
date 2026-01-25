@@ -102,14 +102,6 @@ void lineofsight_output(void)
 
   for(n = 0, s = 0; n < N_LOS; n++)
     {
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-      if(s + 3 >= RNDTABLE)
-	{
-	  set_random_numbers();
-	  s = 0;
-	}
-#endif
-
       Los->zaxis = (int) (3.0 * get_random_number(s++));
       switch (Los->zaxis)
 	{

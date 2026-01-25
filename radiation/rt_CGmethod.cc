@@ -422,20 +422,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
     if(local.KernelRadius<=0) return 0; // zero-extent kernel, no particles //
     double hinv, hinv3, hinv4, h2=local.KernelRadius*local.KernelRadius;
     kernel_hinv(local.KernelRadius, &hinv, &hinv3, &hinv4);
-    double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * UNIT_INTEGERTIME_IN_PHYSICAL(-1);
-#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
-    /*modify Eddington tensor */
-    for(j=0;j<N_RT_FREQ_BINS;j++)
-    {
-        double ET[6];
-        int kET; for(kET = 0; k < 6; k++) {ET[k] = local.ET[j][k];}
-        local.ET[j][0] = 2.*ET[0] - 0.5*ET[1] - 0.5*ET[2];
-        local.ET[j][1] = 2.*ET[1] - 0.5*ET[2] - 0.5*ET[0];
-        local.ET[j][2] = 2.*ET[2] - 0.5*ET[0] - 0.5*ET[1];
-        for(k=3;k<6;k++) {local.ET[j][k] = 2.5*ET[k];}
-    }
-#endif
-    
+    double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * UNIT_INTEGERTIME_IN_PHYSICAL(-1);    
     /* Now start the actual operations for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = rt_cg_DataGet[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;/* open it */}
     while(startnode >= 0)
@@ -473,17 +460,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
                     {
                 
                         double ET_ij[6];
-#ifdef RT_DIFFUSION_CG_MODIFY_EDDINGTON_TENSOR
-                        double ET_j[6];
-                        ET_j[0] = 2.*CellP[j].ET[k][0] - 0.5*CellP[j].ET[k][1] - 0.5*CellP[j].ET[k][2];
-                        ET_j[1] = 2.*CellP[j].ET[k][1] - 0.5*CellP[j].ET[k][2] - 0.5*CellP[j].ET[k][0];
-                        ET_j[2] = 2.*CellP[j].ET[k][2] - 0.5*CellP[j].ET[k][0] - 0.5*CellP[j].ET[k][1];
-                        int kET;
-                        for(kET=3;kET<6;kET++) {ET_j[kET] = 2.5*CellP[j].ET[k][kET];}
-                        for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + ET_j[kET]);}
-#else
                         int kET; for(kET=0;kET<6;kET++) {ET_ij[kET] = 0.5 * (local.ET[k][kET] + CellP[j].ET[k][kET]);}
-#endif
                         double tensor = (ET_ij[0]*dp[0]*dp[0] + ET_ij[1]*dp[1]*dp[1] + ET_ij[2]*dp[2]*dp[2]
                                          + 2.*ET_ij[3]*dp[0]*dp[1] + 2.*ET_ij[4]*dp[1]*dp[2] + 2.*ET_ij[5]*dp[2]*dp[0]) / r2;
                         double kappa_ij = 0.5*(local.RT_DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));

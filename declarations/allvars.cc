@@ -205,16 +205,9 @@ int *DomainCountGas;
 int *DomainTask;
 int *DomainNodeIndex;
 int *DomainList, DomainNumChanged;
-
 peanokey *Key, *KeySorted;
-
 struct topnode_data *TopNodes;
-
 int NTopnodes, NTopleaves;
-
-#ifdef USE_PREGENERATED_RANDOM_NUMBER_TABLE
-double RndTable[RNDTABLE];
-#endif
 
 #ifdef SUBFIND
 int GrNr;
