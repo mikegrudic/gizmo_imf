@@ -463,8 +463,8 @@ extern struct global_data_all_processes
   long long TotNumOfForces;	/*!< counts total number of force computations  */
   long long NumForcesSinceLastDomainDecomp;	/*!< count particle updates since last domain decomposition */
 
-  /* some variable for dynamic work-load adjustment based on CPU measurements */
-  double cf_atime, cf_a2inv, cf_a3inv, cf_afac1, cf_afac2, cf_afac3, cf_hubble_a, cf_hubble_a2;   /* various cosmological factors that are only a function of the current scale factor, and in Newtonian runs are set to 1 */
+  /* various cosmological factors that are only a function of the current scale factor, and in Newtonian runs are set to 1 */
+  double cf_atime, cf_a2inv, cf_a3inv, cf_hubble_a, cf_hubble_a2;
 
   /* system of units  */
   double UnitMass_in_g,		        /*!< factor to convert internal mass unit to grams/h */

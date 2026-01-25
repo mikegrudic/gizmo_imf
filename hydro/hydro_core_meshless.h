@@ -6,13 +6,6 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
-//#if defined(HYDRO_MESHLESS_FINITE_VOLUME) && !(defined(GALSF) || defined(COOLING))
-//#define DO_HALFSTEP_FOR_MESHLESS_METHODS 1
-//#endif
-#if (SLOPE_LIMITER_TOLERANCE==0)
-#define HYDRO_FACE_AREA_LIMITER // use more restrictive face-area limiter in the simulations [some applications this is useful, but unclear if we can generally apply it] //
-#endif
-    
     double s_star_ij,s_i,s_j,v_frame[3],dummy_pressure,distance_from_i[3],distance_from_j[3],leak_vs_tol=0;
 #if !(defined(HYDRO_KERNEL_SURFACE_VOLCORR) || defined(EOS_ELASTIC))
     leak_vs_tol = 0.5 * (local.FaceClosureError+CellP[j].FaceClosureError);
@@ -69,24 +62,16 @@
         /* --------------------------------------------------------------------------------- */
         s_i =  0.5 * kernel.r;
         s_j = -0.5 * kernel.r;
-#ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
-        /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
-            very, very weak effects on the errors. nonetheless it does help a small amount in reducing
-            certain types of noise and oscillations (but not always!) */
-        s_i += 0.5 * DMIN(dt_hydrostep_i,dt_hydrostep_j) * (local.Vel[0]*kernel.dp[0] + local.Vel[1]*kernel.dp[1] + local.Vel[2]*kernel.dp[2]) * rinv;
-        s_j += 0.5 * DMIN(dt_hydrostep_i,dt_hydrostep_j) * (VelPred_j[0]*kernel.dp[0] + VelPred_j[1]*kernel.dp[1] + VelPred_j[2]*kernel.dp[2]) * rinv;
-#endif
         s_i = s_star_ij - s_i; /* projection element for gradients */
         s_j = s_star_ij - s_j;
         distance_from_i[0]=kernel.dp[0]*rinv; distance_from_i[1]=kernel.dp[1]*rinv; distance_from_i[2]=kernel.dp[2]*rinv;
         for(k=0;k<3;k++) {distance_from_j[k] = distance_from_i[k] * s_j; distance_from_i[k] *= s_i;}
-        //for(k=0;k<3;k++) {v_frame[k] = 0.5 * (VelPred_j[k] + local.Vel[k]);}
         for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*VelPred_j[k] + s_j*local.Vel[k]);} // allows for face to be off-center (to second-order)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
         for(k=0;k<3;k++) {v_frame[k] = rinv * (-s_i*ParticleVel_j[k] + s_j*local.ParticleVel[k]);}
 #endif
-        // (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
-        //   particle with the smaller smoothing length; so it's values are slightly up-weighted //
+        /* (note that in the above, the s_i/s_j terms are crossed with the opposing velocity terms: this is because the face is closer to the
+         particle with the smaller smoothing length; so it's values are slightly up-weighted */
         
         /* we need the face velocities, dotted into the face vector, for correction back to the lab frame */
         for(k=0;k<3;k++) {face_vel_i+=local.Vel[k]*n_unit[k]; face_vel_j+=VelPred_j[k]*n_unit[k];}
@@ -108,7 +93,6 @@
 #if defined(GALSF) || defined(COOLING)
         if(fabs(vdotr2_phys)*UNIT_VEL_IN_KMS > 1000.) {recon_mode = 0;} // particle approach/recession velocity > 1000 km/s: be extra careful here!
 #endif
-        //if(kernel.r > local.KernelRadius || kernel.r > P[j].KernelRadius) {recon_mode = 0;} // some extrapolation: this is more conservative but does help preserve contact discontinuities (perhaps too well?)
         if(leak_vs_tol > 1) {recon_mode = 0;}
         
         double rho_i=local.Density, rho_j=CellP[j].Density, P_i=Pressure_i, P_j=Pressure_j; // initialize for below
@@ -148,28 +132,6 @@
                                 distance_from_i, distance_from_j, &Riemann_vec.L.phi, &Riemann_vec.R.phi, 2);
 #endif
 #endif
-        
-
-#ifdef DO_HALFSTEP_FOR_MESHLESS_METHODS
-        /* advance the faces a half-step forward in time (given our leapfrog scheme, this actually has
-            very, very weak effects on the errors. nonetheless it does help a small amount in reducing 
-            certain types of noise and oscillations */
-        double dt_half = 0.5*DMIN(dt_hydrostep_i,dt_hydrostep_j);
-        for(k=0;k<3;k++)
-        {
-            Riemann_vec.R.rho -= dt_half * local.Density * local.Gradients.Velocity[k][k];
-            Riemann_vec.L.rho -= dt_half * CellP[j].Density * CellP[j].Gradients.Velocity[k][k];
-            Riemann_vec.R.p -= dt_half * GAMMA(j) * Pressure_i * local.Gradients.Velocity[k][k];
-            Riemann_vec.L.p -= dt_half * GAMMA(j) * Pressure_j * CellP[j].Gradients.Velocity[k][k];
-            double dv_l_half = -dt_half * local.Gradients.Pressure[k] / local.Density;
-            double dv_r_half = -dt_half * CellP[j].Gradients.Pressure[k] / CellP[j].Density;
-            Riemann_vec.R.v[k] += 0.5 * (dv_l_half - dv_r_half);
-            Riemann_vec.L.v[k] += 0.5 * (dv_r_half - dv_l_half);
-            v_frame[k] += 0.5*(dv_l_half + dv_r_half);
-        }
-#endif
-        
-       
         /* estimate maximum upwind pressure */
         double press_i_tot = Pressure_i + local.Density * v2_approach;
         double press_j_tot = Pressure_j + CellP[j].Density * v2_approach;

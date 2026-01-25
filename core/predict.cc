@@ -458,7 +458,7 @@ double Get_DtB_FaceArea_Limiter(int i)
     }
     dBmag = sqrt(dBmag); Bmag = sqrt(Bmag);
     /* also make sure to check the actual pressure, since if P>>B, we will need to allow larger changes in B per timestep */
-    double P_BV_units = sqrt(2.*CellP[i].Pressure*All.cf_a3inv)*P[i].Mass/CellP[i].Density * All.cf_afac3 / All.cf_a2inv;
+    double P_BV_units = sqrt(2.*CellP[i].Pressure*All.cf_a3inv)*P[i].Mass/CellP[i].Density / All.cf_a2inv;
     /* the above should be in CODE Bcode*Vol_code units! */
     double Bmag_max = DMAX(Bmag, DMIN( P_BV_units, 10.*Bmag ));
     /* now check how accurately the cell is 'closed': the face areas are ideally zero */
@@ -494,7 +494,7 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
     /* this timescale should always be returned as a -physical- time */
 #ifdef HYDRO_SPH
     /* PFH: add simple damping (-phi/tau) term */
-    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (CellP[i_particle_id].MaxSignalVel*All.cf_afac3 / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (CellP[i_particle_id].MaxSignalVel / (All.cf_atime*Get_Particle_Size(i_particle_id)));
 #else
     double damping_tinv;
 #ifdef SELFGRAVITY_OFF
@@ -507,15 +507,14 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
     if(P[i_particle_id].KernelRadius > 0)
     {
         double h_eff = Get_Particle_Size(i_particle_id);
-        double vsig2 = 0.5 * All.cf_afac3 * fabs(CellP[i_particle_id].MaxSignalVel);
+        double vsig2 = 0.5 * fabs(CellP[i_particle_id].MaxSignalVel);
         double phi_B_eff = 0.0;
         if(vsig2 > 0) {phi_B_eff = Get_Gas_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
         double vsig1 = 0.0;
         if(CellP[i_particle_id].Density > 0)
         {
-            vsig1 = All.cf_afac3 *
-            sqrt( Get_Gas_effective_soundspeed_i(i_particle_id)*Get_Gas_effective_soundspeed_i(i_particle_id) +
-                 (All.cf_afac1 / All.cf_atime) *
+            vsig1 = sqrt( Get_Gas_effective_soundspeed_i(i_particle_id)*Get_Gas_effective_soundspeed_i(i_particle_id) +
+                 (1. / All.cf_atime) *
                  (Get_Gas_BField(i_particle_id,0)*Get_Gas_BField(i_particle_id,0) +
                   Get_Gas_BField(i_particle_id,1)*Get_Gas_BField(i_particle_id,1) +
                   Get_Gas_BField(i_particle_id,2)*Get_Gas_BField(i_particle_id,2) +

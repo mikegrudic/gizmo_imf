@@ -78,7 +78,7 @@ void set_eos_pressure(int i)
 #endif
     
 #ifdef GALSF_EFFECTIVE_EQS /* modify pressure to 'interpolate' between effective EOS and isothermal, with the Springel & Hernquist 2003 'effective' EOS */
-    if(CellP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS) * All.cf_afac1 * (gamma_eos_index-1) * CellP[i].Density * All.InitGasU;}
+    if(CellP[i].Density*All.cf_a3inv >= All.PhysDensThresh) {press = All.FactorForSofterEQS * press + (1 - All.FactorForSofterEQS)  * (gamma_eos_index-1) * CellP[i].Density * All.InitGasU;}
 #endif    
     
 #ifdef EOS_HELMHOLTZ /* pass the necessary quantities to wrappers for the Timms EOS */
@@ -162,7 +162,7 @@ void set_eos_pressure(int i)
     /* standard finite-volume formulation of this (note there is some geometric ambiguity about whether there should be a "pi" in the equation below, but this 
         can be completely folded into the (already arbitrary) definition of NJeans, so we just use the latter parameter */
     double NJeans = 4; // set so that resolution = lambda_Jeans/NJeans -- fragmentation with Jeans/Toomre scales below this will be artificially suppressed now
-    double xJeans = (NJeans * NJeans / gamma_eos_index) * All.G * h_eff*h_eff * CellP[i].Density * CellP[i].Density * All.cf_afac1/All.cf_atime;
+    double xJeans = (NJeans * NJeans / gamma_eos_index) * All.G * h_eff*h_eff * CellP[i].Density * CellP[i].Density /All.cf_atime;
     if(xJeans>press) press=xJeans;
 #endif
     
@@ -714,11 +714,11 @@ void calculate_and_assign_conduction_and_viscosity_coefficients(int i)
 #if defined(COOLING) /* get the ionized fraction. NOTE we CANNOT call 'ThermalProperties' or functions like 'Get_Ionized_Fraction' here in gradients.c, as we have not done self-shielding steps yet and most modules will yield unphysical answers! */
     ion_frac = CellP[i].Ne / (1. + 2.*yhelium(i)); /* quick estimator. this is actually what we need for conduction since its the free electrons conducting, and we want number relative to fully-ionized gas */
 #endif
-    double vf_lim,cs,cs_therm; cs=Get_Gas_effective_soundspeed_i(i); cs_therm=Get_Gas_thermal_soundspeed_i(i); vf_lim = cs*All.cf_afac3;
+    double vf_lim,cs,cs_therm; cs=Get_Gas_effective_soundspeed_i(i); cs_therm=Get_Gas_thermal_soundspeed_i(i); vf_lim = cs;
 #ifdef MAGNETIC
     double bhat[3]={0},bmag=0,double_dot_dv=0; for(k=0;k<3;k++) {bhat[k]=Get_Gas_BField(i,k); bmag+=bhat[k]*bhat[k];}
     if(bmag>0) {bmag = sqrt(bmag); for(k=0;k<3;k++) {bhat[k]/=bmag;}}
-    beta_i = bmag*bmag * All.cf_afac1 * All.cf_a3inv / (All.cf_atime * rho * cs_therm * cs_therm);
+    beta_i = bmag*bmag  * All.cf_a3inv / (All.cf_atime * rho * cs_therm * cs_therm);
     vf_lim *= DMIN(1.e4 , sqrt(1.+beta_i));
 #endif
 #endif

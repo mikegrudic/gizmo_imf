@@ -103,9 +103,9 @@
     /* PFH: this is the symmetric estimator of grad phi: used be used IFF div.dot.B is estimated by the 'direct difference' operator (recommended) */
     // terms for variable smoothing lengths are already accounted for above //
     double phifac = -(mf_i*local.PhiPred + mf_j*PhiPred_j);
-    Fluxes.B[0] += phifac * kernel.dp[0] / All.cf_afac1;
-    Fluxes.B[1] += phifac * kernel.dp[1] / All.cf_afac1;
-    Fluxes.B[2] += phifac * kernel.dp[2] / All.cf_afac1;
+    Fluxes.B[0] += phifac * kernel.dp[0];
+    Fluxes.B[1] += phifac * kernel.dp[1];
+    Fluxes.B[2] += phifac * kernel.dp[2];
     /* units are phi_code * rcode^2 = Bcode*vcode * rcode^2 = vcode * Bphys*rphys^2 = (a*vphys) * Bphys*rphys^2 */
     /* GradPhi should have units of [Phicode]/[rcode] = [Bcode]*[vcode]/[rcode] =
         a*a*Bphys * a*vphys/(rphys/a) = a^4 [DtB]= a^4 [Fluxes.B]; extra terms come in V_i multiplication in evaluate */
@@ -129,14 +129,14 @@
     /* need to be able to subtract component of force which owes to the non-zero value of div.B */
     Fluxes.B_normal_corrected = ((local.BPred[0] * mf_i + BPred_j[0] * mf_j) * kernel.dp[0] +
                                  (local.BPred[1] * mf_i + BPred_j[1] * mf_j) * kernel.dp[1] +
-                                 (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dp[2]) * All.cf_atime / All.cf_afac1;
+                                 (local.BPred[2] * mf_i + BPred_j[2] * mf_j) * kernel.dp[2]) * All.cf_atime;
     for(k = 0; k < 3; k++)
     {
         /* momentum flux from MHD forces */
         magfluxv[k] = ((mm_i[k][0] * mf_i + mm_j[k][0] * mf_j) * kernel.dp[0] +
                        (mm_i[k][1] * mf_i + mm_j[k][1] * mf_j) * kernel.dp[1] +
-                       (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dp[2]) * All.cf_afac2; // converts to physical //
-        Fluxes.v[k] += magfluxv[k] / All.cf_afac2; /* converts to (Pcode/rhocode)/rcode */
+                       (mm_i[k][2] * mf_i + mm_j[k][2] * mf_j) * kernel.dp[2]) / All.cf_atime; // converts to physical //
+        Fluxes.v[k] += magfluxv[k] * All.cf_atime; /* converts to (Pcode/rhocode)/rcode */
     }
     
     
@@ -227,6 +227,6 @@
     /* --------------------------------------------------------------------------------- */
     /* convert everything to PHYSICAL units! */
     /* --------------------------------------------------------------------------------- */
-    Fluxes.p *= All.cf_afac2 / All.cf_atime;
-    for(k=0;k<3;k++) {Fluxes.v[k] *= All.cf_afac2;}
+    Fluxes.p *= All.cf_a2inv;
+    for(k=0;k<3;k++) {Fluxes.v[k] *= 1./All.cf_atime;}
 }

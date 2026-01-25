@@ -187,7 +187,7 @@
             double RTopticaldepth = DMIN(Particle_Size_i,Particle_Size_j) * c_light_eff / kappa_ij;
             double reductionfactor = sqrt((1.0-exp(-RTopticaldepth*RTopticaldepth))) / RTopticaldepth;
             double reducedcM1 = reductionfactor * c_light_eff / sqrt(3.0);
-            v_eff_touse = DMAX(reducedcM1 , 2.*All.cf_afac3*kernel.vsig);
+            v_eff_touse = DMAX(reducedcM1 , 2.*kernel.vsig);
             c_hll = DMIN( 0.5*fabs(face_vel_i-face_vel_j) + v_eff_touse , c_light_eff );
             hll_corr = 1. / (1. + 1.5 * v_eff_touse * DMAX(Particle_Size_j/kappa_j , Particle_Size_i/kappa_i));
             q = 0.5 * c_hll * (kernel.r * All.cf_atime) / fabs(MIN_REAL_NUMBER + kappa_ij); q = (0.2 + q) / (0.2 + q + q*q);

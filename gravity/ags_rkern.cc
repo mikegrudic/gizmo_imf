@@ -163,7 +163,7 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
     }
     
     
-    double fac_mu = -3 / (All.cf_afac3 * All.cf_atime);
+    double fac_mu = -3. / ( All.cf_atime);
     while(startnode >= 0)
     {
         while(startnode >= 0)

@@ -130,10 +130,6 @@ struct GasGraddata_in
 
 struct GasGraddata_out
 {
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-    MyDouble third_moment_weights[10];
-    MyDouble first_second_moment_weights[HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS];
-#endif
 #if defined(KERNEL_CRK_FACES)
     MyDouble m0;
     MyDouble m1[3];
@@ -196,10 +192,6 @@ static struct temporary_data_topass
     struct Quantities_for_Gradients Maxima;
     struct Quantities_for_Gradients Minima;
     MyFloat MaxDistance;
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-    MyDouble third_moment_weights[10];
-    MyDouble first_second_moment_weights[HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS];
-#endif
 #if defined(KERNEL_CRK_FACES)
     MyDouble m0;
     MyDouble m1[3];
@@ -366,10 +358,6 @@ static inline void out2particle_GasGrad(struct GasGraddata_out *out, int i, int 
         }
 #endif
 
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-        for(k=0;k<10;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].third_moment_weights[k],out->third_moment_weights[k],mode);}
-        for(k=0;k<HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].first_second_moment_weights[k],out->first_second_moment_weights[k],mode);}
-#endif
 #if defined(KERNEL_CRK_FACES)
         ASSIGN_ADD_PRESET(GasGradDataPasser[i].m0,out->m0,mode);
         for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(GasGradDataPasser[i].dm0[k],out->dm0[k],mode);}
@@ -894,7 +882,7 @@ void hydro_gradient_calc(void)
                 for(k=0;k<3;k++) {construct_gradient(CellP[i].Gradients.B[k],i);}
                 /* slope limit it */
                 double v_tmp = P[i].Mass / CellP[i].Density;
-                double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * CellP[i].Pressure*v_tmp*v_tmp) +
+                double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/ CellP[i].Pressure*v_tmp*v_tmp) +
                                     CellP[i].BPred[0]*CellP[i].BPred[0]+CellP[i].BPred[1]*CellP[i].BPred[1]+CellP[i].BPred[2]*CellP[i].BPred[2]);
                 double tmp = 3.0e3 * fabs(CellP[i].divB) * P[i].KernelRadius / tmp_d;
                 double alim; alim = 1. + DMIN(1.,tmp*tmp);
@@ -1086,7 +1074,7 @@ void hydro_gradient_calc(void)
                 /* full correct form of D(phi)/Dt = -ch*ch*div.dot.B - phi/tau - (1/2)*phi*div.dot.v */ /* PFH: here's the div.dot.B term: make sure div.dot.B def'n matches appropriate grad_phi conjugate pair: recommend direct diff div.dot.B */
                 CellP[i].divB *= P[i].DrkernNgbFactor * P[i].Mass / (CellP[i].Density * CellP[i].Density);
                 if((!isnan(CellP[i].divB))&&(P[i].KernelRadius>0)&&(CellP[i].divB!=0)&&(CellP[i].Density>0)) {
-                    double tmp_ded = 0.5 * CellP[i].MaxSignalVel * All.cf_afac3; /* has units of v_physical now *//* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
+                    double tmp_ded = 0.5 * CellP[i].MaxSignalVel ; /* has units of v_physical now *//* do a check to make sure divB isn't something wildly divergent (owing to particles being too close) */
                     double b2_max = 0.0; for(k=0;k<3;k++) {b2_max += Get_Gas_BField(i,k)*Get_Gas_BField(i,k);}
                     b2_max = 100.0 * fabs( sqrt(b2_max) * All.cf_a2inv * P[i].Mass / (CellP[i].Density*All.cf_a3inv) * 1.0 / (P[i].KernelRadius*All.cf_atime) );
                     if(fabs(CellP[i].divB) > b2_max) {CellP[i].divB *= b2_max / fabs(CellP[i].divB);} /* ok now can apply this to get the growth rate of phi */
@@ -1115,12 +1103,12 @@ void hydro_gradient_calc(void)
             if(All.ComovingIntegrationOn) {divVel_physical += 3*All.cf_hubble_a;} // hubble-flow correction added
             if(divVel_physical>=0.0) {NV_A = 0.0;}
             h_eff = Get_Particle_Size(i) * All.cf_atime / 0.5; // 'default' parameter choices are scaled for a cubic spline, but code will attempt to scale appropriately to other kernel choices //
-            cs_nv = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3; // converts to physical velocity units //
+            cs_nv = Get_Gas_effective_soundspeed_i(i) ; // converts to physical velocity units //
             alphaloc = All.ViscosityAMax * h_eff*h_eff*NV_A / (0.36*cs_nv*cs_nv + h_eff*h_eff*NV_A);
             // 0.25 in front of vsig is the 'noise parameter' that determines the relative amplitude which will trigger the switch: that choice was quite large (requires approach velocity rate-of-change is super-sonic); better to use c_s (above), and 0.05-0.25 //
             // NV_A is physical 1/(time*time), but KernelRadius and vsig can be comoving, so need appropriate correction terms above //
             if(CellP[i].alpha < alphaloc) {CellP[i].alpha = alphaloc;}
-                else if (CellP[i].alpha > alphaloc) {CellP[i].alpha = alphaloc + (CellP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(CellP[i].MaxSignalVel)*All.cf_afac3)/(0.5*h_eff) * 0.05);}
+                else if (CellP[i].alpha > alphaloc) {CellP[i].alpha = alphaloc + (CellP[i].alpha - alphaloc) * exp(-NV_dt * (0.5*fabs(CellP[i].MaxSignalVel))/(0.5*h_eff) * 0.05);}
             if(CellP[i].alpha < All.ViscosityAMin) {CellP[i].alpha = All.ViscosityAMin;}
             CellP[i].alpha_limiter = DMAX(NV_limiter,All.ViscosityAMin/CellP[i].alpha);
 #else
@@ -1132,7 +1120,7 @@ void hydro_gradient_calc(void)
             CurlVel[1] = CellP[i].Gradients.Velocity[2][0] - CellP[i].Gradients.Velocity[0][2];
             CurlVel[2] = CellP[i].Gradients.Velocity[0][1] - CellP[i].Gradients.Velocity[1][0];
             MagCurl = All.cf_a2inv * sqrt(CurlVel[0]*CurlVel[0] + CurlVel[1]*CurlVel[1] + CurlVel[2]*CurlVel[2]);
-            double fac_mu = 1 / (All.cf_afac3 * All.cf_atime);
+            double fac_mu = 1 / ( All.cf_atime);
             CellP[i].alpha_limiter = divVel / (divVel + MagCurl + 0.0001 * Get_Gas_effective_soundspeed_i(i) / (Get_Particle_Size(i)) / fac_mu);
 #endif
 #endif
@@ -1240,7 +1228,7 @@ void hydro_gradient_calc(void)
 #ifdef MAGNETIC
 #ifndef MHD_CONSTRAINED_GRADIENT
             double v_tmp = P[i].Mass / CellP[i].Density;
-            double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/All.cf_afac1 * CellP[i].Pressure*v_tmp*v_tmp) +
+            double tmp_d = sqrt(1.0e-37 + (2. * All.cf_atime/ CellP[i].Pressure*v_tmp*v_tmp) +
                                 CellP[i].BPred[0]*CellP[i].BPred[0]+CellP[i].BPred[1]*CellP[i].BPred[1]+CellP[i].BPred[2]*CellP[i].BPred[2]);
             double q = fabs(CellP[i].divB) * P[i].KernelRadius / tmp_d, alim2 = a_limiter * (1. + q*q); if(alim2 > 0.5) alim2=0.5;
             stol_tmp = stol;
@@ -1273,7 +1261,7 @@ void hydro_gradient_calc(void)
             /* if the mesh motion is specified to be glass-generating, this is where we apply the appropriate mesh velocity */
             if(All.Time > 0)
             {
-                double cs_invelunits = Get_Gas_effective_soundspeed_i(i) * All.cf_afac3 * All.cf_atime; // soundspeed, converted to units of code velocity
+                double cs_invelunits = Get_Gas_effective_soundspeed_i(i)  * All.cf_atime; // soundspeed, converted to units of code velocity
                 double L_i_code = Get_Particle_Size(i); // particle effective size (in code units)
                 double dvel[3]={0}, velnorm=0; for(k=0;k<3;k++) {dvel[k] = L_i_code*L_i_code*GasGradDataPasser[i].GlassAcc[k]; velnorm += dvel[k]*dvel[k];} // calculate quantities to use for glass
                 double dtx = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i); // need timestep for limiter below
@@ -1283,41 +1271,6 @@ void hydro_gradient_calc(void)
                     double v00 = 0.5 * DMIN(cs_invelunits*(0.5*velnorm) , All.CourantFac*(L_i_code/dtx)/All.cf_a2inv); // limit added velocity of mesh-generating point to Courant factor
                     for(k=0;k<3;k++) {CellP[i].ParticleVel[k] += v00 * (dvel[k]/velnorm);} // actually add the correction velocity to the mesh velocity
                 }
-            }
-#endif
-
-            
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-            {
-                double S_in[9], S1[3], Bvec[3]={0}, S2[3][3], S2_inv[3][3], S3_proj[3][3], S3_proj_inv[3][3], CNum_S2, CNum_S3; int k1,k2;
-                for(k1=0;k1<HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS;k1++) {S_in[k1]=GasGradDataPasser[i].first_second_moment_weights[k1];} // we have this saved from the step below
-                S1[0]=S_in[0]; S1[1]=S_in[1]; S1[2]=S_in[2]; // these are the vector 1st-moment sums SUM[wt*dp]
-                // now assign the matrix based on the 6 independent 2nd-moment sums SUM[wt*dp*dp]
-                S2[0][0]=S_in[3]; S2[1][0]=S2[0][1]=S_in[4]; S2[2][0]=S2[0][2]=S_in[5];
-                S2[1][1]=S_in[6]; S2[2][1]=S2[1][2]=S_in[7]; S2[2][2]=S_in[8];
-                CNum_S2 = matrix_invert_ndims(S2, S2_inv); // invert the S2 matrix [momment-2 matrix]
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
-                double S2B[3][3], S2B_inv[3][3];
-                S2B[0][0]=S_in[3+6]; S2B[1][0]=S2B[0][1]=S_in[4+6]; S2B[2][0]=S2B[0][2]=S_in[5+6];
-                S2B[1][1]=S_in[6+6]; S2B[2][1]=S2B[1][2]=S_in[7+6]; S2B[2][2]=S_in[8+6];
-                CNum_S2 = matrix_invert_ndims(S2B, S2B_inv); // invert the S2 matrix [moment-2 matrix]
-                for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Bvec[k1] += -S2B_inv[k1][k2] * S1[k2];}} // calculate the B-coefficient matrix
-#else
-                for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {Bvec[k1] += -S2_inv[k1][k2] * S1[k2];}} // calculate the B-coefficient matrix
-#endif
-                double m3wt[10]; for(k=0;k<10;k++) {m3wt[k]=GasGradDataPasser[i].third_moment_weights[k];} // assign these to a shorter variable
-                double xxx=m3wt[0], xxy=m3wt[1], xxz=m3wt[2], yyy=m3wt[3], xyy=m3wt[4], yyz=m3wt[5], zzz=m3wt[6], xzz=m3wt[7], yzz=m3wt[8], xyz=m3wt[9]; // assign them intuitive names here, that's all
-                S3_proj[0][0]= xxx*Bvec[0] + xxy*Bvec[1] + xxz*Bvec[2]; // now construct the components of this projection matrix
-                S3_proj[1][0]=S3_proj[0][1]= xxy*Bvec[0] + xyy*Bvec[1] + xyz*Bvec[2]; //=xyx*Bvec[0] + xyy*Bvec[1] + xyz*Bvec[2];
-                S3_proj[2][0]=S3_proj[0][2]= xxz*Bvec[0] + xyz*Bvec[1] + xzz*Bvec[2]; //=xzx*Bvec[0] + xzy*Bvec[1] + xzz*Bvec[2];
-                S3_proj[1][1]= xyy*Bvec[0] + yyy*Bvec[1] + yyz*Bvec[2]; //=yyx*Bvec[0] + yyy*Bvec[1] + yyz*Bvec[2];
-                S3_proj[2][1]=S3_proj[1][2]= xyz*Bvec[0] + yyz*Bvec[1] + yzz*Bvec[2]; //=yzx*Bvec[0] + yzy*Bvec[1] + yzz*Bvec[2];
-                S3_proj[2][2]= xzz*Bvec[0] + yzz*Bvec[1] + zzz*Bvec[2]; //=zzx*Bvec[0] + zzy*Bvec[1] + zzz*Bvec[2];
-                for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {S3_proj[k1][k2] = -S3_proj[k1][k2] + S2[k1][k2];}} // add the S2 term that the term above corrects
-                CNum_S3 = matrix_invert_ndims(S3_proj, S3_proj_inv); // invert the corrected S2 matrix after correction from the projected S3 matrix down to a modified moment-2 matrix
-                for(k1=0;k1<3;k1++) {CellP[i].Tensor_MFM_Face_Corrections[k1] = Bvec[k1];} // load everything into the saved variables we'll use in the hydro step
-                CellP[i].Tensor_MFM_Face_Corrections[3] = S3_proj_inv[0][0]; CellP[i].Tensor_MFM_Face_Corrections[4] = S3_proj_inv[0][1]; CellP[i].Tensor_MFM_Face_Corrections[5] = S3_proj_inv[0][2];
-                CellP[i].Tensor_MFM_Face_Corrections[6] = S3_proj_inv[1][1]; CellP[i].Tensor_MFM_Face_Corrections[7] = S3_proj_inv[1][2]; CellP[i].Tensor_MFM_Face_Corrections[8] = S3_proj_inv[2][2];
             }
 #endif
 
@@ -1542,7 +1495,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 {
                     kernel.dwk_i = kernel.wk_i = 0;
                 }
-#if defined(MHD_CONSTRAINED_GRADIENT) || defined(KERNEL_CRK_FACES) || defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
+#if defined(MHD_CONSTRAINED_GRADIENT) || defined(KERNEL_CRK_FACES)
                 if(kernel.r < h_j)
 #else
                 if((kernel.r < h_j) && (swap_to_j))
@@ -1697,36 +1650,6 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
 
                     
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-                    double m3wt[10], m2wt[6], wt_i=kernel.wk_i, wt_j=kernel.wk_j, wt_i_A=wt_i, wt_i_B=wt_i, wt_j_A=wt_j, wt_j_B=wt_j;
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
-                    {
-                        double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/CellP[j].Density;
-                        wt_i_A = (V_i*kernel.wk_i + V_j*kernel.wk_j) / (2.*V_i);
-                        wt_i_B = (V_i*kernel.wk_i - V_j*kernel.wk_j) / (2.*V_i);
-                        wt_j_A = wt_i_A * V_i/V_j; wt_j_B = wt_i_B * V_i/V_j;
-                    }
-#endif
-                    m3wt[0]=kernel.dp[0]*kernel.dp[0]*kernel.dp[0]; m3wt[1]=kernel.dp[0]*kernel.dp[0]*kernel.dp[1]; m3wt[2]=kernel.dp[0]*kernel.dp[0]*kernel.dp[2];
-                    m3wt[3]=kernel.dp[1]*kernel.dp[1]*kernel.dp[1]; m3wt[4]=kernel.dp[1]*kernel.dp[1]*kernel.dp[0]; m3wt[5]=kernel.dp[1]*kernel.dp[1]*kernel.dp[2];
-                    m3wt[6]=kernel.dp[2]*kernel.dp[2]*kernel.dp[2]; m3wt[7]=kernel.dp[2]*kernel.dp[2]*kernel.dp[0]; m3wt[8]=kernel.dp[2]*kernel.dp[2]*kernel.dp[1];
-                    m3wt[9]=kernel.dp[0]*kernel.dp[1]*kernel.dp[2];
-                    for(k=0;k<10;k++) {out.third_moment_weights[k] += wt_i_B * m3wt[k];}
-                    for(k=0;k<3;k++) {out.first_second_moment_weights[k] += wt_i_A * kernel.dp[k];}
-                    m2wt[0]=kernel.dp[0]*kernel.dp[0]; m2wt[1]=kernel.dp[0]*kernel.dp[1]; m2wt[2]=kernel.dp[0]*kernel.dp[2];
-                    m2wt[3]=kernel.dp[1]*kernel.dp[1]; m2wt[4]=kernel.dp[1]*kernel.dp[2]; m2wt[5]=kernel.dp[2]*kernel.dp[2];
-                    for(k=0;k<6;k++) {out.first_second_moment_weights[k+3] += wt_i_A * m2wt[k];}
-                    if(swap_to_j) {
-                        for(k=0;k<10;k++) {GasGradDataPasser[j].third_moment_weights[k] -= wt_j_B * m3wt[k];}
-                        for(k=0;k<3;k++) {GasGradDataPasser[j].first_second_moment_weights[k] -= wt_j_A * kernel.dp[k];}
-                        for(k=0;k<6;k++) {GasGradDataPasser[j].first_second_moment_weights[k+3] += wt_j_A * m2wt[k];}
-                    }
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
-                    for(k=0;k<6;k++) {out.first_second_moment_weights[k+3+6] += wt_i_B * m2wt[k];}
-                    if(swap_to_j) {for(k=0;k<6;k++) {out.first_second_moment_weights[k+3+6] -= wt_i_B * m2wt[k];}}
-#endif
-#endif
-
 #if defined(KERNEL_CRK_FACES)
                     {
                         double V_i = local.Mass/local.GQuant.Density, V_j = P[j].Mass/CellP[j].Density;

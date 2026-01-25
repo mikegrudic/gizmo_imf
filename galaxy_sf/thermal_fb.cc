@@ -179,7 +179,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                  (much longer than the actual cooling time of the blastwave) */
                 double Esne51 = local.Esne * UNIT_ENERGY_IN_CGS/1.e51;
                 double density_to_n = All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
-                double pressure_to_p4 = (1./All.cf_afac1)*density_to_n*U_TO_TEMP_UNITS / 1.0e4; 
+                double pressure_to_p4 = density_to_n*U_TO_TEMP_UNITS / 1.0e4; 
                 double dt_ram = 7.08 * pow(Esne51*rho_j*density_to_n,0.34) * pow(CellP[j].Pressure*pressure_to_p4,-0.70) / (UNIT_TIME_IN_MYR);
                 double current_delaytime = 0;
                 #pragma omp atomic read

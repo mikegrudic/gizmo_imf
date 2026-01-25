@@ -477,12 +477,12 @@ void do_kick_for_extra_physics(int i, integertime tstart, integertime tend, doub
     if(CellP[i].Density > 0)
     {
         /* now we're going to check for physically reasonable phi values */
-        double cs_phys = All.cf_afac3 * Get_Gas_effective_soundspeed_i(i);
+        double cs_phys = Get_Gas_effective_soundspeed_i(i);
         double b_phys = 0.0;
         for(j = 0; j < 3; j++) {b_phys += Get_Gas_BField(i,j)*Get_Gas_BField(i,j);}
         b_phys = sqrt(b_phys)*All.cf_a2inv;
         double vsig1 = sqrt(cs_phys*cs_phys + b_phys*b_phys/(CellP[i].Density*All.cf_a3inv));
-        double vsig2 = 0.5 * All.cf_afac3 * fabs(CellP[i].MaxSignalVel);
+        double vsig2 = 0.5 * fabs(CellP[i].MaxSignalVel);
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , All.FastestWaveSpeed );
         double phi_phys_abs = fabs(Get_Gas_PhiField(i)) * All.cf_a3inv;
         double vb_phy_abs = vsig_max * b_phys;

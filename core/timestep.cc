@@ -48,13 +48,13 @@ void find_timesteps(void)
     {
         double fastwavespeed = 0.0;
         double fastwavedecay = 0.0;
-        double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
+        double fac_magnetic_pressure = 1. / All.cf_atime;
         for(i=0;i<NumPart;i++)
         {
             if(P[i].Type==0)
             {
-                double vsig2 = 0.5 * All.cf_afac3 * fabs(CellP[i].MaxSignalVel); // in v_phys units //
-                double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Gas_BField(i,0)*Get_Gas_BField(i,0)+Get_Gas_BField(i,1)*Get_Gas_BField(i,1)+Get_Gas_BField(i,2)*Get_Gas_BField(i,2)) / CellP[i].Density );
+                double vsig2 = 0.5  * fabs(CellP[i].MaxSignalVel); // in v_phys units //
+                double vsig1 = sqrt( Get_Gas_effective_soundspeed_i(i)*Get_Gas_effective_soundspeed_i(i) + fac_magnetic_pressure * (Get_Gas_BField(i,0)*Get_Gas_BField(i,0)+Get_Gas_BField(i,1)*Get_Gas_BField(i,1)+Get_Gas_BField(i,2)*Get_Gas_BField(i,2)) / CellP[i].Density );
                 double vsig0 = DMAX(vsig1,vsig2);
 
                 if(vsig0 > fastwavespeed) fastwavespeed = vsig0; // physical unit
@@ -476,7 +476,7 @@ integertime get_timestep(int p,		/*!< particle index */
     {
         double dt_divv = 0.1 / (MIN_REAL_NUMBER + All.cf_a2inv*fabs(P[p].Particle_DivVel)); // with new integration accuracy in gravtree, we may not need to be super-conservative here. old code used pre-factor 0.25 here, see if we can get away with the larger value which is standard for gas below
         if(dt_divv < dt) {dt = dt_divv;}
-        double dt_cour = 2. * All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig*All.cf_afac3); // can be generous here, really the signal velocity isn't that important in the collisionless case, but it is important with some of the physics above //
+        double dt_cour = 2. * All.CourantFac * (Get_Particle_Size_AGS(p)*All.cf_atime) / (MIN_REAL_NUMBER + 0.5*P[p].AGS_vsig); // can be generous here, really the signal velocity isn't that important in the collisionless case, but it is important with some of the physics above //
 #if defined(CBE_INTEGRATOR)
         dt_cour *= 0.25; // need a much stricter criterion here, to account for fluxes de-stabilizing the method //
 #endif
@@ -540,7 +540,7 @@ integertime get_timestep(int p,		/*!< particle index */
 
     if((P[p].Type == 0) && (P[p].Mass > 0))
         {
-            csnd = 0.5 * CellP[p].MaxSignalVel * All.cf_afac3;
+            csnd = 0.5 * CellP[p].MaxSignalVel ;
             double L_particle = Get_Particle_Size(p);
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
 #ifdef SINK_WIND_SPAWN
@@ -664,7 +664,7 @@ integertime get_timestep(int p,		/*!< particle index */
                         {
                             double cr_speed = cr_m1_speed;
                             //double crv=0; int k; for(k=0;k<3;k++) {crv+=CellP[p].CosmicRayFlux[k_CRegy][k]*CellP[p].CosmicRayFlux[k_CRegy][k];} if(crv > 0) {crv = sqrt(crv) / CellP[p].CosmicRayEnergy[k_CRegy];}
-                            cr_speed = DMAX( DMIN(cr_m1_speed , All.cf_afac3*CellP[p].MaxSignalVel) , DMIN(cr_m1_speed , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
+                            cr_speed = DMAX( DMIN(cr_m1_speed , CellP[p].MaxSignalVel) , DMIN(cr_m1_speed , kappa_cr_eff/(Get_Particle_Size(p)*All.cf_atime))); // default to min of free-streaming/diffusion speed
                             double dt_courant_CR = 0.4 * (L_particle*All.cf_atime) / cr_speed;
                             dt_conduction = dt_courant_CR; // per TK, strictly enforce this timestep //
                         } else {dt_conduction=10.*dt;}
@@ -806,9 +806,9 @@ integertime get_timestep(int p,		/*!< particle index */
 
 
 #if defined(DIVBCLEANING_DEDNER)
-            double fac_magnetic_pressure = All.cf_afac1 / All.cf_atime;
-            double phi_b_units = Get_Gas_PhiField(p) / (All.cf_afac3 * All.cf_atime * CellP[p].MaxSignalVel);
-            double vsig1 = All.cf_afac3 * sqrt( Get_Gas_effective_soundspeed_i(p)*Get_Gas_effective_soundspeed_i(p) +
+            double fac_magnetic_pressure = 1. / All.cf_atime;
+            double phi_b_units = Get_Gas_PhiField(p) / ( All.cf_atime * CellP[p].MaxSignalVel);
+            double vsig1 =  sqrt( Get_Gas_effective_soundspeed_i(p)*Get_Gas_effective_soundspeed_i(p) +
                     fac_magnetic_pressure * (Get_Gas_BField(p,0)*Get_Gas_BField(p,0) +
                                              Get_Gas_BField(p,1)*Get_Gas_BField(p,1)+
                                              Get_Gas_BField(p,2)*Get_Gas_BField(p,2) +
@@ -899,7 +899,7 @@ integertime get_timestep(int p,		/*!< particle index */
         if(dt > 0)
         {
             double p_target = 0.2; // desired maximum probability per timestep
-            double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_afac3*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
+            double dV[3]; for(k=0;k<3;k++) {dV[k]=P[p].AGS_vsig*All.cf_atime/sqrt(3.);} // convert signal vel to velocity dispersion for estimating rates
 #ifdef GRAIN_COLLISIONS
             double p_dt = prob_of_grain_interaction(return_grain_cross_section_per_unit_mass(p),P[p].Mass,0.,P[p].AGS_KernelRadius,dV,dt,p); // probability of interacting with another grain super-particle well within kernel, assuming same mass, H, and V~signalvel, for current timestep dt
 #else

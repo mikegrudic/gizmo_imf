@@ -141,7 +141,7 @@
             }
             vsig = DMAX(DMAX(fabs(vsig_i),fabs(vsig_j)),vsig);
         } // for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
-        vsig /= Face_Area_Norm * All.cf_afac3 * All.cf_atime; // into appropriate sound-speed units
+        vsig /= Face_Area_Norm  * All.cf_atime; // into appropriate sound-speed units
         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;} // set signal velocity if new value found
         //if(TimeBinActive[P[j].TimeBin]) {if(vsig > P[j].AGS_vsig) P[j].AGS_vsig = vsig;}
 #ifdef WAKEUP

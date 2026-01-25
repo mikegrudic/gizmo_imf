@@ -24,17 +24,11 @@
  m_code = m_physical
  rho_code = rho_physical * a^3 (from length/mass scaling)
  InternalEnergy_code = InternalEnergy_physical
- Pressure_code =
-    InternalEnergy_code * rho_code * (gamma-1) = Pressure_physical * a^3 (energy formulations)
-    -- the distinction between these cases, i.e. all standard/default modes of the code in which
-        we evolve the energy, and e.g. entropy sph (now depricated, but possible if the right flags
-        are set in older versions fo the code) should be taken care of in the factors
-        All.cf_afac1/2/3, which will correctly assign between the two --
+ Pressure_code = InternalEnergy_code * rho_code * (gamma-1) = Pressure_physical * a^3
  B_code = a*a * B_physical (comoving magnetic fields)
  Phi_code = B_code*v_code = a^3 * Phi_physical (damping field for Dedner divergence cleaning)
     (note: spec egy of phi field is: phi*phi/(2*mu0*rho*ch*ch); compare Bfield is B*B/(mu0*rho);
     so [phi]~[B]*[ch], where ch is the signal velocity used in the damping equation);
-
  -- Time derivatives (rate of change from hydro forces) here are all
         assumed to end up in *physical* units ---
  HydroAccel, dMomentum are assumed to end up in *physical* units
@@ -51,18 +45,11 @@
  All.cf_a2inv = 1 / (All.Time * All.Time);
  // All.cf_a3inv * Density_code = Density_physical //
  All.cf_a3inv = 1 / (All.Time * All.Time * All.Time);
- // Pressure_code/Density_code = All.cf_afac1 * Pressure_physical/Density_physical //
- All.cf_afac1 = 1;
- // All.cf_afac2 * Pressure_code/Density_code * 1/r_code = Pressure_physical/Density_physical * 1/r_physical //
- All.cf_afac2 = 1 / (All.Time * All.cf_afac1);
- // All.cf_afac3 * cs_code = All.cf_afac3 * sqrt(Pressure_code/Density_code) = sqrt(Pressure_phys/Density_phys) = cs_physical //
- All.cf_afac3 = 1 / sqrt(All.cf_afac1);
  // time units: proper time dt_phys = 1/hubble_function(a) * dz/(1+z) = dlna / hubble_function(a)
  code time unit in comoving is dlna, so dt_phys = dt_code / All.cf_hubble_a   //
  All.cf_hubble_a = hubble_function(All.Time); // hubble_function(a) = H(a) = H(z) //
  // dt_code * v_code/r_code = All.cf_hubble_a2 * dt_phys * v_phys/r_phys //
  All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
-
 
  -----------------------------------------
  A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS:: (direct quote from Volker)
@@ -222,9 +209,6 @@ struct INPUT_STRUCT_NAME
     
 #if defined(KERNEL_CRK_FACES)
     MyFloat Tensor_CRK_Face_Corrections[16];
-#endif
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-    MyFloat Tensor_MFM_Face_Corrections[9];
 #endif
 #ifdef HYDRO_PRESSURE_SPH
     MyFloat EgyWtRho;
@@ -430,9 +414,6 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 #if defined(KERNEL_CRK_FACES)
     for(k=0;k<16;k++) {in->Tensor_CRK_Face_Corrections[k] = CellP[i].Tensor_CRK_Face_Corrections[k];}
-#endif
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS)
-    for(k=0;k<9;k++) {in->Tensor_MFM_Face_Corrections[k] = CellP[i].Tensor_MFM_Face_Corrections[k];}
 #endif
     
     int j;
@@ -686,7 +667,7 @@ void hydro_final_operations_and_cleanup(void)
             for(k=0; k<3; k++)
             {
                 DtB_UnCorr += CellP[i].DtB[k] * CellP[i].DtB[k]; // physical units //
-                db_vsig_h = db_vsig_h_norm * (CellP[i].BPred[k]*All.cf_atime) * (0.5*CellP[i].MaxSignalVel*All.cf_afac3) / (Get_Particle_Size(i)*All.cf_atime);
+                db_vsig_h = db_vsig_h_norm * (CellP[i].BPred[k]*All.cf_atime) * (0.5*CellP[i].MaxSignalVel) / (Get_Particle_Size(i)*All.cf_atime);
                 DtB_UnCorr += db_vsig_h * db_vsig_h;
                 DtB_PhiCorr += CellP[i].DtB_PhiCorr[k] * CellP[i].DtB_PhiCorr[k];
             }
@@ -936,10 +917,10 @@ void hydro_final_operations_and_cleanup(void)
 void hydro_force_initial_operations_preloop(void)
 {
     // Set global factors for comoving integration of hydro //
-    fac_mu = 1 / (All.cf_afac3 * All.cf_atime); // code_vel * fac_mu = sqrt[code_pressure/code_density] = code_soundspeed //
-    fac_vsic_fix = All.cf_hubble_a * All.cf_afac1; // note also that signal_vel in forms below should be in units of code_soundspeed //
+    fac_mu = 1 / ( All.cf_atime); // code_vel * fac_mu = sqrt[code_pressure/code_density] = code_soundspeed //
+    fac_vsic_fix = All.cf_hubble_a ; // note also that signal_vel in forms below should be in units of code_soundspeed //
 #ifdef MAGNETIC
-    fac_magnetic_pressure = All.cf_afac1 / All.cf_atime; // code_Bfield*code_Bfield * fac_magnetic_pressure = code_pressure -- use this to get alfven velocities, etc, as well as comoving units for magnetic integration //
+    fac_magnetic_pressure = 1. / All.cf_atime; // code_Bfield*code_Bfield * fac_magnetic_pressure = code_pressure -- use this to get alfven velocities, etc, as well as comoving units for magnetic integration //
 #endif
 
     /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, or by one of the neighbors we will get sent */

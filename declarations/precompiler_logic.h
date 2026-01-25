@@ -1121,14 +1121,6 @@
 #define SinkParticle_GravityKernelRadius (All.ForceSoftening[5])
 
 
-
-#if defined(HYDRO_TENSOR_FACE_CORRECTIONS_NGBITER)
-#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 15
-#else
-#define HYDRO_TENSOR_FACE_CORRECTIONS_NUMBER_MOMWTS 9
-#endif
-
-
 #ifdef SINK_PARTICLES
 #define SINK_COUNTPROGS /* carries a counter for each BH that gives the total number of seeds that merged into it */
 #define SINK_ENFORCE_EDDINGTON_LIMIT /* put a hard limit on the maximum accretion rate (set SinkEddingtonFactor>>1 to allow super-eddington) */
