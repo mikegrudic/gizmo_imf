@@ -1096,7 +1096,6 @@ void force_exchange_pseudodata(void)
                     Extnodes[no].hmax = DomainMoment[i].hmax;
                     Extnodes[no].vmax = DomainMoment[i].vmax;
                     Extnodes[no].divVmax = DomainMoment[i].divVmax;
-                    Nodes[no].u.d.bitflags = (Nodes[no].u.d.bitflags & (~(1 << BITFLAG_MULTIPLEPARTICLES))) | (DomainMoment[i].bitflags & (1 << BITFLAG_MULTIPLEPARTICLES));
                     Nodes[no].N_part = DomainMoment[i].N_part;
                     Nodes[no].maxsoft = DomainMoment[i].maxsoft;
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -1996,7 +1995,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     no = nop->u.d.sibling;
                     continue;
                 }
-                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                if(nop->N_part <= 1)
                 {
                     if(mass) /* open cell */
                     {
@@ -2918,14 +2917,11 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                         continue;
                     }
                 }
-
-                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                if(nop->N_part <= 1) /* open cell */
                 {
-                    /* open cell */
                     no = nop->u.d.nextnode;
                     continue;
                 }
-
                 if(nop->Ti_current != All.Ti_Current)
                 {
 #ifdef _OPENMP
@@ -3256,10 +3252,8 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
                         continue;
                     }
                 }
-
-                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                if(nop->N_part <= 1) /* open cell */
                 {
-                    /* open cell */
                     no = nop->u.d.nextnode;
                     continue;
                 }
@@ -3518,10 +3512,9 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                 }
 
                 mass = nop->u.d.mass;
-                if(!(nop->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+                if(nop->N_part <= 1)
                 {
-                    /* open cell */
-                    if(mass)
+                    if(mass) /* open cell */
                     {
                         no = nop->u.d.nextnode;
                         continue;

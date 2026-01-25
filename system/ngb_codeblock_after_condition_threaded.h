@@ -95,7 +95,7 @@ else
         }
     }
     
-    if(!(current->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+    if(current->N_part <= 1)
     {
         if(current->u.d.mass)	/* open cell */
         {

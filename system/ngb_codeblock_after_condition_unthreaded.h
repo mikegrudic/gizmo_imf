@@ -66,7 +66,7 @@ else
     
     if(current->Ti_current != ti_Current) {force_drift_node(no, ti_Current);}
     
-    if(!(current->u.d.bitflags & (1 << BITFLAG_MULTIPLEPARTICLES)))
+    if(current->N_part <= 1)
     {
         if(current->u.d.mass)	/* open cell */
         {

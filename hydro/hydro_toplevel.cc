@@ -917,7 +917,7 @@ void hydro_final_operations_and_cleanup(void)
 void hydro_force_initial_operations_preloop(void)
 {
     // Set global factors for comoving integration of hydro //
-    fac_mu = 1 / ( All.cf_atime); // code_vel * fac_mu = sqrt[code_pressure/code_density] = code_soundspeed //
+    fac_mu = 1 / (All.cf_atime); // code_vel * fac_mu = sqrt[code_pressure/code_density] = code_soundspeed //
     fac_vsic_fix = All.cf_hubble_a ; // note also that signal_vel in forms below should be in units of code_soundspeed //
 #ifdef MAGNETIC
     fac_magnetic_pressure = 1. / All.cf_atime; // code_Bfield*code_Bfield * fac_magnetic_pressure = code_pressure -- use this to get alfven velocities, etc, as well as comoving units for magnetic integration //
