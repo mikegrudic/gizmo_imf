@@ -275,7 +275,7 @@ void init(void)
             double nx[3],ny[3],nz[3]; int kw; get_random_orthonormal_basis(P[i].ID,nx,ny,nz); for(kw=0;kw<3;kw++) {P[i].Wind_direction[kw] = nx[kw]; P[i].Wind_direction[kw+3] = ny[kw];}
 #endif
 #endif
-#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP)
             P[i].NewStar_Momentum_For_JetFeedback = 0;
 #endif
 #if defined(GALSF_FB_MECHANICAL) || defined(GALSF_FB_THERMAL)
@@ -594,7 +594,7 @@ void init(void)
             CellP[i].MolecularMassFraction = 0.0; CellP[i].MolecularMassFraction_perNeutralH = 0.0; // start atomic
 #endif
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
             CellP[i].Rad_Flux_UV = 0;
             CellP[i].Rad_Flux_EUV = 0;
 #endif
@@ -873,7 +873,7 @@ void init(void)
         CellP[i].Super_Timestep_Dt_Explicit = 0;
         CellP[i].Super_Timestep_j = 0;
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
         CellP[i].Rad_Flux_UV = 0;
         CellP[i].Rad_Flux_EUV = 0;
 #endif

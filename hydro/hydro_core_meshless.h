@@ -233,7 +233,7 @@
                 Riemann_out.Fluxes.p -= dummy_pressure * Riemann_out.S_M; // default: total energy flux = v_frame.dot.mom_flux. note this is in the frame here, will correct for frame motion below. //
             }
 
-#if defined(HYDRO_MESHLESS_FINITE_MASS) && defined(GALSF) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // for now this is experimental so restricting it to our experiments, but should be merged into all mfm-level code //
+#if defined(HYDRO_MESHLESS_FINITE_MASS) && defined(GALSF) // for now this is experimental so restricting it to our experiments, but should be merged into all mfm-level code //
             kernel.vsig = 2.*Riemann_out.S_M + DMAX(0,face_vel_j-face_vel_i); /* replace more conservative signal velocity calculation previously with the contact wave speed update here */
 #endif
             

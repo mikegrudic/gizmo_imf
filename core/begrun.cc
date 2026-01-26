@@ -126,9 +126,6 @@ void begrun(void)
     L_box_towrap *= BOX_LONG_X;
 #endif
     Shearing_Box_Vel_Offset = BOX_SHEARING_Q * BOX_SHEARING_OMEGA_BOX_CENTER * L_box_towrap;
-#ifdef BOX_SHEARING_QB
-    Shearing_Box_B_Offset = BOX_SHEARING_QB * BOX_SHEARING_OMEGA_BOX_CENTER * L_box_towrap; // need definition of units to normalize this all to
-#endif
     calc_shearing_box_pos_offset();
 #endif
 

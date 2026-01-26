@@ -710,7 +710,7 @@ double get_spawned_cell_launch_speed(int i)
         double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
         double Msne=10.5/UNIT_MASS_IN_SOLAR; if(SNeIaFlag) {Msne=1.4/UNIT_MASS_IN_SOLAR;} // average ejecta mass for single event (normalized to give total mass loss correctly)
         double SNeEgy = (1.0e51/UNIT_ENERGY_IN_CGS);
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 1)
         if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0];

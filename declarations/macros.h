@@ -153,11 +153,7 @@ TMP_WRAP_Z_S(x,y,z,sign);} /* note the ORDER MATTERS here for shearing boxes: Y-
 #endif
 
 /* equivalent for shear-periodic magnetic fields */
-#ifdef BOX_SHEARING_QB
-#define NGB_SHEARBOX_BOUNDARY_BCORR_(pos_i,pos_j,db_ij,db_sign_flipped) (db_ij[BOX_SHEARING_PHI_COORDINATE] += db_sign_flipped*Shearing_Box_B_Offset * ((pos_i[0]-pos_j[0]>boxHalf_X)?(1):((pos_i[0]-pos_j[0]<-boxHalf_X)?(-1):(0))))
-#else
 #define NGB_SHEARBOX_BOUNDARY_BCORR_(pos_i,pos_j,db_ij,db_sign_flipped)
-#endif
 
 
 

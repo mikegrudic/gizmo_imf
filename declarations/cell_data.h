@@ -147,7 +147,7 @@ extern struct gas_cell_data
     MyFloat MaxSignalVel;           /*!< maximum signal velocity (needed for time-stepping) */
     int recent_refinement_flag;     /*!< key that tells the code this cell was just refined or de-refined, to know to treat some other operations with care */
     
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     MyFloat Rad_Flux_UV;              /*!< local UV field strength */
     MyFloat Rad_Flux_EUV;             /*!< local (ionizing/hard) UV field strength */
 #endif

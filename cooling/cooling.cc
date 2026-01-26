@@ -101,7 +101,7 @@ void do_the_cooling_for_particle(int i)
     if((dtime>0)&&(P[i].Mass>0)&&(P[i].Type==0))  // upon start-up, need to protect against dt==0 //
     {
         double uold = DMAX(All.MinEgySpec, CellP[i].InternalEnergy); int k; k=0; ne_in=0; ne_out=0;
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING)
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
         double uion=HIIRegion_Temp/(0.59*(5./3.-1.)*U_TO_TEMP_UNITS); if(CellP[i].DelayTimeHII>0) {if(uold<uion) {uold=uion;}} /* u_old should be >= ionized temp if used here [unless using newer model] */
 #else
@@ -159,7 +159,7 @@ void do_the_cooling_for_particle(int i)
         CellP[i].Ne = ne_out; /* update the free electron variable */
 #endif
 
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* for older model, set internal energy to minimum level if marked as ionized by stars */
         if(CellP[i].DelayTimeHII > 0)
         {
             if(unew<uion) {unew=uion; if(CellP[i].DtInternalEnergy<0) CellP[i].DtInternalEnergy=0;}
@@ -251,10 +251,10 @@ void do_the_cooling_for_particle(int i)
         update_explicit_molecular_fraction(i, 0.5*dtime*UNIT_TIME_IN_CGS); // if we're doing the H2 explicitly with this particular model, we update it in two half-steps before and after the main cooling step
 #endif
         
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
+#if defined(GALSF_FB_FIRE_RT_HIIHEATING) /* count off time which has passed since ionization 'clock' */
         if(CellP[i].DelayTimeHII > 0) {
             CellP[i].DelayTimeHII -= dtime;
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION))
             if(CellP[i].DelayTimeHII <= 0) {CellP[i].DelayTimeHII = -DMAX(fabs(CellP[i].DelayTimeHII),fabs(dtime));} // in new versions, allow this to run over to a negative number as a flag to reset the value at the beginning of the -next- timestep
 #endif
         }
@@ -994,10 +994,10 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
     
 #if defined(COOL_LOW_TEMPERATURES)
     double Tdust = 30.; /* set variables needed for dust heating/cooling. if dust cooling not calculated, default to 0 */
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) || defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = get_equilibrium_dust_temperature_estimate(target, shieldfac, T);
 #endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_FB_RT_HEATING)
     Tdust = DMIN(DMAX(10., T_cmb_radeff),300.); // runs looking at colder clouds, use a colder default dust temp [floored at CMB temperature] //
 #endif
 #endif
@@ -1016,7 +1016,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
         
 #ifdef COOL_METAL_LINES_BY_SPECIES
         /* can restrict to low-densities where not self-shielded, but let shieldfac (in ne) take care of this self-consistently */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         if(J_UV != 0)
 #else
         if((J_UV != 0)&&(logT > 4.00))
@@ -1028,7 +1028,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
             /* (sorry, -- dont -- multiply by nH^2 here b/c that's how everything is normalized in this function) */
             LambdaMetal *= n_elec;
             /* (modified now to correct out tabulated ne so that calculated ne can be inserted; ni not used b/c it should vary species-to-species */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
             if(logT<2) {LambdaMetal *= exp(-DMIN((2.-logT)*(2.-logT)/0.1,40.));}
             if(LambdaMetal > 0) {LambdaMetal *= ((T-T_cmb_radeff)/(T+T_cmb_radeff));}
             if(LambdaMetal > 0) {Lambda += LambdaMetal;}
@@ -1058,7 +1058,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
             Z_sol = Z[0] / All.SolarAbundances[0]; /* use actual metallicity for this */
 #endif
             LambdaMol *= (1+Z_sol)*(0.001 + 0.1*nHcgs/(1.+nHcgs) + 0.09*nHcgs/(1.+0.1*nHcgs) + Z_sol*Z_sol/(1.0+nHcgs)); // gives very crude estimate of metal-dependent terms //
-#if defined(COOL_METAL_LINES_BY_SPECIES) && ((defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION))
+#if defined(COOL_METAL_LINES_BY_SPECIES) && ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION))
             double column = evaluate_NH_from_GradRho(CellP[target].Gradients.Density,P[target].KernelRadius,CellP[target].Density,P[target].NumNgb,1,target) * UNIT_SURFDEN_IN_CGS; // converts to cgs            
             double Z_C = DMAX(1.e-6, Z[2]/All.SolarAbundances[2]), sqrt_T=sqrt(T), ncrit_CO=1.9e4*sqrt_T, Sigma_crit_CO=3.0e-5*T/Z_C, T3=T/1.e3, EXPmax=90.; // carbon abundance (relative to solar and 1/2 factor for original assumed 0.5 depletion), critical density and column
 #if defined(GALSF_ISMDUSTCHEM_MODEL) && !defined(GALSF_ISMDUSTCHEM_PASSIVE)
@@ -1115,10 +1115,8 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 
         Heat = 0;  /* Now, collect heating terms */
 
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
-        //if(J_UV != 0) {Heat += (1. + (local_gammamultiplier-1.) * 0.33) * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // this scales off UVB spectrum, which can cause issues at high-z where its not necessarily initialized well - better to use a fixed spectrum for the local term
-        //if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*1.70 + nHe0*0.018 + nHep*1.84)*1.4e-8);} // this assumes a mean temperature of 22,000 K for ionization, more median O-star at just 10 Msun
         if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
 #else
         if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
@@ -1170,13 +1168,13 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
         Heat += CR_gas_heating(target, n_elec, nH0, nHcgs); // CR hadronic+Coulomb+ionization heating //
 #if defined(COOL_LOW_TEMPERATURES)
         if(LambdaMol<0) {Heat -= LambdaMol;} // Molecular line heating (Trad_mol_cooling_batch > Tgas) //
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)
         if(LambdaMetal<0) {Heat -= LambdaMetal;} // potential net heating from low-temperature gas-phase metal line absorption //
 #endif
 #endif
         if(LambdaCompton<0) {Heat -= LambdaCompton;} /* Compton heating rather than cooling */
 
-#if defined(GALSF_FB_FIRE_RT_UVHEATING) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND)
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE) || defined(RT_PHOTOELECTRIC) || defined(RT_ISRF_BACKGROUND)
         /* Photoelectric heating following Bakes & Thielens 1994 (also Wolfire 1995); now with 'update' from Wolfire 2005 for PAH [fudge factor 0.5 below] */
         if((target >= 0) && (T < 1.0e6))
         {
@@ -1790,7 +1788,7 @@ double GetLambdaSpecies(long k_index, long index_x0y0, long index_x0y1, long ind
 #endif // !(CHIMES)
 
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
 void selfshield_local_incident_uv_flux(void)
 {   /* include local self-shielding with the following */
     int i; for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
@@ -1802,7 +1800,7 @@ void selfshield_local_incident_uv_flux(void)
                 CellP[i].Rad_Flux_UV *= UNIT_FLUX_IN_CGS * 1276.19; CellP[i].Rad_Flux_EUV *= UNIT_FLUX_IN_CGS * 1276.19; // convert to Habing units (normalize strength to local MW field in this [narrow] band, so not the 'full' Habing flux)
                 double surfdensity = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i); // in CGS
                 double tau_nuv = rt_kappa(i,RT_FREQ_BIN_FIRE_UV) * surfdensity; // optical depth: this part is attenuated by dust //
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
                 tau_nuv *= (1.0e-3 + (P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i,0)); // if using older FIRE defaults, this was manually added instead of rolled into rt_kappa -- annoying but here for completeness //
 #endif
                 double tau_euv = 3.7e6 * surfdensity * UNIT_SURFDEN_IN_CGS; // optical depth: 912 angstrom kappa_euv: opacity from neutral gas //
@@ -1811,7 +1809,7 @@ void selfshield_local_incident_uv_flux(void)
                 //CellP[i].Rad_Flux_EUV *= exp(-DMIN(tau_euv,90.)); // attenuate [important in newer modules depending on UV flux to fully-attenuate down to << 1e-6 in dense gas]
                 CellP[i].Rad_Flux_EUV *= 0.01 + 0.99/(1.0 + 0.8*tau_euv + 0.85*tau_euv*tau_euv); // attenuate (for clumpy medium with hard-minimum 1% scattering) //
             } else {CellP[i].Rad_Flux_UV = CellP[i].Rad_Flux_EUV = 0;}
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
+#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
             if(CellP[i].DelayTimeHII > 0)
             {   /* assign typical strong HII region flux + enough flux to maintain cell fully-ionized, regardless (x'safety-factor') */
                 double n1000 = CellP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS / 1000.; // density in 1000 cm^-3
@@ -1853,7 +1851,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     f_dustgas_solar=(P[i].Metallicity[0]/All.SolarAbundances[0])*return_dust_to_metals_ratio_vs_solar(i,0); // this is only used for the dust-phase formation rates below, so just the dust term here
 #endif
     /* get incident radiation field from whatever module we are using to track it */
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     urad_G0 = DMAX(CellP[i].Rad_Flux_UV, 1.e-10); // note this is ALREADY self-shielded by dust, so we need to be careful about 2x-counting the self-shielding approximation below; hence limit this to a rather sizeable value  //
 #endif
 #if defined(RT_PHOTOELECTRIC) || defined(RT_LYMAN_WERNER)
@@ -1905,7 +1903,7 @@ void update_explicit_molecular_fraction(int i, double dtime_cgs)
     double b_H2ext = b_H2Hp + b_H2e + b_H2He + b_H2Hep + b_H2Dp; b_H2HI += b_H2D; b_H2ext*=1./2.; b_H2HI*=1./2.; b_H2H2*=1./4.; // collect dissociation terms where the secondary (e.g. e- does -not- scale with fmol as we define it here, and those where it does to different powers; 1/2 here is to account for nH2 = (1/2) * fH2 * nH because we will solve for fH2 as a mass fraction, becomes 1/4 in H2-H2 equation
     
     double Tdust = 30.; // need to assume something about dust temperature for reaction rates below for dust-phase formation
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || defined(SINGLE_STAR_SINK_DYNAMICS)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) || defined(SINGLE_STAR_SINK_DYNAMICS)
     Tdust = get_equilibrium_dust_temperature_estimate(i, shieldfac, T);
 #endif
     double a_Z = 3.e-18*sqrt_T / ((1. +4.e-2*sqrt(T+Tdust) +2.e-3*T +8.e-6*T*T )*(1. +1.e4/exp(DMIN(EXPmax,600./Tdust)))) * f_dustgas_solar * nH0 * clumping_factor; // dust surface formation (assuming dust-to-metals ratio is 0.5*(Z/solar)*dust-to-gas-relative-to-solar in all regions where this is significant), from Glover & Jappsen 2007
@@ -2114,7 +2112,7 @@ Mode 1: Use for the C photoionization rate: apply cross- and self-shielding fact
 MyFloat get_FUV_G0(int target, MyFloat shieldfac, int mode)
 {
     MyFloat G0 = 0.;
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     G0 += CellP[target].Rad_Flux_UV;
 #ifdef COOL_UVB_SELFSHIELD_RAHMATI
     if (gJH0 > 0 && shieldfac > 0)
@@ -2313,7 +2311,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
     if(target >= 0) {*ne_guess=CellP[target].Ne; *nH0_guess = DMAX(0,DMIN(1,1.-( *ne_guess / 1.2 )));} else {*ne_guess=1.; *nH0_guess=0.;}
     rho *= UNIT_DENSITY_IN_CGS; u *= UNIT_SPECEGY_IN_CGS;   /* convert to physical cgs units */
     double temp = convert_u_to_temp(u, rho, target, ne_guess, nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu_guess);
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) && !defined(CHIMES_HII_REGIONS)
     if(target >= 0) {if(CellP[target].DelayTimeHII > 0) {CellP[target].Ne = 1.0 + 2.0*yhelium(target); *nH0_guess=0; nHe0_guess=0;}} /* fully ionized [if using older model] */
     *mu_guess = Get_Gas_Mean_Molecular_Weight_mu(temp, rho, nH0_guess, ne_guess, 0, target);
 #endif
@@ -2326,7 +2324,7 @@ double ThermalProperties(double u, double rho, int target, double *mu_guess, dou
 /* function to return the local multiplier relative to the UVB model to account in some local RHD models for local ionizing sources */
 double return_local_gammamultiplier(int target)
 {
-#if defined(GALSF_FB_FIRE_RT_UVHEATING) && !defined(CHIMES)
+#if defined(GALSF_FB_FIRE_RT_LONGRANGE) && !defined(CHIMES)
     if((target >= 0) && (gJH0 > 0))
     {
         double local_gammamultiplier = CellP[target].Rad_Flux_EUV * 2.29e-10; // converts to GammaHI for typical SED (rad_uv normalized to Habing)
@@ -2345,7 +2343,7 @@ double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double lo
 #ifdef GALSF_EFFECTIVE_EQS
     return 1; // self-shielding is implicit in the sub-grid model already //
 #endif
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(GALSF_FB_FIRE_RT_HIIHEATING) 
+#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
     if(target>=0) {if(CellP[target].DelayTimeHII > 0) {return 1;}} // newer HII region model irradiates and removes shielding for regions, but allows cooling function to evolve //
 #endif
     double NH_SS_z, NH_SS = 0.0123; /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3): note this is a factor ~2 higher than Schaye and Rahmati normalization, owing to CAFG calibration (lower effective cross-section, owing to different UVB spectrum and potentially clumping factors, etc) */

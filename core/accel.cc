@@ -85,7 +85,7 @@ void compute_hydro_densities_and_forces(void)
 #endif
 
         hydro_gradient_calc(); /* calculates the gradients of hydrodynamical quantities  */
-#if defined(COOLING) && defined(GALSF_FB_FIRE_RT_UVHEATING)
+#if defined(COOLING) && defined(GALSF_FB_FIRE_RT_LONGRANGE)
         selfshield_local_incident_uv_flux(); /* needs to be called after gravity tree (where raw flux is calculated) and the local gradient calculation (GradRho) to properly self-shield the particles that had this calculated */
 #endif
         PRINT_STATUS(" ..gradient computation done.");

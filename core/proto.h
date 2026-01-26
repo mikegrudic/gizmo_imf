@@ -694,14 +694,9 @@ double particle_ionizing_luminosity_in_cgs(long i);
 #ifdef GALSF_FB_FIRE_RT_HIIHEATING
 void HII_heating_singledomain(void);
 int do_the_local_ionization(int target, double dt, int source);
-#ifdef GALSF_FB_FIRE_RT_HIIHEATING_USEMULTIDOMAINSHARE
-void HII_heating_withMPIcomm(void);
-int HIIheating_RHIIest(int target);
-int HIIheating_evaluate(int target, int mode, int *nexport, int *nsend_local);
-#endif
 #endif
 
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
 void selfshield_local_incident_uv_flux(void);
 #endif
 

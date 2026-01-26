@@ -22,7 +22,7 @@
 void ISMDustChem_get_SNe_dust_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double Msne)
 {
     double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; double SNeIa_age = 0.03753; int k,source_key=1;
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     SNeIa_age =  0.044;
 #endif
     if(t_gyr < SNeIa_age) {source_key=2;} // 1=1a, 2=II
@@ -92,7 +92,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
     double dust_yields[NUM_ISMDUSTCHEM_ELEMENTS]={0}, sources_yields[NUM_ISMDUSTCHEM_SOURCES]={0}, species_yields[NUM_ISMDUSTCHEM_SPECIES]={0}; int k,source_key=3;
     for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES+NUM_ISMDUSTCHEM_SPECIES;k++) {yields[k+NUM_METAL_SPECIES]=0;} // initialize yields to null
     double transition_age = 0.03753, star_age = evaluate_stellar_age_Gyr(i); // Assume AGB dust production stars at SNe II to SNe Ia transition. This limits AGB stars with mass < ~8 solar masses
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     transition_age =  0.044;
 #endif
     if(star_age <= transition_age) {return;} // no yield here if too young, otherwise continue
@@ -128,7 +128,7 @@ void ISMDustChem_get_wind_dust_yields(double *yields, int i)
     {
         // Now convert from instantaneous dust injection rates to dust yields using instantaneous wind rate
         wind_rate=0.41987*pow(star_age,-1.1)/(12.9-log(star_age));
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         double f_agb=0.1, t_agb=0.8, x_agb=t_agb/DMAX(star_age,1.e-4); x_agb*=x_agb; wind_rate = f_agb * pow(x_agb,0.8) * (exp(-DMIN(50.,x_agb*x_agb*x_agb)) + 1./(100. + x_agb)); /* only need AGB component for FIRE-3 */
 #endif
         if(star_age < 0.033) {wind_rate *= 0.01 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);} // late-time independent of massive stars

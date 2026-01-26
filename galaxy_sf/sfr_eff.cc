@@ -81,7 +81,7 @@ void assign_imf_properties_from_starforming_gas(int i)
     for(k=0;k<3;k++) {b_mag += Get_Gas_BField(i,k)*Get_Gas_BField(i,k) * gizmo2gauss_2;}
 #endif
     double rad_flux_uv = 1;
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     rad_flux_uv = CellP[i].Rad_Flux_UV;
 #endif
     double cr_energy_density = 0;
@@ -540,7 +540,7 @@ void star_formation_parent_routine(void)
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                             P[i].Mass = CellP[i].MassTrue + CellP[i].dMass;
 #endif
-#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP)
                             P[i].NewStar_Momentum_For_JetFeedback = P[i].Mass * 40./UNIT_VEL_IN_KMS;
 #endif
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
@@ -665,7 +665,7 @@ void star_formation_parent_routine(void)
                             CellP[i].MassTrue -= P[NumPart + stars_spawned].Mass;
                             if(CellP[i].MassTrue<0) CellP[i].MassTrue=0;
 #endif
-#if defined(GALSF_FB_FIRE_PROTOSTELLARJETS)
+#if defined(GALSF_FB_FIRE_RT_LOCALRP)
                             P[NumPart + stars_spawned].NewStar_Momentum_For_JetFeedback = P[NumPart + stars_spawned].Mass * 40./UNIT_VEL_IN_KMS;
 #endif
                             sum_mass_stars += P[NumPart + stars_spawned].Mass;

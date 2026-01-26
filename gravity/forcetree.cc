@@ -1628,7 +1628,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINK_PHOTONMOMENTUM
     double mass_sinklumwt_forradfb=0; // convert bh luminosity to our tree units
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     double incident_flux_uv=0, incident_flux_euv=0;
 #endif
 #ifdef SINK_COMPTON_HEATING
@@ -2475,7 +2475,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         chimes_flux_ion[chimes_k] += chimes_fac * chimes_mass_stellarlum_ion[chimes_k]; // cm^-2 s^-1
                     }
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
                     incident_flux_uv += fac_intensity * mass_stellarlum[RT_FREQ_BIN_FIRE_UV];// * shortrange_table[tabindex];
                     if((mass_stellarlum[RT_FREQ_BIN_FIRE_IR]<mass_stellarlum[RT_FREQ_BIN_FIRE_UV])&&(mass_stellarlum[RT_FREQ_BIN_FIRE_IR]>0)) // if this -isn't- satisfied, no chance you are optically thin to EUV //
                     {
@@ -2613,7 +2613,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_OTVET
         if(valid_gas_particle_for_rt) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {CellP[target].ET[k][k_et] = RT_ET[k][k_et];}} else {if(P[target].Type==0) {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {CellP[target].ET[k][k_et]=0;}}}
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
         if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_UV = incident_flux_uv;}
         if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_EUV = incident_flux_euv;}
 #endif
@@ -2695,7 +2695,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef RT_OTVET
         {int k,k_et; for(k=0;k<N_RT_FREQ_BINS;k++) for(k_et=0;k_et<6;k_et++) {GravDataResult[target].ET[k][k_et] = RT_ET[k][k_et];}}
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
         GravDataResult[target].Rad_Flux_UV = incident_flux_uv;
         GravDataResult[target].Rad_Flux_EUV = incident_flux_euv;
 #endif

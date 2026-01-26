@@ -489,7 +489,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
     if(is_particle_single_star_eligible(i)) {in->Msne = P[i].Mass;} // conserve mass and destroy star completely
 #endif
     double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
     if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 1)
     if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0];
@@ -517,7 +517,7 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 #ifdef METALS
 void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *Msne)
 {
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2)) || (defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) || (defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && defined(SINGLE_STAR_FB_SNE))
 #if !defined(SINGLE_STAR_FB_SNE) || defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL)
     if(!is_particle_single_star_eligible(i)) {if(t_gyr > 0.044) {SNeIaFlag=1;} else {SNeIaFlag=0;}} /* match to rates tabulation above to determine if Ia or CC */
 #endif
@@ -596,7 +596,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
     
     /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     double star_age = evaluate_stellar_age_Gyr(i), E_wind_tscaling=0.0013, age_agbthreshold=0.1;
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
     age_agbthreshold = 0.03753; // shift the age threshold here to earlier onset for AGB stars because we need to follow their early enrichment. does lower the energetics a bit here, but this is a small effect
@@ -644,7 +644,7 @@ void get_wind_yields(double *yields, int i)
 #endif
     if(NUM_METAL_SPECIES>=10) /* All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe ; follow AGB/O star yields in more detail for the light elements */
     {
-#if (defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION > 2))
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
         /* everything except He and CNO and S-process is well-approximated by surface abundances. and CNO is conserved to high accuracy in sum for secondary production */
         double f_H_0=1.-(yields[0]+yields[1]), f_He_0=yields[1], f_C_0=yields[2], f_N_0=yields[3], f_O_0=yields[4], f_CNO_0=f_C_0+f_N_0+f_O_0+MIN_REAL_NUMBER, y; // define initial H, He, CNO fraction
         double t = evaluate_stellar_age_Gyr(i), z_sol; z_sol = f_CNO_0 / (All.SolarAbundances[2]+All.SolarAbundances[3]+All.SolarAbundances[4]); // stellar population age in Gyr, and solar-scaled CNO abundance

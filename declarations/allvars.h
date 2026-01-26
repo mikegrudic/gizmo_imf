@@ -96,9 +96,6 @@ extern MyDouble boxSize_Z, boxHalf_Z;
 #ifdef BOX_SHEARING
 extern MyDouble Shearing_Box_Vel_Offset;
 extern MyDouble Shearing_Box_Pos_Offset;
-#ifdef BOX_SHEARING_QB
-extern Shearing_Box_B_Offset;
-#endif
 #endif
 
 #if defined(BOX_REFLECT_X) || defined(BOX_REFLECT_Y) || defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_X) || defined(BOX_OUTFLOW_Y) || defined(BOX_OUTFLOW_Z)
@@ -1034,7 +1031,7 @@ extern struct gravdata_out
 #ifdef RT_OTVET
     MyDouble ET[N_RT_FREQ_BINS][6];
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
     MyDouble Rad_Flux_UV;
     MyDouble Rad_Flux_EUV;
 #endif

@@ -288,7 +288,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
 #if defined(GALSF) /* basically none of these modules make sense without the GALSF module active */
     double star_age = evaluate_stellar_age_Gyr(i), m_sol = P[i].Mass * UNIT_MASS_IN_SOLAR;
     if((star_age<=0) || isnan(star_age)) {return 0;} // calculate stellar age, will be used below, and catch for bad values
-#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+#if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
     if(star_age > 0.1) {return 0;} // old optimization, not really needed with how we do this now //
 #endif
 

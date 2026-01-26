@@ -386,7 +386,7 @@ void gravity_tree(void)
 #ifdef RT_OTVET
                 if(P[place].Type==0) {int k_freq; for(k_freq=0;k_freq<N_RT_FREQ_BINS;k_freq++) for(k=0;k<6;k++) CellP[place].ET[k_freq][k] += GravDataOut[j].ET[k_freq][k];}
 #endif
-#ifdef GALSF_FB_FIRE_RT_UVHEATING
+#ifdef GALSF_FB_FIRE_RT_LONGRANGE
                 if(P[place].Type==0) {CellP[place].Rad_Flux_UV += GravDataOut[j].Rad_Flux_UV;}
                 if(P[place].Type==0) {CellP[place].Rad_Flux_EUV += GravDataOut[j].Rad_Flux_EUV;}
 #ifdef CHIMES
