@@ -668,8 +668,7 @@ void calculate_and_assign_nonideal_mhd_coefficients(int i)
     double x_neutral = DMAX(0., 1-m_ion*xi); // neutral fraction of mass
     double units_cgs_to_code = UNIT_TIME_IN_CGS / (UNIT_LENGTH_IN_CGS * UNIT_LENGTH_IN_CGS); // convert coefficients (L^2/t) to code units [physical]
     double eta_ohmic = eta_O*units_cgs_to_code, eta_hall = eta_H*units_cgs_to_code, eta_ad = x_neutral * eta_A*units_cgs_to_code;
-//#define MHD_NON_IDEAL_CORRECTIONTERMS 1
-#ifdef MHD_NON_IDEAL_CORRECTIONTERMS /* account for unphysical or not internally self-consistent drift/slip speeds (PFH+Squire 24) */
+#ifdef MHD_NON_IDEAL_CORRECTIONTERMS /* account for unphysical or not internally self-consistent drift/slip speeds (PFH+Squire 24; arXiv:2405.06026) */
     double gradbmag2=0,gradbmag=0,btmp=0,L_B=MAX_REAL_NUMBER;
     int j; for(k=0;k<3;k++) {for(j=0;j<3;j++) {btmp=CellP[i].Gradients.B[k][j]; gradbmag2+=btmp*btmp;}} // need to get magnitude of B gradient for below
     if(gradbmag2>0) {gradbmag=sqrt(gradbmag2)*(All.cf_a2inv/All.cf_atime)*gizmo2gauss; L_B=(B_Gauss/gradbmag)*UNIT_LENGTH_IN_CGS;} // L_B is gradient length in cgs

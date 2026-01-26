@@ -155,7 +155,6 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #endif
 #if defined(SINK_RETURN_BFLUX)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_B[k], out->accreted_B[k], mode);}
-//    ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_Phi, out->accreted_Phi, mode);
 #endif
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
     for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(SinkTempInfo[target].accreted_J[k], out->accreted_J[k], mode);}
