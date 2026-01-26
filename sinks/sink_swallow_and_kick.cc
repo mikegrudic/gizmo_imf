@@ -1253,11 +1253,10 @@ double target_mass_for_wind_spawning(int i)
 #endif
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 4) // replace later as needed //
     if(is_particle_a_special_zoom_target(i)) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
-    //if(P[i].Type==3) {return 1.e-6/UNIT_MASS_IN_SOLAR;} //
 #endif
 
 #if defined(SNE_NONSINK_SPAWN)
-    if(P[i].Type==4) {return 0.5/UNIT_MASS_IN_SOLAR;} // replace later as needed //
+    if(P[i].Type==4) {return 0.5 / UNIT_MASS_IN_SOLAR;} // replace later as needed //
 #endif
     
 #ifdef SINK_WIND_SPAWN
