@@ -371,7 +371,7 @@ INCL    += 	declarations/allvars.h \
 #  in fortran and call the additional fortran compilers and linkers. these could
 #  be written to always compile and just be ignored, but then the large majority
 #  of cases that -don't- need the fortran linker would always have to go
-#  through these additional compilation options and steps (and this
+#  through these additional compilation options and steps (and this 
 #  can cause additional problems on some machines). so we sandbox it here.
 ifeq (EOS_HELMHOLTZ,$(findstring EOS_HELMHOLTZ,$(CONFIGVARS)))
 OBJS    += eos/eos_interface.o
