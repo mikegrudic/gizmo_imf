@@ -1115,7 +1115,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 
         Heat = 0;  /* Now, collect heating terms */
 
-#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
+#if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
         if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
 #else

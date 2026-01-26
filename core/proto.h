@@ -36,7 +36,7 @@ void set_turb_ampl(void);
 int new_turbforce_needed_this_timestep(void);
 void add_turb_accel(void);
 void log_turb_temp(void);
-
+double get_random_number(MyIDType id);
 double mpi_report_comittable_memory(long long BaseMem, int verbose);
 long long report_comittable_memory(long long *MemTotal,
                                    long long *Committed_AS,

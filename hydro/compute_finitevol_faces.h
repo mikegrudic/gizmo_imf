@@ -84,7 +84,7 @@
 
 
 /* check if face area exceeds maximum geometric allowed limit (can occur when particles with -very- different KernelRadius interact at the edge of the kernel, limited to geometric max to prevent numerical instability */
-#if defined(SLOPE_LIMITER_TOLERANCE==0)
+#if (SLOPE_LIMITER_TOLERANCE == 0)
     double Amax = DMIN(Get_Particle_Expected_Area(Particle_Size_i) , Get_Particle_Expected_Area(Particle_Size_j)); // minimum of area "i" or area "j": this subroutine takes care of dimensionality, etc. note inputs are all in -physical- units here
     if(Face_Area_Norm > Amax) {for(k=0;k<3;k++) {Face_Area_Vec[k] *= (Amax/Face_Area_Norm);} Face_Area_Norm = Amax;} /* set the face area to the maximum limit, and reset the face vector as well [ direction is preserved, just area changes] */
 #endif
