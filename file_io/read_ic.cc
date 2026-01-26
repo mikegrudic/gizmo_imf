@@ -211,15 +211,11 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_ID:		/* particle ID */
-            for(n = 0; n < pc; n++) {P[offset + n].ID = *ip++;}
+            for(n = 0; n < pc; n++) {P[offset + n].ID = (MyIDType) (*ip++);}
             break;
 
-
         case IO_CHILD_ID:		// particle child ID //
-            if(RestartFlag == 2)
-            {
-                for(n = 0; n < pc; n++) {P[offset + n].ID_child_number = *ip++;}
-            }
+            if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P[offset + n].ID_child_number = *ip++;}}
             break;
 
         case IO_GENERATION_ID:		// particle generation ID //
@@ -1000,7 +996,7 @@ void read_file(char *fname, int readTask, int lastTask)
             if(blocknr == IO_HSMS) {continue;}
 
 #ifdef TURB_DIFF_DYNAMIC
-            if (RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {continue;}
+            if(RestartFlag == 0 && blocknr == IO_TURB_DYNAMIC_COEFF) {continue;}
 #endif
 
             if(ThisTask == readTask)
@@ -1010,7 +1006,7 @@ void read_file(char *fname, int readTask, int lastTask)
             }
 
             bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
-            
+            if(blocknr == IO_ID && ((RestartFlag == 0 && All.ICFormat == 1) || (RestartFlag == 2 && All.SnapFormat == 1))) {bytes_per_blockelement = sizeof(unsigned int);} /* in this special case, the old unformatted fortran binary GADGET-2 format needs to be respected, which used unsigned int for IDs */
 #if (CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART==1)
             if(RestartFlag == 2 && blocknr == IO_COSMICRAY_ENERGY) {bytes_per_blockelement = (1) * sizeof(MyInputFloat);}
 #endif

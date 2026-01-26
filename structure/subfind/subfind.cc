@@ -984,11 +984,7 @@ int get_datatype_in_sub(enum siofields blocknr)
     {
     case SIO_MBID:
     case SIO_PID:
-#ifdef LONGIDS
       typekey = 2;		/* native long long */
-#else
-      typekey = 0;		/* native int */
-#endif
       break;
 
     case SIO_GLEN:

@@ -447,7 +447,6 @@ int sink_evaluate_swallow(int target, int mode, int *nexport, int *nsend_local);
 
 int  sink_compare_key(const void *a, const void *b);
 
-
 void fof_fof(int num);
 void fof_import_ghosts(void);
 void fof_course_binning(void);
@@ -469,27 +468,17 @@ void fof_link_specialpair(int p, int s);
 void fof_make_sink_particles(void);
 
 int io_compare_P_GrNr_ID(const void *a, const void *b);
-
 void write_file(char *fname, int readTask, int lastTask);
-
 void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int *filenr, int *primary_taskID, int *last);
-
 int get_values_per_blockelement(enum iofields blocknr);
-
 int get_datatype_in_block(enum iofields blocknr);
 void get_dataset_name(enum iofields blocknr, char *buf);
-
-
 int blockpresent(enum iofields blocknr);
 void fill_write_buffer(enum iofields blocknr, int *pindex, int pc, int type);
 void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type);
-
 long get_particles_in_block(enum iofields blocknr, int *typelist);
-
 int get_bytes_per_blockelement(enum iofields blocknr, int mode);
-
 void read_file(char *fname, int readTask, int lastTask);
-
 void get_Tab_IO_Label(enum iofields blocknr, char *label);
 
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES

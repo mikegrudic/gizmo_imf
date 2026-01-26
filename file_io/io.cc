@@ -2008,11 +2008,7 @@ int get_datatype_in_block(enum iofields blocknr)
         case IO_ID:
         case IO_CHILD_ID:
         case IO_GENERATION_ID:
-#ifdef LONGIDS
             typekey = 2;		/* native long long */
-#else
-            typekey = 0;		/* native int */
-#endif
             break;
 
         case IO_SINKPROGS:
@@ -2086,7 +2082,7 @@ int get_values_per_blockelement(enum iofields blocknr)
         case IO_TSTP:
         case IO_VDIV:
         case IO_DIVB:
-	case IO_AMBIPOLAR:
+	    case IO_AMBIPOLAR:
         case IO_HALL:
         case IO_OHMIC:
         case IO_ABVC:

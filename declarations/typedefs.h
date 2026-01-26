@@ -16,13 +16,7 @@ typedef unsigned long long peano1D;
 #endif
 
 
-#ifndef LONGIDS
-typedef unsigned int MyIDType;
-#else
 typedef unsigned long long MyIDType;
-#endif
-
-
 typedef double  MyFloat;
 typedef double  MyDouble;
 

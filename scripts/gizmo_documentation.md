@@ -2300,7 +2300,6 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS          # explicitly check if particles have unique id numbers (only use for special behaviors)
-#LONGIDS                        # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                 # assign IDs on startup instead of reading from ICs
 #NO_CHILD_IDS_IN_ICS            # IC file does not have child IDs: do not read them (used for compatibility with snapshot restarts from old versions of the code)
 # --------------------
@@ -2416,8 +2415,6 @@ These are miscellaneous flags for de-bugging and special purpose behaviors. If y
 ### _Particle IDs_ 
 
 **TEST\_FOR\_IDUNIQUENESS**: Forces the code to check at startup that all particles have unique IDs.
-
-**LONGIDS**: Use long long type for particle IDs instead of long: this is needed for very large (>2e9 particle) simulations. 
 
 **ASSIGN\_NEW\_IDS**: Make the code assign particles new IDs on startup. This is useful if the ICs do not contain IDs for some reason, or they if one needs to use longer IDs. They will not be assigned in any particular order (just the initial particle ordering from the IC read).
 
@@ -4477,7 +4474,7 @@ Good luck!
 <a name="faqs-startup"></a>
 ## My Run Won't Start, What Did I Do Wrong?
 
-Again, this is not something with a generic answer. If your run will not start, its almost never a code problem, but a setup problem. Common causes include: (1) code was compiled incorrectly, (2) cant find the libraries it needs, (3) memory settings (see below) are incorrect and ask for more memory than available, (4) the source code, parameterfile, other needed files (ICs, TREECOOL, etc) are not in the correct directories your run script thinks they should be in, (5) your run script was not written correctly for the machine you are running on, (6) your maximum/minimum timesteps are set much too high or low for the problem, (7) your end time or begin time of the run, or box size, or cosmological parameters are set incorrectly, (8) the initial conditions file is not in the correct format, or has data not in the format assumed (remember parameters like `INPUT_IN_DOUBLEPRECISION`, `LONGIDS`, etc. are needed for those inputs to be read correctly if they are in those formats), (9) your settings (e.g. node number or multipledomains, or force softenings and smoothing length limits) are set such that the code spends its entire run-time in the 'overhead' calculations (reading in ICs, initial iteration to converge to smoothing lengths, etc). 
+Again, this is not something with a generic answer. If your run will not start, its almost never a code problem, but a setup problem. Common causes include: (1) code was compiled incorrectly, (2) cant find the libraries it needs, (3) memory settings (see below) are incorrect and ask for more memory than available, (4) the source code, parameterfile, other needed files (ICs, TREECOOL, etc) are not in the correct directories your run script thinks they should be in, (5) your run script was not written correctly for the machine you are running on, (6) your maximum/minimum timesteps are set much too high or low for the problem, (7) your end time or begin time of the run, or box size, or cosmological parameters are set incorrectly, (8) the initial conditions file is not in the correct format, or has data not in the format assumed (remember parameters like `INPUT_IN_DOUBLEPRECISION`, etc. are needed for those inputs to be read correctly if they are in those formats), (9) your settings (e.g. node number or multipledomains, or force softenings and smoothing length limits) are set such that the code spends its entire run-time in the 'overhead' calculations (reading in ICs, initial iteration to converge to smoothing lengths, etc). 
 
 Always check all stdout and stderr and run-time output files (including outputs from the job script system if they include those). If no such outputs exist the problem is almost certainly in your job submission script. If outputs exist, search for the error codes. Outputs in stdout with error codes will be error codes in GIZMO -- search for them explicitly in the GIZMO source code (do a grep) to find out where the code exited if the description is unclear. Other error codes are machine or compiler-provided: a simple search online will usually find a more useful description. 
 
@@ -4504,7 +4501,7 @@ In the **parameterfile**: (1) Make sure `MaxMemSize` is set appropriately. This 
 
 If small and intermediate jobs are running, but larger jobs fail immediately, there are a few things to check. First make sure its not a memory issue (larger jobs require more memory, even per particle, owing to larger overheads): see the question above. Second, make sure it isn't a machine issue (some versions of MPI and some machines require very special commands to run on a very large number of nodes) -- check with your IT help. 
 
-In older versions of GIZMO, there are also a couple of `Config.sh` parameters which can be **required** for large runs. If you have more IDs than an int register can hold, be sure `LONGIDS` is set in your `Config.sh` file. The flag `NO_ISEND_IRECV_IN_DOMAIN` is **required** for runs with much more than a couple billion particles, as most versions of MPI will otherwise send certain requests using a regular int register and will crash. In the newest versions of GIZMO, these flags are 'always on' and hard-coded: even if you do not need them for smaller runs, they don't involve any performance penalty. The reason they are not always on in older code versions is purely historical compatibility: many ICs generated for GIZMO and GADGET do not use `LONGIDS`, and `NO_ISEND_IRECV_IN_DOMAIN` is incompatible with some older and/or serial compilers.
+In older versions of GIZMO, there are also a couple of `Config.sh` parameters which can be **required** for large runs. If you have more IDs than an int register can hold, be sure `LONGIDS` is set in your `Config.sh` file (now always on, with a special catch for legacy old unformatted binary GADGET-2 IC files). The flag `NO_ISEND_IRECV_IN_DOMAIN` is **required** for runs with much more than a couple billion particles, as most versions of MPI will otherwise send certain requests using a regular int register and will crash. In the newest versions of GIZMO, these flags are 'always on' and hard-coded: even if you do not need them for smaller runs, they don't involve any performance penalty. The reason they are not always on in older code versions is purely historical compatibility: many ICs generated for GIZMO and GADGET do not use long ids, but new code catches for this, and `NO_ISEND_IRECV_IN_DOMAIN` is incompatible with some older and/or serial compilers.
 
 <a name="faqs-timebin"></a>
 ## Why Did Everything Drop to TimeBin=1?

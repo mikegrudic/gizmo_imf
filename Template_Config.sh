@@ -540,7 +540,6 @@
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS             # explicitly check if particles have unique id numbers (only use for special behaviors)
-#LONGIDS                           # use long ints for IDs (needed for super-large simulations)
 #ASSIGN_NEW_IDS                    # assign IDs on startup instead of reading from ICs
 #NO_CHILD_IDS_IN_ICS               # IC file does not have child IDs: do not read them (used for compatibility with snapshot restarts from old versions of the code)
 # --------------------
