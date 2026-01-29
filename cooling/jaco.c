@@ -1,6 +1,6 @@
 #include "../allvars.h"
 #include "../proto.h"
-#include "indices.h"
+#include "jaco_indices.h"
 #include "math.h"
 #include "microphysics_func_jac.h"
 #include "string.h"
