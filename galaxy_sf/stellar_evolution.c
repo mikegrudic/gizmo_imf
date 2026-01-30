@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -945,6 +946,7 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
                 P[n].Mass = P[n].BH_Mass;
 #endif
                 // Save properties of SN progenitor.
+		mkdir(All.OutputDir, 02755);
                 char buf[200];
                 FILE *FdBhSNDetails2;
                 sprintf(buf, "%s%s", All.OutputDir, "SN_details_STARFORGE.txt");
