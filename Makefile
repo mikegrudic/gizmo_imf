@@ -105,16 +105,11 @@ ifeq ($(SYSTYPE),"Frontera")
 CC       =  mpicc
 CXX      =  mpicxx -std=c++11
 FC       =  mpif90 -nofor_main
-OPTIMIZE = -ggdb -O2 -xCORE-AVX2 -Wno-unknown-pragmas -Wall -Wno-format-security
-#ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
-OPTIMIZE += -qopenmp
-#endif
+OPTIMIZE = -ggdb -O2 -xCORE-AVX2 -Wno-unknown-pragmas -Wall -Wno-format-security -qopenmp
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
 CHIMESINCL = -I$(TACC_SUNDIALS_INC)
 CHIMESLIBS = -L$(TACC_SUNDIALS_LIB) -lsundials_cvode -lsundials_nvecserial
 endif
-GMP_INCL = #
-GMP_LIBS = #
 MKL_INCL = -I$(TACC_MKL_INC)
 MKL_LIBS = -L$(TACC_MKL_LIB) -mkl=sequential
 GSL_INCL = -I$(TACC_GSL_INC)
@@ -123,7 +118,7 @@ FFTW_INCL= -I$(TACC_FFTW3_INC)
 FFTW_LIBS= -L$(TACC_FFTW3_LIB)
 HDF5INCL = -I$(TACC_HDF5_INC) -DH5_USE_16_API
 HDF5LIB  = -L$(TACC_HDF5_LIB) -lhdf5 -lz
-MPICHLIB =
+MPICHLIB = #
 OPT     += -DHDF5_DISABLE_VERSION_CHECK
 ## compiles with module set: intel/19 impi hdf5 fftw3 gsl valgrind python3
 endif
@@ -138,8 +133,6 @@ OPTIMIZE = -O2 -xCORE-AVX2
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -qopenmp
 endif
-GMP_INCL = #
-GMP_LIBS = #
 MKL_INCL = -I$(CPATH)
 MKL_LIBS = -L$(LIBRARY_PATH) -mkl=sequential
 GSL_INCL = -I$(CPATH)
@@ -148,7 +141,7 @@ FFTW_INCL= -I$(CPATH)
 FFTW_LIBS= -L$(LIBRARY_PATH)
 HDF5INCL = -I$(CPATH) -DH5_USE_16_API
 HDF5LIB  = -L$(LIBRARY_PATH) -lhdf5 -lz
-MPICHLIB =
+MPICHLIB = #
 OPT     += -DHDF5_DISABLE_VERSION_CHECK
 # Compiles with following modules:   1) intel/20.1    2) hdf5/1.10.1   3) gsl/2.4       4) fftw/3.3.7
 endif
@@ -162,15 +155,14 @@ OPTIMIZE = -Ofast
 ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -qopenmp
 endif
-
 GSL_INCL = -I$(GSLHOME)/include
 GSL_LIBS = -L$(GSLHOME)/lib
 FFTW_INCL= -I$(FFTWHOME)/include
 FFTW_LIBS= -L$(FFTWHOME)/lib
 HDF5INCL = -I$(HDF5HOME)/include -DH5_USE_16_API
 HDF5LIB  = -L$(HDF5HOME)/lib -lhdf5 -lz
-MPICHLIB =
-OPT     +=
+MPICHLIB = #
+OPT     += #
 ## modules to load
 ## module load slurm intel openmpi_ib fftw/2.1.5 gsl hdf5
 ## run job with
@@ -189,8 +181,6 @@ CXX     = mpic++
 CHIMESINCL = -I/usr/local/include/sundials
 CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
 endif
-GMP_INCL = #
-GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
 GSL_INCL = -I/opt/homebrew/Cellar/gsl/2.8/include #-I$(PORTINCLUDE)
@@ -220,17 +210,15 @@ ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
 OPTIMIZE += -fopenmp # openmp required compiler flags
 FC       = $(CC)
 endif
-GMP_INCL =
-GMP_LIBS =
-MKL_INCL =
-MKL_LIBS =
+MKL_INCL = #
+MKL_LIBS = #
 GSL_INCL = -I/usr/include
 GSL_LIBS = -L/usr/lib 
 FFTW_INCL= -I/usr/include
 FFTW_LIBS= -L/usr/lib
 HDF5INCL = -I/usr/include/hdf5/openmpi -DH5_USE_16_API
 HDF5LIB  = -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ -lhdf5 -lz
-MPICHLIB =
+MPICHLIB = #
 OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION
 ## to get required packages: sudo apt install libhdf5-openmpi-dev libgsl-dev libopenmpi-dev
 endif
@@ -398,7 +386,7 @@ GRACKLELIBS =
 endif
 
 # linking libraries (includes machine-dependent options above)
-CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) $(GMP_INCL) \
+CFLAGS = $(OPTIONS) $(GSL_INCL) $(FFTW_INCL) $(HDF5INCL) \
          $(GRACKLEINCL) $(CHIMESINCL)
 
 

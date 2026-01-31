@@ -377,7 +377,7 @@ void do_the_kick(int i, integertime tstart, integertime tend, integertime tcurre
  
         /* check for reflecting or outflow or otherwise special boundaries: if so, do the reflection/boundary! */
         apply_special_boundary_conditions(i,mass_new,1);
-        if(P[i].Mass==0) {return;} /* exit if we have zero'd the particle mass, to avoid errors with dividing by zero */
+        if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return;} /* exit if we have zero'd the particle mass, to avoid errors with dividing by zero */
 
         /* any other gas-specific kicks (e.g. B-fields, radiation) go here */
         if(P[i].Type==0)

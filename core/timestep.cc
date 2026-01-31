@@ -1142,10 +1142,13 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         {
             if(P[i].Mass > 0)
             {
-                count[P[i].Type]++;
-                v[P[i].Type] += P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2];
-                if(mim[P[i].Type] > P[i].Mass) {mim[P[i].Type] = P[i].Mass;}
-                mnm[P[i].Type] += P[i].Mass;
+                double v2 = P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2];
+                if(v2 > 0 && isfinite(v2)) {
+                    count[P[i].Type]++;
+                    v[P[i].Type] += v2;
+                    if(mim[P[i].Type] > P[i].Mass) {mim[P[i].Type] = P[i].Mass;}
+                    mnm[P[i].Type] += P[i].Mass;
+                }
             }
         }
 
@@ -1160,7 +1163,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         count_sum[0] += count_sum[4];
         v_sum[4] = v_sum[0];
         count_sum[4] = count_sum[0];
-        min_mass[0] = min_mass[4] = (mean_mass[0] + mean_mass[4]) / count_sum[0];
+        if(count_sum[0] > 0) {min_mass[0] = min_mass[4] = (mean_mass[0] + mean_mass[4]) / count_sum[0];}
 #ifdef SINK_PARTICLES
         v_sum[0] += v_sum[5];
         count_sum[0] += count_sum[5];
@@ -1178,7 +1181,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         if(ThisTask == 0) {printf("Global displacement time constraint computation: \n");}
         for(type = 0; type < 6; type++)
         {
-            if(count_sum[type] > 0)
+            if(count_sum[type] > 0 && v_sum[type] > 0)
             {
 #ifdef GALSF
                 if(type == 0 || type == 4)

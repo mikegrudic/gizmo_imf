@@ -30,6 +30,7 @@ void radiation_pressure_winds_consolidated(void)
     {
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
         {
+            if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {continue;};
             double star_age = evaluate_stellar_age_Gyr(i);
             if( (star_age < age_threshold_in_gyr) && (P[i].Mass > 0) && (P[i].DensityAroundParticle > 0) )
             {
@@ -38,6 +39,7 @@ void radiation_pressure_winds_consolidated(void)
                 double lum_cgs = (lm_ssp * SOLAR_LUM_CGS) * (P[i].Mass*UNIT_MASS_IN_SOLAR); // total L in CGS of star particle
                 double f_lum_ion = particle_ionizing_luminosity_in_cgs(i) / lum_cgs; f_lum_ion=DMAX(0.,DMIN(1.,f_lum_ion)); // fraction of luminosity in H-ionizing radiation
                 double dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
+                if(dt <= 0 || !isfinite(dt)) {continue;}
                 double dE_over_c = All.RP_Local_Momentum_Renormalization * lum_cgs * (dt*UNIT_TIME_IN_CGS) / C_LIGHT_CGS; // total photon momentum emitted in timestep, in CGS (= L*dt/c)
                 dE_over_c /= (UNIT_MASS_IN_CGS * UNIT_VEL_IN_CGS); // total photon momentum now in code units
                 total_prob_kick += dE_over_c; // sum contributions
@@ -233,6 +235,7 @@ void HII_heating_singledomain(void)    /* this version of the HII routine only c
         if((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))
 #endif
         {
+            if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {continue;};
             dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
             if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}

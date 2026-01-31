@@ -411,11 +411,14 @@ void set_sink_mdot(int i, int n, double dt)
         /* subgrid model for convective vs disk regimes, with accretion rates from the high-res simulations */
         double psi_magdisk = 0.1;
         double r_kernel = P[n].KernelRadius * All.cf_atime;
+        if(r_kernel < ForceSoftening_KernelRadius(n)) {r_kernel = ForceSoftening_KernelRadius(n);}
         double m_sink = P[n].Sink_Mass;
         double m_kernel = SinkTempInfo[i].Malt_in_Kernel + P[n].Mass;
         double m_kernel_nonBH = m_kernel - m_sink;
         double mdot_ROI = SinkTempInfo[i].mdot_reservoir;
         double sigma2_eff = All.G * m_kernel_nonBH / r_kernel;
+        double sigma_min = (10.*1.e5/UNIT_VEL_IN_CGS);
+        if(sigma2_eff < sigma_min*sigma_min) {sigma2_eff = sigma_min*sigma_min;}
         double r_grav = 2. * All.G * m_sink / (C_LIGHT_CODE*C_LIGHT_CODE);
         double r_roi = All.G * m_sink / sigma2_eff;
         if(r_roi < r_grav) {r_roi = r_grav;}
@@ -449,6 +452,7 @@ void set_sink_mdot(int i, int n, double dt)
                 mdot = mdot_max;
             }
         }
+        if(mdot <= 1.e-30 || !isfinite(mdot)) {mdot = 1.e-30;}
         t_acc_disk = P[n].Sink_Mass_Reservoir / mdot;
         P[n].Sink_Mdot_ROI = mdot_ROI;
         P[n].Sink_ROI = r_roi;
@@ -457,7 +461,7 @@ void set_sink_mdot(int i, int n, double dt)
 #if defined(SINK_GRAVCAPTURE_GAS)
         t_acc_disk /= All.SinkAccretionFactor; // when using GRAVCAPTURE, this won't multiply the continuous mdot, but rather mdot from disk to BH
 #endif
-        t_acc_disk = DMAX(t_acc_disk , 3.*dt); /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
+        if(dt > 0) {t_acc_disk = DMAX(t_acc_disk , 3.*dt);} /* make sure accretion timescale is at least a few timesteps to avoid over-shoot, etc */
         mdot = P[n].Sink_Mass_Reservoir / t_acc_disk;
     }
 #endif //ifdef SINK_ALPHADISK_ACCRETION
@@ -493,9 +497,9 @@ void set_sink_mdot(int i, int n, double dt)
     if(dt>0)
     {
 #if defined(SINK_WIND_SPAWN)
-        if(mdot > P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction) mdot = P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction;
+        if(dt>0 && mdot > P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction) mdot = P[n].Sink_Mass_Reservoir/dt*All.Sink_accreted_fraction;
 #else
-        if(mdot > P[n].Sink_Mass_Reservoir/dt) mdot = P[n].Sink_Mass_Reservoir/dt;
+        if(dt>0 && mdot > P[n].Sink_Mass_Reservoir/dt) mdot = P[n].Sink_Mass_Reservoir/dt;
 #endif
     }
 #ifdef SINK_WIND_KICK /* DAA: correct the mdot into the accretion disk for the mass loss in "kick" winds */
@@ -535,6 +539,7 @@ void set_sink_mdot(int i, int n, double dt)
 void set_sink_new_mass(int i, int n, double dt)
 {
     int k; k=0; if(P[n].Sink_Mdot <= 0) {P[n].Sink_Mdot=0;} /* check unphysical values */
+    if(dt <= 0 || !isfinite(dt)) {dt = MIN_REAL_NUMBER;}
 
     /* before mass update, track angular momentum in disk for 'smoothed' accretion case [using continuous accretion rate and specific AM of all material in kernel around BH] */
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM) && (SINK_FOLLOW_ACCRETED_ANGMOM == 1)
@@ -901,7 +906,7 @@ void sink_final_operations(void)
 /* check promotion and clipping flags */
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         singlestar_subgrid_protostellar_evolution_update_track(n, dm, dt);
-        if((P[n].Type!=5) || (P[n].Mass==0)) {count_sink_elim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
+        if((P[n].Type!=5) || (P[n].Mass<=0) || !isfinite(P[n].Mass)) {count_sink_elim++;} // our subroutine has promoted or removed this sink: one fewer BH-type particle exists now //
 #endif
         
     } // for(i=0; i<N_active_loc_Sink; i++)

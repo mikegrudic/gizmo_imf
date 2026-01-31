@@ -480,7 +480,7 @@ void Riemann_solver_KurganovTadmor_PWK(struct Input_vec_Riemann Riemann_vec, str
 {
     /* estimate wave speed using the PWK 'switch' alpha */
     double S_L, S_R, S_M, nu, alpha; int k; nu=0;
-#if (SLOPE_LIMITER_TOLERANCE==0) || defined(HYDRO_RIEMANN_KT_UNLIMITED)
+#if (SLOPE_LIMITER_TOLERANCE==0)
     alpha = 1; /* default to the more dissipative but smoother limiter function */
 #else
     double delta_threshold = 0.001 * 0.5*(Riemann_vec.L.rho+Riemann_vec.R.rho) * 0.5*(cs_L+cs_R); /* alpha is non-zero only if relative momentum is appreciable fraction of this value */

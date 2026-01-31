@@ -734,7 +734,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
     int sph_gradients_flag_i = 0;
     /* check if we should bother doing a neighbor loop */
     if (local.KernelRadius <= 0) return 0;
-    if (local.Mass == 0) return 0;
+    if (local.Mass <= 0) return 0;
     if (local.Density <= 0) return 0;
 
     /* now set particle-i centric quantities so we don't do it inside the loop */

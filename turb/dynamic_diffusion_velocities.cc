@@ -109,7 +109,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
     memset(&kernel, 0, sizeof(struct kernel_DiffFilter));
     if (mode == 0) {particle2in_DiffFilter(&local, target, loop_iteration);} else {local = DATAGET_NAME[target];}
     if (local.KernelRadius <= 0) {return 0;}
-    if (local.Mass == 0) {return 0;}
+    if (local.Mass <= 0) {return 0;}
     if (local.Density <= 0) {return 0;}
 
     /* now set particle-i centric quantities so we don't do it inside the loop */

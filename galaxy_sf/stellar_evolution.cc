@@ -125,6 +125,7 @@ double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr
 /* routine to compute the -ionizing- luminosity coming from either individual stars or an SSP */
 double particle_ionizing_luminosity_in_cgs(long i)
 {
+    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;}
     if(is_particle_single_star_eligible(i)) /* SINGLE STAR VERSION: use effective temperature as a function of stellar mass and size to get ionizing photon production */
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS

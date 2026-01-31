@@ -1119,7 +1119,7 @@ void rearrange_particle_sequence(void)
     count_sink_elim = 0;
     /* loop over entire block looking for things with zero mass, which need to be eliminated */
     for(i = 0; i < NumPart; i++)
-        if(P[i].Mass <= 0)
+        if(P[i].Mass <= 0 || !isfinite(P[i].Mass))
         {
             P[i].Mass = 0;
             TimeBinCount[P[i].TimeBin]--;

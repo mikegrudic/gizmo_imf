@@ -52,7 +52,7 @@
 int rt_get_source_luminosity(int i, int mode, double *lum)
 {
     if(!((1 << P[i].Type) & (RT_SOURCES))) {return 0;}; // boolean test of whether i is a source or not - end if not a valid source particle
-    if(P[i].Mass <= 0) {return 0;} // reject invalid particles scheduled for deletion
+    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;} // reject invalid particles scheduled for deletion
     int active_check = 0; // default to inactive //
     
 #if defined(GALSF)
@@ -284,6 +284,7 @@ double rt_absorb_frac_albedo(int i, int k_freq)
 int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
 {
     if(!((P[i].Type == 4) || ((All.ComovingIntegrationOn==0)&&((P[i].Type==2)||(P[i].Type==3))))) {return 0;} // only star-type particles act in this subroutine //
+    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;}
     int active_check = 0; // default to inactive //
 #if defined(GALSF) /* basically none of these modules make sense without the GALSF module active */
     double star_age = evaluate_stellar_age_Gyr(i), m_sol = P[i].Mass * UNIT_MASS_IN_SOLAR;
@@ -379,6 +380,7 @@ int rt_get_lum_band_stellarpopulation(int i, int mode, double *lum)
 int rt_get_lum_band_agn(int i, int mode, double *lum)
 {
     if(P[i].Type != 5) {return 0;} // only go forward for BH-type particles
+    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;}
     int active_check = 0; // default to inactive //
 #if defined(SINK_PARTICLES)
     double l_bol = sink_lum_bol(P[i].Sink_Mdot,P[i].Mass,i); if(l_bol <= 0) {return 0;} // no accretion luminosity -- no point in going further!
@@ -436,6 +438,7 @@ int rt_get_lum_band_agn(int i, int mode, double *lum)
 int rt_get_lum_band_singlestar(int i, int mode, double *lum)
 {
     if(P[i].Type < 4) {return 0;} // only go forward with star or sink-type particles
+    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;}
     int active_check = 0, k; // default to inactive //
     
 #if defined(RT_INFRARED) /* special mid-through-far infrared band, which includes IR radiation temperature evolution */

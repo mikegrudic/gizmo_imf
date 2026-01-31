@@ -141,7 +141,6 @@ static inline double ForceSoftening_KernelRadius(int p)
     if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P[p].AGS_KernelRadius;}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(SELFGRAVITY_OFF) /* softening scale still appears in timestep criterion for problems without self-gravity, so set it adaptively */
-    //if(P[p].Type == 0) {if(All.Time == All.TimeBegin) {return All.ForceSoftening[P[p].Type];}}
 #ifdef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
     if(P[p].Type == 0) {return DMIN(P[p].KernelRadius, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
 #else
