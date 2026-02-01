@@ -23,12 +23,15 @@
  *  be dynamically updated in drift/kick operations to avoid having to
  *  reconstruct the tree every timestep.
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * substantially (condensed, new feedback routines added,
- * some optimizatins, and new variable/memory conventions added)
+ * substantially (condensed, new feedback routines added, many different
+ * types of walk and calculations added, structures in memory changed,
+ * switched options for nodes, optimizations, new physics modules and
+ * calcutions, and new variable/memory conventions added)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Mike Grudic has also made major revisions to code the Hermitian calculations and binary timestepping.
  */
 
 /*! auxiliary variable used to set-up non-recursive walk */

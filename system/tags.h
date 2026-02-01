@@ -1,6 +1,6 @@
 /* defines tag names for labeling MPI messages to prevent collisions */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (new variables,

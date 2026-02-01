@@ -13,7 +13,7 @@
 
 /*! compute line-of-sight integrated quantities (for e.g. Lyman-alpha forest studies) */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by Volker Springel.
  * It has been updated by PFH for basic compatibility with GIZMO.
  */

@@ -15,7 +15,7 @@
 /*! \file fof.c
  *  \brief parallel FoF group finder
  */
-/*
+/*!
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated significantly by PFH for basic compatibility with GIZMO,
 * as well as code cleanups, and accommodating new GIZMO functionality for various

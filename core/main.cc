@@ -2,9 +2,9 @@
  *  \brief start of the program
  */
 
-/*
+/*!
  * These routines evolved from GADGET3 code developed by Volker Springel.
- * They have been extensively evolved by Phil Hopkins (phopkins@caltech.edu)
+ * They have been extensively modified by Phil Hopkins (phopkins@caltech.edu)
  * for GIZMO.
  */
 

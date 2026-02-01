@@ -14,12 +14,12 @@
 /*!
  *  routines for star formation in cosmological/galaxy/single-star/black hole simulations
  */
-/*
- * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+/*!
+ * This file is largely written by Phil Hopkins for GIZMO.
  *   It was based on a similar file in GADGET3 by Volker Springel,
  *   but the physical modules for star formation and feedback have been
- *   replaced, and the algorithm is mostly new to GIZMO. Many additional modules
- *   added since, with significant contributions from Mike Grudic.
+ *   replaced, and the algorithm is almost entirely new to GIZMO. Many additional modules
+ *   added since, with major contributions from Mike Grudic.
  */
 
 

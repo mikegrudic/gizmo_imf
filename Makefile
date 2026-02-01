@@ -53,8 +53,8 @@
 #
 # This file was originally part of the GADGET3 code developed by
 #   Volker Springel. The code has been modified
-#   slighty by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly 
-#   dealing with new files and filename conventions)
+#   substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO
+#   (dealing with new files and filename conventions, libraries, parser, logic)
 #
 #############
 

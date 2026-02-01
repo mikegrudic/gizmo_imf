@@ -6,8 +6,9 @@
 #include <gsl/gsl_math.h>
 #include <unistd.h>
 
-/*
- * This file was originally part of the GADGET3 code by Volker Springel.
+/*!
+ * This file was originally part of the GADGET3 code by Volker Springel. Minor modifications for updated variable
+ * and memory structures in GIZMO by Phil Hopkins.
  */
 
 #ifdef IMPOSE_PINNING

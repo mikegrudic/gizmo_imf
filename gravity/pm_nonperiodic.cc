@@ -12,7 +12,8 @@
 /*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * significantly by Phil Hopkins (phopkins@caltech.edu) for GIZMO, and rewritten for new libraries.
+ * Mike Grudic has also made major revisions to code the Hermitian calculations and binary timestepping.
  */
 
 

@@ -12,11 +12,15 @@
 
 /*!
  * This file contains routines for neighbour finding.  We use the gravity-tree and a range-searching technique to find neighbours.
- *
+ */
+/*!
  * This file was originally part of the GADGET3 code developed by Volker Springel. The code has been heavily modified
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO (adding/consolidating some of the search routines as needed for different fluids).
  * the modules now are more modular and primarily run on a generic structure which was built entirely for GIZMO, as opposed to the
  * GADGET3-style neighbor finding, to allow for greater flexibility, more stable memory use, and efficient multi-threading.
+ * More importantly general routines for neighbor-searching and walking trees have been completely rewritten into a new
+ * set of modular files and structured portions of routines designed to be called by a high-level evaluation routine, so that all code can use
+ * consistent definitions and these only need to be modified in a single place.
  */
 
 

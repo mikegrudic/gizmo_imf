@@ -11,7 +11,7 @@
 /*! \file twopoint.c
  *  \brief computes the two-point mass correlation function on the fly
  */
-/*
+/*!
 * This file was originally part of the GADGET3 code developed by Volker Springel.
 * It has been updated by PFH for basic compatibility with GIZMO.
 */

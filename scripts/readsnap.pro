@@ -250,7 +250,7 @@ foundfile:
 	return, -1
     endif
 
-    ; volker isn't using a flag, so do it manually
+    ; no flag, so do it manually
     flag_snaphaspot= 0L
     if keyword_set(nopot_in_snap) then flag_snaphaspot= 0L 
     if keyword_set(havepot_in_snap) then flag_snaphaspot= 1L
@@ -727,7 +727,7 @@ moveon:
         return, -1
     endif
 
-    ; volker isn't using a flag, so do these manually
+    ; no flag, so do these manually
     flag_stargens= 1L
     flag_energydetail= 0L
     flag_parentid= 0L

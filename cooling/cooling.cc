@@ -7,14 +7,16 @@
 #include "../core/proto.h"
 #include "./cooling.h"
 
-/*
+/*!
  * This file contains the routines for optically-thin cooling (generally aimed towards simulations of the ISM,
  *   galaxy formation, and cosmology). A wide range of heating/cooling processes are included, including
  *   free-free, metal-line, Compton, collisional, photo-ionization and recombination, and more. Some of these
  *   are controlled by individual modules that need to be enabled or disabled explicitly.
- *
- * This file was originally part of the GADGET3 code developed by Volker Springel. The code has been modified heavily by
- *   Phil Hopkins (phopkins@caltech.edu) for GIZMO; essentially everything has been re-written at this point */
+ */
+
+/*! A file like this was originally part of the GADGET3 code developed by Volker Springel. But the code has been almost completely rewritten
+ *   and massively modified/extended for GIZMO, primarily by Phil Hopkins, Mike Grudic, and Alex Richings.
+ */
 
 
 #ifdef COOLING

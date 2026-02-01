@@ -10,12 +10,14 @@
 /*! \file timestep.c
  *  routines for assigning new timesteps
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these
  * modifications include the addition of various timestep criteria, the WAKEUP
- * additions, and various changes of units and variable naming conventions throughout.
+ * additions, and various changes of units and variable naming conventions throughout,
+ * as well as timestep conditions for all physics and alternative solver options
+ * and different timestep schemes entirely.
  */
 
 static double dt_displacement = 0;

@@ -2,11 +2,6 @@
 #include "../declarations/allvars.h"
 #endif
 
-/*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * slightly by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- */
 
 double domain_particle_cost_multiplier(int i);
 void domain_findSplit_work_balanced(int ncpu, int ndomain);

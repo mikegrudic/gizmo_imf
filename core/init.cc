@@ -12,11 +12,13 @@
 /*! \file init.c
  *  \brief code for initialisation of a simulation from initial conditions
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly initializing
- * new/modified variables, as needed)
+ * Volker Springel. The code has been modified heavily
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO: initializing
+ * new/modified variables, rewriting order-of-operations, standardizing
+ * where some calls occur, and adding new subroutines that need to be called
+ * on startup now.
  */
 
 /*! This function reads the initial conditions, and allocates storage for the

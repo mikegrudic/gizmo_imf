@@ -9,7 +9,7 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-/* This function reads initial conditions that are in the default file format
+/*! This function reads initial conditions that are in the default file format
  * of Gadget, i.e. snapshot files can be used as input files.  However, when a
  * snapshot file is used as input, not all the information in the header is
  * used: THE STARTING TIME NEEDS TO BE SET IN THE PARAMETERFILE.
@@ -23,10 +23,13 @@
  * neutrality, or full ionization.
  */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * in part (adding/removing read items and changing variable units as necessary)
+ * in part (adding/removing read items and changing variable units as necessary,
+ * changing some parser options, adding run-time flexibility, allowing different
+ * input types and structures and compression, updating for modern libraries,
+ * and many other under-the-hood changes)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -36,10 +39,6 @@ void read_ic(char *fname)
     double u_init, molecular_weight; char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE];
 
     CPU_Step[CPU_MISC] += measure_time();
-
-#ifdef RESCALEVINI
-    if(ThisTask == 0 && RestartFlag == 0) {fprintf(stdout, "Rescaling v_ini !\n"); fflush(stdout);}
-#endif
 
     NumPart = 0;
     N_gas = 0;
@@ -196,18 +195,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             break;
 
         case IO_VEL:		/* velocities */
-            for(n = 0; n < pc; n++)
-            {
-                for(k = 0; k < 3; k++)
-                {
-#ifdef RESCALEVINI
-                    /* scaling v to use same IC's for different cosmologies */
-                    if(RestartFlag == 0) {P[offset + n].Vel[k] = (*fp++) * All.VelIniScale;} else {P[offset + n].Vel[k] = *fp++;}
-#else
-                    P[offset + n].Vel[k] = *fp++;
-#endif
-                }
-            }
+            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P[offset + n].Vel[k] = *fp++;}}
             break;
 
         case IO_ID:		/* particle ID */

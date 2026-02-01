@@ -14,11 +14,17 @@
 /*! \file io.c
  *  \brief Output of a snapshot file to disk.
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO (mostly to
- * write out new/modified quantities, as needed)
+ * Volker Springel. The code has been modified heavily
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO. Mostly to
+ * write out new/modified quantities, but also changing the units of
+ * snapshots, adding additional basic functionality for types of input/output,
+ * changing read conditions and dynamic dependence on run-time and compile-time
+ * variables, changing flexibility for certain dataset layouts and architectures,
+ * adding compression options, adding extensive header options and
+ * output of various parameterfile and run-time options for later user reference,
+ * and rewriting some subroutines to be compatible with modern libraries.
  */
 
 static int n_type[6];

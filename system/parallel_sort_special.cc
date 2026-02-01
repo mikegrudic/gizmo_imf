@@ -13,8 +13,9 @@
 #include "../core/proto.h"
 
 
-/*
- * This file was originally part of the GADGET3 code by Volker Springel.
+/*!
+ * This file was originally part of the GADGET3 code by Volker Springel. Minor modifications for updated variable
+ * and memory structures in GIZMO by Phil Hopkins.
  */
 
 #if defined(IO_SUBFIND_READFOF_FROMIC)

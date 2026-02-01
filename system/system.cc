@@ -14,15 +14,15 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-/* various routines are collected here, needed to communicate with the 
+/*! various routines are collected here, needed to communicate with the 
  *  actual system, stdin/out, abort runs, etc
  */
 
-/*
- * This file (and the relevant routines) were originally part of the GADGET3 
+/*!
+ * This file (and the relevant routines) were originally part of the GADGET3
  * code developed by Volker Springel. Some routines
  * have been collected and re-arranged a bit, but not substantially modified, by 
- * Phil Hopkins (phopkins@caltech.edu) for GIZMO. Others have been written from
+ * Phil Hopkins (phopkins@caltech.edu) for GIZMO. Many others have been written from
  * scratch by PFH, particularly any that deal with the new modular memory allocation,
  * parallelization, neighbor communication, and multi-threading methods.
  */

@@ -13,12 +13,13 @@
 /*! \file run.c
  *  \brief  iterates over timesteps, main loop
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * in part (adding/removing calls, re-ordering some routines, and
+ * heavily (adding/removing calls, re-ordering some routines, and
  * adding hooks to new elements such as particle splitting, as necessary)
- * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * for GIZMO by Phil Hopkins (phopkins@caltech.edu) and Mike Grudic (also
+ * adding options needed for higher-order Runge-Kutta and Hermite integration)
  */
 
 
@@ -337,9 +338,7 @@ void execute_resubmit_command(void)
 {
     char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE];
     snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s", All.ResubmitCommand);
-#ifndef NOCALLSOFSYSTEM
     system(buf);
-#endif
 }
 
 

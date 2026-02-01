@@ -24,8 +24,14 @@
  */
 
 /*!
- * This file was originally part of the GADGET3 code developed by Volker Springel.
- * The code has been modified substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * This file was originally part of the GADGET3 code developed by
+ * Volker Springel. The code has been modified
+ * substantially (condensed, new feedback routines added, many different
+ * types of walk and calculations added, structures in memory changed,
+ * switched options for nodes, optimizations, new physics modules and
+ * calcutions, and new variable/memory conventions added)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * Mike Grudic has also made major revisions to code the Hermitian calculations and binary timestepping.
  */
 
 double Ewaldcount, Costtotal;

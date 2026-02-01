@@ -7,14 +7,17 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-/* Routines for the drift/predict step */
+/*! Routines for the drift/predict step */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * substantially in detail (although the actual algorithm 
- * structure remains essentially the same) 
- * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+ * substantially in detail (although the highest-level algorithm
+ * structure remains essentially the same)
+ * by Phil Hopkins (phopkins@caltech.edu) for GIZMO, and many new
+ * options and subroutines added for flexibility with different
+ * hydro solvers, timestepping schemes, boundary conditions, and
+ * different mesh-motion options added.
  */
 
 void reconstruct_timebins(void)

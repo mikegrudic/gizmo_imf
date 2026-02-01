@@ -14,9 +14,9 @@
 /*! \file sink.c
  *  \brief routines for gas accretion onto sink particles, and sink particle mergers
  */
-/*
- * This file is largely written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- *   It was based on a similar file in GADGET3 by Volker Springel,
+/*!
+ * This file is largely written by Phil Hopkins and Mike Grudic for GIZMO.
+ *   Some parts evolved from the 'blackhole' routines in GADGET3 by Volker Springel,
  *   but the physical modules for sink particle accretion and feedback have been
  *   replaced, and the algorithms for their coupling are new to GIZMO.  This file was modified
  *   on 1/9/15 by Paul Torrey (ptorrey@mit.edu) for clarity by parsing the existing code into

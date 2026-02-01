@@ -27,15 +27,19 @@
  */
 
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
- * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these 
- * modifications do not change the core algorithm, but have optimized it in 
- * some places, changed relative weighting factors for different levels in the 
+ * significantly by Phil Hopkins (phopkins@caltech.edu) for GIZMO; these
+ * modifications do not change the most basic algorithmic choices in the domain
+ * decomposion, but have optimized it in
+ * some places, changed relative weighting factors for different levels in the
  * domain decomposition, and similar details. Also how some memory issues are
  * handled has been updated to reflect the newer more general parallelization
- * structures in GIZMO.
+ * structures in GIZMO. Changed buffer structures. Many variable name changes,
+ * and changes in how cells vs non-cell elements are treated and weighted
+ * and assigned to memory. Removed extensive non-functional code not relevant
+ * for GIZMO.
  */
 
 

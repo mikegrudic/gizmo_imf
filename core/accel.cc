@@ -23,10 +23,9 @@
  * be outside the allowed bounds, it will be readjusted by the function ensure_neighbours(), and for those
  * particle, the densities are recomputed accordingly. Finally, the hydrodynamical forces are added.
  */
-
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified (re-arranged, consolidated, and a number of additional
+ * Volker Springel. The code has been rewritten and extensively modified (re-arranged, consolidated, and a number of additional
  * sub-loops and other structures for e.g. feedback, gradients, neighbor operations on non-gas, etc,
  * added) by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */

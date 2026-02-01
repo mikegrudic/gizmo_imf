@@ -10,7 +10,7 @@
 /* This routine allocates memory for particle storage, both the collisionless and the fluid particles.
  * The memory for the ordered binary tree of the timeline is also allocated.
  */
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * in part (cleaned up a bit, dealt with some newer memory

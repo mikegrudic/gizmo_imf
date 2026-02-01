@@ -8,16 +8,12 @@
 #include "../core/proto.h"
 
 
-/* This routine computes various global properties of the particle
- * distribution and stores the result in the struct `SysState'.
- * Currently, not all the information that's computed here is 
- * actually used (e.g. momentum is not really used anywhere),
- * just the energies are written to a log-file every once in a while.
- */
-/*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
+/*! This routine computes various global properties of the particle
+ * distribution, if desired for some options. It also holds some subroutines
+ * (unlike the GADGET file of this name originally written by Volker Springel)
+ * for different meta-options, like dynamic refinement centers, and
+ * time-dilation schemes, etc., all of which are unique to GIZMO.
+ * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
 void compute_global_quantities_of_system(void)

@@ -28,12 +28,12 @@
  *  ICs/restart-files are called, auxialiary memory is allocated, etc.
  */
 
-/*
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * in part by Phil Hopkins (phopkins@caltech.edu) for GIZMO. The modifications
- * mostly center on added functionality for new modules, elimination of unnecessary
- * variables, implementing the DEVELOPER_MODE options, and re-organizing the read order
+/*! This file was originally part of the GADGET3 code developed by
+ * Volker Springel. The parser is still fundamentally the same, but the code has been modified
+ * heavily by Phil Hopkins (phopkins@caltech.edu) and Mike Grudic for GIZMO. The modifications
+ * mostly center on quality-of-life improvements, adding the option for default flags to exist,
+ * added functionality for new modules, elimination of unnecessary variables, new extensions to
+ * the original parser, implementing the DEVELOPER_MODE options, and rewriting the read order
  * to allow easier manipulation on restarts.
  */
 
@@ -1707,12 +1707,6 @@ void read_parameter_file(char *fname)
 #endif
 #endif
 
-#ifdef RESCALEVINI
-      strcpy(tag[nt], "VelIniScale");
-      addr[nt] = &All.VelIniScale;
-      id[nt++] = REAL;
-#endif
-
 #ifdef GR_TABULATED_COSMOLOGY
 #if defined(GR_TABULATED_COSMOLOGY_W) || defined(GR_TABULATED_COSMOLOGY_G) || defined(GR_TABULATED_COSMOLOGY_H)
       strcpy(tag[nt], "TabulatedCosmologyFile");
@@ -2187,9 +2181,7 @@ void read_parameter_file(char *fname)
                 snprintf(buf1, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", fname, "-usedvalues");
                 snprintf(buf2, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "parameters-usedvalues");
                 snprintf(buf3, DEFAULT_PATH_BUFFERSIZE_TOUSE, "cp %s %s", buf1, buf2);
-#ifndef NOCALLSOFSYSTEM
                 int ret; ret = system(buf3);
-#endif
             }
         }
         else

@@ -12,8 +12,8 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-/*
- * This file was originally part of the GADGET3 code by Volker Springel.
+/*!
+ * This file was originally part of the GADGET3 code by Volker Springel. Minor modifications for GIZMO conventions by Phil Hopkins.
  */
 
 #define TRANSFER_SIZE_LIMIT  1000000000

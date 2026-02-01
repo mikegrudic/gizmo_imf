@@ -10,11 +10,12 @@
 
 /* custom memory allocation routines */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * somewhat by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
- * ALIGN issues fixed with patch from Peter Bell Feb. 2020.
+ * ALIGN issues fixed with patch from Peter Bell Feb. 2020. Since then more heavy
+ * modifications to allow for new compilers and machines have been made.
  */
 
 #define MAXBLOCKS 500

@@ -11,8 +11,9 @@
 
 
 
-/*
- * This file was originally part of the GADGET3 code by Volker Springel.
+/*!
+ * This file was originally part of the GADGET3 code by Volker Springel. Minor modifications for updated variable
+ * and memory structures in GIZMO by Phil Hopkins.
  */
 
 
@@ -184,7 +185,7 @@ void reorder_particles(void)
 
 
 /*  The following rewrite of the original function
- *  peano_hilbert_key_old() has been written by MARTIN REINECKE. 
+ *  peano_hilbert_key_old() has been written by Martin Reinecke. 
  *  It is about a factor 2.3 - 2.5 faster than Volker's old routine!
  */
 const unsigned char rottable3[48][8] = {

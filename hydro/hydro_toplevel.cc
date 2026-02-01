@@ -52,7 +52,7 @@
  All.cf_hubble_a2 = All.Time * All.Time * hubble_function(All.Time);
 
  -----------------------------------------
- A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS:: (direct quote from Volker)
+ A REMINDER ABOUT GIZMO/GADGET VELOCITY UNITS:: (from Volker)
 
  The IC file should contain the *peculiar* velocity divided by sqrt(a),
  not the *physical* velocity. Let "x" denote comoving

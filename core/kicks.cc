@@ -6,12 +6,14 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified
  * substantially by Phil Hopkins (phopkins@caltech.edu) for GIZMO 
  * (added energy/entropy switch, terms for explicit mass conservation in mass fluxes, 
- *  and updates to additional fluid variables as needed)
+ *  and updates to additional fluid variables, options for different hydro solvers,
+ *  libraries and architectures for different grid/cell structures, rewritten
+ *  to allow boundary conditions other than periodic and open, etc.)
  */
 
 void apply_long_range_kick(integertime tstart, integertime tend);

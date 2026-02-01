@@ -27,7 +27,7 @@ static void byten(void *x, size_t n, int modus);
 int old_MaxPart = 0, new_MaxPart;
 
 
-/* This function reads or writes the restart files.
+/*! This function reads or writes the restart files.
  * Each processor writes its own restart file, with the
  * I/O being done in parallel. To avoid congestion of the disks
  * you can tell the program to restrict the number of files
@@ -37,11 +37,13 @@ int old_MaxPart = 0, new_MaxPart;
  * if modus==0 it writes a restart file. 
  */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * in part (adding/removing read/write items, allowing for different variables 
- * to be changed or re-initialized on restarts, and changing variable units as necessary)
+ * Volker Springel. The code has been modified heavily
+ * (adding/removing read/write items, allowing for different variables
+ * to be changed or re-initialized on restarts, and changing variable units,
+ * allowing run-time option modifications, rewriting for new libraries,
+ * reconfiguring how some memory is structured, etc.)
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 
@@ -62,7 +64,6 @@ void restart(int modus)
     {
         snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s/restartfiles", All.OutputDir);
         mkdir(buf, 02755);
-#ifndef NOCALLSOFSYSTEM
         int i_Task_iter;
         for(i_Task_iter=0; i_Task_iter<NTask; i_Task_iter++)
         {
@@ -77,11 +78,9 @@ void restart(int modus)
 #endif
             rename(buf,buf_bak); // move old restart files to .bak files //
         }
-#endif
     }
     if(modus == 1) // reading re-start files. make sure to check all the files to read exist!
     {
-#ifndef NOCALLSOFSYSTEM
         int i_Task_iter;
         for(i_Task_iter=0; i_Task_iter<NTask; i_Task_iter++)
         {
@@ -90,7 +89,6 @@ void restart(int modus)
             if(!(fd = fopen(buf, "r"))) {regular_restarts_are_valid=0;} else {fclose(fd);} // check if regular restart exists
             if(!(fd = fopen(buf_bak, "r"))) {backup_restarts_are_valid=0;} else {fclose(fd);} // check if backup restart exists
         }
-#endif
         if(ThisTask == 0)
         {
             if((regular_restarts_are_valid == 0) && (backup_restarts_are_valid == 0))

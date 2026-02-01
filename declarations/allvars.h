@@ -14,11 +14,14 @@
  *        becomes "struct global_data_all_processes All;"
  */
 
-/*
+/*!
  * This file was originally part of the GADGET3 code developed by
  * Volker Springel. The code has been modified extensively
  * by Phil Hopkins (phopkins@caltech.edu) for GIZMO (many new variables,
- * structures, and different naming conventions for some old variables)
+ * structures, and different naming conventions for some old variables).
+ * The declarations have also been divided into a new scheme which improves
+ * read-ability and ease of use and separates all of the macros written for
+ * GIZMO.
  */
 
 
@@ -796,10 +799,6 @@ extern struct global_data_all_processes
   double Gini;
 #endif
 #endif
-#endif
-
-#ifdef RESCALEVINI
-  double VelIniScale;		/*!< Scale the initial velocities by this amount */
 #endif
 
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
