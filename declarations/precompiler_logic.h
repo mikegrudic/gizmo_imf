@@ -638,6 +638,7 @@
 #if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
 #define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #endif
+#endif
 
 
 #if defined(EOS_SUBSTELLAR_ISM) || defined(COOL_MOLECFRAC_NONEQM)
