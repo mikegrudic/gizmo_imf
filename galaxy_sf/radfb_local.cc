@@ -83,7 +83,7 @@ void radiation_pressure_winds_consolidated(void)
                             {
                                 j = Ngblist[n];
 #ifdef SINK_WIND_SPAWN
-                                if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
+                                if(P[j].ID == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
 #endif
                                 if((P[j].Mass>0) && (CellP[j].Density>0))
                                 {
@@ -110,7 +110,7 @@ void radiation_pressure_winds_consolidated(void)
                         {
                             j = Ngblist[n];
 #ifdef SINK_WIND_SPAWN
-                            if(P[j].ID == All.AGNWindID) {continue;} // dont couple to jet cells
+                            if(P[j].ID == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
 #endif
                             if((P[j].Mass>0) && (CellP[j].Density>0))
                             {

@@ -197,7 +197,7 @@ double get_starformation_rate(int i, int mode)
     if(CellP[i].DelayTime > 0) {flag=0;} /* 'decoupled' wind elements not eligible for SF */
 #endif
 #ifdef SINK_WIND_SPAWN
-    if(P[i].ID == All.AGNWindID) {flag=0;} /* spawned hyper-resolution elements not eligible for SF */
+    if(P[i].ID == All.SpawnedWindCellID) {flag=0;} /* spawned hyper-resolution elements not eligible for SF */
 #endif
     if(All.ComovingIntegrationOn && CellP[i].Density < All.OverDensThresh) {flag=0;} /* below overdensity threshold required for SF */
     if(CellP[i].Density*All.cf_a3inv < All.PhysDensThresh) {flag=0;} /* below physical density threshold */
@@ -671,7 +671,7 @@ void star_formation_parent_routine(void)
                             sum_mass_stars += P[NumPart + stars_spawned].Mass;
                             P[NumPart + stars_spawned].StellarAge = All.Time;
                             
-                            force_add_star_to_tree(i, NumPart + stars_spawned);
+                            force_add_element_to_tree(i, NumPart + stars_spawned);
                             
                             stars_spawned++;
                         }
@@ -721,7 +721,7 @@ void star_formation_parent_routine(void)
         All.TotN_gas -= tot_converted;
         NumPart += stars_spawned;
         /* Note: N_gas is only reduced once rearrange_particle_sequence is called */
-        /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
+        /* Note: New tree construction can be avoided because of  `force_add_element_to_tree()' */
     } //(tot_spawned > 0 || tot_converted > 0)
     
     for(bin = 0, sfrrate = 0; bin < TIMEBINS; bin++) {if(TimeBinCount[bin]) {sfrrate += TimeBinSfr[bin];}}

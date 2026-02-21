@@ -1251,8 +1251,8 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
     if(LambdaDust<0) {Heat -= LambdaDust;} // Dust collisional heating (Tdust > Tgas) //
 #endif
 #ifdef RT_COOLING_DUST_ONLY
-    if(LambdaDust > 0){Lambda = LambdaDust; Heat = 0;}
-    if(LambdaDust <= 0){Heat = -LambdaDust; Lambda = 0;}
+    if(LambdaDust > 0) {Lambda = LambdaDust; Heat = 0;}
+    if(LambdaDust <= 0) {Heat = -LambdaDust; Lambda = 0;}
 #endif
     double Q = Heat - Lambda;
 #if defined(OUTPUT_COOLRATE_DETAIL)
@@ -2116,12 +2116,7 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac, int mode)
     MyFloat G0 = 0.;
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
     G0 += CellP[target].Rad_Flux_UV;
-#ifdef COOL_UVB_SELFSHIELD_RAHMATI
-    if (gJH0 > 0 && shieldfac > 0)
-    {
-        G0 += sqrt(shieldfac) * (gJH0 / 2.29e-10);
-    } // uvb contribution //
-#endif
+    if(gJH0 > 0 && shieldfac > 0) {G0 += sqrt(shieldfac) * (gJH0 / 2.29e-10);} // uvb contribution //
 #endif
     double column = evaluate_NH_from_GradRho(P[target].GradRho, P[target].KernelRadius, CellP[target].Density, P[target].NumNgb, 1, target) * UNIT_SURFDEN_IN_CGS; // converts to cgs    
 #ifdef RT_PHOTOELECTRIC
@@ -2137,7 +2132,7 @@ MyFloat get_FUV_G0(int target, MyFloat shieldfac, int mode)
         G0 *= exp(-tau_C) * exp(-r_H2) / (1 + r_H2);
     }
 #endif
-    G0 = DMAX(MIN_REAL_NUMBER, DMIN(G0,1e4));
+    G0 = DMAX(MIN_REAL_NUMBER, DMIN(G0,1e8));
     return G0;
 }
 
@@ -2351,11 +2346,10 @@ double return_uvb_shieldfac(int target, double gamma_12, double nHcgs, double lo
     double NH_SS_z, NH_SS = 0.0123; /* CAFG: H number density above which we assume no ionizing bkg (proper cm^-3): note this is a factor ~2 higher than Schaye and Rahmati normalization, owing to CAFG calibration (lower effective cross-section, owing to different UVB spectrum and potentially clumping factors, etc) */
     if(gamma_12>0) {NH_SS_z = NH_SS*pow(gamma_12,0.66)*pow(10.,0.173*(logT-4.));} else {NH_SS_z = NH_SS*pow(10.,0.173*(logT-4.));}
     double q_SS = nHcgs/NH_SS_z;
-#ifdef COOL_UVB_SELFSHIELD_RAHMATI
-    return 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
-#else
-    return 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
+#if defined(GALSF_FB_FIRE_STELLAREVOLUTION) && (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
+    return 1./(1.+q_SS*(1.+q_SS/2.*(1.+q_SS/3.*(1.+q_SS/4.*(1.+q_SS/5.*(1.+q_SS/6.*q_SS)))))); // older legacy approximation; this is exp(-q) down to ~1e-5, then a bit shallower, but more than sufficient approximation here //
 #endif
+    return 0.98 / pow(1 + pow(q_SS,1.64), 2.28) + 0.02 / pow(1 + q_SS*(1.+1.e-4*nHcgs*nHcgs*nHcgs*nHcgs), 0.84); // from Rahmati et al. 2012: gives gentler cutoff at high densities. but we need to modify it with the extra 1+(nHcgs/10)^4 denominator term since at very high nH, this cuts off much too-slowly (as nH^-0.84), which means UVB heating can be stronger than molecular cooling even at densities >> 1e4
 }
 
 

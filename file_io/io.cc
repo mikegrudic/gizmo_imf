@@ -4809,7 +4809,7 @@ void write_header_attributes_in_hdf5(hid_t handle)
 #endif
     hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Sink_outflow_temperature", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &All.Sink_outflow_temperature); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);
-    {unsigned long long holder = (unsigned long long) All.AGNWindID; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Spawned_Cell_ID", H5T_NATIVE_ULLONG, hdf5_dataspace, H5P_DEFAULT);
+    {unsigned long long holder = (unsigned long long) All.SpawnedWindCellID; hdf5_dataspace = H5Screate(H5S_SCALAR); hdf5_attribute = H5Acreate(handle, "Spawned_Cell_ID", H5T_NATIVE_ULLONG, hdf5_dataspace, H5P_DEFAULT);
     H5Awrite(hdf5_attribute, H5T_NATIVE_ULLONG, &holder); H5Aclose(hdf5_attribute); H5Sclose(hdf5_dataspace);}
 #endif
 #endif

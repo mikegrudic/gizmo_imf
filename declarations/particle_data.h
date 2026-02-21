@@ -198,7 +198,7 @@ extern ALIGN(32) struct particle_data
 #endif
     MyFloat Sink_Mdot;
     int Sink_TimeBinGasNeighbor;
-#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(SINGLE_STAR_TIMESTEPPING)
     MyFloat Sink_dr_to_NearestGasNeighbor;
 #endif
 #ifdef SINK_REPOSITION_ON_POTMIN

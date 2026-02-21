@@ -545,9 +545,9 @@ integertime get_timestep(int p,		/*!< particle index */
             csnd = 0.5 * CellP[p].MaxSignalVel ;
             double L_particle = Get_Particle_Size(p);
             dt_courant = All.CourantFac * (L_particle*All.cf_atime) / csnd;
-#ifdef SINK_WIND_SPAWN
-	    if(P[p].ID == All.AGNWindID){dt_courant *= 0.5;} // be more careful if this is a spawned-in gas cell
-#endif			    
+#if defined(SINK_WIND_SPAWN) && !defined(SINK_RIAF_SUBEDDINGTON_MODEL)
+            if(P[p].ID == All.SpawnedWindCellID) {dt_courant *= 0.5;} // be more careful if this is a spawned-in gas cell
+#endif
             if(dt_courant < dt) dt = dt_courant;
 
             double dt_prefac_diffusion;
@@ -732,7 +732,7 @@ integertime get_timestep(int p,		/*!< particle index */
 #if defined(SINGLE_STAR_STARFORGE_DEFAULTS)
                 dt_courant = 0.4 * (L_particle*All.cf_atime) / C_LIGHT_CODE_REDUCED(p); /* hacked here for starforge, where mike's experimentation suggests we can get away with a slightly larger courant factor. remains experimental. courant-type criterion, using the reduced speed of light - here we hardcode the most aggressive possible Courant factor as an optimization */
 #ifdef SINK_WIND_SPAWN
-                if((CellP[p].MaxSignalVel > 0.5*C_LIGHT_CODE_REDUCED(p)) || (P[p].ID == All.AGNWindID && P[p].Type == 0)) dt_courant *= 0.5; // be more careful if this is a jet cell or there are transluminal velocities
+                if((CellP[p].MaxSignalVel > 0.5*C_LIGHT_CODE_REDUCED(p)) || (P[p].ID == All.SpawnedWindCellID && P[p].Type == 0)) {dt_courant *= 0.5}; // be more careful if this is a jet cell or there are transluminal velocities
 #endif
 #endif                
 #if defined(GALSF) && !defined(SINGLE_STAR_SINK_DYNAMICS) && defined(GALSF_FB_FIRE_STELLAREVOLUTION) // custom hacks for FIRE-RT tests; can override CFL condition with diffusion timestep certain limits
@@ -1038,7 +1038,7 @@ integertime get_timestep(int p,		/*!< particle index */
     } // if(P[p].Type == 5)
 
 #if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) /* KYSu: here for de-bugging jet injection model right now */
-    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.AGNWindID && CellP[p].IniDen<0)) {if(dt>All.Sink_spawn_injectionradius/All.Sink_outflow_velocity && All.Sink_spawn_injectionradius>0 && All.Sink_outflow_velocity>0) {dt=All.Sink_spawn_injectionradius/All.Sink_outflow_velocity;}}
+    if((P[p].Type==5) || (P[p].Type==0 && P[p].ID==All.SpawnedWindCellID && CellP[p].IniDen<0)) {if(dt>All.Sink_spawn_injectionradius/All.Sink_outflow_velocity && All.Sink_spawn_injectionradius>0 && All.Sink_outflow_velocity>0) {dt=All.Sink_spawn_injectionradius/All.Sink_outflow_velocity;}}
 #endif
 #endif // SINK_PARTICLES
     
@@ -1147,7 +1147,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
                 double v2 = P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2];
                 if(v2 > 0 && isfinite(v2)) {
                     count[P[i].Type]++;
-                    v[P[i].Type] += v2;
+                    if(P[i].Type == 0) {v[P[i].Type] += P[i].Mass * v2;} else {v[P[i].Type] += v2;} /* for gas use a weighted average to deal with extreme cell-mass difference situations */
                     if(mim[P[i].Type] > P[i].Mass) {mim[P[i].Type] = P[i].Mass;}
                     mnm[P[i].Type] += P[i].Mass;
                 }
@@ -1158,20 +1158,23 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         MPI_Allreduce(mim, min_mass, 6, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(mnm, mean_mass, 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         sumup_large_ints(6, count, count_sum);
+        v_sum[0] /= mean_mass[0]; /* for gas use a weighted average to deal with extreme cell-mass difference situations */
 
 #ifdef GALSF
         /* add star and gas particles together to treat them on equal footing, using the original gas particle spacing. */
-        v_sum[0] += v_sum[4];
-        count_sum[0] += count_sum[4];
-        v_sum[4] = v_sum[0];
-        count_sum[4] = count_sum[0];
-        if(count_sum[0] > 0) {min_mass[0] = min_mass[4] = (mean_mass[0] + mean_mass[4]) / count_sum[0];}
+        double vsum0_0 = v_sum[0], minmass0_0 = min_mass[0], meanmass0_0 = mean_mass[0]; long long countsum0_0=count_sum[0];
+        v_sum[0] += v_sum[4]; count_sum[0] += count_sum[4];
+        if(count_sum[0] > 0) {
+            if(count_sum[4]<=1 || (v_sum[0]+v_sum[4])*count_sum[4] < v_sum[4]*(count_sum[0]+count_sum[4])) {
+                v_sum[4] += vsum0_0; count_sum[4] += countsum0_0; mean_mass[4] += meanmass0_0; min_mass[4] = DMAX(DMAX(min_mass[4],minmass0_0),mean_mass[4]/count_sum[4]);}}
+        //v_sum[4] = v_sum[0]; count_sum[4] = count_sum[0]; if(count_sum[0] > 0) {min_mass[0] = min_mass[4] = (mean_mass[0] + mean_mass[4]) / count_sum[0];}
 #ifdef SINK_PARTICLES
-        v_sum[0] += v_sum[5];
-        count_sum[0] += count_sum[5];
-        v_sum[5] = v_sum[0];
-        count_sum[5] = count_sum[0];
-        min_mass[5] = min_mass[0];
+        vsum0_0 = v_sum[0]; minmass0_0 = min_mass[0]; meanmass0_0 = mean_mass[0]; countsum0_0=count_sum[0];
+        v_sum[0] += v_sum[5]; count_sum[0] += count_sum[5];
+        if(count_sum[0] > 0) {
+            if(count_sum[5]<=1 || (v_sum[0]+v_sum[5])*count_sum[5] < v_sum[5]*(count_sum[0]+count_sum[5])) {
+                v_sum[5] += vsum0_0; count_sum[5] += countsum0_0; mean_mass[5] += meanmass0_0; min_mass[5] = DMAX(DMAX(min_mass[5],minmass0_0),mean_mass[5]/count_sum[5]);}}
+        //v_sum[5] = v_sum[0]; count_sum[5] = count_sum[0]; min_mass[5] = min_mass[0];
 #endif
 #ifdef SPECIAL_POINT_MOTION
         v_sum[SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES] = v_sum[0];

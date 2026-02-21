@@ -866,7 +866,7 @@ extern struct global_data_all_processes
 #ifdef SINK_WIND_SPAWN
   double Sink_outflow_particlemass; /*!< target mass for feedback particles to be spawned */
   double Sink_outflow_temperature;
-  MyIDType AGNWindID;
+  MyIDType SpawnedWindCellID;
 #ifdef SINGLE_STAR_FB_WINDS
   double Cell_Spawn_Mass_ratio_MS;  /*!< target mass for feedback particles to be spawned for main sequence winds in STARFORGE*/
 #endif

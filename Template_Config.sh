@@ -260,7 +260,6 @@
 ## ----------------------------------------------------------------------------------------------------
 # ----- optional and de-bugging modules (intended for specific behaviors)
 ## ----------------------------------------------------------------------------------------------------
-#SINK_ACCRETE_NEARESTFIRST      # place all weight for sink/BH 'swallowing' in continuous/stochastic accretion models on single nearest gas element, instead of spreading over same kernel used to calculate mdot
 #SINK_RETURN_ANGMOM_TO_GAS      # BH/sink particles return accreted angular momentum to surrounding gas (following Hubber+13) to represent AM transfer (loss in accreting material)
 #SINGLE_STAR_FIND_BINARIES      # manually enable identification of close binaries (normally enabled automatically if actually used for e.g. hermite timestepping). cite Grudic et al. arXiv:2010.11254
 #SINGLE_STAR_FB_LOCAL_RP        # approximate local radiation pressure from single-star sources, using the same LEBRON-type approximation as in FIRE - useage follows the FIRE collaboration policies
@@ -335,8 +334,7 @@
 ## ----------------------------------------------------------------------------------------------------
 #COOL_METAL_LINES_BY_SPECIES    # use full multi-species-dependent cooling tables ( http://www.tapir.caltech.edu/~phopkins/public/spcool_tables.tgz, or the GitHub site); requires METALS on; cite Wiersma et al. 2009 (MNRAS, 393, 99) in addition to Hopkins et al. 2017 (arXiv:1702.06148)
 #COOL_LOW_TEMPERATURES          # allow fine-structure and molecular cooling to ~10 K; account for optical thickness and line-trapping effects with proper opacities [requires METALS]. attempts to interpolate between optically-thin and optically-thick cooling limits even if explicit rad-hydro not enabled. Cite Hopkins et al. arXiv:1702.06148
-#COOL_MOLECFRAC=4               # track molecular H2 fractions for use in COOL_LOW_TEMPERATURES and thermochemistry using different estimators: (1) simplest, fit to density+temperature from Glover+Clark 2012; (2) Krumholz+Gnedin 2010 fit vs. column+metallicity; (3) Gnedin+Draine 2014 fit vs column+metallicity+MW radiation field; (4) Krumholz, McKee, & Tumlinson 2009 local equilibrium cloud model vs column, metallicity, incident FUV; (5) explicit local equilibrium H2 fraction explicitly tracking rates, metals, clumping, shielding, UV [cite Hopkins et al. 2023MNRAS.519.3154H]; (6) explicit non-equilibrium integration of rates in level 5 [cite Hopkins et al. 2023MNRAS.519.3154H]
-#COOL_UVB_SELFSHIELD_RAHMATI    # use an updated (Hopkins et al. 2023MNRAS.519.3154H) version [fixes problematic behavior at densities >> 100 cm^-3] version of the Rahmati et al. 2013MNRAS.431.2261R UV background self-shielding, as compared to the older Hopkins et al. 2018MNRAS.480..800H treatment of self-shielding from the UVB
+#COOL_MOLECFRAC=6               # track molecular H2 fractions for use in COOL_LOW_TEMPERATURES and thermochemistry using different estimators: (1) simplest, fit to density+temperature from Glover+Clark 2012; (2) Krumholz+Gnedin 2010 fit vs. column+metallicity; (3) Gnedin+Draine 2014 fit vs column+metallicity+MW radiation field; (4) Krumholz, McKee, & Tumlinson 2009 local equilibrium cloud model vs column, metallicity, incident FUV; (5) explicit local equilibrium H2 fraction explicitly tracking rates, metals, clumping, shielding, UV [cite Hopkins et al. 2023MNRAS.519.3154H]; (6) explicit non-equilibrium integration of rates in level 5 [cite Hopkins et al. 2023MNRAS.519.3154H]
 ## ----------------------------------------------------------------------------------------------------
 # ---- GRACKLE: alternative chemical network using external libraries for solving thermochemistry+cooling. These treat molecular hydrogen, in particular, in more detail than our default networks, and are more accurate for 'primordial' (e.g. 1st-star) gas. But they have less-accurate treatment of
 # ----            effects such as dust-gas coupling and radiative feedback (Compton and photo-electric and local ionization heating) and high-optical-depth effects, so are usually less accurate for low-redshift, metal-rich star formation or planet formation simulations.
@@ -500,7 +498,7 @@
 #FORCE_EQUAL_TIMESTEPS             # force the code to use a single universal timestep (can change in time, but all particles advance together). chosen as minimum of any particle that step.
 #STOP_WHEN_BELOW_MINTIMESTEP       # forces code to quit when stepsize wants to go below MinSizeTimestep specified in the parameterfile
 # --------------------
-# ----- Hydrodynamics
+# ----- Hydrodynamics (and MHD)
 #FREEZE_HYDRO                      # zeros all fluxes from RP and doesn't let particles move (for testing additional physics layers)
 #EOS_ENFORCE_ADIABAT=(1.0)         # if set, this forces gas to lie -exactly- along the adiabat P=EOS_ENFORCE_ADIABAT*(rho^GAMMA)
 #HYDRO_REPLACE_RIEMANN_KT          # replaces the hydro Riemann solver (HLLC) with a Kurganov-Tadmor flux derived in Panuelos, Wadsley, and Kevlahan, 2019. works with MFM/MFV/fixed-grid methods [-without- MHD active, but other modules are fine]. more diffusive, but smoother, and more stable convergence results
@@ -514,25 +512,24 @@
 #DISABLE_EXPLICIT_VOLUME_INTEGRATION # disables HYDRO_EXPLICITLY_INTEGRATE_VOLUME if it would be set by default (e.g. if EOS_ELASTIC is enabled)
 #SPH_DISABLE_CD10_ARTVISC          # for SPH only: Disable Cullen & Dehnen 2010 'inviscid sph' (viscosity suppression outside shocks); just use Balsara switch
 #SPH_DISABLE_PM_CONDUCTIVITY       # for SPH only: Disable mixing entropy (J.Read's improved Price-Monaghan conductivity with Cullen-Dehnen switches)
+#MHD_ALTERNATIVE_LEAPFROG_SCHEME   # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 # --------------------
-# ----- Additional Fluid Physics and Gravity
+# ----- Cooling and Additional Fluid Physics
 #COOLING_OPERATOR_SPLIT            # do the hydro heating/cooling in operator-split fashion from chemical/radiative. slightly more accurate when tcool >> tdyn, but much noisier when tcool << tdyn
 #COOL_LOWTEMP_THIN_ONLY            # in the COOL_LOW_TEMPERATURES module, neglect the suppression of cooling at very high surface densities due to the opacity limit (disables limiter in Eqs B29-B30, Hopkins et al arXiv:1702.06148)
-#MHD_ALTERNATIVE_LEAPFROG_SCHEME   # use alternative leapfrog where magnetic fields are treated like potential/positions (per Federico Stasyszyn's suggestion): still testing
 #SUPER_TIMESTEP_DIFFUSION          # use super-timestepping to accelerate integration of diffusion operators [for testing or if there are stability concerns]
-#EVALPOTENTIAL                     # computes gravitational potential
+#TURB_DRIVING_UPDATE_FORCE_ON_TURBUPDATE # if this is enabled, we only update as frequently as the driving phases are recomputed, as set by TurbDrive_TimeBetweenTurbUpdates. Only enable as an optimization if the cost of evaluating the turbulent force is large. To avoid large errors, TurbDrive_TimeBetweenTurbUpdates must be set by-hand to be << lambda_min / V where V is the typical turbulent velocity and lambda_min is the smallest driven wavelength.
+# --------------------
+# ----- Gravity (force/timestep/potential/gravity-tree related options)
+#EVALPOTENTIAL                     # computes gravitational potential (even if not otherwise needed)
 #GRAVITY_HYBRID_OPENING_CRIT       # use -both- Barnes-Hut + relative angle opening criterion for the gravity tree (normally choose one or the other)
 #TIDAL_TIMESTEP_CRITERION          # replace standard acceleration-based timestep criterion with one based on the tidal tensor norm, which is more accurate and adaptive (testing, but may be promoted to default code)
 #ADAPTIVE_TREEFORCE_UPDATE=0.06    # use the tidal timescale to estimate how often gravity needs to be updated, updating a gas cell's gravity no more often than ADAPTIVE_TREEFORCE_UPDATE * dt_tidal, the factor N_f in Grudic 2020 arxiv:2010.13792 (cite this). Smaller is more accurate, larger is faster, should be tuned for your problem if used.
-#MAINTAIN_TREE_IN_REARRANGE        # don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed. cite Grudic+ arXiv:2010.11254
 #RANDOMIZE_GRAVTREE                # move the top tree node around randomly so that treeforce errors are not correlated between one treebuild and another. cite Grudic+ arXiv:2010.11254
 #GRAVITY_SPHERICAL_SYMMETRY=0      # modifies the tree gravity solver to give the solution assuming spherical symmetry about the origin (if BOX_PERIODIC is not enabled) or the box center. Useful for IC generation and test problems. Numerical value specifies a minimum softening length. (cite Lane et al., arXiv:2110.14816)
 #SINGLE_STAR_DIRECT_GRAVITY_RADIUS=1000. # enforce direct gravity summation for star-star gravity interactions *and* tree searches (e.g. for timestepping, binarity checks) within this radius *in AU*
 #ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT=(1) # impose a hard upper limit (arbitrarily) to the softening kernel size for adaptive gravitational softening for gas cells
 #ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING # use the 'average the forces' implementation of force symmtrization in the gravity solver, instead of the default 'calculate forces for the larger softening', when two particles or cells with different force softening values interact inside each others kernels
-#TURB_DRIVING_UPDATE_FORCE_ON_TURBUPDATE # if this is enabled, we only update as frequently as the driving phases are recomputed, as set by TurbDrive_TimeBetweenTurbUpdates. Only enable as an optimization if the cost of evaluating the turbulent force is large. To avoid large errors, TurbDrive_TimeBetweenTurbUpdates must be set by-hand to be << lambda_min / V where V is the typical turbulent velocity and lambda_min is the smallest driven wavelength.
-#GRAIN_RDI_TESTPROBLEM             # top-level flag to enable a variety of test problem behaviors, customized for the idealized studies of dust dynamics in Moseley et al 2019MNRAS.489..325M, Seligman et al 2019MNRAS.485.3991S, Steinwandel et al arXiv:2111.09335, Ji et al arXiv:2112.00752, Hopkins et al 2020MNRAS.496.2123H and arXiv:2107.04608, Squire et al 2022MNRAS.510..110S. Cite these if used.
-#MHD_CONSERVE_B_ON_REFINEMENT      # redefine B after density step after a refinement/de-refinement operation so as to exactly conserve "B" between the steps, as compared to conserving the code "VB" between the steps [the default conserved integrated quantity]
 # --------------------
 # ----- Particle IDs
 #TEST_FOR_IDUNIQUENESS             # explicitly check if particles have unique id numbers (only use for special behaviors)
@@ -540,11 +537,13 @@
 #NO_CHILD_IDS_IN_ICS               # IC file does not have child IDs: do not read them (used for compatibility with snapshot restarts from old versions of the code)
 # --------------------
 # ----- Particle Merging/Splitting/Deletion/Boundaries
+#MAINTAIN_TREE_IN_REARRANGE        # don't rebuild the domains/tree every time a particle is spawned - salvage the existing one by redirecting pointers as needed. cite Grudic+ arXiv:2010.11254
 #PREVENT_PARTICLE_MERGE_SPLIT      # don't allow gas particle splitting/merging operations
 #PARTICLE_EXCISION                 # enable dynamical excision (remove particles within some radius)
 #MERGESPLIT_HARDCODE_MAX_MASS=(1.0e-6)   # manually set maximum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #MERGESPLIT_HARDCODE_MIN_MASS=(1.0e-7)   # manually set minimum mass for particle merge-split operations (in code units): useful for snapshot restarts and other special circumstances
 #PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP     # force merge/split operations to occur every timestep, instead of only on domain decomposition steps
+#MHD_CONSERVE_B_ON_REFINEMENT      # redefine B after density step after a refinement/de-refinement operation so as to exactly conserve "B" between the steps, as compared to conserving the code "VB" between the steps [the default conserved integrated quantity]
 # --------------------
 # ----- Radiation-Hydrodynamics Special Options for Test Problems + Disabled or Other Special Features
 #RT_DISABLE_UV_BACKGROUND          # disable extenal UV background in cooling functions (to isolate pure effects of local RT, or if simulating the background directly)
@@ -555,7 +554,7 @@
 #RT_COMPGRAD_EDDINGTON_TENSOR      # forces computation of eddington tensor even when not needed by the code
 #RT_REINJECT_ACCRETED_PHOTONS      # when sink particles are used, photons lost when a gas cell is accreted are reinjected into the lowest-energy frequency bin on the following photon injection from that sink
 # --------------------
-# ----- sink particle/sink particle special options
+# ----- Sink particle/sink particle special options
 #SINK_WIND_SPAWN_SET_BFIELD_POLTOR  # set poloridal and toroidal magnetic field for spawn particles (should work for all particle spawning). Cite Su et al., arXiv:2102.02206, for methods.
 #SINK_WIND_SPAWN_SET_JET_PRECESSION # manually set precession in parameter file (does not work for cosmological simulations).  Cite Su et al., arXiv:2102.02206, for methods.
 #SINK_SCALE_SPAWNINGMASS_WITH_INITIALMASS # rescale the cell spawning mass criterion to scale with the initial sink mass for any sink and sink feedback model (instead of setting the spawning mass to a fixed universal constant in code units).
@@ -580,6 +579,7 @@
 #STARFORGE_FEEDBACK_TRACERS         # adds tracer fields to recycled gas in the SINGLE_STAR modules to explicitly track gas coming from jets versus main-sequence winds versus supernovae. tracer fields added to metal fields
 # --------------------
 # ----- Dust grain/particulate/aerosol module special options
+#GRAIN_RDI_TESTPROBLEM             # top-level flag to enable a variety of test problem behaviors, customized for the idealized studies of dust dynamics in Moseley et al 2019MNRAS.489..325M, Seligman et al 2019MNRAS.485.3991S, Steinwandel et al arXiv:2111.09335, Ji et al arXiv:2112.00752, Hopkins et al 2020MNRAS.496.2123H and arXiv:2107.04608, Squire et al 2022MNRAS.510..110S. Cite these if used.
 #GRAIN_RDI_TESTPROBLEM_ACCEL_DEPENDS_ON_SIZE    # Make the idealized external grain acceleration grain size-dependent; equivalent to assuming an absorption efficiency Q=1. Cite GRAIN_RDI_TESTPROBLEM papers.
 #GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION # Enables idealized radiation injection by a source population designed to set up outflow test problems with live radiation-hydrodynamics as in Hopkins et al., arXiv:2107.04608. Cite that paper if this module is used.
 # --------------------

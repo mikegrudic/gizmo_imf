@@ -161,7 +161,6 @@
 #endif
 
 #if (FIRE_PHYSICS_DEFAULTS == 3)
-#define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define OUTPUT_MOLECULAR_FRACTION
 #define OUTPUT_COOLRATE
@@ -231,13 +230,14 @@
 #define SINK_GRAVACCRETION_STELLARFBCORR          /* account for additional acceleration-dependent retention from stellar FB in Mdot */
 #endif
 #if !defined(SINK_ALPHADISK_ACCRETION)
-#define SINK_ALPHADISK_ACCRETION (10.) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
+#define SINK_ALPHADISK_ACCRETION (1.e10) /* smooth out accretion + allow super-eddington capture with alpha-disk model */
 #endif
 #define SINK_PHOTONMOMENTUM           /* allow AGN radiation pressure */
 #define SINK_COMPTON_HEATING          /* allow Compton heating from AGN spectrum */
 #define SINK_HII_HEATING              /* allow photo-ionization heating from AGN spectrum */
 #define SINK_FB_COLLIMATED            /* BHFB directed along collimated axis following BH ang. mom */
 #define SINK_WIND_SPAWN (2)           /* spawn module: N=min num spawned/step */
+#define MAINTAIN_TREE_IN_REARRANGE    /* avoid constant domain decompositions in bottom timebin each time a spawn occurs */
 #if defined(COSMIC_RAY_FLUID) || defined(COSMIC_RAY_SUBGRID_LEBRON)
 #define SINK_COSMIC_RAYS              /* allow CR injection from AGN */
 #endif
@@ -434,7 +434,6 @@
 #endif
 #ifdef COOLING
 #define SIMPLE_STEADYSTATE_CHEMISTRY
-#define COOL_UVB_SELFSHIELD_RAHMATI
 #define COOL_MOLECFRAC_NONEQM
 #define EOS_PRECOMPUTE
 #define EOS_SUBSTELLAR_ISM
@@ -572,6 +571,7 @@
 #endif
 
 
+
 #ifdef RT_USE_TREECOL_FOR_NH
 #if !defined(GRAVTREE_CALCULATE_GAS_MASS_IN_NODE)
 #define GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
@@ -631,6 +631,12 @@
 #endif
 #endif
 #endif
+#endif
+
+
+#if defined(COOL_MOLECFRAC)
+#if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
+#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
 #endif
 
 
@@ -983,24 +989,6 @@
 #ifdef EVALPOTENTIAL
 #ifndef COMPUTE_POTENTIAL_ENERGY
 #define COMPUTE_POTENTIAL_ENERGY
-#endif
-#endif
-
-#if defined(COOL_MOLECFRAC)
-#if (COOL_MOLECFRAC == 6) && !defined(COOL_MOLECFRAC_NONEQM)
-#define COOL_MOLECFRAC_NONEQM // estimate molecular fractions for thermochemistry+cooling with explicitly-evolved non-equilibirum H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
-#elif (COOL_MOLECFRAC == 5) && !defined(COOL_MOLECFRAC_LOCALEQM)
-#define COOL_MOLECFRAC_LOCALEQM  // estimate molecular fractions for thermochemistry+cooling from local equilibrium H2 formation+destruction with clumping and self-shielding (Hopkins et al arXiv:2203.00040)
-#elif (COOL_MOLECFRAC == 4) && !defined(COOL_MOLECFRAC_KMT)
-#define COOL_MOLECFRAC_KMT  // estimate f_H2 from approximate large-scale expressions from Krumholz, McKee, & Tumlinson (2009ApJ...693..216K). use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field
-#elif (COOL_MOLECFRAC == 3) && !defined(COOL_MOLECFRAC_GD)
-#define COOL_MOLECFRAC_GD  // estimate f_H2 from approximate large-scale expressions from Gnedin & Draine (2014ApJ...795...37G). use the sub-grid final expression calibrated to ~60pc resolution simulations with equilibrium molecular chemistry and post-processing radiative transfer from Gnedin & Draine 2014 (Eqs. 5-7)
-#elif (COOL_MOLECFRAC == 2) && !defined(COOL_MOLECFRAC_KG)
-#define COOL_MOLECFRAC_KG  // estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers)
-#elif (COOL_MOLECFRAC == 1) && !defined(COOL_MOLECFRAC_GC)
-#define COOL_MOLECFRAC_GC  // if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012
-#else
-#define COOL_MOLECFRAC_GC // default if no value above set
 #endif
 #endif
 

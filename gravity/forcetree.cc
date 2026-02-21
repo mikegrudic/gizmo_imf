@@ -1536,23 +1536,23 @@ void force_flag_localnodes(void)
 }
 
 
-/*! When a new additional star particle is created, we can put it into the
- *  tree at the position of the spawning gas particle. This is possible
+/*! When a new additional resolution element is created, we can put it into the
+ *  tree at the position of the spawning element. This is possible
  *  because the Nextnode[] array essentially describes the full tree walk as a
  *  link list. Multipole moments of tree nodes need not be changed.
  */
-void force_add_star_to_tree(int igas, int istar)
+void force_add_element_to_tree(int iparent, int ichild)
 {
     int no;
-    no = Nextnode[igas];
-    Nextnode[igas] = istar; // insert new particle into linked list
-    Nextnode[istar] = no; // order correctly
-    Father[istar] = Father[igas]; // set parent node to be the same
+    no = Nextnode[iparent];
+    Nextnode[iparent] = ichild; // insert new particle into linked list
+    Nextnode[ichild] = no; // order correctly
+    Father[ichild] = Father[iparent]; // set parent node to be the same
     // update parent node properties [maximum softening, speed] for opening criteria
-    Extnodes[Father[igas]].hmax = DMAX(Extnodes[Father[igas]].hmax, DMIN(P[igas].KernelRadius, All.MaxKernelRadius));
-    double vmax = Extnodes[Father[igas]].vmax;
-    int k; for(k=0; k<3; k++) {if(fabs(P[istar].Vel[k]) > vmax) {vmax = fabs(P[istar].Vel[k]);}}
-    Extnodes[Father[igas]].vmax = vmax;
+    Extnodes[Father[iparent]].hmax = DMAX(Extnodes[Father[iparent]].hmax, DMIN(P[iparent].KernelRadius, All.MaxKernelRadius));
+    double vmax = Extnodes[Father[iparent]].vmax;
+    int k; for(k=0; k<3; k++) {if(fabs(P[ichild].Vel[k]) > vmax) {vmax = fabs(P[ichild].Vel[k]);}}
+    Extnodes[Father[iparent]].vmax = vmax;
 }
 
 

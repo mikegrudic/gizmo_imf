@@ -91,9 +91,6 @@ MyFloat Jgas_in_Kernel[3], Jstar_in_Kernel[3], Jalt_in_Kernel[3]; // mass/angula
 #if defined(SINK_RETURN_BFLUX)
     MyFloat kernel_norm_topass_in_swallowloop;
 #endif    
-#if defined(SINK_ACCRETE_NEARESTFIRST) && defined(SINK_GRAVCAPTURE_GAS)
-    MyDouble Sink_dr_to_NearestGasNeighbor;
-#endif
 }
 *DATARESULT_NAME, *DATAOUT_NAME; /* dont mess with these names, they get filled-in by your definitions automatically */
 
@@ -137,9 +134,6 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 #if defined(SINK_RETURN_BFLUX)
     ASSIGN_ADD(SinkTempInfo[target].kernel_norm_topass_in_swallowloop,out->kernel_norm_topass_in_swallowloop,mode);
 #endif    
-#if defined(SINK_ACCRETE_NEARESTFIRST) && defined(SINK_GRAVCAPTURE_GAS)
-    if(mode==0) {P[i].Sink_dr_to_NearestGasNeighbor=out->Sink_dr_to_NearestGasNeighbor;} else {if(P[i].Sink_dr_to_NearestGasNeighbor > out->Sink_dr_to_NearestGasNeighbor) {P[i].Sink_dr_to_NearestGasNeighbor=out->Sink_dr_to_NearestGasNeighbor;}}
-#endif
 }
 
 
@@ -176,9 +170,6 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
     double ags_h_i, h_i, hinv, hinv3, wk, dwk, u; wk=0; dwk=0; u=0; h_i=local.KernelRadius; hinv=1./h_i; hinv3=hinv*hinv*hinv; ags_h_i=SinkParticle_GravityKernelRadius;
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     ags_h_i = local.AGS_KernelRadius;
-#endif
-#ifdef SINK_ACCRETE_NEARESTFIRST
-    out.Sink_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER; // initialize large value
 #endif
     /* Now start the actual neighbor computation for this particle */
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
@@ -294,11 +285,7 @@ int sink_environment_evaluate(int target, int mode, int *exportflag, int *export
                                 double eps = DMAX( dr_code , DMAX(P[j].KernelRadius , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER ); // plummer-equivalent vs r
                                 double tff = eps*eps*eps / (local.Mass + P[j].Mass); if(tff < P[j].SwallowTime) {P[j].SwallowTime = tff;}
 #endif
-#if defined(SINK_ACCRETE_NEARESTFIRST)
-                                if((out.Sink_dr_to_NearestGasNeighbor > dr_code) && (P[j].SwallowID < local.ID)) {out.Sink_dr_to_NearestGasNeighbor = dr_code; out.mass_to_swallow_edd = P[j].Mass;}
-#else
                                 if(P[j].SwallowID < local.ID) {out.mass_to_swallow_edd += P[j].Mass;} /* mark as 'will be swallowed' on next loop, to correct accretion rate */
-#endif
                             } /* if( apocenter in tolerance range ) */
                         } /* if(vrel < vbound) */
                     } /* type check */

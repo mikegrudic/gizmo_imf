@@ -38,30 +38,20 @@ void *gravity_secondary_loop(void *p);
 int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex);
 int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex);
 int force_treeevaluate_potential(int target, int type, int *nexport, int *nsend_local);
-
 void force_drift_node(int no, integertime time1);
-     
 void force_tree_discardpartials(void);
 void force_treeupdate_pseudos(int);
 void force_update_pseudoparticles(void);
-
 void force_kick_node(int i, MyDouble *dv);
-
 void force_dynamic_update(void);
 void force_dynamic_update_node(int no, int mode, MyFloat *minbound, MyFloat *maxbound);
-
 void force_update_hmax(void);
 void force_update_hmax_of_node(int no, int mode);
-
 void force_finish_kick_nodes(void);
-
 void force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z, int *nodecount, int *nextfree);
-
 void force_exchange_pseudodata(void);
-
 void force_insert_pseudo_particles(void);
-
-void force_add_star_to_tree(int igas, int istar);
+void force_add_element_to_tree(int igas, int istar);
 
 void   force_costevaluate(void);
 int    force_getcost_single(void);
@@ -71,9 +61,7 @@ void   force_setupnonrecursive(int no);
 void   force_treeallocate(int maxnodes, int maxpart);  
 int    force_treebuild(int npart, struct unbind_data *mp);
 int    force_treebuild_single(int npart, struct unbind_data *mp);
-
 int    force_treeevaluate_direct(int target, int mode);
-
 void   force_treefree(void);
 void   force_update_node(int no, int flag);
 void   force_update_node_recursive(int no, int sib, int father);

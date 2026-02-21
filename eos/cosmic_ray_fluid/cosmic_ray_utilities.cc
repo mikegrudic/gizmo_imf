@@ -883,7 +883,7 @@ double CosmicRay_Update_DriftKick(int i, double dt_entr, int mode)
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL
         v_outflow_fast_forinjection = 0.05 * C_LIGHT_CODE;
 #endif
-        if((P[i].ID != All.AGNWindID) || (vmag < ((double)(SINK_CR_INJECTION_AT_TERMINATION))*v_outflow_fast_forinjection)) {
+        if((P[i].ID != All.SpawnedWindCellID) || (vmag < ((double)(SINK_CR_INJECTION_AT_TERMINATION))*v_outflow_fast_forinjection)) {
             double dir[3]; for(k=0;k<3;k++) {dir[k] = -CellP[i].Gradients.Pressure[k];} /* initial flux direction down pressure gradient */
             inject_cosmic_rays(CellP[i].Sink_CR_Energy_Available_For_Injection, v_outflow_fast_forinjection, 5, i, dir); /* inject the energy */
             CellP[i].Sink_CR_Energy_Available_For_Injection = 0;  // reset its value to nil, now that it has been injected

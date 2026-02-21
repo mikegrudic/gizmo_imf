@@ -380,11 +380,11 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     if(CellP[i].DelayTimeHII > 0) {return 0;} // force gas flagged as in HII regions to have zero molecular fraction
 #endif
 
-#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(COOL_MOLECFRAC_NONEQM) && !defined(COOL_MOLECFRAC_LOCALEQM) && defined(COOLING) /* set default module we will use here */
-#define COOL_MOLECFRAC_LOCALEQM
+#if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && !defined(COOL_MOLECFRAC_NONEQM) && !defined(COOL_MOLECFRAC) && defined(COOLING) /* set default module we will use here */
+#define COOL_MOLECFRAC 5
 #endif
     
-#if defined(COOL_MOLECFRAC_LOCALEQM) || defined(COOL_MOLECFRAC_KMT) || defined(COOL_MOLECFRAC_GD) // here are some of the 'fancy' molecular fraction estimators which need various additional properties
+#if (COOL_MOLECFRAC == 5) || (COOL_MOLECFRAC == 4) || (COOL_MOLECFRAC == 3) // here are some of the 'fancy' molecular fraction estimators which need various additional properties
     double T=1, nH_cgs=1, Z_Zsol=1, urad_G0=1, xH0=1, x_e=0; // initialize definitions of some variables used below to prevent compiler warnings
     if(temperature > 3.e5) {return 0;} else {T=temperature;} // approximations below not designed for high temperatures, should simply give null
     xH0 = DMIN(DMAX(neutral_fraction,0.),1.); // get neutral fraction [given by call to this program]
@@ -409,7 +409,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
     urad_G0 = DMIN(DMAX( urad_G0 , 1.e-10 ) , 1.e10 ); // limit values, because otherwise exponential self-shielding approximation easily artificially gives 0 incident field
 #endif
             
-#ifdef COOL_MOLECFRAC_LOCALEQM // ??? -- update to match noneqm fancier cooling functions --
+#if (COOL_MOLECFRAC == 5) // ??? -- update to match noneqm fancier cooling functions --
     /* estimate local equilibrium molecular fraction actually using the real formation and destruction rates. expressions for the different rate terms
         as used here are collected in Nickerson, Teyssier, & Rosdahl et al. 2018. Expression for the line self-shielding here
         including turbulent and cell line blanketing terms comes from Gnedin & Draine 2014. below solves this all exactly, using the temperature, metallicity,
@@ -495,7 +495,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
 
     
-#if defined(COOL_MOLECFRAC_KMT)
+#if (COOL_MOLECFRAC == 4)
     /* use the simpler Kumholz, McKee, & Tumlinson 2009 sub-grid model for molecular fractions in equilibrium, which is a function modeling spherical clouds
         of internally uniform properties exposed to incident radiation. Depends on column density, metallicity, and incident FUV field. */
     /* get estimate of mass column density integrated away from this location for self-shielding */
@@ -519,7 +519,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
     
 
-#if defined(COOL_MOLECFRAC_GD)
+#if (COOL_MOLECFRAC == 3)
     /* use the sub-grid final expression calibrated to ~60pc resolution simulations with equilibrium molecular chemistry and post-processing radiative
         transfer from Gnedin & Draine 2014 (Eqs. 5-7) */
     double S_slab = Get_Particle_Size(i) * All.cf_atime * UNIT_LENGTH_IN_PC / 100.; // slab size in units of 100 pc
@@ -535,7 +535,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
     
     
-#if (SINGLE_STAR_SINK_FORMATION & 256) || defined(COOL_MOLECFRAC_KG) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */
+#if (SINGLE_STAR_SINK_FORMATION & 256) || (COOL_MOLECFRAC == 2) /* estimate f_H2 with Krumholz & Gnedin 2010 fitting function, assuming simple scalings of radiation field, clumping, and other factors with basic gas properties so function only of surface density and metallicity, truncated at low values (or else it gives non-sensical answers) */
     double clumping_factor=1, fH2_kg=0, tau_fmol = (0.1 + P[i].Metallicity[0]/All.SolarAbundances[0]) * evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i) * 434.78 * UNIT_SURFDEN_IN_CGS; // convert units for surface density. also limit to Z>=0.1, where their fits were actually good, or else get unphysically low molecular fractions
     if(tau_fmol>0) {double y = 0.756 * (1 + 3.1*pow(P[i].Metallicity[0]/All.SolarAbundances[0],0.365)) / clumping_factor; // this assumes all the equilibrium scalings of radiation field, density, SFR, etc, to get a trivial expression
         y = log(1 + 0.6*y + 0.01*y*y) / (0.6*tau_fmol); y = 1 - 0.75*y/(1 + 0.25*y); fH2_kg=DMIN(1,DMAX(0,y));}
@@ -543,7 +543,7 @@ double Get_Gas_Molecular_Mass_Fraction(int i, double temperature, double neutral
 #endif
     
     
-#if defined(COOLING) || defined(COOL_MOLECFRAC_GC) /* if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012 */
+#if defined(COOLING) || (COOL_MOLECFRAC == 1) /* if none of the above is set, default to a wildly-oversimplified scaling set by fits to the temperature below which gas at a given density becomes molecular from cloud simulations in Glover+Clark 2012 */
     double T_mol = DMAX(1.,DMIN(8000., CellP[i].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS));
     return neutral_fraction / (1. + temperature*temperature/(T_mol*T_mol));
 #endif

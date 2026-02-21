@@ -2551,7 +2551,7 @@ void read_parameter_file(char *fname)
 #endif
 #endif // closes DEVELOPER_MODE check //
 #ifdef SINK_WIND_SPAWN
-    All.AGNWindID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
+    All.SpawnedWindCellID = 1913298393;       // this seems weird, but is the bitshifted version of 1234568912345 for not long IDs.
 #endif
 
 #ifdef GALSF

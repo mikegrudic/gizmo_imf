@@ -968,14 +968,14 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 #if defined(SINK_TEST_WIND_MIXED_FASTSLOW) || defined(SINK_RIAF_SUBEDDINGTON_MODEL)
         if(P[i].Type==5) {
             double masscorrfac_fast = 100.; /* ratio of spawned jet cell mass to non-jet cell mass */
-            double fraction_to_spawn_in_jet = 0.5; /* fraction of spawned cells by number in jet */
-            double frac_clight_jet = 0.3; /* default fraction of C for jet speed */
+            double fraction_to_spawn_in_jet = 0.1; /* fraction of spawned cells by number in jet */
+            double frac_clight_jet = 0.1; /* default fraction of C for jet speed */
 #ifdef SINK_TEST_WIND_MIXED_FASTSLOW
             frac_clight_jet = (SINK_TEST_WIND_MIXED_FASTSLOW/UNIT_VEL_IN_KMS) / C_LIGHT_CODE;
 #endif
 #ifdef SINK_RIAF_SUBEDDINGTON_MODEL
-            double frac_clight_jet_max = 1.0; // don't let the jet be too fast, for physical (superluminal) or numerical (timestep) reasons
-            double frac_clight_jet_min = 0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
+            double frac_clight_jet_max = 0.10; //1.0; // don't let the jet be too fast, for physical (superluminal) or numerical (timestep) reasons
+            double frac_clight_jet_min = 0.03; //0.1; // don't let the jet be too slow, or it won't behave like a jet; lower jet mass to compensate
             double Mdot_wind = P[i].Sink_Mdot_ROI - P[i].Sink_Mdot;
             if(Mdot_wind > 0)
             {
@@ -983,7 +983,7 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
                 double HR = 0.33;
                 double mdot = P[i].Sink_Mdot / (P[i].Sink_Mass / (5.e7/UNIT_TIME_IN_YR));
                 if(mdot < 0.01) {HR = 1;}
-                double eff_jet = pow(a_spin*HR,2);
+                double eff_jet = 0.1 * pow(a_spin*HR,2);
                 double Mdot_jet = (fraction_to_spawn_in_jet/masscorrfac_fast) * Mdot_wind;
                 double eta_jet = Mdot_jet / P[i].Sink_Mdot;
                 frac_clight_jet = sqrt(2.*eff_jet/eta_jet); /* scaling so that KE of jet = desired */
@@ -1095,9 +1095,9 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
 
         /* now set the real hydro variables. */
         /* set the particle ID */ // unsigned int bits; int SPLIT_GENERATIONS = 4; for(bits = 0; SPLIT_GENERATIONS > (1 << bits); bits++); /* the particle needs an ID: we give it a bit-flip from the original particle to signify the split */
-        P[j].ID = All.AGNWindID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
+        P[j].ID = All.SpawnedWindCellID; /* update:  We are using a fixed wind ID, to allow for trivial wind particle identification */
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-        if(mass_of_new_particle >= 0.5*P[i].Sink_Formation_Mass) {P[j].ID = All.AGNWindID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.AGNWindID checks throughout the code
+        if(mass_of_new_particle >= 0.5*P[i].Sink_Formation_Mass) {P[j].ID = All.SpawnedWindCellID + 1;} // this just has the nominal mass resolution, so no special treatment - this avoids the P[i].ID == All.SpawnedWindCellID checks throughout the code
 #endif
         P[j].ID_child_number = P[i].ID_child_number + P[i].ID_generation; P[i].ID_generation++; P[j].ID_generation = P[i].ID; // this allows us to track spawned particles by giving them unique sub-IDs. Remember we MUST NEVER alter an existing particle ID OR ID_child_number!
         P[j].Mass = mass_of_new_particle; /* assign masses to both particles (so they sum correctly) */
@@ -1189,8 +1189,8 @@ int sink_spawn_particle_wind_shell( int i, int dummy_cell_i_to_clone, int num_al
         inject_cosmic_rays(dEcr, v_magnitude_physical, 5, j, veldir); /* inject directly */
 #endif
 #endif
-        /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
-        force_add_star_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
+        /* Note: New tree construction can be avoided because of  `force_add_element_to_tree()' */
+        force_add_element_to_tree(i0, j);// (buggy) /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
     }
     if(P[i].unspawned_wind_mass < 0) {P[i].unspawned_wind_mass=0;}
     return n_particles_split;

@@ -53,7 +53,7 @@ int does_particle_need_to_be_merged(int i)
     if(is_particle_a_special_zoom_target(i)) {return 0;}
 #endif
 #ifdef SINK_WIND_SPAWN
-    if(P[i].ID==All.AGNWindID && P[i].Type==0)
+    if(P[i].ID==All.SpawnedWindCellID && P[i].Type==0)
     {
         if(P[i].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(i)*target_mass_renormalization_factor_for_mergesplit(i,0)) {return 1;}
     }
@@ -305,23 +305,25 @@ void merge_and_split_particles(void)
                         if(P[i].Type==4 && P[j].Type==4) {m_eff=evaluate_starstar_merger_for_starcluster_particle_pair(i,j); if(m_eff<=0) {do_allow_merger=0;} else {do_allow_merger=1;}}
 #endif
 #ifdef SINK_WIND_SPAWN
-                        if(P[i].ID==All.AGNWindID && P[i].Type==0)
+                        if(P[i].ID==All.SpawnedWindCellID && P[i].Type==0)
                         {
                             if(P[i].Mass>=MASS_THRESHOLD_FOR_WINDPROMO(i))
                             {
-                                if((P[j].ID != All.AGNWindID) || (P[j].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger *= 1;} else {do_allow_merger = 0;}
+                                if((P[j].ID != All.SpawnedWindCellID) || (P[j].Mass >= MASS_THRESHOLD_FOR_WINDPROMO(j))) {do_allow_merger *= 1;} else {do_allow_merger = 0;}
                             } else if(do_allow_merger) {
                                 double v2_tmp=0,vr_tmp=0; int ktmp=0; for(ktmp=0;ktmp<3;ktmp++) {v2_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Vel[ktmp]-P[j].Vel[ktmp]); vr_tmp+=(P[i].Vel[ktmp]-P[j].Vel[ktmp])*(P[i].Pos[ktmp]-P[j].Pos[ktmp]);}
                                 if(vr_tmp > 0) {do_allow_merger = 0;}
                                 if(v2_tmp > 0) {v2_tmp=sqrt(v2_tmp*All.cf_a2inv);} else {v2_tmp=0;}
-                                if(P[j].ID == All.AGNWindID) {do_allow_merger = 0;} // wind particles can't intermerge
                                 if(v2_tmp >  DMIN(Get_Gas_effective_soundspeed_i(i),Get_Gas_effective_soundspeed_i(j))) {do_allow_merger = 0;}
-#if !(defined(SINGLE_STAR_FB_JETS) || defined(SINGLE_STAR_FB_WINDS))
+#if !defined(SINK_RIAF_SUBEDDINGTON_MODEL) && !defined(SINGLE_STAR_SINK_DYNAMICS) /* if spawning a lot of these, don't want to restrict this so much */
+                                if(P[j].ID == All.SpawnedWindCellID) {do_allow_merger = 0;} // wind particles can't intermerge
+#if !defined(SINGLE_STAR_FB_JETS) && !defined(SINGLE_STAR_FB_WINDS)
                                 if((v2_tmp > 0.25*All.Sink_outflow_velocity) && (v2_tmp > 0.9*Get_Gas_effective_soundspeed_i(j))) {do_allow_merger=0;}
+#endif
 #endif
                             }
                         }
-                        if(P[j].ID==All.AGNWindID && P[j].Type==0) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
+                        if(P[j].ID==All.SpawnedWindCellID && P[j].Type==0) {m_eff *= 1.0e10;} /* boost this enough to ensure the spawned element will never chosen if 'real' candidate exists */
 #endif
                         /* make sure we're not taking the same particle (and that its available to be merged into)! and that its the least-massive available candidate for merging onto */
                         if((j<0)||(j==i)||(P[j].Type!=P[i].Type)||(P[j].Mass<=0)||(Ptmp[j].flag!=0)||(m_eff>=threshold_val)) {do_allow_merger=0;}
@@ -636,12 +638,12 @@ int split_particle_i(int i, int n_particles_split, int i_nearest)
     P[i].Time_Of_Last_MergeSplit = All.Time; P[j].Time_Of_Last_MergeSplit = All.Time;
 #endif
     
-    /* Note: New tree construction can be avoided because of  `force_add_star_to_tree()' */
+    /* Note: New tree construction can be avoided because of  `force_add_element_to_tree()' */
 #ifdef PARTICLE_MERGE_SPLIT_EVERY_TIMESTEP    
     long bin = P[i].TimeBin;
     if(FirstInTimeBin[bin] < 0) {FirstInTimeBin[bin]=j; LastInTimeBin[bin]=j; NextInTimeBin[j]=-1; PrevInTimeBin[j]=-1;} /* only particle in this time bin on this task */
     else {NextInTimeBin[j]=FirstInTimeBin[bin]; PrevInTimeBin[j]=-1; PrevInTimeBin[FirstInTimeBin[bin]]=j; FirstInTimeBin[bin]=j;} /* there is already at least one particle; add this one "to the front" of the list */
-    force_add_star_to_tree(i, j);
+    force_add_element_to_tree(i, j);
 #endif    
     /* we solve this by only calling the merge/split algorithm when we're doing the new domain decomposition */
     
@@ -682,8 +684,8 @@ int merge_particles_ij(int i, int j)
 
     int swap_ids = 0; if(P[i].Mass > P[j].Mass) {swap_ids = 1;} /* retain the IDs of the more massive progenitor */
 #ifdef SINK_WIND_SPAWN
-    if(P[i].ID == All.AGNWindID) {swap_ids = 0;} /* don't copy an agn wind id */
-    if(P[j].ID == All.AGNWindID) {P[j].ID = All.AGNWindID + 1;} /* offset this to avoid checks through code */
+    if(P[i].ID == All.SpawnedWindCellID) {swap_ids = 0;} /* don't copy an agn wind id */
+    if(P[j].ID == All.SpawnedWindCellID) {P[j].ID = All.SpawnedWindCellID + 1;} /* offset this to avoid checks through code */
 #endif
     if(swap_ids) {P[j].ID=P[i].ID; P[j].ID_child_number=P[i].ID_child_number; P[j].ID_generation=P[i].ID_generation;} /* swap the ids so save the desired set */
     

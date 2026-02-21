@@ -168,9 +168,6 @@ static struct OUTPUT_STRUCT_NAME
 #endif
 #if defined(SINK_PARTICLES)
     int Sink_TimeBinGasNeighbor;
-#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
-    MyDouble Sink_dr_to_NearestGasNeighbor;
-#endif
 #endif
 #if defined(TURB_DRIVING) || defined(GRAIN_FLUID)
     MyDouble GasVel[3];
@@ -247,7 +244,7 @@ void hydrokerneldensity_out2particle(struct OUTPUT_STRUCT_NAME *out, int i, int 
     if(P[i].Type == 5)
     {
         if(mode == 0) {P[i].Sink_TimeBinGasNeighbor = out->Sink_TimeBinGasNeighbor;} else {if(P[i].Sink_TimeBinGasNeighbor > out->Sink_TimeBinGasNeighbor) {P[i].Sink_TimeBinGasNeighbor = out->Sink_TimeBinGasNeighbor;}}
-#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(SINGLE_STAR_TIMESTEPPING)
         if(mode == 0) {P[i].Sink_dr_to_NearestGasNeighbor = out->Sink_dr_to_NearestGasNeighbor;} else {if(P[i].Sink_dr_to_NearestGasNeighbor > out->Sink_dr_to_NearestGasNeighbor) {P[i].Sink_dr_to_NearestGasNeighbor = out->Sink_dr_to_NearestGasNeighbor;}}
 #endif
     } /* if(P[i].Type == 5) */
@@ -268,9 +265,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     h2 = local.KernelRadius * local.KernelRadius; kernel_hinv(local.KernelRadius, &kernel.hinv, &kernel.hinv3, &kernel.hinv4);
 #if defined(SINK_PARTICLES)
     out.Sink_TimeBinGasNeighbor = TIMEBINS;
-#ifdef SINK_ACCRETE_NEARESTFIRST
-    out.Sink_dr_to_NearestGasNeighbor = MAX_REAL_NUMBER;
-#endif
 #endif
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
@@ -399,7 +393,7 @@ void density_evaluate_extra_physics_gas(struct INPUT_STRUCT_NAME *local, struct 
 #endif
             short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
             if(out->Sink_TimeBinGasNeighbor > TimeBin_j) {out->Sink_TimeBinGasNeighbor = TimeBin_j;}
-#if defined(SINK_ACCRETE_NEARESTFIRST) || defined(SINGLE_STAR_TIMESTEPPING)
+#if defined(SINGLE_STAR_TIMESTEPPING)
             double dr_eff_wtd = Get_Particle_Size(j);
             dr_eff_wtd=sqrt(dr_eff_wtd*dr_eff_wtd + (kernel->r)*(kernel->r)); /* effective distance for Gaussian-type kernel, weighted by density */
             if((dr_eff_wtd < out->Sink_dr_to_NearestGasNeighbor) && (P[j].Mass > 0)) {out->Sink_dr_to_NearestGasNeighbor = dr_eff_wtd;}
@@ -1045,7 +1039,7 @@ void density(void)
         } // density_isactive(i)
         
 #if defined(SINK_WIND_SPAWN_SET_BFIELD_POLTOR) /* re-assign magnetic fields after getting the correct density for newly-spawned cells when these options are enabled */
-        if(P[i].Type==0) {if(P[i].ID==All.AGNWindID && CellP[i].IniDen<0) {CellP[i].IniDen=CellP[i].Density; int k; for(k=0;k<3;k++) {CellP[i].BPred[k]=CellP[i].B[k]=CellP[i].IniB[k]*(All.UnitMagneticField_in_gauss/UNIT_B_IN_GAUSS)*(P[i].Mass/(All.cf_a2inv*CellP[i].Density));}}}
+        if(P[i].Type==0) {if(P[i].ID==All.SpawnedWindCellID && CellP[i].IniDen<0) {CellP[i].IniDen=CellP[i].Density; int k; for(k=0;k<3;k++) {CellP[i].BPred[k]=CellP[i].B[k]=CellP[i].IniB[k]*(All.UnitMagneticField_in_gauss/UNIT_B_IN_GAUSS)*(P[i].Mass/(All.cf_a2inv*CellP[i].Density));}}}
 #endif
         
     } // for(i = FirstActiveParticle; i >= 0; i = NextActiveParticle[i])
