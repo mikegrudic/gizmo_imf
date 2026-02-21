@@ -1158,7 +1158,7 @@ void find_dt_displacement_constraint(double hfac /*!<  should be  a^2*H(a)  */ )
         MPI_Allreduce(mim, min_mass, 6, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(mnm, mean_mass, 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         sumup_large_ints(6, count, count_sum);
-        v_sum[0] /= mean_mass[0]; /* for gas use a weighted average to deal with extreme cell-mass difference situations */
+        if(mean_mass[0] > 0) {v_sum[0] /= mean_mass[0];} /* for gas use a weighted average to deal with extreme cell-mass difference situations */
 
 #ifdef GALSF
         /* add star and gas particles together to treat them on equal footing, using the original gas particle spacing. */
