@@ -1248,7 +1248,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
         CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV] = CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = 0; // set to nil before deciding if we will add radiation here, to avoid double-counting with previous-loop information
         if(CellP[target].Radiation_Temperature > 1.e4) {which_bin_to_cool_to = RT_FREQ_BIN_INFRARED;} // our more-accurate effective/adaptive IR band is already covering these wavelengths, rather than do the noisy step of cooling to NUV, re-absorbing with less accurate opacities and down-grading to the grey-band, just dump directly to the grey-band
 #endif
-#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) /* may want to make broader ???? */
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) /* may want to make broader, but restrict to these flags for now */
         which_bin_to_cool_to = RT_FREQ_BIN_INFRARED; /* since we're using this here to represent much higher energies, it should always track this bin */
 #endif
         CellP[target].Lambda_RadiativeCooling_toRHDBins[which_bin_to_cool_to] += Lambda_rad_NUV;} // save this to be used later (include all misc terms that will appear in our NUV radiation umbrella)

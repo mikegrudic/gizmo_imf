@@ -776,7 +776,7 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 Here we are splitting the re-emission by dust (performed here) and the gas-dust-radiation energy transfer handled in the cooling solver;
                 need to know the dust temperature to get the re-radiated radiation temperature. OK as long as the opacity doesn't
                 change dramatically in a single timestep, otherwise have to couple all matter-radiation source terms implicitly. */
-		        CellP[i].Dust_Temperature = ???? rt_eqm_dust_temp(i, temp, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i));
+		        CellP[i].Dust_Temperature = rt_eqm_dust_temp(i, temp, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i));
 #else
                 CellP[i].Dust_Temperature = rt_eqm_dust_temp(i, 0, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i)); // Calling with T=0 will account for dust absorption only
 #endif
