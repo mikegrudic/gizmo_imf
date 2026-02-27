@@ -776,17 +776,17 @@ void rt_update_driftkick(int i, double dt_entr, int mode)
                 Here we are splitting the re-emission by dust (performed here) and the gas-dust-radiation energy transfer handled in the cooling solver;
                 need to know the dust temperature to get the re-radiated radiation temperature. OK as long as the opacity doesn't
                 change dramatically in a single timestep, otherwise have to couple all matter-radiation source terms implicitly. */
-		        CellP[i].Dust_Temperature = rt_eqm_dust_temp(i, temp, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i));
+		        CellP[i].Dust_Temperature = ???? rt_eqm_dust_temp(i, temp, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i));
 #else
                 CellP[i].Dust_Temperature = rt_eqm_dust_temp(i, 0, total_absorption_rate * vol_inv_phys * C_LIGHT_CODE / C_LIGHT_CODE_REDUCED(i)); // Calling with T=0 will account for dust absorption only
 #endif
-                if(CellP[i].Dust_Temperature < T_min){CellP[i].Dust_Temperature = T_min;}
+                if(CellP[i].Dust_Temperature < T_min) {CellP[i].Dust_Temperature = T_min;}
                 double Tdust_eff = CellP[i].Dust_Temperature, Trad_eff = CellP[i].Radiation_Temperature;
                 double kappa_gas = rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,-1,-1), kappa_total = rt_kappa_adaptive_IR_band(i,Tdust_eff,Trad_eff,0,0);
                 IRBand_opacity_fraction_from_gas_absorption = kappa_gas / (kappa_total + MIN_REAL_NUMBER); /* gas absorption opacity only, relative to total opacity (all sources+scattering) */
                 double total_emission_rate = total_absorption_rate * (1.-IRBand_opacity_fraction_from_gas_absorption) + CellP[i].Rad_Je[kf]; /* we will re-radiate this much because the component due to gas-dust coupling is accounted for in the cooling loop */
                 total_de_dt = E_abs_tot_toIR + CellP[i].Rad_Je[kf] + dt_e_gamma_band;
-                if((mode==0) && (Tdust_eff < MAX_DUST_TEMP)) // only update temperatures on kick operations and Tdust is meaningful //
+                if((mode==0) && (Tdust_eff <= MAX_DUST_TEMP)) // only update temperatures on kick operations and Tdust is meaningful //
                 {
                     /* dust absorption and re-emission brings T_rad towards T_dust: */
                     double dE_abs_IR = -e0 * (1. - exp(a0_abs*dt_entr)); /* change in energy from absorption */
@@ -1398,20 +1398,20 @@ double dust_dE_cooling(int i, double Tgas, double Tdust, double* Tdust_fixedpoin
     return result;
 }
 
-/* Returns the dust cooling rate LambdaDust in erg s^-1 cm^3, accounting for 
-dust emission
-*/
+/* Returns the dust cooling rate LambdaDust in erg s^-1 cm^3, accounting for dust emission */
 double rt_ir_lambdadust(int i, double T){
     double Tdust, T_lower, T_upper, dE, dE1, dE2, dE_lower, dE_upper, dE_guess, dTdust_tol=1e-6;
     double Tdust_fixedpoint_1, Tdust_fixedpoint_2, dummy;
     // define ROOTFIND_FUNCTION_INNER because this gets called nested inside the cooling solver, and needs to be def'd distinctly from the overlying ROOTFIND_FUNCTION
     #define ROOTFIND_FUNCTION_INNER(dTdust) dust_dE_cooling(i, T, T+dTdust, &Tdust_fixedpoint_1, &Tdust_fixedpoint_2)
-    if((All.Time==0 )|| (!isfinite(CellP[i].Dust_Temperature))){Tdust=T;} else {Tdust = DMIN(1e3,CellP[i].Dust_Temperature);}
+    if((All.Time==0 )|| (!isfinite(CellP[i].Dust_Temperature))){Tdust=T;} else {Tdust = DMIN(MAX_DUST_TEMP, CellP[i].Dust_Temperature);}
 
     dE = dE_guess = ROOTFIND_FUNCTION_INNER(Tdust-T);
-   
-    if(Tdust_fixedpoint_1 > 0 && Tdust_fixedpoint_1 < MAX_DUST_TEMP) {dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
-    if(Tdust_fixedpoint_2 > 0 && Tdust_fixedpoint_2 < MAX_DUST_TEMP) {dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
+    if(Tdust_fixedpoint_1 <= 0) {Tdust_fixedpoint_1 = T;} // this means overshot to <0 from dust-gas coupling term, so set to equilibrium with gas temp as a guess
+    if(Tdust_fixedpoint_1 > MAX_DUST_TEMP) {Tdust_fixedpoint_1 = MAX_DUST_TEMP;} // cap the guess
+    if(Tdust_fixedpoint_2 > MAX_DUST_TEMP) {Tdust_fixedpoint_2 = MAX_DUST_TEMP;} // cap the guess
+    if(Tdust_fixedpoint_1 > 0 && Tdust_fixedpoint_1 <= MAX_DUST_TEMP) {dE1 =  dust_dE_cooling(i, T, Tdust_fixedpoint_1, &dummy, &dummy);} else {dE1 = MAX_REAL_NUMBER;}
+    if(Tdust_fixedpoint_2 > 0 && Tdust_fixedpoint_2 <= MAX_DUST_TEMP) {dE2 =  dust_dE_cooling(i, T, Tdust_fixedpoint_2, &dummy, &dummy);} else {dE2 = MAX_REAL_NUMBER;}
 
     // error estimate of the fixed-point guesses, used for bracketing below
     double fixedpoint_error = DMIN(fabs(Tdust-Tdust_fixedpoint_2), fabs(Tdust-Tdust_fixedpoint_1))/Tdust; 
@@ -1445,7 +1445,7 @@ double rt_ir_lambdadust(int i, double T){
         }
         T_upper = Tdust, dE_upper = dE;
     }     
-    if(T_upper>=MAX_DUST_TEMP && dE_upper > 0){CellP[i].Dust_Temperature = MAX_DUST_TEMP; return 0;}
+    if(T_upper>=MAX_DUST_TEMP && dE_upper > 0) {CellP[i].Dust_Temperature = MAX_DUST_TEMP; return 0;}
 
     if(dE_lower * dE_upper > 0){ PRINT_WARNING("Failed to bracket Tdust solution for ID=%lld T=%g T_lower=%g T_upper=%g dE_lower=%g dE_upper=%g\n", (long long)P[i].ID, T, T_lower,T_upper, dE_lower, dE_upper);}
 
@@ -1503,7 +1503,7 @@ double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate)
     Tmax = MAX_DUST_TEMP; // this is now a global variable
     /* First we come up with a reasonable guess for the dust temp based on available info */
 #ifdef RT_INFRARED
-    Tdust_guess = DMIN(DMAX(CellP[i].Dust_Temperature,1.),1e3); // previous dust temperature should be a good guess
+    Tdust_guess = DMIN(DMAX(CellP[i].Dust_Temperature, 1.), MAX_DUST_TEMP); // previous dust temperature should be a good guess
 #else // case where we don't have a pre-computed dust temp, use asymptotic limits to get a good guess
     double Zfac = 1.0;
 #ifdef METALS
@@ -1748,7 +1748,7 @@ double rt_kappa_adaptive_IR_band(int i, double T_dust, double Trad, int do_emiss
             kappa = exp(0.03583845 + 0.68374146*x - 0.03791989*x*x - 0.01135789*x*x*x + 0.00212918*x*x*x*x);
         } else if(T_dust_opacitytable < 680.) { // 425 < Tdust < 680 (silicates, iron, & troilite present)
             kappa = exp(-0.76576135 + 0.57053532*x - 0.0122809*x*x - 0.01037311*x*x*x + 0.00197672*x*x*x*x);
-        } else if(T_dust < MAX_DUST_TEMP) { // 680 < Tdust < 1500 (silicates & iron present)
+        } else if(T_dust_opacitytable <= MAX_DUST_TEMP) { // 680 < Tdust < 1500 (silicates & iron present)
             kappa = exp(-2.23863222 + 0.81223269*x + 0.08010633*x*x + 0.00862152*x*x*x - 0.00271909*x*x*x*x);
         } else {
             kappa = MIN_REAL_NUMBER; // dust completely absent above MAX_DUST_TEMP

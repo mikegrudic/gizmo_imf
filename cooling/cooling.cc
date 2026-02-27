@@ -187,22 +187,35 @@ void do_the_cooling_for_particle(int i)
         double ratefact = (C_LIGHT_CODE_REDUCED(i)/C_LIGHT_CODE) * nHcgs * nHcgs / (CellP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_CGS) * (dtime*UNIT_TIME_IN_CGS) / (UNIT_SPECEGY_IN_CGS) * P[i].Mass; /* need to account for RSOL factors in emission/absorption rates */
         double de_u = (unew - CellP[i].InternalEnergy) * P[i].Mass; /* change in the total internal energy of the gas cell [integrating over everything] */
         double de_rad_tot_final = 0, de_rad_tot = 0; for(k=0;k<N_RT_FREQ_BINS;k++) {de_rad_tot += CellP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact;} /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-        /* Removing the de_u * de_rad_tot > 0 limiter because this is not ruled out physically, e.g. if gas is being heated by PdV work while radiating away energy. 
-        Can only do the limiter if the cooling function accounts for radiative processes only. */
-	    //if(de_u * de_rad_tot > 0) {de_rad_tot = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below */
-        double de_u_rad = -de_rad_tot, de_u_work = de_u - de_u_rad;
+        double de_u_rad = -de_rad_tot, de_u_work = de_u - de_u_rad; /* variables for below showing total change in gas energy from radiation, and placeholder for the hydro work term */
+        de_u_work = (CellP[i].DtInternalEnergy*(UNIT_SPECEGY_IN_CGS/UNIT_TIME_IN_CGS)*(PROTONMASS_CGS/HYDROGEN_MASSFRAC)) / nHcgs * ratefact; /* account for hydro work going into the system as an energy source */
 #ifndef COOLING_OPERATOR_SPLIT
-        if(CellP[i].CoolingIsOperatorSplitThisTimestep==0) {de_u_work=CellP[i].DtInternalEnergy/nHcgs*ratefact; if((de_u_rad + de_u_work)*de_u < 0) {de_u=0;}} /* ok have a sign conflict here, this is potentially a problem, so we dont mess with the radiation here. verified this only occurs when the two almost exactly cancel and the remainer is very small (4 dex smaller than both) so its dominated by roundoff error, should be null in that case */
+        de_u_work = DtInternalEnergyEffCGS / nHcgs * ratefact; /* use the combined and rate-limited value which is more accurately computed above */
 #endif
-        double de_u_touse = de_u - de_u_work; /* this is the actual difference between the implicit hydro work term and the total term, i.e. a corrected de_u_rad, which we use below */
-        if((de_u_touse<0) && (de_u_work>0) && (fabs(de_u)<fabs(de_u_touse))) {de_u_touse=-fabs(de_u);} /* de_u_rad*de_u_work >= 0 -- same sign, fabs(de_u) > fabs(de_u_rad), change from rad smaller than total; else (1) de_u_rad > 0, de_u_work < 0: rad heating, adiabatic cooling. rad field should lose |de_u_rad|, not lesser (let alone gain); de_u_rad < 0, de_u_work > 0: rad cooling, shock/compressive heating. rad field should gain |de_u_rad|, but can allow limiter; */
-        
+        double de_u_radabs=0; /* need to collect absorbed photon energy to know how much energy to limit the 'dumped' energy to */
+        for(k=0;k<N_RT_FREQ_BINS;k++)
+        {
+            int k_donor = rt_get_donation_target_bin(k); /* this is used to indicate whether in the rad drift-kick loop, absorption is immediately re-radiated or not, ie. whether or not we should account for it here */
+            double tau = fabs(rt_absorption_rate(i,k) * dtime), f_abs = 1.-exp(-tau); if(tau<0.01) {f_abs=tau*(1.-tau/2.);} /* fraction of energy absorbed in the timestep */
+            double absorpted_rad_energy = DMIN(SphP[i].Rad_E_gamma[k],SphP[i].Rad_E_gamma_Pred[k]) * f_abs; /* estimate energy from the band that is absorbed in this timestep */
+#ifdef RT_INFRARED
+            if(k==RT_FREQ_BIN_INFRARED) {
+                k_donor = -1; /* we use this below to indicate radiation which hasn't been re-radiated, which is handled in a special way for the adaptive bin here [which by default re-emits to itself], so set this here */
+                double opacity_fraction_from_gas_absorption = rt_kappa_adaptive_IR_band(i,SphP[i].Dust_Temperature,SphP[i].Radiation_Temperature,-1,-1) / (rt_kappa_adaptive_IR_band(i,SphP[i].Dust_Temperature,SphP[i].Radiation_Temperature,0,0) + MIN_REAL_NUMBER); /* want the opacity from gas absorption as a fraction of total, because this is -not- assumed to re-radiate immediately in the drift/kick routine */
+                absorpted_rad_energy *= opacity_fraction_from_gas_absorption;
+            }
+#endif
+            if(k_donor >= 0) {continue;} /* re-emitted immediately, ignore */
+            de_u_radabs += fabs(total_absorption_rate); /* sum up absorbed photon energy */
+        }
+        de_u_work += de_u_radabs; /* add this to the energy reservoir represented by the work function */
+        double de_u_touse = de_u - de_u_work; /* this is the actual difference between the implicit hydro work+absorption term and the total term, i.e. a corrected de_u_rad, which we use below */
+
         for(k=0;k<N_RT_FREQ_BINS;k++)
         {
             if((fabs(CellP[i].Lambda_RadiativeCooling_toRHDBins[k]) > MIN_REAL_NUMBER) && (fabs(de_rad_tot) > MIN_REAL_NUMBER))
             {
                 double de_rad = CellP[i].Lambda_RadiativeCooling_toRHDBins[k] * ratefact; /* energy gained by gas needs to be subtracted from radiation. positive lambda means gas cooling (gas energy loss, so radiation energy gain, so positive here) */
-		        //if(de_u * de_rad > 0) {de_rad = 0;} /* if radiation gains but gas net loses (or vice versa), could occur across different bands but don't do the routine below  - removed, see note above */
                 if(fabs(de_rad) > MIN_REAL_NUMBER)
                 {
                     double de_rad_min = DMIN(DMAX(-0.99*CellP[i].Rad_E_gamma[k], -de_u_touse), 0); // don't let the radiation loss take all the radiation energy into negative, or more than the energy gained from cooling+heating
@@ -275,6 +288,7 @@ void do_the_cooling_for_particle(int i)
 double DoCooling(double u_old, double rho, double dt, double ne_guess, double *ne_eval, int target)
 {
     double u, du; u=0; du=0;
+    if(rho <= 0 || dt == 0) {return DMAX(u,All.MinEgySpec);}
 
 #ifdef COOL_GRACKLE
 #ifndef COOLING_OPERATOR_SPLIT
@@ -346,8 +360,8 @@ double DoCooling(double u_old, double rho, double dt, double ne_guess, double *n
         u_step_fac *= 1.1;
         bracket_iter++;
     }
-    if(fabs(du_net_upper) < MIN_REAL_NUMBER) {u=u_upper;}
-    else if(fabs(du_net_lower) < MIN_REAL_NUMBER) {u=u_lower;}
+    if(fabs(du_net_upper) < MIN_REAL_NUMBER || !isfinite(du_net_upper)) {u=u_upper;}
+    else if(fabs(du_net_lower) < MIN_REAL_NUMBER || !isfinite(du_net_lower)) {u=u_lower;}
     else {
         if(!skip_rootfind){ // assuming we're not bouncing off the min temp
             if((du_net_upper * du_net_lower >= 0) || isnan(du_net_lower) || isnan(du_net_upper)) {PRINT_WARNING("Could not bracket cooling solution. ID=%lld u_min=%g u=%g u_lower=%g u_upper=%g f_lower=%g f_upper=%g\n", (long long)P[target].ID, u_min, u, u_lower,u_upper, du_net_lower, du_net_upper); endrun(10);}
@@ -968,9 +982,9 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 {
     double n_elec=n_elec_guess, nH0, nHe0, nHp, nHep, nHepp, mu; /* ionization states [computed below] */
     double Lambda, Heat, LambdaFF, LambdaCompton, LambdaExc, LambdaExcH0, LambdaExcHep, LambdaIon, LambdaIonH0, LambdaIonHe0, LambdaIonHep;
-    double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb_radeff, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust;
+    double LambdaRec, LambdaRecHp, LambdaRecHep, LambdaRecHepp, LambdaRecHepd, T, T_cmb_radeff, shieldfac, LambdaMol, LambdaMetal, LambdaPElec, LambdaDust, Heat_Ion_from_UVB, Heat_Ion_from_RHD;
     double nHcgs = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS;	/* hydrogen number dens in cgs units */
-    Lambda=0; Heat=0; LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; /* make sure these are all initialized to zero */
+    Lambda=0; Heat=0; LambdaMol=0; LambdaFF=0; LambdaRec=0; LambdaExc=0; LambdaIon=0; LambdaMetal=0; LambdaCompton=0; LambdaPElec=0; LambdaDust=0; Heat_Ion_from_UVB=0; Heat_Ion_from_RHD=0; /* make sure these are all initialized to zero */
     if(logT <= Tmin) {logT = Tmin + 0.5 * deltaT;}	/* floor at Tmin */
     if(!isfinite(rho)) {return 0;}
     T = pow(10.0, logT);
@@ -1119,10 +1133,12 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 
 #if ((GALSF_FB_FIRE_STELLAREVOLUTION > 2) || !defined(GALSF_FB_FIRE_STELLAREVOLUTION)) && defined(GALSF_FB_FIRE_RT_HIIHEATING)
         // here we account for the fact that the local spectrum is softer than the UVB which includes AGN and is hardened by absorption within galaxies. we do this by simply lowering the effective heating rate [mean photon energy absorbed per ionization], which captures the leading-order effect //
-        if(J_UV != 0) {Heat += shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
+        if(J_UV != 0) {Heat_Ion_from_UVB = shieldfac / nHcgs * ((nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) + gJH0*(local_gammamultiplier-1.)*(nH0*2.9 + nHe0*0.44 + nHep*4.2e-4)*1.6e-12);} // this assumes an approximately IMF-averaged mean O-star Teff ~ 40000 K -- note the weights here for this correspond to mean energy per H ionization, so for H is just some energy in eV, but for He is weighted by relative ionization rate: softer spectrum translates to steeper dropoff of these terms
 #else
-        if(J_UV != 0) {Heat += local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
+        if(J_UV != 0) {Heat_Ion_from_UVB = local_gammamultiplier * (nH0 * epsH0 + nHe0 * epsHe0 + nHep * epsHep) / nHcgs * shieldfac;} // shieldfac allows for self-shielding from background
 #endif
+        Heat += Heat_Ion_from_UVB;
+        
 #if defined(RT_DISABLE_UV_BACKGROUND)
         Heat = 0;
 #endif
@@ -1147,6 +1163,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
                         kappa_ion = cx_to_kappa * cross_section_ion;
                         dummy = rt_ion_G_HI[k] * cross_section_ion * c_nH_time_n_photons_vol;// (egy per photon x cross section x photon flux) :: attenuation factors [already in flux/energy update]: * slab_averaging_function(kappa_ion * Sigma_particle); // egy per photon x cross section x photon flux (w attenuation factors) // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);  // commented-out terms not appropriate here based on how we treat RSOL terms
                         Heat += dummy;
+                        Heat_Ion_from_RHD += dummy;
                     }
                     if(rt_ion_G_HeI[k] > 0)
                     {
@@ -1154,6 +1171,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
                         kappa_ion = cx_to_kappa * cross_section_ion;
                         dummy = rt_ion_G_HeI[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion * Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt);  // commented-out terms not appropriate here based on how we treat RSOL terms
                         Heat += dummy;
+                        Heat_Ion_from_RHD += dummy;
                     }
                     if(rt_ion_G_HeII[k] > 0)
                     {
@@ -1161,6 +1179,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
                         kappa_ion = cx_to_kappa * cross_section_ion;
                         dummy = rt_ion_G_HeII[k] * cross_section_ion * c_nH_time_n_photons_vol;// * slab_averaging_function(kappa_ion*Sigma_particle); // * slab_averaging_function(kappa_ion * abs_per_kappa_dt); // commented-out terms not appropriate here based on how we treat RSOL terms
                         Heat += dummy;
+                        Heat_Ion_from_RHD += dummy;
                     }
                 }
             }
@@ -1214,7 +1233,9 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 
 #if defined(RT_NUV)
     double Lambda_rad_NUV = LambdaMetal; // most of LambdaMetal coming out in the NUV, as we define it
-    Lambda_rad_NUV += LambdaExc + LambdaIon; // this represents gas kinetic energy lost to collisional ionization and excitation. but each is assumed to produce a recombination or cascade back to the ground state, which should re-emit. we're usually assuming case B recombination (UV emitted photons re-absorbed), so we'll assume a cascade for these into NUV/optical and other bands [otherwise should be added to photo-ionizing band]. still ignore LambdaRec, because otherwise this will double-count the UV background
+    Lambda_rad_NUV += LambdaExc; // this represents gas kinetic energy lost to collisional excitation. but each is assumed to produce a cascade back to the ground state, which should emit. note collisional ionization is not included here since the thermal energy is lost to the ionization energy, not to radiation, and the recombination luminosity is tallied separately.
+    //Lambda_rad_NUV += LambdaIon; // this is the collisional ionization, distinct from the recombination luminosity. per above, this isn't directly into radiation. if you assumed it did lead to recombination, could use instead of LambdaRec, though would then ignore all but collisional ionization equilibrium. we're usually assuming case B recombination (UV emitted photons re-absorbed), so we'll assume a cascade for these into NUV/optical and other bands [otherwise should be added to photo-ionizing band]. still ignore LambdaRec, because otherwise this will double-count the UV background
+    Lambda_rad_NUV += LambdaRec * DMAX(1.-shieldfac,0.) * DMIN(1.,DMAX(0.,Heat_Ion_from_RHD/(Heat_Ion_from_UVB+Heat_Ion_from_RHD+MIN_REAL_NUMBER))); // recombination radiation -- needs to be rate-limited to avoid 2x-counting the UVB, which is what the shieldfac and local_gammamultiplier terms attempt to account for here
 #if !defined(RT_PHOTOELECTRIC) // if this module is active, these photons are accounted for explicitly in the photoelectric bands
     Lambda_rad_NUV += LambdaPElec; // otherwise lump it in here as well since it overlaps this band (should deplete it appropriately)
 #endif
@@ -1226,6 +1247,9 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 #if defined(RT_INFRARED)
         CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV] = CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = 0; // set to nil before deciding if we will add radiation here, to avoid double-counting with previous-loop information
         if(CellP[target].Radiation_Temperature > 1.e4) {which_bin_to_cool_to = RT_FREQ_BIN_INFRARED;} // our more-accurate effective/adaptive IR band is already covering these wavelengths, rather than do the noisy step of cooling to NUV, re-absorbing with less accurate opacities and down-grading to the grey-band, just dump directly to the grey-band
+#endif
+#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM) /* may want to make broader ???? */
+        which_bin_to_cool_to = RT_FREQ_BIN_INFRARED; /* since we're using this here to represent much higher energies, it should always track this bin */
 #endif
         CellP[target].Lambda_RadiativeCooling_toRHDBins[which_bin_to_cool_to] += Lambda_rad_NUV;} // save this to be used later (include all misc terms that will appear in our NUV radiation umbrella)
 #endif
@@ -1258,7 +1282,7 @@ double CoolingRate(double logT,  double rho, double n_elec_guess, double *n_elec
 #if defined(OUTPUT_COOLRATE_DETAIL)
     if(target>=0) {CellP[target].CoolingRate = Lambda; CellP[target].HeatingRate = Heat;}
 #endif
-#if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES)
+#if 0 //defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES)
     if(target >= 0) {CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_NUV]=0; CellP[target].Lambda_RadiativeCooling_toRHDBins[RT_FREQ_BIN_INFRARED] = -Q;} // for these runs want to do it all with our dedicated band //
 #endif
     
