@@ -9,8 +9,11 @@
 #ifdef JACO
 
 void call_jaco(int i) {
+    /* 
+    Master routine initiating the jaco solver step for particle index i
+    */
     jaco_do_cooling(i);
-    SphP[i].InternalEnergyPred = SphP[i].InternalEnergy;
+    SphP[i].InternalEnergyPred = SphP[i].InternalEnergy; // which assignments should get done here, vs jaco_do_cooling, vs jaco_set_eos_pressure?
     jaco_set_eos_pressure(i);
 #ifndef COOLING_OPERATOR_SPLIT
     if (SphP[i].CoolingIsOperatorSplitThisTimestep == 0) {
@@ -20,6 +23,9 @@ void call_jaco(int i) {
 }
 
 void jaco_do_cooling(int i) {
+    /* 
+    Performs the jaco microphysics solver step for particle index i, updating internal energy currently, eventually all solved variables.
+    */
     double dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     if (dtime == 0) {
         return;
@@ -39,10 +45,17 @@ void jaco_do_cooling(int i) {
 }
 
 void jaco_set_eos_pressure(int i) {
+    /*
+    EOS call - for now just ideal gas, but must eventually implement the autogen'd general EOS
+    */
     SphP[i].Pressure = (GAMMA(i) - 1) * SphP[i].InternalEnergyPred * Get_Gas_density_for_energy_i(i);
 }
 
 int iter_condition(double *X, double *dx, double tol) {
+    /*
+    Checks whether the solver should do another iteration: changes in the solved variables
+    must be below the specified relative tolerance.
+    */ 
     int cond = 0;
     for (int i = 0; i < NUM_VARS; i++) {
         cond += (fabs(dx[i]) > tol * fabs(X[i]));
@@ -51,6 +64,10 @@ int iter_condition(double *X, double *dx, double tol) {
 }
 
 int solve_failure_condition(double *X, double *dx, double tol, int num_iter) {
+    /* 
+    Condition for the solver to recognize that it has failed. Should bounds-check the solver variables and the 
+    iteration dx, and check whether we have exceeded the maximum number of iterations.
+    */
     int failure = 0;
     failure |= num_iter >= MAXITER;
     failure |= X[INDEX_T] > 1e11;
@@ -63,6 +80,9 @@ int solve_failure_condition(double *X, double *dx, double tol, int num_iter) {
 }
 
 int jaco_solve(double *X, double *params, double tol) {
+    /*
+    Newton-raphson solver routine for the backward-Euler solver step.
+    */
     double funcjac[NUM_VARS * (NUM_VARS + 1)], func[NUM_VARS], jac[NUM_VARS * NUM_VARS], jacinv[NUM_VARS * NUM_VARS],
         dx[NUM_VARS] = {MAX_REAL_NUMBER, MAX_REAL_NUMBER}, X0[NUM_VARS], T_upper = MAX_REAL_NUMBER,
         T_lower = MIN_REAL_NUMBER;
@@ -79,6 +99,8 @@ int jaco_solve(double *X, double *params, double tol) {
         } else { // TODO: check that func[INDEX_T] is always the heat equation!
             T_lower = fmax(T_lower, X[INDEX_T]);
         }
+
+        /* the below is hardcoded for a 2D system; must generalize in autogen code */
         double det = jac[0] * jac[3] - jac[1] * jac[2];
         jacinv[0] = jac[3] / det;
         jacinv[3] = jac[0] / det;
