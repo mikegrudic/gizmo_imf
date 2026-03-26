@@ -139,7 +139,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             /* --------------------------------------------------------------------------------- */
             /* get the neighbor list */
             /* --------------------------------------------------------------------------------- */
-            numngb = ngb_treefind_optimized(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 1);
+            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb < 0) {return -2;}
 
             /* Tile gather: load neighbor data into contiguous arrays for cache efficiency */

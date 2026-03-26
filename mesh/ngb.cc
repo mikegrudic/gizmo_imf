@@ -9,6 +9,24 @@
 #include "../core/proto.h"
 #include "../system/vector.h"
 
+/* Tree walk timing instrumentation */
+static double _treewalk_time_total = 0;
+static long _treewalk_call_count = 0;
+#ifdef _OPENMP
+#pragma omp threadprivate(_treewalk_time_total, _treewalk_call_count)
+#endif
+void treewalk_timing_reset(void) { _treewalk_time_total = 0; _treewalk_call_count = 0; }
+void treewalk_timing_report(void) {
+    double total = _treewalk_time_total;
+    long count = _treewalk_call_count;
+    double total_all = 0; long count_all = 0;
+    MPI_Reduce(&total, &total_all, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&count, &count_all, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if(ThisTask == 0) {
+        printf("TREEWALK TIMING: %.3f sec avg/rank, %ld calls avg/rank\n",
+               total_all / NTask, count_all / NTask);
+    }
+}
 
 /*!
  * This file contains routines for neighbour finding.  We use the gravity-tree and a range-searching technique to find neighbours.
@@ -168,7 +186,6 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat rkern,
 #include "../system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
 }
-
 
 
 

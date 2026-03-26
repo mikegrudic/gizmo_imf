@@ -109,6 +109,8 @@ int ngb_treefind_optimized(MyDouble searchcenter[3], MyFloat rkern, int target, 
 inline int ngb_treefind_optimized(const Vec3<MyDouble>& searchcenter, MyFloat rkern, int target, int *startnode, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int search_both_ways) { return ngb_treefind_optimized(const_cast<MyDouble*>(searchcenter.data), rkern, target, startnode, mode, exportflag, exportnodecount, exportindex, ngblist, search_both_ways); }
 
 /* NgbCache not needed with SoA — individual P.field arrays are already cache-friendly */
+void treewalk_timing_reset(void);
+void treewalk_timing_report(void);
 
 #define NGB_BATCH_SIZE 4
 int ngb_treefind_pairs_threads_batched(

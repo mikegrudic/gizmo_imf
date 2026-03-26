@@ -145,7 +145,7 @@ struct kernel_hydra
 /* ok here we define some important variables for our generic communication
     and flux-exchange structures. these can be changed, and vary across the code, but need to be set! */
 
-#define NGB_SEARCH_BOTH_WAYS 1 /* opt in to batched neighbor search (SEARCHBOTHWAYS=1 for hydro pairs) */
+//#define NGB_SEARCH_BOTH_WAYS 1 /* opt in to batched neighbor search (SEARCHBOTHWAYS=1 for hydro pairs) */
 #define CORE_FUNCTION_NAME hydro_force_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_hydra    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_hydra  /* name of the function which takes the data returned from other processors and combines it back to the original elements */

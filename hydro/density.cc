@@ -101,7 +101,7 @@ int density_isactive(int n)
 
 
 
-#define NGB_SEARCH_BOTH_WAYS 0 /* opt in to batched neighbor search (SEARCHBOTHWAYS=0 for density) */
+//#define NGB_SEARCH_BOTH_WAYS 0 /* opt in to batched neighbor search (SEARCHBOTHWAYS=0 for density) */
 #define CORE_FUNCTION_NAME density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME hydrokerneldensity_particle2in    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME hydrokerneldensity_out2particle  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
@@ -277,7 +277,7 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     if(mode == 0) {startnode = All.MaxPart; /* root node */} else {startnode = DATAGET_NAME[target].NodeList[0]; startnode = Nodes[startnode].u.d.nextnode;    /* open it */}
     while(startnode >= 0) {
         while(startnode >= 0) {
-            numngb_inbox = ngb_treefind_optimized(local.Pos.data_ptr(), local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 0);
+            numngb_inbox = ngb_treefind_variable_threads(local.Pos.data_ptr(), local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
             if(numngb_inbox < 0) {return -2;}
             density_tile_gather(dtile, ngblist, numngb_inbox);
 

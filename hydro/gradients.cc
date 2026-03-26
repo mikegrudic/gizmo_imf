@@ -1940,7 +1940,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration)
 {
-#define NGB_SEARCH_BOTH_WAYS 1 /* opt in to batched neighbor search */
+//#define NGB_SEARCH_BOTH_WAYS 1 /* opt in to batched neighbor search */
 #define CONDITION_FOR_EVALUATION if(GasGrad_isactive(i))
 #define EVALUATION_CALL GasGrad_evaluate(i,0,exportflag,exportnodecount,exportindex,ngblist,gradient_iteration)
 #include "../system/code_block_primary_loop_evaluation.h"

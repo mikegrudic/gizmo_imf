@@ -58,6 +58,7 @@ void compute_hydro_densities_and_forces(void)
   if(All.TotN_gas > 0)
     {
         PRINT_STATUS("Start hydrodynamics computation...");
+        
         density();		/* computes density, and pressure */
 #ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
         ags_density();
@@ -98,6 +99,7 @@ void compute_hydro_densities_and_forces(void)
 #endif
         hydro_force();		/* adds hydrodynamical accelerations and computes du/dt  */
         compute_additional_forces_for_all_particles(); /* other accelerations that need to be computed are done here */
+        
         PRINT_STATUS(" ..hydro force computation done.");
 
     } else {
