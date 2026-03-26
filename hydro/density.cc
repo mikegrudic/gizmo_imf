@@ -280,22 +280,82 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
             numngb_inbox = ngb_treefind_optimized(local.Pos.data_ptr(), local.KernelRadius, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 0);
             if(numngb_inbox < 0) {return -2;}
             density_tile_gather(dtile, ngblist, numngb_inbox);
+
+            /* ---- Loop fission: Phase 1 ---- */
+            /* Pre-compute distances and kernel values for all tile neighbors in a
+               tight, branch-free loop that the compiler can auto-vectorize.  When
+               the tile path is not active we fall back to the original fused loop. */
+            double   r2_pre[DENSITY_TILE_NGB_MAX];
+            double   r_pre[DENSITY_TILE_NGB_MAX];
+            double   u_pre[DENSITY_TILE_NGB_MAX];
+            double   wk_pre[DENSITY_TILE_NGB_MAX];
+            double   dwk_pre[DENSITY_TILE_NGB_MAX];
+            Vec3<MyDouble> dp_pre[DENSITY_TILE_NGB_MAX];
+            int      valid_pre[DENSITY_TILE_NGB_MAX];
+
+            if(dtile.use_tile && numngb_inbox > 0)
+            {
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(enable)
+#elif defined(__GNUC__)
+#pragma GCC ivdep
+#endif
+                for(n = 0; n < numngb_inbox; n++)
+                {
+                    dp_pre[n] = local.Pos - dtile.pos[n];
+                    nearest_xyz(dp_pre[n]);
+                    r2_pre[n] = dp_pre[n].norm_sq();
+                    int v = (dtile.mass[n] > 0) & (r2_pre[n] < h2);
+#ifdef GALSF_SUBGRID_WINDS
+                    if(dtile.delay_time[n] > 0 && local.DelayTime <= 0) {v = 0;}
+#endif
+                    valid_pre[n] = v;
+                    double r_n = v ? sqrt(r2_pre[n]) : 0;
+                    r_pre[n] = r_n;
+                    u_pre[n] = r_n * kernel.hinv;
+                    kernel_main_branchless(u_pre[n], kernel.hinv3, kernel.hinv4, &wk_pre[n], &dwk_pre[n]);
+                    /* zero out kernel values for invalid neighbors so they contribute nothing */
+                    if(!v) { wk_pre[n] = 0; dwk_pre[n] = 0; }
+                }
+            }
+
+            /* ---- Loop fission: Phase 2 ---- */
+            /* Accumulation pass: uses pre-computed distances and kernel values
+               from Phase 1 when the tile path is active, otherwise computes
+               everything inline (original code path). */
             for(n = 0; n < numngb_inbox; n++)
             {
-                j = dtile.use_tile ? dtile.ngb_idx[n] : ngblist[n];
-#ifdef GALSF_SUBGRID_WINDS /* check if partner is a wind particle: if I'm not wind, then ignore the wind particle */
-                if((dtile.use_tile ? dtile.delay_time[n] : CellP.DelayTime[j]) > 0) {if(local.DelayTime <= 0) {continue;}}
-#endif
-                if((dtile.use_tile ? dtile.mass[n] : P.Mass[j]) <= 0) continue;
-                kernel.dp = local.Pos - (dtile.use_tile ? dtile.pos[n] : P.Pos[j]);
-                nearest_xyz(kernel.dp);
-                r2 = kernel.dp.norm_sq();
-                if(r2 < h2) /* this loop is only considering particles inside local.KernelRadius, i.e. seen-by-main */
+                if(dtile.use_tile)
                 {
+                    /* fast path: use pre-computed values */
+                    if(!valid_pre[n]) continue;
+                    j = dtile.ngb_idx[n];
+                    kernel.dp = dp_pre[n];
+                    r2 = r2_pre[n];
+                    kernel.r = r_pre[n];
+                    u = u_pre[n];
+                    kernel.wk = wk_pre[n];
+                    kernel.dwk = dwk_pre[n];
+                    mass_j = dtile.mass[n];
+                }
+                else
+                {
+                    /* fallback path: compute inline (no tile) */
+                    j = ngblist[n];
+#ifdef GALSF_SUBGRID_WINDS
+                    if(CellP.DelayTime[j] > 0) {if(local.DelayTime <= 0) {continue;}}
+#endif
+                    if(P.Mass[j] <= 0) continue;
+                    kernel.dp = local.Pos - P.Pos[j];
+                    nearest_xyz(kernel.dp);
+                    r2 = kernel.dp.norm_sq();
+                    if(r2 >= h2) continue;
                     kernel.r = sqrt(r2);
                     u = kernel.r * kernel.hinv;
                     kernel_main_branchless(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk);
-                    mass_j = dtile.use_tile ? dtile.mass[n] : P.Mass[j];
+                    mass_j = P.Mass[j];
+                }
+
                     kernel.mj_wk = (mass_j * kernel.wk);
 
                     out.Ngb += kernel.wk;
@@ -342,7 +402,6 @@ int density_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
                         density_evaluate_extra_physics_gas(&local, &out, &kernel, j);
                     } // kernel.r > 0
-                } // if(r2 < h2)
             } // numngb_inbox loop
         } // while(startnode)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */

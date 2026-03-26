@@ -145,28 +145,72 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             /* Tile gather: load neighbor data into contiguous arrays for cache efficiency */
             hydro_tile_gather(tile, ngblist, numngb);
 
+            /* ---- Loop fission: distance pre-computation pass ---- */
+            /* Pre-compute displacement vectors and squared distances for all
+               tile neighbors in a tight loop the compiler can auto-vectorize.
+               Also compute a validity flag so the main loop can skip early. */
+            double   hydro_r2_pre[HYDRO_TILE_NGB_MAX];
+            Vec3<MyDouble> hydro_dp_pre[HYDRO_TILE_NGB_MAX];
+            int      hydro_valid_pre[HYDRO_TILE_NGB_MAX];
+
+            if(tile.use_tile && numngb > 0)
+            {
+                double h_i_sq = kernel.h_i * kernel.h_i;
+#if defined(__clang__)
+#pragma clang loop vectorize(enable) interleave(enable)
+#elif defined(__GNUC__)
+#pragma GCC ivdep
+#endif
+                for(n = 0; n < numngb; n++)
+                {
+                    hydro_dp_pre[n] = local.Pos - tile.pos[n];
+                    nearest_xyz(hydro_dp_pre[n]);
+                    double r2_n = hydro_dp_pre[n].norm_sq();
+                    hydro_r2_pre[n] = r2_n;
+                    double h_j_sq = (double)tile.h[n] * (double)tile.h[n];
+                    int v = (tile.mass[n] > 0) & (tile.density[n] > 0);
+                    v &= ((r2_n < h_i_sq) | (r2_n < h_j_sq));
+                    v &= (r2_n > 0);
+#ifdef GALSF_SUBGRID_WINDS
+                    if(tile.delay_time[n] > 0) {v = 0;}
+#endif
+                    hydro_valid_pre[n] = v;
+                }
+            }
+
             for(n = 0; n < numngb; n++)
             {
-                j = tile.ngb_idx[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(tile.mass[n] <= 0) {continue;}
-                if(tile.density[n] <= 0) {continue;}
+                if(tile.use_tile)
+                {
+                    /* fast path: use pre-computed distance data */
+                    if(!hydro_valid_pre[n]) continue;
+                    j = tile.ngb_idx[n];
+                    kernel.dp = hydro_dp_pre[n];
+                    r2 = hydro_r2_pre[n];
+                    kernel.h_j = tile.h[n];
+                }
+                else
+                {
+                    /* fallback path: compute inline (no tile) */
+                    j = tile.ngb_idx[n];
+                    if(tile.mass[n] <= 0) {continue;}
+                    if(tile.density[n] <= 0) {continue;}
 #ifdef GALSF_SUBGRID_WINDS
-                if(tile.delay_time[n] > 0) {continue;} /* no hydro forces for decoupled wind particles */
+                    if(tile.delay_time[n] > 0) {continue;}
 #endif
+                    kernel.dp = local.Pos - tile.pos[n];
+                    nearest_xyz(kernel.dp);
+                    r2 = kernel.dp.norm_sq();
+                    kernel.h_j = tile.h[n];
+                    if((r2 >= kernel.h_i * kernel.h_i) && (r2 >= kernel.h_j * kernel.h_j)) continue;
+                    if(r2 <= 0) continue;
+                }
 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
                 dt_hydrostep_j = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j);
                 dt_hydrostep = DMAX(dt_hydrostep_i , dt_hydrostep_j); // this is used for flux-limiting, so we always want to be more conservative and use the larger timestep //
                 double FluxCorrectionFactor_to_i = 1, FluxCorrectionFactor_to_j = 1; // these, by default, won't do anything, but will be used below in final flux assignment
                 int j_is_active_for_fluxes = 0;
-                kernel.dp = local.Pos - tile.pos[n];
-                nearest_xyz(kernel.dp); /* find the closest image in the given box size  */
-                r2 = kernel.dp.norm_sq();
-                kernel.h_j = tile.h[n];
-
-                /* force applied for all particles inside each-others kernels! */
-                if((r2 >= kernel.h_i * kernel.h_i) && (r2 >= kernel.h_j * kernel.h_j)) continue;
-                if(r2 <= 0) continue;
 
                 /* --------------------------------------------------------------------------------- */
                 /* ok, now we definitely have two interacting particles */

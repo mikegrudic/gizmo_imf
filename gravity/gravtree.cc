@@ -11,6 +11,7 @@
 #include "../core/proto.h"
 #include "../mesh/kernel.h"
 #include "./analytic_gravity.h"
+#include "./gravtree_tile.h"
 
 /*! \file gravtree.c
  *  \brief main driver routines for gravitational (short-range) force computation
@@ -228,43 +229,15 @@ void gravity_tree(void)
             for(j = 0, Send_offset[0] = 0; j < NTask; j++) {if(j > 0) {Send_offset[j] = Send_offset[j - 1] + Send_count[j - 1];}} /* calculate export table offsets */
             GravDataIn = (struct gravdata_in *) mymalloc("GravDataIn", Nexport * sizeof(struct gravdata_in));
             GravDataOut = (struct gravdata_out *) mymalloc("GravDataOut", Nexport * sizeof(struct gravdata_out));
-            for(j = 0; j < Nexport; j++) /* prepare particle data for export [fill in the structures to be passed] */
+            /* Tile-based export gather: pre-load core SoA fields into contiguous tile arrays
+               before filling export structs, to reduce random cache-line accesses. Process
+               in chunks of GRAV_EXPORT_TILE_SIZE for cache efficiency. */
+            for(j = 0; j < Nexport; j += GRAV_EXPORT_TILE_SIZE)
             {
-                place = DataIndexTable[j].Index;
-
-                /* assign values (input-function to pass in memory) */
-                GravDataIn[j].Pos = P.Pos[place];
-                GravDataIn[j].Type = P.Type[place];
-                GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
-                GravDataIn[j].OldAcc = P.OldAcc[place];
-                GravDataIn[j].Mass = P.Mass[place];
-#if defined(SINK_DYNFRICTION_FROMTREE)
-                if(P.Type[place]==5) {GravDataIn[j].Sink_Mass = P.Sink_Mass[place];}
-#endif
-#if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
-                GravDataIn[j].Vel = P.Vel[place];
-#endif
-#ifdef SINGLE_STAR_FIND_BINARIES
-                if(P.Type[place] == 5)
-                {
-                    GravDataIn[j].Min_Sink_OrbitalTime = P.Min_Sink_OrbitalTime[place]; //orbital time for binary
-                    GravDataIn[j].comp_Mass = P.comp_Mass[place]; //mass of binary companion
-                    GravDataIn[j].is_in_a_binary = P.is_in_a_binary[place]; // 1 if we're in a binary, 0 if not
-                    GravDataIn[j].comp_dx = P.comp_dx[place]; GravDataIn[j].comp_dv = P.comp_dv[place];
-                }
-                else {P.is_in_a_binary[place]=0; /* setting values to zero just to be sure */}
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                if((P.Type[place] == 0) && (P.KernelRadius[place] > All.ForceSoftening[P.Type[place]])) {GravDataIn[j].AGS_zeta = P.AGS_zeta[place];} else {GravDataIn[j].AGS_zeta = 0;}
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FORALL
-                GravDataIn[j].Soft = P.AGS_KernelRadius[place];
-                GravDataIn[j].AGS_zeta = P.AGS_zeta[place];
-#endif
-#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-                GravDataIn[j].tidal_tensorps_prevstep=P.tidal_tensorps_prevstep[place];
-#endif
-                memcpy(GravDataIn[j].NodeList,DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
+                int tile_count = Nexport - j; if(tile_count > GRAV_EXPORT_TILE_SIZE) {tile_count = GRAV_EXPORT_TILE_SIZE;}
+                GravExportTile etile;
+                grav_export_tile_gather(etile, DataIndexTable, j, tile_count);
+                grav_export_tile_fill(etile, GravDataIn, DataIndexTable, DataNodeList, j);
             }
 
             /* ok now we have to figure out if there is enough memory to handle all the tasks sending us their data, and if not, break it into sub-chunks */

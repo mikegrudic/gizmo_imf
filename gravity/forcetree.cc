@@ -7,6 +7,7 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 #include "../mesh/kernel.h"
+#include "./gravtree_tile.h"
 #ifdef SUBFIND
 #include "../structure/subfind/subfind.h"
 #endif
@@ -1621,7 +1622,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(no < maxPart) /* this is a particle, we will use it */
             {
                 /* the index of the node is the index of the particle */
-                if(P.Ti_current[no] != ti_Current)
+                if(__builtin_expect(P.Ti_current[no] != ti_Current, 0))
                 {
 #ifdef _OPENMP
 #pragma omp critical(_particledriftforce_)
@@ -1630,26 +1631,31 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         drift_particle(no, ti_Current);
                     }
                 }
-                dx = P.Pos[no][0] - pos_x;
-                dy = P.Pos[no][1] - pos_y;
-                dz = P.Pos[no][2] - pos_z;
+                /* Tile-gather optimization: pre-load all SoA fields for this leaf particle
+                   into local variables up front, so random-access cache misses happen together
+                   and subsequent uses hit registers/L1 instead of re-fetching SoA arrays. */
+                Vec3<MyDouble> leaf_pos = P.Pos[no];
+                int leaf_type = P.Type[no]; /* cache type -- accessed many times in ifdefs below */
+                dx = leaf_pos[0] - pos_x;
+                dy = leaf_pos[1] - pos_y;
+                dz = leaf_pos[2] - pos_z;
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
                 mass = P.Mass[no];
-                
+
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-                r_source = sqrt(pow(P.Pos[no][0] - center[0],2) + pow(P.Pos[no][1] - center[1],2) + pow(P.Pos[no][2] - center[2],2));
+                r_source = sqrt(pow(leaf_pos[0] - center[0],2) + pow(leaf_pos[1] - center[1],2) + pow(leaf_pos[2] - center[2],2));
 #endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
-                dvx = P.Vel[no][0] - vel_x; dvy = P.Vel[no][1] - vel_y; dvz = P.Vel[no][2] - vel_z;
+                {Vec3<MyDouble> leaf_vel = P.Vel[no]; dvx = leaf_vel[0] - vel_x; dvy = leaf_vel[1] - vel_y; dvz = leaf_vel[2] - vel_z;}
 #endif
 #if defined(SINK_DYNFRICTION_FROMTREE)
                 m_j_eff_for_df = mass;
 #endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-                if(P.Type[no] == 0) {gasmass = P.Mass[no];}
+                if(leaf_type == 0) {gasmass = mass;}
 #if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                if(P.Type[no] == 5) {gasmass = P.Sink_Mass_Reservoir[no];} // gas at the inner edge of a disk should not see a hole due to the sink
+                if(leaf_type == 5) {gasmass = P.Sink_Mass_Reservoir[no];}
 #endif
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
@@ -1670,7 +1676,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         acc_of_nearest_special += wt_special * P.Acc_Total_PrevStep[no];
                     }
 #endif
-                    if(P.Type[no] == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) /* found a BH particle in grav calc */
+                    if(leaf_type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) /* found a BH particle in grav calc */
                     {
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                         if(ptype != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
@@ -1686,7 +1692,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
                             }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                        double sink_dvx=P.Vel[no][0]-vel_x, sink_dvy=P.Vel[no][1]-vel_y, sink_dvz=P.Vel[no][2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=P.Mass[no]+pmass, r2soft=SinkParticle_GravityKernelRadius;
+                        double sink_dvx=P.Vel[no][0]-vel_x, sink_dvy=P.Vel[no][1]-vel_y, sink_dvz=P.Vel[no][2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=mass+pmass, r2soft=SinkParticle_GravityKernelRadius;
                         r2soft = DMAX(r2soft, soft);
                         r2soft *= KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                         r2soft = r2 + r2soft*r2soft;
@@ -1715,7 +1721,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
                                 if(t_orbital < Min_Sink_OrbitalTime) /* Save parameters of companion */
                                 {
-                                    Min_Sink_OrbitalTime=t_orbital; comp_Mass=P.Mass[no];
+                                    Min_Sink_OrbitalTime=t_orbital; comp_Mass=mass;
                                     comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=sink_dvx; comp_dv[1]=sink_dvy; comp_dv[2]=sink_dvz;
                                 }
                             } /* specific_energy < 0 */
@@ -1749,7 +1755,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINK_PHOTONMOMENTUM
                         mass_sinklumwt_forradfb=0;
-                        if(P.Type[no] == 5)
+                        if(leaf_type == 5)
                         {
                             double bhlum_t = sink_lum_bol(P.Sink_Mdot[no], P.Sink_Mass[no], no);
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
@@ -1763,11 +1769,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // RT_USE_GRAVTREE
                     
 #ifdef DM_SCALARFIELD_SCREENING
-                    if(ptype != 0) {if(P.Type[no] == 1) {dx_dm = dx; dy_dm = dy; dz_dm = dz; mass_dm = mass;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;}} /* we have a dark matter particle as target */
+                    if(ptype != 0) {if(leaf_type == 1) {dx_dm = dx; dy_dm = dy; dz_dm = dz; mass_dm = mass;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;}} /* we have a dark matter particle as target */
 #endif
-                    
+
                     h_p = ForceSoftening_KernelRadius(no);
-                    ptype_sec=P.Type[no]; zeta_sec=0; /* set secondary softening and zeta term */
+                    ptype_sec=leaf_type; zeta_sec=0; /* set secondary softening and zeta term */
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
                     if(ptype_sec==0) {zeta_sec=P.AGS_zeta[no];}
 #elif defined(ADAPTIVE_GRAVSOFT_FORALL)
@@ -1846,7 +1852,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         continue;
                     }
                 }
-                if(nop->Ti_current != ti_Current)
+                if(__builtin_expect(nop->Ti_current != ti_Current, 0))
                 {
 #ifdef _OPENMP
 #pragma omp critical(_nodedriftforce_)
@@ -2053,7 +2059,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                 r = sqrt(r2);
                 
                 /* now we compute the actual pair-wise gravity terms */
-                if((r >= h) && (r >= h_p)) // can safely do a purely-Newtonian force (can be done by kernel-gravity as well, but no need to enter all the conditional statements below so just do it here for simplicity //
+                if(__builtin_expect((r >= h) && (r >= h_p), 1)) // can safely do a purely-Newtonian force -- branch hint: this is the overwhelmingly common case //
                 {
                     fac_accel = mass / (r2 * r);
 #ifdef EVALPOTENTIAL

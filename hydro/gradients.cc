@@ -7,6 +7,7 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 #include "../mesh/kernel.h"
+#include "gradients_tile.h"
 
 
 
@@ -1366,6 +1367,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
     double hinv, hinv3, hinv4, r2, u, hinv_j, hinv3_j, hinv4_j;
     struct kernel_GasGrad kernel;
     struct GasGraddata_in local;
+    GradientsNeighborTile gtile;
     struct GasGraddata_out out;
     struct GasGraddata_out_iter out_iter;
     if(gradient_iteration==0)
@@ -1420,25 +1422,28 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
         {
 #ifdef TURB_DIFF_DYNAMIC
             if (gradient_iteration == 0) {
-                numngb = ngb_treefind_pairs_threads(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+                numngb = ngb_treefind_optimized(local.Pos, All.TurbDynamicDiffFac * kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 1);
             }
             else
 #endif
             {
-                numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+                numngb = ngb_treefind_optimized(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 1);
             }
             if(numngb < 0) {return -2;}
 
+            /* Tile gather: load neighbor data into contiguous arrays for cache efficiency */
+            gradients_tile_gather(gtile, ngblist, numngb);
+
             for(n = 0; n < numngb; n++)
             {
-                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                j = gtile.use_tile ? gtile.ngb_idx[n] : ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
                 if(GasGrad_isactive(j)==0) continue;
                 swap_to_j = 0;
-                
-                kernel.dp = local.Pos - P.Pos[j];
+
+                kernel.dp = local.Pos - (gtile.use_tile ? gtile.pos[n] : P.Pos[j]);
                 nearest_xyz(kernel.dp); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp.norm_sq();
-                double h_j = P.KernelRadius[j];
+                double h_j = gtile.use_tile ? gtile.h[n] : P.KernelRadius[j];
 #if !defined(HYDRO_SPH) && !defined(KERNEL_CRK_FACES)
                 if(r2 <= 0) continue;
 #else
@@ -1446,7 +1451,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
 #ifdef TURB_DIFF_DYNAMIC
 #ifdef GALSF_SUBGRID_WINDS
-                if (gradient_iteration == 0 && ((CellP.DelayTime[j] == 0 && local.DelayTime == 0) || (CellP.DelayTime[j] > 0 && local.DelayTime > 0))) {
+                { MyFloat delay_j = gtile.use_tile ? gtile.delay_time[n] : CellP.DelayTime[j];
+                if (gradient_iteration == 0 && ((delay_j == 0 && local.DelayTime == 0) || (delay_j > 0 && local.DelayTime > 0))) {
 #else
                 if (gradient_iteration == 0) {
 #endif
@@ -1455,14 +1461,19 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if((r2 >= (hhat_i * hhat_i)) && (r2 >= (hhat_j * hhat_j))) continue;
                     double h_avg = 0.5 * (hhat_i + hhat_j), particle_distance = sqrt(r2);
                     kernel_hinv(h_avg, &hhatinv_i, &hhatinv3_i, &hhatinv4_i); u = DMIN(particle_distance * hhatinv_i, 1.0);
-                    if(u<1) {kernel_main(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i, 0);} else {wkhat_i=dwkhat_i=0;} /* wkhat is symmetric in this case W_{ij} = W_{ji} */
-                    double mean_weight = wkhat_i * 0.5 * (CellP.Norm_hat[j] + local.Norm_hat) / (local.Norm_hat * CellP.Norm_hat[j]);
-                    double weight_i = P.Mass[j] * mean_weight, weight_j = local.Mass * mean_weight, Velocity_bar_diff[3];
+                    if(u<1) {kernel_main_branchless(u, hhatinv3_i, hhatinv4_i, &wkhat_i, &dwkhat_i);} else {wkhat_i=dwkhat_i=0;} /* wkhat is symmetric in this case W_{ij} = W_{ji} */
+                    double norm_hat_j = gtile.use_tile ? gtile.norm_hat[n] : CellP.Norm_hat[j];
+                    double mean_weight = wkhat_i * 0.5 * (norm_hat_j + local.Norm_hat) / (local.Norm_hat * norm_hat_j);
+                    double mass_j = gtile.use_tile ? gtile.mass[n] : P.Mass[j];
+                    double weight_i = mass_j * mean_weight, weight_j = local.Mass * mean_weight, Velocity_bar_diff[3];
                     if(particle_distance < h_avg) {
-                        for(k=0;k<3;k++) {Velocity_bar_diff[k] = CellP.Velocity_bar[j][k] - local.GQuant.Velocity_bar[k]; out.Velocity_hat[k] += Velocity_bar_diff[k] * weight_i;}
+                        for(k=0;k<3;k++) {Velocity_bar_diff[k] = (gtile.use_tile ? gtile.velocity_bar[n][k] : CellP.Velocity_bar[j][k]) - local.GQuant.Velocity_bar[k]; out.Velocity_hat[k] += Velocity_bar_diff[k] * weight_i;}
                         if(swap_to_j) {for(k=0;k<3;k++) {CellP.Velocity_hat[j][k] -= Velocity_bar_diff[k] * weight_j;}}
                     }
                 } /* closes gradient_iteration == 0 */
+#ifdef GALSF_SUBGRID_WINDS
+                } /* closes delay_j scope */
+#endif
 #endif
                 if((r2 >= h2_i) && (r2 >= h_j * h_j)) continue;
 
@@ -1470,7 +1481,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 if(kernel.r < kernel.h_i)
                 {
                     u = kernel.r * hinv;
-                    kernel_main(u, hinv3, hinv4, &kernel.wk_i, &kernel.dwk_i, kernel_mode_i);
+                    kernel_main_branchless(u, hinv3, hinv4, &kernel.wk_i, &kernel.dwk_i);
                 }
                 else
                 {
@@ -1483,16 +1494,10 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
                 {
                     /* ok, we need the j-particle weights, but first check what kind of gradient we are calculating */
-                    sph_gradients_flag_j = SHOULD_I_USE_SPH_GRADIENTS(CellP.ConditionNumber[j]);
-                    int kernel_mode_j;
-#if defined(HYDRO_SPH) || defined(KERNEL_CRK_FACES)
-                    kernel_mode_j = 0; // for some circumstances, we require both wk and dwk //
-#else
-                    if(sph_gradients_flag_j) {kernel_mode_j=0;} else {kernel_mode_j=-1;}
-#endif
+                    sph_gradients_flag_j = SHOULD_I_USE_SPH_GRADIENTS(gtile.use_tile ? gtile.condition_number[n] : CellP.ConditionNumber[j]);
                     kernel_hinv(h_j, &hinv_j, &hinv3_j, &hinv4_j);
                     u = kernel.r * hinv_j;
-                    kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, kernel_mode_j);
+                    kernel_main_branchless(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j);
                 }
                 else
                 {
@@ -1501,7 +1506,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 double Particle_Size_j, Particle_Size_i;  Particle_Size_j=Get_Particle_Size(j); Particle_Size_i=pow(local.Mass/local.GQuant.Density, 1./NUMDIMS);
 
 #if defined(MHD_CONSTRAINED_GRADIENT)
-                double V_j = P.Mass[j] / CellP.Density[j], Face_Area_Norm, cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber; Vec3<double> Face_Area_Vec;
+                double V_j = (gtile.use_tile ? gtile.mass[n] : P.Mass[j]) / (gtile.use_tile ? gtile.density[n] : CellP.Density[j]), Face_Area_Norm, cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber; Vec3<double> Face_Area_Vec;
 
 #include "compute_finitevol_faces.h" /* insert code block for computing Face_Area_Vec, Face_Area_Norm, n_unit, etc. */
                 
@@ -1521,7 +1526,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
                     /* now use the gradients to construct the B_L,R states */
                     double Bjk = Get_Gas_BField(j,k); //
-                    NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,P.Pos[j],Bjk,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
+                    NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,(gtile.use_tile ? gtile.pos[n] : P.Pos[j]),Bjk,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
                     double db_c=0, db_cR=0;
                     for(k2=0;k2<3;k2++)
                     {
@@ -1599,7 +1604,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                 }
                 double dphi_j = dphi + dphi_grad_j;
                 double dphi_i = dphi - dphi_grad_i;
-                if(sph_gradients_flag_i) {dphi_j *= -2*kernel.wk_i;} else {dphi_j *= kernel.dwk_i/kernel.r * P.Mass[j];}
+                if(sph_gradients_flag_i) {dphi_j *= -2*kernel.wk_i;} else {dphi_j *= kernel.dwk_i/kernel.r * (gtile.use_tile ? gtile.mass[n] : P.Mass[j]);}
                 if(sph_gradients_flag_j) {dphi_i *= -2*kernel.wk_j;} else {dphi_i *= kernel.dwk_j/kernel.r * local.Mass;}
                 if(gradient_iteration == 0) {for(k=0;k<3;k++) {out.Gradients[k].Phi += dphi_j * kernel.dp[k];}} else {for(k=0;k<3;k++) {out_iter.PhiGrad[k] += dphi_j * kernel.dp[k];}}
                 if(swap_to_j) {for(k=0;k<3;k++) {GasGradDataPasser[j].PhiGrad[k] += dphi_i * kernel.dp[k];}}
@@ -1615,17 +1620,19 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     if(kernel.r > out.MaxDistance) {out.MaxDistance = kernel.r;}
                     if(swap_to_j) {if(kernel.r > GasGradDataPasser[j].MaxDistance) {GasGradDataPasser[j].MaxDistance = kernel.r;}}
 
-                    double d_rho = CellP.Density[j] - local.GQuant.Density;
+                    double density_j = gtile.use_tile ? gtile.density[n] : CellP.Density[j];
+                    double pressure_j = gtile.use_tile ? gtile.pressure[n] : CellP.Pressure[j];
+                    double d_rho = density_j - local.GQuant.Density;
                     MINMAX_CHECK(d_rho,out.Minima.Density,out.Maxima.Density);
                     if(swap_to_j) {MINMAX_CHECK(-d_rho,GasGradDataPasser[j].Minima.Density,GasGradDataPasser[j].Maxima.Density);}
 
-                    double dp = CellP.Pressure[j] - local.GQuant.Pressure;
+                    double dp = pressure_j - local.GQuant.Pressure;
                     MINMAX_CHECK(dp,out.Minima.Pressure,out.Maxima.Pressure);
                     if(swap_to_j) {MINMAX_CHECK(-dp,GasGradDataPasser[j].Minima.Pressure,GasGradDataPasser[j].Maxima.Pressure);}
 
 #ifdef TURB_DIFF_DYNAMIC
-                    double dv_bar[3]; for(k=0;k<3;k++) {dv_bar[k] = CellP.Velocity_bar[j][k] - local.GQuant.Velocity_bar[k];} /* Need to calculate the filtered velocity gradient for the filtered shear */
-                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P.Pos[j],dv_bar,-1); /* wrap velocities for shearing boxes if needed */
+                    double dv_bar[3]; for(k=0;k<3;k++) {dv_bar[k] = (gtile.use_tile ? gtile.velocity_bar[n][k] : CellP.Velocity_bar[j][k]) - local.GQuant.Velocity_bar[k];} /* Need to calculate the filtered velocity gradient for the filtered shear */
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,(gtile.use_tile ? gtile.pos[n] : P.Pos[j]),dv_bar,-1); /* wrap velocities for shearing boxes if needed */
                     for(k=0;k<3;k++) {MINMAX_CHECK(dv_bar[k], out.Minima.Velocity_bar[k], out.Maxima.Velocity_bar[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dv_bar[k], GasGradDataPasser[j].Minima.Velocity_bar[k], GasGradDataPasser[j].Maxima.Velocity_bar[k]);}}
 #endif
@@ -1633,7 +1640,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     
 #if defined(KERNEL_CRK_FACES)
                     {
-                        double V_i = local.Mass/local.GQuant.Density, V_j = P.Mass[j]/CellP.Density[j];
+                        double V_i = local.Mass/local.GQuant.Density, V_j = (gtile.use_tile ? gtile.mass[n] : P.Mass[j])/(gtile.use_tile ? gtile.density[n] : CellP.Density[j]);
                         double wk_ij = 0.5*(kernel.wk_i + kernel.wk_j), dwk_ij = 0.5*(kernel.dwk_i + kernel.dwk_j), rinv = 1./(MIN_REAL_NUMBER + kernel.r);
                         double Vj_wki = V_j*wk_ij, Vj_dwki = V_j*dwk_ij*rinv, Vi_wkj = V_i*wk_ij, Vi_dwkj = V_i*dwk_ij*rinv;
                         out.m0 += Vj_wki;
@@ -1670,8 +1677,8 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     }
 #endif
 
-                    auto dv = CellP.VelPred[j] - local.GQuant.Velocity;
-                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P.Pos[j],dv,-1); /* wrap velocities for shearing boxes if needed */
+                    auto dv = (gtile.use_tile ? gtile.velpred[n] : CellP.VelPred[j]) - local.GQuant.Velocity;
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,(gtile.use_tile ? gtile.pos[n] : P.Pos[j]),dv,-1); /* wrap velocities for shearing boxes if needed */
                     for(k=0;k<3;k++) {
                         MINMAX_CHECK(dv[k],out.Minima.Velocity[k],out.Maxima.Velocity[k]);
                         if(swap_to_j) {MINMAX_CHECK(-dv[k],GasGradDataPasser[j].Minima.Velocity[k],GasGradDataPasser[j].Maxima.Velocity[k]);}
@@ -1687,7 +1694,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #endif
 
 #ifdef DOGRAD_INTERNAL_ENERGY
-                    double du = CellP.InternalEnergyPred[j] - local.GQuant.InternalEnergy;
+                    double du = (gtile.use_tile ? gtile.ie_pred[n] : CellP.InternalEnergyPred[j]) - local.GQuant.InternalEnergy;
                     MINMAX_CHECK(du,out.Minima.InternalEnergy,out.Maxima.InternalEnergy);
                     if(swap_to_j) {MINMAX_CHECK(-du,GasGradDataPasser[j].Minima.InternalEnergy,GasGradDataPasser[j].Maxima.InternalEnergy);}
 #endif
@@ -1708,7 +1715,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef MAGNETIC
                     Vec3<double> Bj, dB;
                     for(k=0;k<3;k++) {Bj[k] = Get_Gas_BField(j,k);}
-                    NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,P.Pos[j],Bj,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
+                    NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,(gtile.use_tile ? gtile.pos[n] : P.Pos[j]),Bj,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
                     dB = Bj - local.GQuant.B;
                     for(k=0;k<3;k++)
                     {
@@ -1733,7 +1740,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
                     SymmetricTensor2<double> dnET[N_RT_FREQ_BINS];
                     double dn[N_RT_FREQ_BINS];
-                    double V_i_inv = 1/V_i, V_j_inv = CellP.Density[j]/P.Mass[j];
+                    double V_i_inv = 1/V_i, V_j_inv = (gtile.use_tile ? gtile.density[n] : CellP.Density[j])/(gtile.use_tile ? gtile.mass[n] : P.Mass[j]);
                     for(k = 0; k < N_RT_FREQ_BINS; k++)
                     {
                         dnET[k] = (CellP.Rad_E_gamma_Pred[j][k]*V_j_inv) * CellP.ET[j][k] - (local.GQuant.Rad_E_gamma[k]*V_i_inv) * local.GQuant.Rad_E_gamma_ET[k];
@@ -1750,24 +1757,26 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /*  Here we insert additional operations we want to fit into the gradients loop. */
                     
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-                    if(kernel.r > 0 && local.Mass > 0 && P.Mass[j] > 0 && kernel.h_i > 0 && h_j > 0) // exclude bad/deleted particles but also should not include the 'self' contribution here
+                    { double mass_j_ags = gtile.use_tile ? gtile.mass[n] : P.Mass[j];
+                    if(kernel.r > 0 && local.Mass > 0 && mass_j_ags > 0 && kernel.h_i > 0 && h_j > 0) // exclude bad/deleted particles but also should not include the 'self' contribution here
                     {
-                        double prefac_ags_a=0.5, prefac_ags_b=0.5, h_a_inv=hinv, h_b_inv=1./h_j, m_a=local.Mass, m_b=P.Mass[j]; // this corresponds to symmetrizing by averaging potentials/forces
+                        double prefac_ags_a=0.5, prefac_ags_b=0.5, h_a_inv=hinv, h_b_inv=1./h_j, m_a=local.Mass, m_b=mass_j_ags; // this corresponds to symmetrizing by averaging potentials/forces
 #if !defined(ADAPTIVE_GRAVSOFT_SYMMETRIZE_FORCE_BY_AVERAGING)
                         if(h_a_inv < h_b_inv) {prefac_ags_a=1; prefac_ags_b=0; h_b_inv=h_a_inv;} else {prefac_ags_a=0; prefac_ags_b=1; h_a_inv=h_b_inv;} // this corresponds to symmetrizing via the 'max' operation
 #endif
                         if((kernel.r*h_a_inv < 1) && (prefac_ags_a > 0)) {out.AGS_zeta += prefac_ags_a * m_b * kernel_gravity(kernel.r*h_a_inv, h_a_inv, h_a_inv*h_a_inv*h_a_inv, 0);}
                         if(swap_to_j) {if((kernel.r*h_b_inv < 1) && (prefac_ags_b > 0)) {P.AGS_zeta[j] += prefac_ags_b * m_a * kernel_gravity(kernel.r*h_b_inv, h_b_inv, h_b_inv*h_b_inv*h_b_inv, 0);}}
                     }
+                    } /* closes mass_j_ags scope */
 #endif
 
 #ifdef HYDRO_SPH /*  following block of these are SPH-specific */
 #ifdef SPHAV_CD10_VISCOSITY_SWITCH
-                    out.alpha_limiter += NV_MYSIGN(CellP.NV_DivVel[j]) * P.Mass[j] * kernel.wk_i;
+                    out.alpha_limiter += NV_MYSIGN(CellP.NV_DivVel[j]) * (gtile.use_tile ? gtile.mass[n] : P.Mass[j]) * kernel.wk_i;
                     if(swap_to_j) CellP.alpha_limiter[j] += NV_MYSIGN(local.NV_DivVel) * local.Mass * kernel.wk_j;
 #endif
 #ifdef MAGNETIC
-                    double mji_dwk_r = P.Mass[j] * kernel.dwk_i / kernel.r;
+                    double mji_dwk_r = (gtile.use_tile ? gtile.mass[n] : P.Mass[j]) * kernel.dwk_i / kernel.r;
                     double mij_dwk_r = local.Mass * kernel.dwk_j / kernel.r;
                     {
                         double B_dot_dp_i = dot(local.GQuant.B, kernel.dp) * mji_dwk_r;
@@ -1794,7 +1803,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
                     /* first do particle i */
                     if(kernel.r < kernel.h_i)
                     {
-                        if(sph_gradients_flag_i && kernel.r > 0) {kernel.wk_i = -kernel.dwk_i/kernel.r * P.Mass[j];} // sph-like weights for gradients //
+                        if(sph_gradients_flag_i && kernel.r > 0) {kernel.wk_i = -kernel.dwk_i/kernel.r * (gtile.use_tile ? gtile.mass[n] : P.Mass[j]);} // sph-like weights for gradients //
                         for(k=0;k<3;k++)
                         {
                             double wk_xyz_i = -kernel.wk_i * kernel.dp[k]; /* sign is important here! */
@@ -1931,11 +1940,13 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 
 void *GasGrad_evaluate_primary(void *p, int gradient_iteration)
 {
+#define NGB_SEARCH_BOTH_WAYS 1 /* opt in to batched neighbor search */
 #define CONDITION_FOR_EVALUATION if(GasGrad_isactive(i))
 #define EVALUATION_CALL GasGrad_evaluate(i,0,exportflag,exportnodecount,exportindex,ngblist,gradient_iteration)
 #include "../system/code_block_primary_loop_evaluation.h"
 #undef CONDITION_FOR_EVALUATION
 #undef EVALUATION_CALL
+#undef NGB_SEARCH_BOTH_WAYS
 }
 void *GasGrad_evaluate_secondary(void *p, int gradient_iteration)
 {
