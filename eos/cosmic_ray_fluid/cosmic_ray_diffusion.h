@@ -18,18 +18,18 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
     double scalar_i = local.CosmicRayPressure[k_CRegy] * cosmo_unit; // physical units
     double scalar_j = CosmicRayPressure_j[k_CRegy] * cosmo_unit;
     double kappa_i = fabs(local.CosmicRayDiffusionCoeff[k_CRegy]); // physical units
-    double kappa_j = fabs(CellP[j].CosmicRayDiffusionCoeff[k_CRegy]);
+    double kappa_j = fabs(CellP.CosmicRayDiffusionCoeff[j][k_CRegy]);
     double d_scalar = scalar_i - scalar_j;
     double gamma_cr_m1 = GAMMA_COSMICRAY(k_CRegy)-1.;
     
-    if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P[j].Mass>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
+    if(((kappa_i>MIN_REAL_NUMBER)||(kappa_j>MIN_REAL_NUMBER))&&(local.Mass>0)&&(P.Mass[j]>0)&&(dt_hydrostep>MIN_REAL_NUMBER)&&(Face_Area_Norm>MIN_REAL_NUMBER))
     {
         /* calculate the eigenvalues for the HLLE flux-weighting */
         double cmag=0., flux_norm=0, flux_i[3]={0}, flux_j[3]={0}, thold_hll;
         for(k=0;k<3;k++)
         {
             /* the flux is already known (its explicitly evolved, rather than determined by the gradient of the energy density */
-            flux_i[k] = local.CosmicRayFlux[k_CRegy][k]/V_i_phys; flux_j[k] = CellP[j].CosmicRayFlux[k_CRegy][k]/V_j_phys; // this needs to be in physical units
+            flux_i[k] = local.CosmicRayFlux[k_CRegy][k]/V_i_phys; flux_j[k] = CellP.CosmicRayFlux[j][k_CRegy][k]/V_j_phys; // this needs to be in physical units
             double flux_ij = 0.5*(flux_i[k] + flux_j[k]); flux_norm += flux_ij*flux_ij;
             cmag += Face_Area_Vec[k] * flux_ij; // remember, our 'flux' variable is a volume-integral; physical units here//
         }
@@ -95,28 +95,28 @@ for(k_CRegy=0;k_CRegy<N_CR_PARTICLE_BINS;k_CRegy++)
         if(flux_tmp[k_j_to_i]*dt_hydrostep > +0.5) {flux_tmp[k_j_to_i] = +0.5/dt_hydrostep;}
         if(flux_tmp[k_i_to_j]*dt_hydrostep < -0.5) {flux_tmp[k_i_to_j] = -0.5/dt_hydrostep;}
         // now just assign these fluxes: written lengthily here to prevent any typos, but trivial assignment //
-        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * CellP[j].CosmicRayAlfvenEnergyPred[k_CRegy][k_j_to_i];
+        Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_j_to_i] += flux_tmp[k_j_to_i] * CellP.CosmicRayAlfvenEnergyPred[j][k_CRegy][k_j_to_i];
         Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j] += flux_tmp[k_i_to_j] * local.CosmicRayAlfvenEnergy[k_CRegy][k_i_to_j];
         for(k=0;k<2;k++) {out.DtCosmicRayAlfvenEnergy[k_CRegy][k] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}
-        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {CellP[j].DtCosmicRayAlfvenEnergy[k_CRegy][k] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
+        if(j_is_active_for_fluxes) {for(k=0;k<2;k++) {CellP.DtCosmicRayAlfvenEnergy[j][k_CRegy][k] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayAlfvenEnergy[k_CRegy][k];}}
 #endif
                 
     } // close check that kappa and particle masses are positive
     // actually assign the fluxes //
     out.DtCosmicRayEnergy[k_CRegy] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayPressure[k_CRegy];
-    if(j_is_active_for_fluxes) {CellP[j].DtCosmicRayEnergy[k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy];}
+    if(j_is_active_for_fluxes) {CellP.DtCosmicRayEnergy[j][k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy];}
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
     double CR_number_to_energy_ratio = 0; // ratio of flux of CR number per unit flux of CR energy, follows whichever cell CRs are flowing 'out' of
-    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  CellP[j].Flux_Number_to_Energy_Correction_Factor[k_CRegy] * CellP[j].CosmicRay_Number_in_Bin[k_CRegy] / (CellP[j].CosmicRayEnergy[k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
+    if(Fluxes.CosmicRayPressure[k_CRegy] > 0) {CR_number_to_energy_ratio =  CellP.Flux_Number_to_Energy_Correction_Factor[j][k_CRegy] * CellP.CosmicRay_Number_in_Bin[j][k_CRegy] / (CellP.CosmicRayEnergy[j][k_CRegy] + MIN_REAL_NUMBER);} else {CR_number_to_energy_ratio = local.CR_number_to_energy_ratio[k_CRegy];}
     //CR_number_to_energy_ratio *= 0.98; // = if want a simple approximation to the difference b/t diffusivities in energy vs number: multiply by 1 - 0.103021*epsilon, where epsilon = D_diffusion (0.5-ish) - gamma_slope where L_grad[R] ~ R^gamma_slope and kappa_diffusion ~ R^D_diffusion. reasonable approx is something like gamma_slope ~ (0.5-0.75)*D_diffusion [trends towards D_diffusion in eqm]
     out.DtCosmicRay_Number_in_Bin[k_CRegy] += FluxCorrectionFactor_to_i * Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;
-    if(j_is_active_for_fluxes) {CellP[j].DtCosmicRay_Number_in_Bin[k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
+    if(j_is_active_for_fluxes) {CellP.DtCosmicRay_Number_in_Bin[j][k_CRegy] -= FluxCorrectionFactor_to_j * Fluxes.CosmicRayPressure[k_CRegy] * CR_number_to_energy_ratio;}
 #endif
 }
 
 
 out.Face_DivVel_ForAdOps += -(All.cf_a3inv/V_i) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel) / All.cf_a2inv;
-if(j_is_active_for_fluxes) {CellP[j].Face_DivVel_ForAdOps -= -(All.cf_a3inv/V_j) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel) / All.cf_a2inv;}
+if(j_is_active_for_fluxes) {CellP.Face_DivVel_ForAdOps[j] -= -(All.cf_a3inv/V_j) * Face_Area_Norm * (Riemann_out.S_M + face_area_dot_vel) / All.cf_a2inv;}
 
 
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
@@ -125,20 +125,20 @@ double min_shockvel_for_accel = 100., min_machnum_for_accel = 5., machnum_estima
 double vdotf2_phys = face_vel_i - face_vel_j, vdotr2_phys = kernel.vdotr2 / (kernel.r * All.cf_atime);
 if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * kernel.r / All.cf_atime;}
 if(vdotr2_phys < 0 && vdotf2_phys < 0 && (DMAX(vdotf2_phys, vdotr2_phys)*UNIT_VEL_IN_KMS > min_shockvel_for_accel)) { // particles must be approaching, with some normal to face, above some relative velocity
-    if((local.InternalEnergyPred - CellP[j].InternalEnergyPred)*(local.Density - CellP[j].Density) > 0) { // sign of temperature and density jump must be consistent (help filtering contact discontinuities)
-        if((local.Pressure - CellP[j].Pressure)*(local.InternalEnergyPred - CellP[j].InternalEnergyPred) > 0) { // consistent pressure and temperature jump
+    if((local.InternalEnergyPred - CellP.InternalEnergyPred[j])*(local.Density - CellP.Density[j]) > 0) { // sign of temperature and density jump must be consistent (help filtering contact discontinuities)
+        if((local.Pressure - CellP.Pressure[j])*(local.InternalEnergyPred - CellP.InternalEnergyPred[j]) > 0) { // consistent pressure and temperature jump
             double gamma_touse = 5./3., m2 = min_machnum_for_accel*min_machnum_for_accel, gplus = gamma_touse+1., gminus = gamma_touse-1., pjump_crit = (2.*gamma_touse*min_machnum_for_pressurecrit*min_machnum_for_pressurecrit - gminus)/gplus, tjump_crit = (2.*gamma_touse*m2 - gminus)*(gminus*m2 + 2.)/(gplus*gplus*m2); // various critical definitions
-            double tjump = local.InternalEnergyPred/CellP[j].InternalEnergyPred, pjump = local.Pressure/CellP[j].Pressure; // temperature and pressure ratios used to estimate shock strength
+            double tjump = local.InternalEnergyPred/CellP.InternalEnergyPred[j], pjump = local.Pressure/CellP.Pressure[j]; // temperature and pressure ratios used to estimate shock strength
             if(tjump < 1.) {tjump=1./tjump; pjump=1./pjump;} // make sure have correct upwind/downwind assignment
             if((tjump > tjump_crit) && (pjump > pjump_crit)) { // ok, sufficiently strong shock to justify some application of the scalings here, and passes pressure minimum check
-                double m2_guess = (16./5.)*tjump, dissipation_fac = (0.5625 - 2.9607/m2_guess), upwind_density = DMIN(local.Density,CellP[j].Density), zeta_obliquity_fac = 1., velforflux = fabs(vdotf2_phys);
+                double m2_guess = (16./5.)*tjump, dissipation_fac = (0.5625 - 2.9607/m2_guess), upwind_density = DMIN(local.Density,CellP.Density[j]), zeta_obliquity_fac = 1., velforflux = fabs(vdotf2_phys);
 #ifdef MAGNETIC
                 double cos_t=0,dvmag=0,bmag=0; for(k=0;k<3;k++) {double dv=local.Vel[k]-VelPred_j[k]; cos_t+=bhat[k]*dv; dvmag+=dv*dv; bmag+=bhat[k]*bhat[k];}
                 if(dvmag>0 && bmag>0) {cos_t/=sqrt(dvmag*bmag);} else {cos_t=0;}
                 double q = (1.-fabs(cos_t))/0.34; zeta_obliquity_fac = exp(-q*q*q);
 #endif
                 double DtCREgyNewInjection = saturation_fraction_for_craccel * zeta_obliquity_fac * dissipation_fac * 0.5 * upwind_density * velforflux*velforflux*velforflux * Face_Area_Norm;
-                if(local.InternalEnergyPred > CellP[j].InternalEnergyPred) {out.DtCREgyNewInjectionFromShocks += FluxCorrectionFactor_to_i * DtCREgyNewInjection;} else {if(j_is_active_for_fluxes) {CellP[j].DtCREgyNewInjectionFromShocks += FluxCorrectionFactor_to_j * DtCREgyNewInjection;}} // do injection upstream
+                if(local.InternalEnergyPred > CellP.InternalEnergyPred[j]) {out.DtCREgyNewInjectionFromShocks += FluxCorrectionFactor_to_i * DtCREgyNewInjection;} else {if(j_is_active_for_fluxes) {CellP.DtCREgyNewInjectionFromShocks[j] += FluxCorrectionFactor_to_j * DtCREgyNewInjection;}} // do injection upstream
             }}}}
 #endif
 

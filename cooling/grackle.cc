@@ -42,13 +42,13 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
     
     gr_float density, metal_density, energy, velx, vely, velz;
     gr_float cooling_time, temperature, pressure, gamma;
-    velx          = CellP[target].VelPred[0];
-    vely          = CellP[target].VelPred[1];
-    velz          = CellP[target].VelPred[2];
+    velx          = CellP.VelPred[target][0];
+    vely          = CellP.VelPred[target][1];
+    velz          = CellP.VelPred[target][2];
     density       = rho;
     energy        = u_old;
 #ifdef METALS
-    metal_density = density * P[target].Metallicity[0];
+    metal_density = density * P.Metallicity[target][0];
 #else
     metal_density = density * 0.02;
 #endif
@@ -65,13 +65,13 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
     // Atomic
     ne_density    = density * ne_guess;
     
-    HI_density    = density * CellP[target].grHI;  //initialized with HYDROGEN_MASSFRAC
-    HII_density   = density * CellP[target].grHII;
-    HM_density    = density * CellP[target].grHM;
+    HI_density    = density * CellP.grHI[target];  //initialized with HYDROGEN_MASSFRAC
+    HII_density   = density * CellP.grHII[target];
+    HM_density    = density * CellP.grHM[target];
     
-    HeI_density   = density * CellP[target].grHeI;
-    HeII_density  = density * CellP[target].grHeII;
-    HeIII_density = density * CellP[target].grHeIII;
+    HeI_density   = density * CellP.grHeI[target];
+    HeII_density  = density * CellP.grHeII[target];
+    HeIII_density = density * CellP.grHeIII[target];
     
     H2I_density  = density * tiny;
     H2II_density = density * tiny;
@@ -80,14 +80,14 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
     HDI_density  = density * tiny;
     
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Atomic+(H2+H2I+H2II)
-    H2I_density  = density * CellP[target].grH2I;
-    H2II_density = density * CellP[target].grH2II;
+    H2I_density  = density * CellP.grH2I[target];
+    H2II_density = density * CellP.grH2II[target];
 #endif
     
 #if (COOL_GRACKLE_CHEMISTRY >= 3) // Atomic+(H2+H2I+H2II)+(DI+DII+HD)
-    DI_density   = density * CellP[target].grDI;
-    DII_density  = density * CellP[target].grDII;
-    HDI_density  = density * CellP[target].grHDI;
+    DI_density   = density * CellP.grDI[target];
+    DII_density  = density * CellP.grDII[target];
+    HDI_density  = density * CellP.grHDI[target];
 #endif
     
     switch(mode) {
@@ -108,23 +108,23 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             }
             
             // Assign variables back
-            CellP[target].grHI    = HI_density    / density;
-            CellP[target].grHII   = HII_density   / density;
-            CellP[target].grHM    = HM_density    / density;
+            CellP.grHI[target]    = HI_density    / density;
+            CellP.grHII[target]   = HII_density   / density;
+            CellP.grHM[target]    = HM_density    / density;
             
-            CellP[target].grHeI   = HeI_density   / density;
-            CellP[target].grHeII  = HeII_density  / density;
-            CellP[target].grHeIII = HeIII_density / density;
+            CellP.grHeI[target]   = HeI_density   / density;
+            CellP.grHeII[target]  = HeII_density  / density;
+            CellP.grHeIII[target] = HeIII_density / density;
             
 #if (COOL_GRACKLE_CHEMISTRY >= 2) // Atomic+(H2+H2I+H2II)
-            CellP[target].grH2I   = H2I_density   / density;
-            CellP[target].grH2II  = H2II_density  / density;
+            CellP.grH2I[target]   = H2I_density   / density;
+            CellP.grH2II[target]  = H2II_density  / density;
 #endif
             
 #if (COOL_GRACKLE_CHEMISTRY >= 3) // Atomic+(H2+H2I+H2II)+(DI+DII+HD)
-            CellP[target].grDI    = DI_density    / density;
-            CellP[target].grDII   = DII_density   / density;
-            CellP[target].grHDI   = HDI_density   / density;
+            CellP.grDI[target]    = DI_density    / density;
+            CellP.grDII[target]   = DII_density   / density;
+            CellP.grHDI[target]   = HDI_density   / density;
 #endif
             returnval = energy;
             break;
@@ -212,13 +212,13 @@ double CallGrackle(double u_old, double rho, double dt, double ne_guess, int tar
             }
             double nH0_guess, nHp_guess, nHe0_guess, nHep_guess, nHepp_guess, mu, temp; nH0_guess = DMAX(0,DMIN(1,1.-ne_guess/1.2));
             temp = convert_u_to_temp(energy, rho, target, &ne_guess, &nH0_guess, &nHp_guess, &nHe0_guess, &nHep_guess, &nHepp_guess, &mu); //need to update *ne_guess for tabular!!, this may be wrong
-            CellP[i].Ne = ne_guess; /* update this value with the new values from the cycle here */
+            CellP.Ne[i] = ne_guess; /* update this value with the new values from the cycle here */
 #ifdef RT_CHEM_PHOTOION
             if(target >= 0)
             {
-                CellP[target].HI = nH0_guess; CellP[target].HII = nHp_guess;
+                CellP.HI[target] = nH0_guess; CellP.HII[target] = nHp_guess;
 #ifdef RT_CHEM_PHOTOION_HE
-                CellP[target].HeI = nHe0_guess; CellP[target].HeII = nHep_guess; CellP[target].HeIII = nHepp_guess;
+                CellP.HeI[target] = nHe0_guess; CellP.HeII[target] = nHep_guess; CellP.HeIII[target] = nHepp_guess;
 #endif
             }
 #endif

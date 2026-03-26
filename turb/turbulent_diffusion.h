@@ -19,25 +19,25 @@
 {
 #ifdef TURB_DIFF_METALS // turbulent diffusion of metals (passive scalar mixing) //
         
-    if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>MIN_REAL_NUMBER)||(CellP[j].TD_DiffCoeff>MIN_REAL_NUMBER)))
+    if((local.Mass>0)&&(P.Mass[j]>0)&&((local.TD_DiffCoeff>MIN_REAL_NUMBER)||(CellP.TD_DiffCoeff[j]>MIN_REAL_NUMBER)))
     {
         double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
-        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*CellP[j].TD_DiffCoeff; // physical
+        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*CellP.TD_DiffCoeff[j]; // physical
 #ifdef HYDRO_SPH
-        diffusion_wt *= 0.5*(local.Density + CellP[j].Density)*All.cf_a3inv; // physical
+        diffusion_wt *= 0.5*(local.Density + CellP.Density[j])*All.cf_a3inv; // physical
 #else
         diffusion_wt *= Riemann_out.Face_Density; // physical
 #endif
         /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
-        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
+        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P.Mass[j])) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         
         int k_species;
-        double rho_i = local.Density*All.cf_a3inv, rho_j = CellP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
+        double rho_i = local.Density*All.cf_a3inv, rho_j = CellP.Density[j]*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
         for(k_species=0;k_species<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k_species++)
         {
             cmag = 0.0; double grad_dot_x_ij = 0.0; double Z_j = 0;
-            if(k_species < NUM_METAL_SPECIES) {Z_j = P[j].Metallicity[k_species];}
+            if(k_species < NUM_METAL_SPECIES) {Z_j = P.Metallicity[j][k_species];}
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
             if(k_species >= NUM_METAL_SPECIES) {Z_j = return_ismdustchem_species_of_interest_for_diffusion_and_yields(j,k_species);}
 #endif
@@ -47,7 +47,7 @@
                 double grad_direct = d_scalar * kernel.dp[k] * rinv*rinv; // 1/code length
                 double grad_ij = grad_direct;
 #if !defined(TURB_DIFF_METALS_LOWORDER)
-                if(k_species < NUM_METAL_SPECIES) {grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*CellP[j].Gradients.Metallicity[k_species][k];} // 1/code length
+                if(k_species < NUM_METAL_SPECIES) {grad_ij = wt_i*local.Gradients.Metallicity[k_species][k] + wt_j*CellP.Gradients.Metallicity[j][k_species][k];} // 1/code length
 #endif
                 grad_dot_x_ij += grad_ij * kernel.dp[k]; // physical
                 grad_ij = MINMOD(grad_ij , grad_direct);
@@ -66,14 +66,14 @@
             cmag *= -diffusion_wt * dt_hydrostep; // physical
             if(fabs(cmag) > 0)
             {
-                double zlim = 0.25 * DMIN( DMIN(local.Mass,P[j].Mass)*fabs(d_scalar) , DMAX(local.Mass*local.Metallicity[k_species] , P[j].Mass*Z_j) );
+                double zlim = 0.25 * DMIN( DMIN(local.Mass,P.Mass[j])*fabs(d_scalar) , DMAX(local.Mass*local.Metallicity[k_species] , P.Mass[j]*Z_j) );
                 if(fabs(cmag)>zlim) {cmag*=zlim/fabs(cmag);}
 #ifndef HYDRO_SPH
                 double dmet = (Z_j-local.Metallicity[k_species]) * fabs(mdot_estimated) * dt_hydrostep;
                 cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
 #endif
                 out.Dyield[k_species] += FluxCorrectionFactor_to_i * cmag;
-                if(j_is_active_for_fluxes) {CellP[j].Dyield[k_species] -= FluxCorrectionFactor_to_j * cmag;}
+                if(j_is_active_for_fluxes) {CellP.Dyield[j][k_species] -= FluxCorrectionFactor_to_j * cmag;}
             }
         }
     }

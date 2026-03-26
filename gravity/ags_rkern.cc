@@ -74,7 +74,7 @@ int ags_gravity_kernel_shared_BITFLAG(short int particle_type_primary)
 #define CORE_FUNCTION_NAME ags_density_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME ags_particle2in_density    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME ags_out2particle_density  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(ags_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(ags_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 struct kernel_density 
@@ -95,9 +95,9 @@ static struct INPUT_STRUCT_NAME
 void ags_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration);
 void ags_particle2in_density(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    in->Pos=P[i].Pos; in->Vel=P[i].Vel;
-    in->AGS_KernelRadius = P[i].AGS_KernelRadius;
-    in->Type = P[i].Type;
+    in->Pos=P.Pos[i]; in->Vel=P.Vel[i];
+    in->AGS_KernelRadius = P.AGS_KernelRadius[i];
+    in->Type = P.Type[i];
 }
 
 
@@ -117,13 +117,13 @@ static struct OUTPUT_STRUCT_NAME
 void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration);
 void ags_out2particle_density(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    ASSIGN_ADD(P[i].NumNgb, out->Ngb, mode);
-    ASSIGN_ADD(P[i].AGS_zeta, out->AGS_zeta,   mode);
-    if(out->AGS_vsig > P[i].AGS_vsig) {P[i].AGS_vsig = out->AGS_vsig;}
-    ASSIGN_ADD(P[i].Particle_DivVel, out->Particle_DivVel,   mode);
-    ASSIGN_ADD(P[i].DrkernNgbFactor, out->DrkernNgb, mode);
+    ASSIGN_ADD(P.NumNgb[i], out->Ngb, mode);
+    ASSIGN_ADD(P.AGS_zeta[i], out->AGS_zeta,   mode);
+    if(out->AGS_vsig > P.AGS_vsig[i]) {P.AGS_vsig[i] = out->AGS_vsig;}
+    ASSIGN_ADD(P.Particle_DivVel[i], out->Particle_DivVel,   mode);
+    ASSIGN_ADD(P.DrkernNgbFactor[i], out->DrkernNgb, mode);
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
-    {int j,k; for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(P[i].NV_T[k][j], out->NV_T[k][j], mode);}}}
+    {int j,k; for(k = 0; k < 3; k++) {for(j = 0; j < 3; j++) {ASSIGN_ADD(P.NV_T[i][k][j], out->NV_T[k][j], mode);}}}
 #endif
 }
 
@@ -174,9 +174,9 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Mass <= 0) continue;
+                if(P.Mass[j] <= 0) continue;
                 
-                kernel.dp = local.Pos - P[j].Pos;
+                kernel.dp = local.Pos - P.Pos[j];
                 nearest_xyz(kernel.dp); // find the closest image in the given box size
                 r2 = kernel.dp.norm_sq();
                 if(r2 < h2)
@@ -187,28 +187,28 @@ int ags_density_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                     out.Ngb += kernel.wk;
                     out.DrkernNgb += -(NUMDIMS * kernel.hinv * kernel.wk + u * kernel.dwk);
-                    out.AGS_zeta += P[j].Mass * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0); // needs to be here, should include self-contribution
+                    out.AGS_zeta += P.Mass[j] * kernel_gravity(u, kernel.hinv, kernel.hinv3, 0); // needs to be here, should include self-contribution
 
                     if(kernel.r > 0)
                     {
-                        if(P[j].Type==0) {kernel.dv = local.Vel - CellP[j].VelPred;}
-                        else {kernel.dv = local.Vel - P[j].Vel;}
-                        NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,kernel.dv,1); /* wrap velocities for shearing boxes if needed */
+                        if(P.Type[j]==0) {kernel.dv = local.Vel - CellP.VelPred[j];}
+                        else {kernel.dv = local.Vel - P.Vel[j];}
+                        NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P.Pos[j],kernel.dv,1); /* wrap velocities for shearing boxes if needed */
                         double v_dot_r = dot(kernel.dp, kernel.dv);
                         if(v_dot_r > 0) {v_dot_r *= 0.333333;} // receding elements don't signal strong change in forces in the same manner as approaching/converging particles
                         double vsig = 0.5 * fabs( fac_mu * v_dot_r / kernel.r );
-                        short int TimeBin_j = P[j].TimeBin; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
+                        short int TimeBin_j = P.TimeBin[j]; if(TimeBin_j < 0) {TimeBin_j = -TimeBin_j - 1;} // need to make sure we correct for the fact that TimeBin is used as a 'switch' here to determine if a particle is active for iteration, otherwise this gives nonsense!
                         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;}
 #if defined(WAKEUP) && (defined(ADAPTIVE_GRAVSOFT_FORALL) || defined(DM_FUZZY) || defined(CBE_INTEGRATOR))
                         int wakeup_condition = 0; // determine if wakeup is allowed
-                        if(!(TimeBinActive[TimeBin_j]) && (All.Time > All.TimeBegin) && (vsig > WAKEUP*P[j].AGS_vsig)) {wakeup_condition = 1;}
+                        if(!(TimeBinActive[TimeBin_j]) && (All.Time > All.TimeBegin) && (vsig > WAKEUP*P.AGS_vsig[j])) {wakeup_condition = 1;}
 #if defined(GALSF)
-                        if((P[j].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[j].Type == 2)||(P[j].Type==3)))) {wakeup_condition = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
+                        if((P.Type[j] == 4)||((All.ComovingIntegrationOn==0)&&((P.Type[j] == 2)||(P.Type[j]==3)))) {wakeup_condition = 0;} // don't wakeup star particles, or risk 2x-counting feedback events! //
 #endif
                         if(wakeup_condition) // do the wakeup
                         {
                                 #pragma omp atomic write
-                                P[j].wakeup = 1;
+                                P.wakeup[j] = 1;
                                 #pragma omp atomic write
                                 NeedToWakeupParticles_local = 1;
                         }
@@ -256,9 +256,9 @@ void ags_density(void)
     /* initialize anything we need to about the active particles before their loop */
     for (int i : ActiveParticleList) {
         if(ags_density_isactive(i)) {
-            Left[i] = Right[i] = 0; AGS_Prev[i] = P[i].AGS_KernelRadius; P[i].AGS_vsig = 0;
+            Left[i] = Right[i] = 0; AGS_Prev[i] = P.AGS_KernelRadius[i]; P.AGS_vsig[i] = 0;
 #ifdef WAKEUP
-            P[i].wakeup = 0;
+            P.wakeup[i] = 0;
 #endif
       }}
 
@@ -276,24 +276,24 @@ void ags_density(void)
             if(ags_density_isactive(i))
             {
 #ifdef DM_FUZZY
-                P[i].AGS_Density = P[i].Mass * P[i].NumNgb;
+                P.AGS_Density[i] = P.Mass[i] * P.NumNgb[i];
 #endif
-                if(P[i].NumNgb > 0)
+                if(P.NumNgb[i] > 0)
                 {
-                    P[i].DrkernNgbFactor *= P[i].AGS_KernelRadius / (NUMDIMS * P[i].NumNgb);
-                    P[i].Particle_DivVel /= P[i].NumNgb;
+                    P.DrkernNgbFactor[i] *= P.AGS_KernelRadius[i] / (NUMDIMS * P.NumNgb[i]);
+                    P.Particle_DivVel[i] /= P.NumNgb[i];
                     /* spherical volume of the Kernel (use this to normalize 'effective neighbor number') */
-                    P[i].NumNgb *= VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].AGS_KernelRadius,NUMDIMS);
+                    P.NumNgb[i] *= VOLUME_NORM_COEFF_FOR_NDIMS * pow(P.AGS_KernelRadius[i],NUMDIMS);
                 } else {
-                    P[i].NumNgb = P[i].DrkernNgbFactor = P[i].Particle_DivVel = 0;
+                    P.NumNgb[i] = P.DrkernNgbFactor[i] = P.Particle_DivVel[i] = 0;
                 }
                 
                 // inverse of defined volume element (to satisfy constraint implicit in Lagrange multipliers)
-                if(P[i].DrkernNgbFactor > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
-                    P[i].DrkernNgbFactor = 1 / (1 + P[i].DrkernNgbFactor);
+                if(P.DrkernNgbFactor[i] > -0.9)	/* note: this would be -1 if only a single particle at zero lag is found */
+                    P.DrkernNgbFactor[i] = 1 / (1 + P.DrkernNgbFactor[i]);
                 else
-                    P[i].DrkernNgbFactor = 1;
-                P[i].Particle_DivVel *= P[i].DrkernNgbFactor;
+                    P.DrkernNgbFactor[i] = 1;
+                P.Particle_DivVel[i] *= P.DrkernNgbFactor[i];
                 
                 /* now check whether we have enough neighbours */
                 redo_particle = 0;
@@ -310,7 +310,7 @@ void ags_density(void)
                 /* allow the neighbor tolerance to gradually grow as we iterate, so that we don't spend forever trapped in a narrow iteration */
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
                 double ConditionNumber = do_cbe_nvt_inversion_for_faces(i); // right now we don't do anything with this, but could use to force expansion of search, as in hydro
-                if(ConditionNumber > MAX_REAL_NUMBER) {PRINT_WARNING("CNUM for CBE: ThisTask=%d i=%d ConditionNumber=%g desnumngb=%g NumNgb=%g iter=%d NVT=%g/%g/%g/%g/%g/%g AGS_KernelRadius=%g \n",ThisTask,i,ConditionNumber,desnumngb,P[i].NumNgb,iter,P[i].NV_T[0][0],P[i].NV_T[1][1],P[i].NV_T[2][2],P[i].NV_T[0][1],P[i].NV_T[0][2],P[i].NV_T[1][2],P[i].AGS_KernelRadius);}
+                if(ConditionNumber > MAX_REAL_NUMBER) {PRINT_WARNING("CNUM for CBE: ThisTask=%d i=%d ConditionNumber=%g desnumngb=%g NumNgb=%g iter=%d NVT=%g/%g/%g/%g/%g/%g AGS_KernelRadius=%g \n",ThisTask,i,ConditionNumber,desnumngb,P.NumNgb[i],iter,P.NV_T[i][0][0],P.NV_T[i][1][1],P.NV_T[i][2][2],P.NV_T[i][0][1],P.NV_T[i][0][2],P.NV_T[i][1][2],P.AGS_KernelRadius[i]);}
                 if(iter > 10) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 9.)) );}
 #else
                 if(iter > 4) {desnumngbdev = DMIN( 0.25*desnumngb , desnumngbdev * exp(0.1*log(desnumngb/(16.*desnumngbdev))*((double)iter - 3.)) );}
@@ -319,33 +319,33 @@ void ags_density(void)
 
 
                 /* check if we are in the 'normal' range between the max/min allowed values */
-                if((P[i].NumNgb < (desnumngb - desnumngbdev) && P[i].AGS_KernelRadius < 0.999*maxsoft) ||
-                   (P[i].NumNgb > (desnumngb + desnumngbdev) && P[i].AGS_KernelRadius > 1.001*minsoft))
+                if((P.NumNgb[i] < (desnumngb - desnumngbdev) && P.AGS_KernelRadius[i] < 0.999*maxsoft) ||
+                   (P.NumNgb[i] > (desnumngb + desnumngbdev) && P.AGS_KernelRadius[i] > 1.001*minsoft))
                     redo_particle = 1;
                 
                 /* check maximum kernel size allowed */
                 particle_set_to_maxrkern_flag = 0;
-                if((P[i].AGS_KernelRadius >= 0.999*maxsoft) && (P[i].NumNgb < (desnumngb - desnumngbdev)))
+                if((P.AGS_KernelRadius[i] >= 0.999*maxsoft) && (P.NumNgb[i] < (desnumngb - desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(P[i].AGS_KernelRadius == maxsoft)
+                    if(P.AGS_KernelRadius[i] == maxsoft)
                     {
                         /* iteration at the maximum value is already complete */
                         particle_set_to_maxrkern_flag = 0;
                     } else {
                         /* ok, the particle needs to be set to the maximum, and (if gas) iterated one more time */
                         redo_particle = 1;
-                        P[i].AGS_KernelRadius = maxsoft;
+                        P.AGS_KernelRadius[i] = maxsoft;
                         particle_set_to_maxrkern_flag = 1;
                     }
                 }
                 
                 /* check minimum kernel size allowed */
                 particle_set_to_minrkern_flag = 0;
-                if((P[i].AGS_KernelRadius <= 1.001*minsoft) && (P[i].NumNgb > (desnumngb + desnumngbdev)))
+                if((P.AGS_KernelRadius[i] <= 1.001*minsoft) && (P.NumNgb[i] > (desnumngb + desnumngbdev)))
                 {
                     redo_particle = 0;
-                    if(P[i].AGS_KernelRadius == minsoft)
+                    if(P.AGS_KernelRadius[i] == minsoft)
                     {
                         /* this means we've already done an iteration with the MinKernelRadius value, so the
                          neighbor weights, etc, are not going to be wrong; thus we simply stop iterating */
@@ -353,7 +353,7 @@ void ags_density(void)
                     } else {
                         /* ok, the particle needs to be set to the minimum, and (if gas) iterated one more time */
                         redo_particle = 1;
-                        P[i].AGS_KernelRadius = minsoft;
+                        P.AGS_KernelRadius[i] = minsoft;
                         particle_set_to_minrkern_flag = 1;
                     }
                 }
@@ -363,9 +363,9 @@ void ags_density(void)
                     if(iter >= MAXITER - 10)
                     {
                         PRINT_WARNING("AGS: i=%d task=%d ID=%llu Type=%d KernelRadius=%g Drkern=%g Left=%g Right=%g Ngbs=%g Right-Left=%g maxh_flag=%d minh_flag=%d  minsoft=%g maxsoft=%g desnum=%g desnumtol=%g redo=%d pos=(%g|%g|%g)\n",
-                               i, ThisTask, (unsigned long long) P[i].ID, P[i].Type, P[i].AGS_KernelRadius, P[i].DrkernNgbFactor, Left[i], Right[i],
-                               (float) P[i].NumNgb, Right[i] - Left[i], particle_set_to_maxrkern_flag, particle_set_to_minrkern_flag, minsoft,
-                               maxsoft, desnumngb, desnumngbdev, redo_particle, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                               i, ThisTask, (unsigned long long) P.ID[i], P.Type[i], P.AGS_KernelRadius[i], P.DrkernNgbFactor[i], Left[i], Right[i],
+                               (float) P.NumNgb[i], Right[i] - Left[i], particle_set_to_maxrkern_flag, particle_set_to_minrkern_flag, minsoft,
+                               maxsoft, desnumngb, desnumngbdev, redo_particle, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
                     }
                     
                     /* need to redo this particle */
@@ -376,25 +376,25 @@ void ags_density(void)
                         {
                             /* this one should be ok */
                             npleft--;
-                            P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
+                            P.TimeBin[i] = -P.TimeBin[i] - 1;	/* Mark as inactive */
                             continue;
                         }
                     
                     if((particle_set_to_maxrkern_flag==0)&&(particle_set_to_minrkern_flag==0))
                     {
-                        if(P[i].NumNgb < (desnumngb - desnumngbdev))
+                        if(P.NumNgb[i] < (desnumngb - desnumngbdev))
                         {
-                            Left[i] = DMAX(P[i].AGS_KernelRadius, Left[i]);
+                            Left[i] = DMAX(P.AGS_KernelRadius[i], Left[i]);
                         }
                         else
                         {
                             if(Right[i] != 0)
                             {
-                                if(P[i].AGS_KernelRadius < Right[i])
-                                    Right[i] = P[i].AGS_KernelRadius;
+                                if(P.AGS_KernelRadius[i] < Right[i])
+                                    Right[i] = P.AGS_KernelRadius[i];
                             }
                             else
-                                Right[i] = P[i].AGS_KernelRadius;
+                                Right[i] = P.AGS_KernelRadius[i];
                         }
                         
                         // right/left define upper/lower bounds from previous iterations
@@ -403,26 +403,26 @@ void ags_density(void)
                             // geometric interpolation between right/left //
                             double maxjump=0;
                             if(iter>1) {maxjump = 0.2*log(Right[i]/Left[i]);}
-                            if(P[i].NumNgb > 1)
+                            if(P.NumNgb[i] > 1)
                             {
-                                double jumpvar = P[i].DrkernNgbFactor * log( desnumngb / P[i].NumNgb ) / NUMDIMS;
+                                double jumpvar = P.DrkernNgbFactor[i] * log( desnumngb / P.NumNgb[i] ) / NUMDIMS;
                                 if(iter>1) {if(fabs(jumpvar) < maxjump) {if(jumpvar<0) {jumpvar=-maxjump;} else {jumpvar=maxjump;}}}
-                                P[i].AGS_KernelRadius *= exp(jumpvar);
+                                P.AGS_KernelRadius[i] *= exp(jumpvar);
                             } else {
-                                P[i].AGS_KernelRadius *= 2.0;
+                                P.AGS_KernelRadius[i] *= 2.0;
                             }
-                            if((P[i].AGS_KernelRadius<Right[i])&&(P[i].AGS_KernelRadius>Left[i]))
+                            if((P.AGS_KernelRadius[i]<Right[i])&&(P.AGS_KernelRadius[i]>Left[i]))
                             {
                                 if(iter > 1)
                                 {
                                     double hfac = exp(maxjump);
-                                    if(P[i].AGS_KernelRadius > Right[i] / hfac) {P[i].AGS_KernelRadius = Right[i] / hfac;}
-                                    if(P[i].AGS_KernelRadius < Left[i] * hfac) {P[i].AGS_KernelRadius = Left[i] * hfac;}
+                                    if(P.AGS_KernelRadius[i] > Right[i] / hfac) {P.AGS_KernelRadius[i] = Right[i] / hfac;}
+                                    if(P.AGS_KernelRadius[i] < Left[i] * hfac) {P.AGS_KernelRadius[i] = Left[i] * hfac;}
                                 }
                             } else {
-                                if(P[i].AGS_KernelRadius>Right[i]) P[i].AGS_KernelRadius=Right[i];
-                                if(P[i].AGS_KernelRadius<Left[i]) P[i].AGS_KernelRadius=Left[i];
-                                P[i].AGS_KernelRadius = pow(P[i].AGS_KernelRadius * Left[i] * Right[i] , 1.0/3.0);
+                                if(P.AGS_KernelRadius[i]>Right[i]) P.AGS_KernelRadius[i]=Right[i];
+                                if(P.AGS_KernelRadius[i]<Left[i]) P.AGS_KernelRadius[i]=Left[i];
+                                P.AGS_KernelRadius[i] = pow(P.AGS_KernelRadius[i] * Left[i] * Right[i] , 1.0/3.0);
                             }
                         }
                         else
@@ -430,77 +430,77 @@ void ags_density(void)
                             if(Right[i] == 0 && Left[i] == 0)
                             {
                                 char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE];
-                                snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "AGS: Right[i] == 0 && Left[i] == 0 && P[i].AGS_KernelRadius=%g\n", P[i].AGS_KernelRadius); terminate(buf);
+                                snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "AGS: Right[i] == 0 && Left[i] == 0 && P.AGS_KernelRadius[i]=%g\n", P.AGS_KernelRadius[i]); terminate(buf);
                             }
                             
                             if(Right[i] == 0 && Left[i] > 0)
                             {
-                                if (P[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / P[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
+                                if (P.NumNgb[i] > 1)
+                                    fac_lim = log( desnumngb / P.NumNgb[i] ) / NUMDIMS; // this would give desnumgb if constant density (+0.231=2x desnumngb)
                                 else
                                     fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                                 
-                                if((P[i].NumNgb < 2*desnumngb)&&(P[i].NumNgb > 0.1*desnumngb))
+                                if((P.NumNgb[i] < 2*desnumngb)&&(P.NumNgb[i] > 0.1*desnumngb))
                                 {
-                                    double slope = P[i].DrkernNgbFactor;
+                                    double slope = P.DrkernNgbFactor[i];
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
                                     if(iter>=4)
-                                        if(P[i].DrkernNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                        if(P.DrkernNgbFactor[i]==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac < fac_lim+0.231)
                                     {
-                                        P[i].AGS_KernelRadius *= exp(fac); // more expensive function, but faster convergence
+                                        P.AGS_KernelRadius[i] *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
                                     {
-                                        P[i].AGS_KernelRadius *= exp(fac_lim+0.231);
+                                        P.AGS_KernelRadius[i] *= exp(fac_lim+0.231);
                                         // fac~0.26 leads to expected doubling of number if density is constant,
                                         //   insert this limiter here b/c we don't want to get *too* far from the answer (which we're close to)
                                     }
                                 }
                                 else
-                                    P[i].AGS_KernelRadius *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    P.AGS_KernelRadius[i] *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                             
                             if(Right[i] > 0 && Left[i] == 0)
                             {
-                                if (P[i].NumNgb > 1)
-                                    fac_lim = log( desnumngb / P[i].NumNgb ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
+                                if (P.NumNgb[i] > 1)
+                                    fac_lim = log( desnumngb / P.NumNgb[i] ) / NUMDIMS; // this would give desnumgb if constant density (-0.231=0.5x desnumngb)
                                 else
                                     fac_lim = 1.4; // factor ~66 increase in N_NGB in constant-density medium
                                 
                                 if (fac_lim < -1.535) fac_lim = -1.535; // decreasing N_ngb by factor ~100
                                 
-                                if((P[i].NumNgb < 2*desnumngb)&&(P[i].NumNgb > 0.1*desnumngb))
+                                if((P.NumNgb[i] < 2*desnumngb)&&(P.NumNgb[i] > 0.1*desnumngb))
                                 {
-                                    double slope = P[i].DrkernNgbFactor;
+                                    double slope = P.DrkernNgbFactor[i];
                                     if(iter>2 && slope<1) slope = 0.5*(slope+1);
                                     fac = fac_lim * slope; // account for derivative in making the 'corrected' guess
                                     if(iter>=10)
-                                        if(P[i].DrkernNgbFactor==1) fac *= 10; // tries to help with being trapped in small steps
+                                        if(P.DrkernNgbFactor[i]==1) fac *= 10; // tries to help with being trapped in small steps
                                     
                                     if(fac > fac_lim-0.231)
                                     {
-                                        P[i].AGS_KernelRadius *= exp(fac); // more expensive function, but faster convergence
+                                        P.AGS_KernelRadius[i] *= exp(fac); // more expensive function, but faster convergence
                                     }
                                     else
-                                        P[i].AGS_KernelRadius *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
+                                        P.AGS_KernelRadius[i] *= exp(fac_lim-0.231); // limiter to prevent --too-- far a jump in a single iteration
                                 }
                                 else
-                                    P[i].AGS_KernelRadius *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
+                                    P.AGS_KernelRadius[i] *= exp(fac_lim); // here we're not very close to the 'right' answer, so don't trust the (local) derivatives
                             }
                         } // closes if(Right[i] > 0 && Left[i] > 0) else clause
                         
                     } // closes if[particle_set_to_max/minrkern_flag]
                     /* resets for max/min values */
-                    if(P[i].AGS_KernelRadius < minsoft) P[i].AGS_KernelRadius = minsoft;
-                    if(particle_set_to_minrkern_flag==1) P[i].AGS_KernelRadius = minsoft;
-                    if(P[i].AGS_KernelRadius > maxsoft) P[i].AGS_KernelRadius = maxsoft;
-                    if(particle_set_to_maxrkern_flag==1) P[i].AGS_KernelRadius = maxsoft;
+                    if(P.AGS_KernelRadius[i] < minsoft) P.AGS_KernelRadius[i] = minsoft;
+                    if(particle_set_to_minrkern_flag==1) P.AGS_KernelRadius[i] = minsoft;
+                    if(P.AGS_KernelRadius[i] > maxsoft) P.AGS_KernelRadius[i] = maxsoft;
+                    if(particle_set_to_maxrkern_flag==1) P.AGS_KernelRadius[i] = maxsoft;
                 } // closes redo_particle
                 else
-                    P[i].TimeBin = -P[i].TimeBin - 1;	/* Mark as inactive */
+                    P.TimeBin[i] = -P.TimeBin[i] - 1;	/* Mark as inactive */
             } //  if(ags_density_isactive(i))
         } // npleft = 0; for (int i : ActiveParticleList)
         
@@ -523,7 +523,7 @@ void ags_density(void)
     /* mark as active again */
     for (int i : ActiveParticleList)
     {
-        if(P[i].TimeBin < 0) {P[i].TimeBin = -P[i].TimeBin - 1;}
+        if(P.TimeBin[i] < 0) {P.TimeBin[i] = -P.TimeBin[i] - 1;}
     }
 
     /* now that we are DONE iterating to find rkern, we can do the REAL final operations on the results */
@@ -531,21 +531,21 @@ void ags_density(void)
     {
         if(ags_density_isactive(i))
         {
-            if((P[i].Mass>0)&&(P[i].AGS_KernelRadius>0)&&(P[i].NumNgb>0))
+            if((P.Mass[i]>0)&&(P.AGS_KernelRadius[i]>0)&&(P.NumNgb[i]>0))
             {
                 double minsoft = ags_return_minsoft(i);
                 double maxsoft = ags_return_maxsoft(i);
                 minsoft = DMAX(minsoft , AGS_Prev[i]*AGS_DSOFT_TOL);
                 maxsoft = DMIN(maxsoft , AGS_Prev[i]/AGS_DSOFT_TOL);
-                if(P[i].AGS_KernelRadius >= maxsoft) {P[i].AGS_zeta = 0;} /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
+                if(P.AGS_KernelRadius[i] >= maxsoft) {P.AGS_zeta[i] = 0;} /* check that we're within the 'valid' range for adaptive softening terms, otherwise zeta=0 */
 
-                double z0 = 0.5 * P[i].AGS_zeta * P[i].AGS_KernelRadius / (NUMDIMS * P[i].Mass * P[i].NumNgb / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P[i].AGS_KernelRadius,NUMDIMS) )); // zeta before various prefactors
-                double h_eff = 2. * (KERNEL_CORE_SIZE*All.ForceSoftening[P[i].Type]); // force softening defines where Jeans pressure needs to kick in; prefactor = NJeans [=2 here]
-                double Prho = 0 * h_eff*h_eff/2.; if(P[i].Particle_DivVel>0) {Prho=-Prho;} // truelove criterion. NJeans[above] , gamma=2 for effective EOS when this dominates, rho=ma*na; h_eff here can be KernelRadius [P/rho~H^-1] or gravsoft_min to really enforce that, as MIN, with P/rho~H^-3; if-check makes it so this term always adds KE to the system, pumping it up
-                P[i].AGS_zeta = P[i].Mass*P[i].Mass * P[i].DrkernNgbFactor * ( z0 + Prho ); // force correction, including corrections for adaptive softenings and EOS terms
-                P[i].NumNgb = pow(P[i].NumNgb , 1./NUMDIMS); /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
+                double z0 = 0.5 * P.AGS_zeta[i] * P.AGS_KernelRadius[i] / (NUMDIMS * P.Mass[i] * P.NumNgb[i] / ( VOLUME_NORM_COEFF_FOR_NDIMS * pow(P.AGS_KernelRadius[i],NUMDIMS) )); // zeta before various prefactors
+                double h_eff = 2. * (KERNEL_CORE_SIZE*All.ForceSoftening[P.Type[i]]); // force softening defines where Jeans pressure needs to kick in; prefactor = NJeans [=2 here]
+                double Prho = 0 * h_eff*h_eff/2.; if(P.Particle_DivVel[i]>0) {Prho=-Prho;} // truelove criterion. NJeans[above] , gamma=2 for effective EOS when this dominates, rho=ma*na; h_eff here can be KernelRadius [P/rho~H^-1] or gravsoft_min to really enforce that, as MIN, with P/rho~H^-3; if-check makes it so this term always adds KE to the system, pumping it up
+                P.AGS_zeta[i] = P.Mass[i]*P.Mass[i] * P.DrkernNgbFactor[i] * ( z0 + Prho ); // force correction, including corrections for adaptive softenings and EOS terms
+                P.NumNgb[i] = pow(P.NumNgb[i] , 1./NUMDIMS); /* convert NGB to the more useful format, NumNgb^(1/NDIMS), which we can use to obtain the corrected particle sizes */
             } else {
-                P[i].AGS_zeta = 0; P[i].NumNgb = 0; P[i].AGS_KernelRadius = All.ForceSoftening[P[i].Type];
+                P.AGS_zeta[i] = 0; P.NumNgb[i] = 0; P.AGS_KernelRadius[i] = All.ForceSoftening[P.Type[i]];
             }
         }
     }
@@ -572,27 +572,27 @@ int ags_density_isactive(int i)
     int default_to_return = 0; // default to not being active - needs to be pro-actively 'activated' by some physics
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
     default_to_return = 1;
-    if(!((1 << P[i].Type) & (ADAPTIVE_GRAVSOFT_FORALL))) /* particle is NOT one of the designated 'adaptive' types */
+    if(!((1 << P.Type[i]) & (ADAPTIVE_GRAVSOFT_FORALL))) /* particle is NOT one of the designated 'adaptive' types */
     {
-        P[i].AGS_KernelRadius = All.ForceSoftening[P[i].Type];
-        P[i].AGS_zeta = 0;
+        P.AGS_KernelRadius[i] = All.ForceSoftening[P.Type[i]];
+        P.AGS_zeta[i] = 0;
         default_to_return = 0;
     } else {default_to_return = 1;} /* particle is AGS-active */
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || (ADAPTIVE_GRAVSOFT_FORALL & 1)
-    if(P[i].Type==0)
+    if(P.Type[i]==0)
     {
-        P[i].AGS_KernelRadius = P[i].KernelRadius; // gas sees gas, these are identical
+        P.AGS_KernelRadius[i] = P.KernelRadius[i]; // gas sees gas, these are identical
         default_to_return = 0; // don't actually need to do the loop //
     }
 #endif
 #ifdef DM_SIDM
-    if((1 << P[i].Type) & (DM_SIDM)) {default_to_return = 1;}
+    if((1 << P.Type[i]) & (DM_SIDM)) {default_to_return = 1;}
 #endif
 #if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
-    if(P[i].Type == 1) {default_to_return = 1;}
+    if(P.Type[i] == 1) {default_to_return = 1;}
 #endif
-    if(P[i].TimeBin < 0) {default_to_return = 0;} /* check our 'marker' for particles which have finished iterating to an KernelRadius solution (if they have, dont do them again) */
+    if(P.TimeBin[i] < 0) {default_to_return = 0;} /* check our 'marker' for particles which have finished iterating to an KernelRadius solution (if they have, dont do them again) */
     return default_to_return;
 }
     
@@ -605,7 +605,7 @@ double ags_return_maxsoft(int i)
     maxsoft = DMIN(maxsoft, 1e3 * 0.5 * All.Asmth[0]); /* no more than 1/2 the size of the largest PM cell, times a 'safety factor' which can be pretty big */
 #endif
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32) && defined(SINK_PARTICLES) && !defined(SINGLE_STAR_SINK_DYNAMICS)
-    if(P[i].Type == 5) {maxsoft = All.SinkMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
+    if(P.Type[i] == 5) {maxsoft = All.SinkMaxAccretionRadius  / All.cf_atime;}   // MaxAccretionRadius is now defined in params.txt in PHYSICAL units
 #endif
     return maxsoft;
 }
@@ -614,7 +614,7 @@ double ags_return_maxsoft(int i)
 /* routine to return the minimum allowed softening */
 double ags_return_minsoft(int i)
 {
-    double minsoft = All.ForceSoftening[P[i].Type]; // this is the user-specified minimum
+    double minsoft = All.ForceSoftening[P.Type[i]]; // this is the user-specified minimum
 #if !defined(ADAPTIVE_GRAVSOFT_FORALL)
     minsoft = DMIN(All.MinKernelRadius, minsoft);
 #endif
@@ -630,13 +630,13 @@ double INLINE_FUNC Get_Particle_Size_AGS(int i)
      don't have to re-compute it each time. That makes this function fast enough to
      call -inside- of loops (e.g. hydro computations) */
 #if (NUMDIMS == 1)
-    return 2.00000 * P[i].AGS_KernelRadius / P[i].NumNgb; // (2)^(1/1)
+    return 2.00000 * P.AGS_KernelRadius[i] / P.NumNgb[i]; // (2)^(1/1)
 #endif
 #if (NUMDIMS == 2)
-    return 1.77245 * P[i].AGS_KernelRadius / P[i].NumNgb; // (pi)^(1/2)
+    return 1.77245 * P.AGS_KernelRadius[i] / P.NumNgb[i]; // (pi)^(1/2)
 #endif
 #if (NUMDIMS == 3)
-    return 1.61199 * P[i].AGS_KernelRadius / P[i].NumNgb; // (4pi/3)^(1/3)
+    return 1.61199 * P.AGS_KernelRadius[i] / P.NumNgb[i]; // (4pi/3)^(1/3)
 #endif
 }
 
@@ -667,9 +667,9 @@ double get_particle_volume_ags(int j)
 double do_cbe_nvt_inversion_for_faces(int i)
 {
     /* initialize the matrix to be inverted */
-    MyDouble NV_T[3][3], Tinv[3][3]; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P[i].NV_T[j][k];}}
+    MyDouble NV_T[3][3], Tinv[3][3]; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k]=P.NV_T[i][j][k];}}
     /* want to work in dimensionless units for defining certain quantities robustly, so normalize out the units */
-    double dimensional_NV_T_normalizer = pow( P[i].KernelRadius , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
+    double dimensional_NV_T_normalizer = pow( P.KernelRadius[i] , 2-NUMDIMS ); /* this has the same dimensions as NV_T here */
     for(j=0;j<3;j++) {for(k=0;k<3;k++) {NV_T[j][k] /= dimensional_NV_T_normalizer;}} /* now NV_T should be dimensionless */
     /* Also, we want to be able to calculate the condition number of the matrix to be inverted, since
         this will tell us how robust our procedure is (and let us know if we need to improve the conditioning) */
@@ -685,7 +685,7 @@ double do_cbe_nvt_inversion_for_faces(int i)
         for(j=0;j<NUMDIMS;j++) {NV_T[j][j] += conditioning_term_to_add;} /* add the conditioning term which should make the matrix better-conditioned for subsequent use: this is a normalization times the identity matrix in the relevant number of dimensions */
         conditioning_term_to_add *= 1.2; /* multiply the conditioning term so it will grow and eventually satisfy our criteria */
     } // end of loop broken when condition number is sufficiently small
-    for(j=0;j<3;j++) {for(k=0;k<3;k++) {P[i].NV_T[j][k] = Tinv[j][k] / dimensional_NV_T_normalizer;}} // now P[i].NV_T holds the inverted matrix elements //
+    for(j=0;j<3;j++) {for(k=0;k<3;k++) {P.NV_T[i][j][k] = Tinv[j][k] / dimensional_NV_T_normalizer;}} // now P.NV_T[i] holds the inverted matrix elements //
     return ConditionNumber;
 }
 
@@ -700,7 +700,7 @@ double do_cbe_nvt_inversion_for_faces(int i)
   terms for particle types that do not fall into the 'hydro' category.
  -------------------------------------------------------------------------------------------------------- */
 #define CORE_FUNCTION_NAME AGSForce_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(AGSForce_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(AGSForce_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 struct kernel_AGSForce
@@ -745,36 +745,36 @@ struct INPUT_STRUCT_NAME
 /* routine to pass particle information to the actual evaluation sub-routines */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    in->Mass = P[i].Mass;
-    in->AGS_KernelRadius = P[i].AGS_KernelRadius;
-    in->Type = P[i].Type;
+    in->Mass = P.Mass[i];
+    in->AGS_KernelRadius = P.AGS_KernelRadius[i];
+    in->Type = P.Type[i];
     in->dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     int k,k2; k=0; k2=0;
-    in->Pos = P[i].Pos;
-    in->Vel = P[i].Vel;
+    in->Pos = P.Pos[i];
+    in->Vel = P.Vel[i];
 #if defined(AGS_FACE_CALCULATION_IS_ACTIVE)
     in->V_i = get_particle_volume_ags(i);
-    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->NV_T[k][k2] = P[i].NV_T[k][k2];}}
+    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->NV_T[k][k2] = P.NV_T[i][k][k2];}}
 #endif
 #if defined(DM_FUZZY)
-    for(k=0;k<3;k++) {in->AGS_Gradients_Density[k] = P[i].AGS_Gradients_Density[k];}
-    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Density[k][k2] = P[i].AGS_Gradients2_Density[k][k2];}}
-    in->AGS_Numerical_QuantumPotential = P[i].AGS_Numerical_QuantumPotential;
+    for(k=0;k<3;k++) {in->AGS_Gradients_Density[k] = P.AGS_Gradients_Density[i][k];}
+    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Density[k][k2] = P.AGS_Gradients2_Density[i][k][k2];}}
+    in->AGS_Numerical_QuantumPotential = P.AGS_Numerical_QuantumPotential[i];
 #if (DM_FUZZY > 0)
-    in->AGS_Psi_Re = P[i].AGS_Psi_Re_Pred * P[i].AGS_Density / P[i].Mass;
-    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Re[k] = P[i].AGS_Gradients_Psi_Re[k];}
-    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Re[k][k2] = P[i].AGS_Gradients2_Psi_Re[k][k2];}}
-    in->AGS_Psi_Im = P[i].AGS_Psi_Im_Pred * P[i].AGS_Density / P[i].Mass;
-    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Im[k] = P[i].AGS_Gradients_Psi_Im[k];}
-    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Im[k][k2] = P[i].AGS_Gradients2_Psi_Im[k][k2];}}
+    in->AGS_Psi_Re = P.AGS_Psi_Re_Pred[i] * P.AGS_Density[i] / P.Mass[i];
+    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Re[k] = P.AGS_Gradients_Psi_Re[i][k];}
+    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Re[k][k2] = P.AGS_Gradients2_Psi_Re[i][k][k2];}}
+    in->AGS_Psi_Im = P.AGS_Psi_Im_Pred[i] * P.AGS_Density[i] / P.Mass[i];
+    for(k=0;k<3;k++) {in->AGS_Gradients_Psi_Im[k] = P.AGS_Gradients_Psi_Im[i][k];}
+    for(k=0;k<3;k++) {for(k2=0;k2<3;k2++) {in->AGS_Gradients2_Psi_Im[k][k2] = P.AGS_Gradients2_Psi_Im[i][k][k2];}}
 #endif
 #endif
 #if defined(CBE_INTEGRATOR)
-    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {in->CBE_basis_moments[k][k2] = P[i].CBE_basis_moments[k][k2];}}
+    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {in->CBE_basis_moments[k][k2] = P.CBE_basis_moments[i][k][k2];}}
 #endif
 #if defined(DM_SIDM)
-    in->dtime_sidm = P[i].dtime_sidm;
-    in->ID = P[i].ID;
+    in->dtime_sidm = P.dtime_sidm[i];
+    in->ID = P.ID[i];
 #ifdef GRAIN_COLLISIONS
     in->Grain_CrossSection_PerUnitMass = return_grain_cross_section_per_unit_mass(i);
 #endif
@@ -809,22 +809,22 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 {
     int k,k2; k=0; k2=0;
 #if defined(DM_SIDM)
-    P[i].Vel += out->sidm_kick; P[i].dp += out->sidm_kick * P[i].Mass;
-    MIN_ADD(P[i].dtime_sidm, out->dtime_sidm, mode);
-    P[i].NInteractions += out->si_count;
+    P.Vel[i] += out->sidm_kick; P.dp[i] += out->sidm_kick * P.Mass[i];
+    MIN_ADD(P.dtime_sidm[i], out->dtime_sidm, mode);
+    P.NInteractions[i] += out->si_count;
 #endif
 #ifdef DM_FUZZY
-    P[i].GravAccel += out->acc; // currently incompatible with hermite integrator -- need to update to Other_Accel
-    ASSIGN_ADD_PRESET(P[i].AGS_Dt_Numerical_QuantumPotential,out->AGS_Dt_Numerical_QuantumPotential,mode);
+    P.GravAccel[i] += out->acc; // currently incompatible with hermite integrator -- need to update to Other_Accel
+    ASSIGN_ADD_PRESET(P.AGS_Dt_Numerical_QuantumPotential[i],out->AGS_Dt_Numerical_QuantumPotential,mode);
 #if (DM_FUZZY > 0)
-    ASSIGN_ADD_PRESET(P[i].AGS_Dt_Psi_Re,out->AGS_Dt_Psi_Re,mode);
-    ASSIGN_ADD_PRESET(P[i].AGS_Dt_Psi_Im,out->AGS_Dt_Psi_Im,mode);
-    ASSIGN_ADD_PRESET(P[i].AGS_Dt_Psi_Mass,out->AGS_Dt_Psi_Mass,mode);
+    ASSIGN_ADD_PRESET(P.AGS_Dt_Psi_Re[i],out->AGS_Dt_Psi_Re,mode);
+    ASSIGN_ADD_PRESET(P.AGS_Dt_Psi_Im[i],out->AGS_Dt_Psi_Im,mode);
+    ASSIGN_ADD_PRESET(P.AGS_Dt_Psi_Mass[i],out->AGS_Dt_Psi_Mass,mode);
 #endif
 #endif
 #ifdef CBE_INTEGRATOR
-    MAX_ADD(P[i].AGS_vsig,out->AGS_vsig,mode);
-    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {ASSIGN_ADD_PRESET(P[i].CBE_basis_moments_dt[k][k2],out->CBE_basis_moments_dt[k][k2],mode);}}
+    MAX_ADD(P.AGS_vsig[i],out->AGS_vsig,mode);
+    for(k=0;k<CBE_INTEGRATOR_NBASIS;k++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {ASSIGN_ADD_PRESET(P.CBE_basis_moments_dt[i][k][k2],out->CBE_basis_moments_dt[k][k2],mode);}}
 #endif
 }
 
@@ -833,12 +833,12 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 int AGSForce_isactive(int i);
 int AGSForce_isactive(int i)
 {
-    if(P[i].TimeBin < 0) return 0; /* check our 'marker' for particles which have finished iterating to an KernelRadius solution (if they have, dont do them again) */
+    if(P.TimeBin[i] < 0) return 0; /* check our 'marker' for particles which have finished iterating to an KernelRadius solution (if they have, dont do them again) */
 #ifdef DM_SIDM
-    if((1 << P[i].Type) & (DM_SIDM)) return 1;
+    if((1 << P.Type[i]) & (DM_SIDM)) return 1;
 #endif
 #if defined(DM_FUZZY) || defined(CBE_INTEGRATOR)
-    if(P[i].Type == 1) return 1;
+    if(P.Type[i] == 1) return 1;
 #endif
     return 0; // default to no-action, need to affirm calculation above //
 }
@@ -874,14 +874,14 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if((P[j].Mass <= 0)||(P[j].AGS_KernelRadius <= 0)) continue; /* make sure neighbor is valid */
+                if((P.Mass[j] <= 0)||(P.AGS_KernelRadius[j] <= 0)) continue; /* make sure neighbor is valid */
                 /* calculate position relative to target */
-                kernel.dp = local.Pos - P[j].Pos;
+                kernel.dp = local.Pos - P.Pos[j];
                 nearest_xyz(kernel.dp); /*  now find the closest image in the given box size  */
                 r2 = kernel.dp.norm_sq();
                 if(r2 <= 0) continue;
                 kernel.r = sqrt(r2);
-                kernel.h_j = P[j].AGS_KernelRadius;
+                kernel.h_j = P.AGS_KernelRadius[j];
 #if defined(DM_SIDM)
                 if(kernel.r > kernel.h_i+kernel.h_j) continue;
 #else
@@ -896,7 +896,7 @@ int AGSForce_evaluate(int target, int mode, int *exportflag, int *exportnodecoun
                 {
                     double Vel_j_k;
                     #pragma omp atomic read
-                    Vel_j_k = P[j].Vel[k]; // this can get modified below, so we need to read it thread-safe now
+                    Vel_j_k = P.Vel[j][k]; // this can get modified below, so we need to read it thread-safe now
                     
                     kernel.dv[k] = local.Vel[k] - Vel_j_k;
                     if(All.ComovingIntegrationOn) {kernel.dv[k] += All.cf_hubble_a * kernel.dp[k]/All.cf_a2inv;}
@@ -928,11 +928,11 @@ void AGSForce_calc(void)
     PRINT_STATUS(" ..entering AGS-Force calculation [as hydro loop for non-gas elements]\n");
     /* before doing any operations, need to zero the appropriate memory so we can correctly do pair-wise operations */
 #if defined(DM_SIDM)
-    {int i; for (int i : ActiveParticleList) {P[i].dtime_sidm = 10.*GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);}}
+    {int i; for (int i : ActiveParticleList) {P.dtime_sidm[i] = 10.*GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);}}
 #endif
 #ifdef CBE_INTEGRATOR
     /* need to zero values for active particles (which will be re-calculated) before they are added below */
-    //for (int i : ActiveParticleList) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P[i].CBE_basis_moments_dt[k1][k2] = 0;}}}
+    //for (int i : ActiveParticleList) {int k1,k2; for(k1=0;k1<CBE_INTEGRATOR_NBASIS;k1++) {for(k2=0;k2<CBE_INTEGRATOR_NMOMENTS;k2++) {P.CBE_basis_moments_dt[i][k1][k2] = 0;}}}
 #endif
     #include "../system/code_block_xchange_perform_ops_malloc.h" /* this calls the large block of code which contains the memory allocations for the MPI/OPENMP/Pthreads parallelization block which must appear below */
     #include "../system/code_block_xchange_perform_ops.h" /* this calls the large block of code which actually contains all the loops, MPI/OPENMP/Pthreads parallelization */

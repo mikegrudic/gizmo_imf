@@ -65,7 +65,7 @@ void compute_potential(void)
     DataIndexTable = (struct data_index *) mymalloc("DataIndexTable", All.BunchSize * sizeof(struct data_index));
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     
-    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+    for(i = 0; i < NumPart; i++) {if(P.Ti_current[i] != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
     i = 0; /* begin with this index */
     do
     {
@@ -91,11 +91,11 @@ void compute_potential(void)
         {
             place = DataIndexTable[j].Index;
             
-            GravDataIn[j].Pos = P[place].Pos;
-            GravDataIn[j].Type = P[place].Type;
+            GravDataIn[j].Pos = P.Pos[place];
+            GravDataIn[j].Type = P.Type[place];
             GravDataIn[j].Soft = ForceSoftening_KernelRadius(place);
-            GravDataIn[j].OldAcc = P[place].OldAcc;
-            GravDataIn[j].Mass = P[place].Mass;
+            GravDataIn[j].OldAcc = P.OldAcc[place];
+            GravDataIn[j].Mass = P.Mass[place];
             for(k = 0; k < NODELISTLENGTH; k++) {GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];}
         }
         
@@ -140,7 +140,7 @@ void compute_potential(void)
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-            P[place].Potential += PotDataOut[j].Potential;
+            P.Potential[place] += PotDataOut[j].Potential;
         }
         myfree(PotDataOut);
         myfree(PotDataResult);
@@ -155,14 +155,14 @@ void compute_potential(void)
 #ifndef ADAPTIVE_GRAVSOFT_FORALL
     for(i = 0; i < NumPart; i++) /* add correction to exclude self-potential [actually well-defined with adaptive force softenings, so keep it there] */
     {
-        P[i].Potential -= P[i].Mass / ForceSoftening_KernelRadius(i) * kernel_gravity(0,1,1,-1); /* remove self-potential */
+        P.Potential[i] -= P.Mass[i] / ForceSoftening_KernelRadius(i) * kernel_gravity(0,1,1,-1); /* remove self-potential */
 #ifdef BOX_PERIODIC
-        if(All.ComovingIntegrationOn) {P[i].Potential -= 2.8372975 * pow(P[i].Mass, 2.0 / 3) * pow(All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
+        if(All.ComovingIntegrationOn) {P.Potential[i] -= 2.8372975 * pow(P.Mass[i], 2.0 / 3) * pow(All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G), 1.0 / 3);}
 #endif
     }
 #endif
     
-    for(i = 0; i < NumPart; i++) {P[i].Potential *= All.G;} /* multiply with the gravitational constant for units */
+    for(i = 0; i < NumPart; i++) {P.Potential[i] *= All.G;} /* multiply with the gravitational constant for units */
     
 #ifdef PMGRID
 #ifdef BOX_PERIODIC
@@ -203,8 +203,8 @@ void compute_potential(void)
 #ifndef BOX_PERIODIC
         fac = -0.5 * All.OmegaMatter * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits; /* special factor needed if running cosmological simulation in non-periodic box [special use cases] */
         for(i = 0; i < NumPart; i++) {
-            double r2 = P[i].Pos.norm_sq();
-            P[i].Potential += fac * r2;
+            double r2 = P.Pos[i].norm_sq();
+            P.Potential[i] += fac * r2;
         }
 #endif
     }
@@ -214,14 +214,14 @@ void compute_potential(void)
         if(fac != 0)
         {
             for(i = 0; i < NumPart; i++) {
-                double r2 = P[i].Pos.norm_sq();
-                P[i].Potential += fac * r2;
+                double r2 = P.Pos[i].norm_sq();
+                P.Potential[i] += fac * r2;
             }
         }
     }
     PRINT_STATUS("potential done");
 #else
-    for(i = 0; i < NumPart; i++) {P[i].Potential = 0;} // self-gravity is off
+    for(i = 0; i < NumPart; i++) {P.Potential[i] = 0;} // self-gravity is off
 #endif
     MPI_Barrier(MPI_COMM_WORLD); CPU_Step[CPU_POTENTIAL] += measure_time(); // compute timings
 }

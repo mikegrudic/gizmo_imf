@@ -208,8 +208,98 @@ void restart(int modus)
 	    }
 
 
-	  /* Particle data  */
-	  byten(&P[0], NumPart * sizeof(struct particle_data), modus);
+	  /* Particle data  (per-field for SoA layout) */
+	  byten(P.Type, NumPart * sizeof(short int), modus);
+	  byten(P.TimeBin, NumPart * sizeof(short int), modus);
+	  byten(P.ID, NumPart * sizeof(MyIDType), modus);
+	  byten(P.ID_child_number, NumPart * sizeof(MyIDType), modus);
+#ifndef SINK_WIND_SPAWN
+	  byten(P.ID_generation, NumPart * sizeof(int), modus);
+#else
+	  byten(P.ID_generation, NumPart * sizeof(MyIDType), modus);
+#endif
+	  byten(P.Ti_begstep, NumPart * sizeof(integertime), modus);
+	  byten(P.Ti_current, NumPart * sizeof(integertime), modus);
+	  byten(P.Pos, NumPart * sizeof(Vec3<MyDouble>), modus);
+	  byten(P.Mass, NumPart * sizeof(MyDouble), modus);
+	  byten(P.Vel, NumPart * sizeof(Vec3<MyDouble>), modus);
+	  byten(P.dp, NumPart * sizeof(Vec3<MyDouble>), modus);
+	  byten(P.Particle_DivVel, NumPart * sizeof(MyFloat), modus);
+	  byten(P.GravAccel, NumPart * sizeof(Vec3<MyDouble>), modus);
+#ifdef PMGRID
+	  byten(P.GravPM, NumPart * sizeof(Vec3<MyFloat>), modus);
+#endif
+	  byten(P.OldAcc, NumPart * sizeof(MyFloat), modus);
+#ifdef SPECIAL_POINT_MOTION
+	  byten(P.Acc_Total_PrevStep, NumPart * sizeof(Vec3<MyFloat>), modus);
+#endif
+#ifdef HERMITE_INTEGRATION
+	  byten(P.Hermite_OldAcc, NumPart * sizeof(Vec3<MyFloat>), modus);
+	  byten(P.OldPos, NumPart * sizeof(Vec3<MyFloat>), modus);
+	  byten(P.OldVel, NumPart * sizeof(Vec3<MyFloat>), modus);
+	  byten(P.OldJerk, NumPart * sizeof(Vec3<MyFloat>), modus);
+	  byten(P.AccretedThisTimestep, NumPart * sizeof(short int), modus);
+#endif
+#if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
+	  byten(P.Potential, NumPart * sizeof(MyFloat), modus);
+#if defined(EVALPOTENTIAL) && defined(PMGRID)
+	  byten(P.PM_Potential, NumPart * sizeof(MyFloat), modus);
+#endif
+#endif
+#if defined(COMPUTE_TIDAL_TENSOR_IN_GRAVTREE)
+	  byten(P.tidal_tensorps, NumPart * sizeof(SymmetricTensor2<MyFloat>), modus);
+#ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
+	  byten(P.tidal_tensor_mag_prev, NumPart * sizeof(MyFloat), modus);
+	  byten(P.tidal_tensorps_prevstep, NumPart * sizeof(SymmetricTensor2<MyFloat>), modus);
+	  byten(P.tidal_zeta, NumPart * sizeof(MyFloat), modus);
+#endif
+#ifdef PMGRID
+	  byten(P.tidal_tensorpsPM, NumPart * sizeof(SymmetricTensor2<MyFloat>), modus);
+#endif
+#endif
+#ifdef COMPUTE_JERK_IN_GRAVTREE
+	  byten(P.GravJerk, NumPart * sizeof(Vec3<double>), modus);
+#endif
+#ifdef GALSF
+	  byten(P.StellarAge, NumPart * sizeof(MyFloat), modus);
+#endif
+#ifdef METALS
+	  byten(P.Metallicity, NumPart * sizeof(MyFloat[NUM_METAL_SPECIES]), modus);
+#endif
+	  byten(P.KernelRadius, NumPart * sizeof(MyFloat), modus);
+	  byten(P.NumNgb, NumPart * sizeof(MyFloat), modus);
+	  byten(P.DrkernNgbFactor, NumPart * sizeof(MyFloat), modus);
+#ifdef DO_DENSITY_AROUND_NONGAS_PARTICLES
+	  byten(P.DensityAroundParticle, NumPart * sizeof(MyFloat), modus);
+#endif
+#if defined(DO_DENSITY_AROUND_NONGAS_PARTICLES) || defined(COOLING)
+	  byten(P.GradRho, NumPart * sizeof(Vec3<MyFloat>), modus);
+#endif
+#if defined(SINK_PARTICLES)
+	  byten(P.SwallowID, NumPart * sizeof(MyIDType), modus);
+	  byten(P.IndexMapToTempStruc, NumPart * sizeof(int), modus);
+	  byten(P.Sink_Mass, NumPart * sizeof(MyFloat), modus);
+	  byten(P.Sink_Formation_Mass, NumPart * sizeof(MyFloat), modus);
+	  byten(P.Sink_Mdot, NumPart * sizeof(MyFloat), modus);
+	  byten(P.Sink_TimeBinGasNeighbor, NumPart * sizeof(int), modus);
+#ifdef SINK_ALPHADISK_ACCRETION
+	  byten(P.Sink_Mass_Reservoir, NumPart * sizeof(MyFloat), modus);
+#endif
+#ifdef SINK_FOLLOW_ACCRETED_ANGMOM
+	  byten(P.Sink_Specific_AngMom, NumPart * sizeof(Vec3<MyFloat>), modus);
+#endif
+#endif
+	  byten(P.GravCost, NumPart * sizeof(float[GRAVCOSTLEVELS]), modus);
+#ifdef WAKEUP
+	  byten(P.dt_step, NumPart * sizeof(integertime), modus);
+#endif
+#if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
+	  byten(P.AGS_zeta, NumPart * sizeof(MyFloat), modus);
+#endif
+#ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
+	  byten(P.AGS_KernelRadius, NumPart * sizeof(MyDouble), modus);
+	  byten(P.AGS_vsig, NumPart * sizeof(MyDouble), modus);
+#endif
 
 	  in(&N_gas, modus);
 	  if(N_gas > 0)
@@ -220,8 +310,93 @@ void restart(int modus)
 		  printf("fatal error\n");
 		  endrun(222);
 		}
-	      /* fluid-cell data  */
-	      byten(&CellP[0], N_gas * sizeof(struct gas_cell_data), modus);
+	      /* fluid-cell data  (per-field for SoA layout) */
+	      byten(CellP.Density, N_gas * sizeof(MyDouble), modus);
+#ifdef HYDRO_MESHLESS_FINITE_VOLUME
+	      byten(CellP.MassTrue, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.dMass, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.DtMass, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.GravWorkTerm, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.ParticleVel, N_gas * sizeof(Vec3<MyDouble>), modus);
+#endif
+	      byten(CellP.Pressure, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.InternalEnergy, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.InternalEnergyPred, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.DtInternalEnergy, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.VelPred, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.HydroAccel, N_gas * sizeof(Vec3<MyDouble>), modus);
+#ifdef MAGNETIC
+	      byten(CellP.Face_Area, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.BPred, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.BField_prerefinement, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.B, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.DtB, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.divB, N_gas * sizeof(MyFloat), modus);
+#ifdef DIVBCLEANING_DEDNER
+	      byten(CellP.DtB_PhiCorr, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.PhiPred, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.Phi, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.DtPhi, N_gas * sizeof(MyDouble), modus);
+#endif
+#endif
+#ifdef COSMIC_RAY_FLUID
+	      byten(CellP.CosmicRayEnergy, N_gas * sizeof(MyFloat[N_CR_PARTICLE_BINS]), modus);
+	      byten(CellP.CosmicRayEnergyPred, N_gas * sizeof(MyFloat[N_CR_PARTICLE_BINS]), modus);
+	      byten(CellP.DtCosmicRayEnergy, N_gas * sizeof(MyFloat[N_CR_PARTICLE_BINS]), modus);
+	      byten(CellP.CosmicRayDiffusionCoeff, N_gas * sizeof(MyFloat[N_CR_PARTICLE_BINS]), modus);
+#ifdef RT_EVOLVE_FLUX
+	      byten(CellP.CosmicRayFlux, N_gas * sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]), modus);
+	      byten(CellP.CosmicRayFluxPred, N_gas * sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]), modus);
+#endif
+#endif
+	      byten(CellP.NV_T, N_gas * sizeof(SymmetricTensor2<MyDouble>), modus);
+	      byten(CellP.NV_T_face_weights, N_gas * sizeof(Vec3<MyDouble>), modus);
+	      byten(CellP.ConditionNumber, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.FaceClosureError, N_gas * sizeof(MyDouble), modus);
+	      byten(CellP.MaxSignalVel, N_gas * sizeof(MyFloat), modus);
+	      byten(CellP.recent_refinement_flag, N_gas * sizeof(int), modus);
+#ifdef GALSF
+	      byten(CellP.Sfr, N_gas * sizeof(MyFloat), modus);
+#endif
+#ifdef COOLING
+#ifndef CHIMES
+	      byten(CellP.Ne, N_gas * sizeof(MyFloat), modus);
+#endif
+#endif
+#if defined(RADTRANSFER)
+	      byten(CellP.ET, N_gas * sizeof(SymmetricTensor2<MyFloat>[N_RT_FREQ_BINS]), modus);
+	      byten(CellP.Rad_E_gamma, N_gas * sizeof(MyFloat[N_RT_FREQ_BINS]), modus);
+	      byten(CellP.Rad_Kappa, N_gas * sizeof(MyFloat[N_RT_FREQ_BINS]), modus);
+#ifdef RT_EVOLVE_ENERGY
+	      byten(CellP.Rad_E_gamma_Pred, N_gas * sizeof(MyFloat[N_RT_FREQ_BINS]), modus);
+	      byten(CellP.Dt_Rad_E_gamma, N_gas * sizeof(MyFloat[N_RT_FREQ_BINS]), modus);
+#endif
+#ifdef RT_EVOLVE_FLUX
+	      byten(CellP.Rad_Flux, N_gas * sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]), modus);
+	      byten(CellP.Rad_Flux_Pred, N_gas * sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]), modus);
+	      byten(CellP.Dt_Rad_Flux, N_gas * sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]), modus);
+#endif
+#ifdef RT_INFRARED
+	      byten(CellP.Radiation_Temperature, N_gas * sizeof(MyFloat), modus);
+	      byten(CellP.Dust_Temperature, N_gas * sizeof(MyFloat), modus);
+#endif
+#endif
+#ifdef EOS_GENERAL
+	      byten(CellP.SoundSpeed, N_gas * sizeof(MyFloat), modus);
+#ifdef EOS_CARRIES_TEMPERATURE
+	      byten(CellP.Temperature, N_gas * sizeof(MyFloat), modus);
+#endif
+#ifdef EOS_CARRIES_GAMMA
+	      byten(CellP.Gamma, N_gas * sizeof(MyFloat), modus);
+#endif
+#ifdef EOS_CARRIES_YE
+	      byten(CellP.Ye, N_gas * sizeof(MyFloat), modus);
+#endif
+#ifdef EOS_CARRIES_ABAR
+	      byten(CellP.Abar, N_gas * sizeof(MyFloat), modus);
+#endif
+#endif
+	      /* Note: gradient sub-struct and other transient fields are recomputed after restart */
 
 #ifdef CHIMES 
 	      gasAbundancesBuf = (ChimesFloat *) malloc(N_gas * ChimesGlobalVars.totalNumberOfSpecies * sizeof(ChimesFloat));

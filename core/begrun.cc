@@ -58,8 +58,8 @@ void begrun(void)
       }
 #endif
 
-      printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_data));
-      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct gas_cell_data));
+      printf("\nSize of particle structure       %d  [bytes]\n", (int) sizeof(struct particle_soa));
+      printf("Size of hydro-cell structure   %d  [bytes]\n\n", (int) sizeof(struct cell_soa));
 
     }
 
@@ -437,8 +437,8 @@ void begrun(void)
     int i;
     for(i = 0; i < NumPart; i++)
     {
-      P[i].Pos[2] = P[i].Vel[2] = P[i].GravAccel[2] = 0;
-      if(P[i].Type == 0) {CellP[i].VelPred[2] = CellP[i].HydroAccel[2] = 0;}
+      P.Pos[i][2] = P.Vel[i][2] = P.GravAccel[i][2] = 0;
+      if(P.Type[i] == 0) {CellP.VelPred[i][2] = CellP.HydroAccel[i][2] = 0;}
     }
 #endif
 #endif
@@ -447,7 +447,7 @@ void begrun(void)
     single_star_SN_init_directions();
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-    {int i; for(i=0;i<NumPart;i++) {CellP[i].Rad_Accel = {};}}
+    {int i; for(i=0;i<NumPart;i++) {CellP.Rad_Accel[i] = {};}}
 #endif
 #ifdef RADTRANSFER
 #if defined(RT_EVOLVE_INTENSITIES)
@@ -2840,12 +2840,12 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
 
     for(i = 0; i < NumPart; i++)
 	{
-        P[i].Ti_begstep /= 2;
-        P[i].Ti_current /= 2;
-        if(P[i].TimeBin > 0)
+        P.Ti_begstep[i] /= 2;
+        P.Ti_current[i] /= 2;
+        if(P.TimeBin[i] > 0)
 	    {
-	      P[i].TimeBin--;
-	      if(P[i].TimeBin <= 0) {printf("Attempted to restructure integer timeline but ran into an error in readjust_timebase(). The minimum timebin for particle %d has been reached -- need smaller timesteps. Exiting.\n", i); endrun(8765);}
+	      P.TimeBin[i]--;
+	      if(P.TimeBin[i] <= 0) {printf("Attempted to restructure integer timeline but ran into an error in readjust_timebase(). The minimum timebin for particle %d has been reached -- need smaller timesteps. Exiting.\n", i); endrun(8765);}
 	    }
 	}
     All.Ti_nextlineofsight /= 2;

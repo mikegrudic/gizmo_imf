@@ -6,26 +6,11 @@
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
 
-
-/* This routine allocates memory for particle storage, both the collisionless and the fluid particles.
- * The memory for the ordered binary tree of the timeline is also allocated.
- */
-/*!
- * This file was originally part of the GADGET3 code developed by
- * Volker Springel. The code has been modified
- * in part (cleaned up a bit, dealt with some newer memory
- * structures and allocation strategies) by Phil Hopkins
- * (phopkins@caltech.edu) for GIZMO.
- */
-
 void allocate_memory(void)
 {
   size_t bytes;
-
   double bytes_tot = 0;
-
   int NTaskTimesThreads;
-
   NTaskTimesThreads = maxThreads * NTask;
 
   Exportflag = (int *) mymalloc("Exportflag", NTaskTimesThreads * sizeof(int));
@@ -41,50 +26,28 @@ void allocate_memory(void)
   bytes_tot += bytes;
 
   ActiveParticleList.reserve(All.MaxPart);
-
   NextInTimeBin.resize(All.MaxPart);
   PrevInTimeBin.resize(All.MaxPart);
 
-
   if(All.MaxPart > 0)
     {
-      if(!(P = (struct particle_data *) mymalloc("ParticleData_P", bytes = All.MaxPart * sizeof(struct particle_data))))
-	{
-	  printf("failed to allocate memory for particle data storage structure `P' (%g MB).\n", bytes / (1024.0 * 1024.0));
-	  endrun(1);
-	}
-      bytes_tot += bytes;
-
-      if(ThisTask == 0) {printf("Allocated %g MByte for particle data storage.\n", bytes_tot / (1024.0 * 1024.0));}
+      allocate_P(P, All.MaxPart, "P");
+      if(ThisTask == 0) {printf("Allocated SoA particle data storage for %d particles.\n", All.MaxPart);}
     }
 
   if(All.MaxPartGas > 0)
     {
-      bytes_tot = 0;
+      allocate_CellP(CellP, All.MaxPartGas, "CellP");
+      if(ThisTask == 0) {printf("Allocated SoA gas cell data storage for %d gas particles.\n", All.MaxPartGas);}
 
-      if(!(CellP = (struct gas_cell_data *) mymalloc("GasCellData_P", bytes = All.MaxPartGas * sizeof(struct gas_cell_data))))
-    {
-	  printf("failed to allocate memory for gas cell data storage structure (%g MB).\n", bytes / (1024.0 * 1024.0));
+#ifdef CHIMES
+      if (!(ChimesGasVars = (struct gasVariables *) mymalloc("gasVars", bytes = All.MaxPartGas * sizeof(struct gasVariables))))
+	{
+	  printf("failed to allocate memory for 'ChimesGasVars' (%g MB).\n", bytes / (1024.0 * 1024.0));
 	  endrun(1);
 	}
       bytes_tot += bytes;
-
-      if(ThisTask == 0) {printf("Allocated %g MByte for storage of hydro data.\n", bytes_tot / (1024.0 * 1024.0));}
-
-#ifdef CHIMES 
-      if (!(ChimesGasVars = (struct gasVariables *) mymalloc("gasVars", bytes = All.MaxPartGas * sizeof(struct gasVariables)))) 
-	{
-	  printf("failed to allocate memory for 'ChimesGasVars' (%g MB).\n", bytes / (1024.0 * 1024.0));
-	  endrun(1); 
-	}
-      bytes_tot += bytes; 
-
-      if(ThisTask == 0)
-	printf("Allocated %g MByte for storage of ChimesGasVars data.\n", bytes_tot / (1024.0 * 1024.0));
+      if(ThisTask == 0) printf("Allocated %g MByte for storage of ChimesGasVars data.\n", bytes_tot / (1024.0 * 1024.0));
 #endif
     }
-
-
-
-
 }

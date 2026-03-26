@@ -39,32 +39,32 @@
 double ForceSoftening_KernelRadius(int p)
 {
 #ifdef GALSF_MERGER_STARCLUSTER_PARTICLES
-    if(P[p].Type == 4) {return P[p].StarParticleEffectiveSize;} // this variable is defined in force softening terms
-    //if(P[p].Type == 4) {return All.ForceSoftening[4] * pow(P[p].Mass / (0.5*(All.MaxMassForParticleSplit/3.01+All.MinMassForParticleMerger/0.49)),0.333);} // alternative 'adaptive' version for constant-resolution runs
-    //if(P[p].Type == 4) {return All.ForceSoftening[4] * pow(P[p].Mass*UNIT_MASS_IN_SOLAR / (GALSF_MERGER_STARCLUSTER_PARTICLES),0.333);}
+    if(P.Type[p] == 4) {return P.StarParticleEffectiveSize[p];} // this variable is defined in force softening terms
+    //if(P.Type[p] == 4) {return All.ForceSoftening[4] * pow(P.Mass[p] / (0.5*(All.MaxMassForParticleSplit/3.01+All.MinMassForParticleMerger/0.49)),0.333);} // alternative 'adaptive' version for constant-resolution runs
+    //if(P.Type[p] == 4) {return All.ForceSoftening[4] * pow(P.Mass[p]*UNIT_MASS_IN_SOLAR / (GALSF_MERGER_STARCLUSTER_PARTICLES),0.333);}
 #endif
     
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P[p].AGS_KernelRadius;}
+    if((1 << P.Type[p]) & (ADAPTIVE_GRAVSOFT_FORALL)) {return P.AGS_KernelRadius[p];}
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS) || defined(SELFGRAVITY_OFF) /* softening scale still appears in timestep criterion for problems without self-gravity, so set it adaptively */
 #ifdef ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT
-    if(P[p].Type == 0) {return DMIN(P[p].KernelRadius, ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
+    if(P.Type[p] == 0) {return DMIN(P.KernelRadius[p], ADAPTIVE_GRAVSOFT_MAX_SOFT_HARD_LIMIT/All.cf_atime);}
 #else
-    if(P[p].Type == 0) {return P[p].KernelRadius;}
+    if(P.Type[p] == 0) {return P.KernelRadius[p];}
 #endif
 #endif
 
 #if defined(SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM)
-    if(P[p].Type == 4) {return All.ForceSoftening[P[p].Type] * DMIN(100., DMAX(1., pow(P[p].Mass*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
+    if(P.Type[p] == 4) {return All.ForceSoftening[P.Type[p]] * DMIN(100., DMAX(1., pow(P.Mass[p]*UNIT_MASS_IN_SOLAR/100. , 0.33)));}
 #endif
 
 #if defined(ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION) /* still playing with criterion below, highly experimental for now */
-    if((1 << P[p].Type) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) {if((P[p].tidal_tensor_mag_prev>0) && (All.Time>All.TimeBegin)) {return DMIN(1.e2*All.ForceSoftening[P[p].Type] , DMAX(All.ForceSoftening[P[p].Type] , All.ForceSoftening[P[p].Type] + 1.25 * pow( (All.DesNumNgb * All.G * P[p].Mass / P[p].tidal_tensor_mag_prev) , 1./3. )));} else {return 100.*All.ForceSoftening[P[p].Type];}}
+    if((1 << P.Type[p]) & (ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION)) {if((P.tidal_tensor_mag_prev[p]>0) && (All.Time>All.TimeBegin)) {return DMIN(1.e2*All.ForceSoftening[P.Type[p]] , DMAX(All.ForceSoftening[P.Type[p]] , All.ForceSoftening[P.Type[p]] + 1.25 * pow( (All.DesNumNgb * All.G * P.Mass[p] / P.tidal_tensor_mag_prev[p]) , 1./3. )));} else {return 100.*All.ForceSoftening[P.Type[p]];}}
 #endif
 
-    return All.ForceSoftening[P[p].Type]; // this is the default if nothing was active above
+    return All.ForceSoftening[P.Type[p]]; // this is the default if nothing was active above
 }
 
 
@@ -191,9 +191,9 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
         if(mp) {i = mp[k].index;} else {i = k;}
         rep = 0;
         /* new code */
-        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
-        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
-        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
         key = peano_and_morton_key(xb, yb, zb, BITS_PER_DIMENSION, &morton);
         morton_list[i] = morton;
         shift = 3 * (BITS_PER_DIMENSION - 1);
@@ -215,16 +215,16 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
                 else
                 {
                     subnode = 0;
-                    if(P[i].Pos[0] > Nodes[th].center[0]) {subnode += 1;}
-                    if(P[i].Pos[1] > Nodes[th].center[1]) {subnode += 2;}
-                    if(P[i].Pos[2] > Nodes[th].center[2]) {subnode += 4;}
+                    if(P.Pos[i][0] > Nodes[th].center[0]) {subnode += 1;}
+                    if(P.Pos[i][1] > Nodes[th].center[1]) {subnode += 2;}
+                    if(P.Pos[i][2] > Nodes[th].center[2]) {subnode += 4;}
                 }
                 
                 if(Nodes[th].len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * ForceSoftening_KernelRadius(i))
                 {
                     /* seems like we're dealing with particles at identical (or extremely close) locations. Randomize subnode index to allow tree construction. Note: Multipole moments
                      * of tree are still correct, but this will only happen well below gravitational softening length-scale anyway. */
-                    subnode = (int) (8.0 * get_random_number(P[i].ID));
+                    subnode = (int) (8.0 * get_random_number(P.ID[i]));
                     if(subnode >= 8) {subnode = 7;}
                 }
                 
@@ -277,16 +277,16 @@ int force_treebuild_single(int npart, struct unbind_data *mp)
                 else
                 {
                     subnode = 0;
-                    if(P[th].Pos[0] > nfreep->center[0]) {subnode += 1;}
-                    if(P[th].Pos[1] > nfreep->center[1]) {subnode += 2;}
-                    if(P[th].Pos[2] > nfreep->center[2]) {subnode += 4;}
+                    if(P.Pos[th][0] > nfreep->center[0]) {subnode += 1;}
+                    if(P.Pos[th][1] > nfreep->center[1]) {subnode += 2;}
+                    if(P.Pos[th][2] > nfreep->center[2]) {subnode += 4;}
                 }
                 
                 if(nfreep->len < EPSILON_FOR_TREERND_SUBNODE_SPLITTING * ForceSoftening_KernelRadius(th))
                 {
                     /* seems like we're dealing with particles at identical (or extremely close) locations. Randomize subnode index to allow tree construction. Note: Multipole moments
                      * of tree are still correct, but this will only happen well below gravitational softening length-scale anyway. */
-                    subnode = (int) (8.0 * get_random_number(P[th].ID));
+                    subnode = (int) (8.0 * get_random_number(P.ID[th]));
                     if(subnode >= 8) {subnode = 7;}
                 }
                 
@@ -436,7 +436,6 @@ void force_update_node_recursive(int no, int sib, int father)
     int j, jj, k, p, pp, nextsib, suns[8], count_particles, multiple_flag;
     MyFloat hmax, vmax, v, divVmax, divVel, mass;
     Vec3<MyFloat> s, vs;
-    struct particle_data *pa;
     
 #ifdef DM_SCALARFIELD_SCREENING
     Vec3<MyFloat> s_dm, vs_dm; MyFloat mass_dm;
@@ -606,15 +605,13 @@ void force_update_node_recursive(int no, int sib, int father)
                 {
                     count_particles++;
                     
-                    pa = &P[p];
-                    
-                    mass += (pa->Mass);
-                    s += pa->Mass * pa->Pos;
-                    vs += pa->Mass * pa->Vel;
+                    mass += (P.Mass[p]);
+                    s += P.Mass[p] * P.Pos[p];
+                    vs += P.Mass[p] * P.Vel[p];
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-                    if(pa->Type == 0) gasmass += pa->Mass;
+                    if(P.Type[p] == 0) gasmass += P.Mass[p];
 #if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                    if(pa->Type == 5) gasmass += P[p].Sink_Mass_Reservoir; // gas at the inner edge of a disk should not see a hole due to the sink
+                    if(pa->Type == 5) gasmass += P.Sink_Mass_Reservoir[p]; // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -640,76 +637,76 @@ void force_update_node_recursive(int no, int sib, int father)
                         }
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
-                        rt_source_lum_s += l_sum * pa->Pos;
-                        rt_source_lum_vs += l_sum * pa->Vel;
+                        rt_source_lum_s += l_sum * P.Pos[p];
+                        rt_source_lum_vs += l_sum * P.Vel[p];
 #endif
                     }
 #endif
-                    
-                    
-                    
+
+
+
 #ifdef SINK_PHOTONMOMENTUM
-                    if(pa->Type == 5)
+                    if(P.Type[p] == 5)
                     {
-                        if((pa->Mass>0)&&(pa->DensityAroundParticle>0)&&(pa->Sink_Mdot>0))
+                        if((P.Mass[p]>0)&&(P.DensityAroundParticle[p]>0)&&(P.Sink_Mdot[p]>0))
                         {
-                            double BHLum = sink_lum_bol(pa->Sink_Mdot, pa->Sink_Mass, p);
+                            double BHLum = sink_lum_bol(P.Sink_Mdot[p], P.Sink_Mass[p], p);
                             sink_lum += BHLum;
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
-                            sink_lum_grad += pa->Sink_Specific_AngMom * BHLum;
+                            sink_lum_grad += P.Sink_Specific_AngMom[p] * BHLum;
 #else
-                            sink_lum_grad += pa->GradRho * BHLum;
+                            sink_lum_grad += P.GradRho[p] * BHLum;
 #endif
                         }
                     }
 #endif
 #ifdef SINK_CALC_DISTANCES
-                    if(pa->Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
+                    if(P.Type[p] == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
                     {
-                        sink_mass += pa->Mass;    /* actual value is not used for distances */
-                        sink_pos_times_mass += pa->Mass * pa->Pos;  /* positition times mass; divide by total mass later */
+                        sink_mass += P.Mass[p];    /* actual value is not used for distances */
+                        sink_pos_times_mass += P.Mass[p] * P.Pos[p];  /* positition times mass; divide by total mass later */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
                         N_SINK += 1;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SPECIAL_POINT_MOTION)
-                        sink_mom += pa->Mass * pa->Vel;
+                        sink_mom += P.Mass[p] * P.Vel[p];
 #endif
 #if defined(SPECIAL_POINT_MOTION)
-                        sink_force += pa->Mass * pa->Acc_Total_PrevStep;
+                        sink_force += P.Mass[p] * P.Acc_Total_PrevStep[p];
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) && defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
-                        max_feedback_vel = DMAX(pa->MaxFeedbackVel, max_feedback_vel);
+                        max_feedback_vel = DMAX(P.MaxFeedbackVel[p], max_feedback_vel);
 #endif
                     }
 #endif
-                    
+
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-                    {int k; for(k=0;k<6;k++) {tidal_tensorps_prevstep.data[k] += pa->Mass * pa->tidal_tensorps_prevstep.data[k];}}
+                    {int k; for(k=0;k<6;k++) {tidal_tensorps_prevstep.data[k] += P.Mass[p] * P.tidal_tensorps_prevstep[p].data[k];}}
 #endif
-                    
+
 #ifdef DM_SCALARFIELD_SCREENING
-                    if(pa->Type != 0)
+                    if(P.Type[p] != 0)
                     {
-                        mass_dm += (pa->Mass);
-                        s_dm += pa->Mass * pa->Pos;
-                        vs_dm += pa->Mass * pa->Vel;
+                        mass_dm += (P.Mass[p]);
+                        s_dm += P.Mass[p] * P.Pos[p];
+                        vs_dm += P.Mass[p] * P.Vel[p];
                     }
 #endif
-                    if(pa->Type == 0)
+                    if(P.Type[p] == 0)
                     {
-                        double htmp = DMIN(All.MaxKernelRadius, P[p].KernelRadius);
+                        double htmp = DMIN(All.MaxKernelRadius, P.KernelRadius[p]);
                         if(htmp > hmax) {hmax = htmp;}
-                        divVel = P[p].Particle_DivVel;
+                        divVel = P.Particle_DivVel[p];
                         if(divVel > divVmax) {divVmax = divVel;}
                     }
-                    
-                    for(k = 0; k < 3; k++) {if((v = fabs(pa->Vel[k])) > vmax) {vmax = v;}}
-                    
+
+                    for(k = 0; k < 3; k++) {if((v = fabs(P.Vel[p][k])) > vmax) {vmax = v;}}
+
                     /* update of the maximum gravitational softening  */
                     double soft_p = ForceSoftening_KernelRadius(p);
                     if(soft_p > maxsoft) {maxsoft = soft_p;}
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-                    if(pa->Type == 5) if(P[p].KernelRadius > maxsoft) {maxsoft = P[p].KernelRadius;}
+                    if(P.Type[p] == 5) if(P.KernelRadius[p] > maxsoft) {maxsoft = P.KernelRadius[p];}
 #endif
                 }
             }
@@ -1400,9 +1397,9 @@ void force_add_element_to_tree(int iparent, int ichild)
     Nextnode[ichild] = no; // order correctly
     Father[ichild] = Father[iparent]; // set parent node to be the same
     // update parent node properties [maximum softening, speed] for opening criteria
-    Extnodes[Father[iparent]].hmax = DMAX(Extnodes[Father[iparent]].hmax, DMIN(P[iparent].KernelRadius, All.MaxKernelRadius));
+    Extnodes[Father[iparent]].hmax = DMAX(Extnodes[Father[iparent]].hmax, DMIN(P.KernelRadius[iparent], All.MaxKernelRadius));
     double vmax = Extnodes[Father[iparent]].vmax;
-    int k; for(k=0; k<3; k++) {if(fabs(P[ichild].Vel[k]) > vmax) {vmax = fabs(P[ichild].Vel[k]);}}
+    int k; for(k=0; k<3; k++) {if(fabs(P.Vel[ichild][k]) > vmax) {vmax = fabs(P.Vel[ichild][k]);}}
     Extnodes[Father[iparent]].vmax = vmax;
 }
 
@@ -1528,33 +1525,33 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     tidal_tensorps = {};
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
     double tidal_zeta=0; SymmetricTensor2<MyFloat> i_zeta_tidal_tensorps_prevstep, j_zeta_tidal_tensorps_prevstep;
-    if(mode==0) {i_zeta_tidal_tensorps_prevstep=P[target].tidal_tensorps_prevstep;} else {i_zeta_tidal_tensorps_prevstep=GravDataGet[target].tidal_tensorps_prevstep;}
+    if(mode==0) {i_zeta_tidal_tensorps_prevstep=P.tidal_tensorps_prevstep[target];} else {i_zeta_tidal_tensorps_prevstep=GravDataGet[target].tidal_tensorps_prevstep;}
 #endif
 #endif
     
     if(mode == 0)
     {
-        pos_x = P[target].Pos[0];
-        pos_y = P[target].Pos[1];
-        pos_z = P[target].Pos[2];
-        ptype = P[target].Type;
+        pos_x = P.Pos[target][0];
+        pos_y = P.Pos[target][1];
+        pos_z = P.Pos[target][2];
+        ptype = P.Type[target];
         soft = ForceSoftening_KernelRadius(target);
-        aold = All.ErrTolForceAcc * P[target].OldAcc;
-        pmass = P[target].Mass;
+        aold = All.ErrTolForceAcc * P.OldAcc[target];
+        pmass = P.Mass[target];
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
-        vel_x = P[target].Vel[0]; vel_y = P[target].Vel[1]; vel_z = P[target].Vel[2];
+        vel_x = P.Vel[target][0]; vel_y = P.Vel[target][1]; vel_z = P.Vel[target][2];
 #endif
 #if defined(SINK_DYNFRICTION_FROMTREE)
-        if(ptype == 5) {sink_mass = P[target].Sink_Mass;}
+        if(ptype == 5) {sink_mass = P.Sink_Mass[target];}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORGAS)
-        if(ptype == 0) {if(soft > All.ForceSoftening[P[target].Type]) {zeta = P[target].AGS_zeta;} else {soft=All.ForceSoftening[P[target].Type]; zeta=0;}}
+        if(ptype == 0) {if(soft > All.ForceSoftening[P.Type[target]]) {zeta = P.AGS_zeta[target];} else {soft=All.ForceSoftening[P.Type[target]]; zeta=0;}}
 #endif
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-        if(soft > All.ForceSoftening[P[target].Type]) {zeta = P[target].AGS_zeta;} else {soft=All.ForceSoftening[P[target].Type]; zeta=0;}
+        if(soft > All.ForceSoftening[P.Type[target]]) {zeta = P.AGS_zeta[target];} else {soft=All.ForceSoftening[P.Type[target]]; zeta=0;}
 #endif
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
-        if(pmforce_is_particle_high_res(ptype, P[target].Pos)) {rcut = All.Rcut[1]; asmth = All.Asmth[1];}
+        if(pmforce_is_particle_high_res(ptype, P.Pos[target])) {rcut = All.Rcut[1]; asmth = All.Asmth[1];}
 #endif
     }
     else
@@ -1624,7 +1621,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             if(no < maxPart) /* this is a particle, we will use it */
             {
                 /* the index of the node is the index of the particle */
-                if(P[no].Ti_current != ti_Current)
+                if(P.Ti_current[no] != ti_Current)
                 {
 #ifdef _OPENMP
 #pragma omp critical(_particledriftforce_)
@@ -1633,30 +1630,30 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                         drift_particle(no, ti_Current);
                     }
                 }
-                dx = P[no].Pos[0] - pos_x;
-                dy = P[no].Pos[1] - pos_y;
-                dz = P[no].Pos[2] - pos_z;
+                dx = P.Pos[no][0] - pos_x;
+                dy = P.Pos[no][1] - pos_y;
+                dz = P.Pos[no][2] - pos_z;
                 GRAVITY_NEAREST_XYZ(dx,dy,dz,-1);
                 r2 = dx * dx + dy * dy + dz * dz;
-                mass = P[no].Mass;
+                mass = P.Mass[no];
                 
 #ifdef GRAVITY_SPHERICAL_SYMMETRY
-                r_source = sqrt(pow(P[no].Pos[0] - center[0],2) + pow(P[no].Pos[1] - center[1],2) + pow(P[no].Pos[2] - center[2],2));
+                r_source = sqrt(pow(P.Pos[no][0] - center[0],2) + pow(P.Pos[no][1] - center[1],2) + pow(P.Pos[no][2] - center[2],2));
 #endif
 #if defined(COMPUTE_JERK_IN_GRAVTREE) || defined(SINK_DYNFRICTION_FROMTREE)
-                dvx = P[no].Vel[0] - vel_x; dvy = P[no].Vel[1] - vel_y; dvz = P[no].Vel[2] - vel_z;
+                dvx = P.Vel[no][0] - vel_x; dvy = P.Vel[no][1] - vel_y; dvz = P.Vel[no][2] - vel_z;
 #endif
 #if defined(SINK_DYNFRICTION_FROMTREE)
                 m_j_eff_for_df = mass;
 #endif
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-                if(P[no].Type == 0) {gasmass = P[no].Mass;}
+                if(P.Type[no] == 0) {gasmass = P.Mass[no];}
 #if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-                if(P[no].Type == 5) {gasmass = P[no].Sink_Mass_Reservoir;} // gas at the inner edge of a disk should not see a hole due to the sink
+                if(P.Type[no] == 5) {gasmass = P.Sink_Mass_Reservoir[no];} // gas at the inner edge of a disk should not see a hole due to the sink
 #endif
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-                j_zeta_tidal_tensorps_prevstep=P[no].tidal_tensorps_prevstep;
+                j_zeta_tidal_tensorps_prevstep=P.tidal_tensorps_prevstep[no];
 #endif
                 
                 /* only proceed if the mass is positive and there is separation! */
@@ -1669,11 +1666,11 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     {
                         int kx; double wt_special = weight_function_for_weighted_motion_smoothing(sqrt(r2),1);
                         weight_sum_for_special_point_smoothing += wt_special;
-                        vel_of_nearest_special += wt_special * P[no].Vel;
-                        acc_of_nearest_special += wt_special * P[no].Acc_Total_PrevStep;
+                        vel_of_nearest_special += wt_special * P.Vel[no];
+                        acc_of_nearest_special += wt_special * P.Acc_Total_PrevStep[no];
                     }
 #endif
-                    if(P[no].Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) /* found a BH particle in grav calc */
+                    if(P.Type[no] == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) /* found a BH particle in grav calc */
                     {
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
                         if(ptype != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES)
@@ -1684,18 +1681,18 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 Min_xyz_to_Sink = {dx, dy, dz}; /* remember, dx = x_SINK - myx */
 #ifdef SPECIAL_POINT_MOTION
                                 int kx;
-                                vel_of_nearest_special = P[no].Vel;
-                                acc_of_nearest_special = P[no].Acc_Total_PrevStep;
+                                vel_of_nearest_special = P.Vel[no];
+                                acc_of_nearest_special = P.Acc_Total_PrevStep[no];
 #endif
                             }
 #ifdef SINGLE_STAR_TIMESTEPPING
-                        double sink_dvx=P[no].Vel[0]-vel_x, sink_dvy=P[no].Vel[1]-vel_y, sink_dvz=P[no].Vel[2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=P[no].Mass+pmass, r2soft=SinkParticle_GravityKernelRadius;
+                        double sink_dvx=P.Vel[no][0]-vel_x, sink_dvy=P.Vel[no][1]-vel_y, sink_dvz=P.Vel[no][2]-vel_z, vSqr=sink_dvx*sink_dvx+sink_dvy*sink_dvy+sink_dvz*sink_dvz, M_total=P.Mass[no]+pmass, r2soft=SinkParticle_GravityKernelRadius;
                         r2soft = DMAX(r2soft, soft);
                         r2soft *= KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER;
                         r2soft = r2 + r2soft*r2soft;
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                         if(ptype == 0) {
-                            double tSqr_fb = r2soft /(P[no].MaxFeedbackVel * P[no].MaxFeedbackVel + MIN_REAL_NUMBER);
+                            double tSqr_fb = r2soft /(P.MaxFeedbackVel[no] * P.MaxFeedbackVel[no] + MIN_REAL_NUMBER);
                             if(tSqr_fb < Min_Sink_FeedbackTime) {Min_Sink_FeedbackTime = tSqr_fb;}
                         } // for gas, add the signal velocity of feedback from the star
 #endif
@@ -1718,7 +1715,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                                 double t_orbital = 2.*M_PI*sqrt( semimajor_axis*semimajor_axis*semimajor_axis / (All.G*M_total) );
                                 if(t_orbital < Min_Sink_OrbitalTime) /* Save parameters of companion */
                                 {
-                                    Min_Sink_OrbitalTime=t_orbital; comp_Mass=P[no].Mass;
+                                    Min_Sink_OrbitalTime=t_orbital; comp_Mass=P.Mass[no];
                                     comp_dx[0]=dx; comp_dx[1]=dy; comp_dx[2]=dz; comp_dv[0]=sink_dvx; comp_dv[1]=sink_dvy; comp_dv[2]=sink_dvz;
                                 }
                             } /* specific_energy < 0 */
@@ -1752,13 +1749,13 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif
 #ifdef SINK_PHOTONMOMENTUM
                         mass_sinklumwt_forradfb=0;
-                        if(P[no].Type == 5)
+                        if(P.Type[no] == 5)
                         {
-                            double bhlum_t = sink_lum_bol(P[no].Sink_Mdot, P[no].Sink_Mass, no);
+                            double bhlum_t = sink_lum_bol(P.Sink_Mdot[no], P.Sink_Mass[no], no);
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
-                            mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P[no].Sink_Specific_AngMom, dx,dy,dz);
+                            mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P.Sink_Specific_AngMom[no], dx,dy,dz);
 #else
-                            mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P[no].GradRho, dx,dy,dz);
+                            mass_sinklumwt_forradfb = sink_fb_angleweight(bhlum_t, P.GradRho[no], dx,dy,dz);
 #endif
                         }
 #endif
@@ -1766,15 +1763,15 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
 #endif // RT_USE_GRAVTREE
                     
 #ifdef DM_SCALARFIELD_SCREENING
-                    if(ptype != 0) {if(P[no].Type == 1) {dx_dm = dx; dy_dm = dy; dz_dm = dz; mass_dm = mass;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;}} /* we have a dark matter particle as target */
+                    if(ptype != 0) {if(P.Type[no] == 1) {dx_dm = dx; dy_dm = dy; dz_dm = dz; mass_dm = mass;} else {dx_dm = dy_dm = dz_dm = mass_dm = 0;}} /* we have a dark matter particle as target */
 #endif
                     
                     h_p = ForceSoftening_KernelRadius(no);
-                    ptype_sec=P[no].Type; zeta_sec=0; /* set secondary softening and zeta term */
+                    ptype_sec=P.Type[no]; zeta_sec=0; /* set secondary softening and zeta term */
 #ifdef ADAPTIVE_GRAVSOFT_FORGAS
-                    if(ptype_sec==0) {zeta_sec=P[no].AGS_zeta;}
+                    if(ptype_sec==0) {zeta_sec=P.AGS_zeta[no];}
 #elif defined(ADAPTIVE_GRAVSOFT_FORALL)
-                    zeta_sec=P[no].AGS_zeta;
+                    zeta_sec=P.AGS_zeta[no];
 #endif
                 } // closes (if((r2 > 0) && (mass > 0))) check
                 
@@ -2421,7 +2418,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
             
             /* advance for used nodes: note this used to be above, now handled down here so we can use the 'no/nop' structures above */
             if(no < maxPart) {
-                if(TakeLevel >= 0) {P[no].GravCost[TakeLevel] += 1.0;} /* node was used */
+                if(TakeLevel >= 0) {P.GravCost[no][TakeLevel] += 1.0;} /* node was used */
                 no = Nextnode[no];
             } else {
                 if(TakeLevel >= 0) {nop->GravCost += 1.0;}
@@ -2448,78 +2445,78 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
     /* store result at the proper place */
     if(mode == 0)
     {
-        P[target].GravAccel = {acc_x, acc_y, acc_z};
+        P.GravAccel[target] = {acc_x, acc_y, acc_z};
 #ifdef RT_USE_TREECOL_FOR_NH
-        int k; for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) P[target].ColumnDensityBins[k] = treecol_angular_bins[k];
+        int k; for(k=0; k < RT_USE_TREECOL_FOR_NH; k++) P.ColumnDensityBins[target][k] = treecol_angular_bins[k];
 #endif
 #ifdef COUNT_MASS_IN_GRAVTREE
-        P[target].TreeMass = tree_mass;
+        P.TreeMass[target] = tree_mass;
 #endif
 #ifdef RT_OTVET
-        if(valid_gas_particle_for_rt) {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {CellP[target].ET[k] = RT_ET[k];}} else {if(P[target].Type==0) {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {CellP[target].ET[k] = {};}}}
+        if(valid_gas_particle_for_rt) {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {CellP.ET[target][k] = RT_ET[k];}} else {if(P.Type[target]==0) {int k; for(k=0;k<N_RT_FREQ_BINS;k++) {CellP.ET[target][k] = {};}}}
 #endif
 #ifdef GALSF_FB_FIRE_RT_LONGRANGE
-        if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_UV = incident_flux_uv;}
-        if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_EUV = incident_flux_euv;}
+        if(valid_gas_particle_for_rt) {CellP.Rad_Flux_UV[target] = incident_flux_uv;}
+        if(valid_gas_particle_for_rt) {CellP.Rad_Flux_EUV[target] = incident_flux_euv;}
 #endif
 #ifdef CHIMES_STELLAR_FLUXES
         if(valid_gas_particle_for_rt)
         {
-            int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {CellP[target].Chimes_G0[kc] = chimes_flux_G0[kc]; CellP[target].Chimes_fluxPhotIon[kc] = chimes_flux_ion[kc];}
+            int kc; for (kc = 0; kc < CHIMES_LOCAL_UV_NBINS; kc++) {CellP.Chimes_G0[target][kc] = chimes_flux_G0[kc]; CellP.Chimes_fluxPhotIon[target][kc] = chimes_flux_ion[kc];}
         }
 #endif
 #ifdef SINK_SEED_FROM_LOCALGAS_TOTALMENCCRITERIA
-        P[target].MencInRcrit = m_enc_in_rcrit;
+        P.MencInRcrit[target] = m_enc_in_rcrit;
 #endif
 #ifdef SINK_COMPTON_HEATING
-        if(valid_gas_particle_for_rt) {CellP[target].Rad_Flux_AGN = incident_flux_agn;}
+        if(valid_gas_particle_for_rt) {CellP.Rad_Flux_AGN[target] = incident_flux_agn;}
 #endif
 #if defined(COSMIC_RAY_SUBGRID_LEBRON)
-        if(P[target].Type==0) {CellP[target].SubGrid_CosmicRayEnergyDensity = SubGrid_CosmicRayEnergyDensity;}
+        if(P.Type[target]==0) {CellP.SubGrid_CosmicRayEnergyDensity[target] = SubGrid_CosmicRayEnergyDensity;}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY)
-        if(valid_gas_particle_for_rt) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP[target].Rad_E_gamma[kf] = Rad_E_gamma[kf];}}
+        if(valid_gas_particle_for_rt) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP.Rad_E_gamma[target][kf] = Rad_E_gamma[kf];}}
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX)
-        if(valid_gas_particle_for_rt) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {CellP[target].Rad_Flux[kf][k2] = Rad_Flux[kf][k2];}}}
+        if(valid_gas_particle_for_rt) {int kf,k2; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {for(k2=0;k2<3;k2++) {CellP.Rad_Flux[target][kf][k2] = Rad_Flux[kf][k2];}}}
 #endif
 #ifdef EVALPOTENTIAL
-        P[target].Potential = pot;
+        P.Potential[target] = pot;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        P[target].tidal_tensorps = tidal_tensorps;
+        P.tidal_tensorps[target] = tidal_tensorps;
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-        P[target].tidal_zeta = tidal_zeta;
+        P.tidal_zeta[target] = tidal_zeta;
 #endif
 #endif
 #ifdef COMPUTE_JERK_IN_GRAVTREE
-        P[target].GravJerk = jerk;
+        P.GravJerk[target] = jerk;
 #endif
 #ifdef SINK_CALC_DISTANCES
-        P[target].Min_Distance_to_Sink = sqrt( Min_Distance_to_Sink2 );
-        P[target].Min_xyz_to_Sink = Min_xyz_to_Sink;   /* remember, dx = x_SINK - myx */
+        P.Min_Distance_to_Sink[target] = sqrt( Min_Distance_to_Sink2 );
+        P.Min_xyz_to_Sink[target] = Min_xyz_to_Sink;   /* remember, dx = x_SINK - myx */
 #ifdef SPECIAL_POINT_MOTION
         {
-            P[target].vel_of_nearest_special = vel_of_nearest_special;
-            P[target].acc_of_nearest_special = acc_of_nearest_special;
+            P.vel_of_nearest_special[target] = vel_of_nearest_special;
+            P.acc_of_nearest_special[target] = acc_of_nearest_special;
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
-            P[target].weight_sum_for_special_point_smoothing = weight_sum_for_special_point_smoothing; /* weighted sum needed */
+            P.weight_sum_for_special_point_smoothing[target] = weight_sum_for_special_point_smoothing; /* weighted sum needed */
 #endif
         }
 #endif
 #ifdef SINGLE_STAR_FIND_BINARIES
-        P[target].is_in_a_binary=0; P[target].Min_Sink_OrbitalTime=Min_Sink_OrbitalTime; //orbital time for binary
+        P.is_in_a_binary[target]=0; P.Min_Sink_OrbitalTime[target]=Min_Sink_OrbitalTime; //orbital time for binary
         if (Min_Sink_OrbitalTime<MAX_REAL_NUMBER)
         {
-            P[target].is_in_a_binary=1; P[target].comp_Mass=comp_Mass; //mass of binary companion
-            P[target].comp_dx = comp_dx; P[target].comp_dv = comp_dv;
+            P.is_in_a_binary[target]=1; P.comp_Mass[target]=comp_Mass; //mass of binary companion
+            P.comp_dx[target] = comp_dx; P.comp_dv[target] = comp_dv;
         }
 #endif
 #ifdef SINGLE_STAR_TIMESTEPPING
-        P[target].Min_Sink_Approach_Time = sqrt(Min_Sink_Approach_Time);
-        P[target].Min_Sink_Freefall_time = sqrt(sqrt(Min_Sink_Freefall_time)/All.G);
+        P.Min_Sink_Approach_Time[target] = sqrt(Min_Sink_Approach_Time);
+        P.Min_Sink_Freefall_time[target] = sqrt(sqrt(Min_Sink_Freefall_time)/All.G);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-        P[target].Min_Sink_FeedbackTime = sqrt(Min_Sink_FeedbackTime);
+        P.Min_Sink_FeedbackTime[target] = sqrt(Min_Sink_FeedbackTime);
 #endif
 #endif
 #endif // SINK_CALC_DISTANCES
@@ -2646,10 +2643,10 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     cost = 0;
     if(mode == 0)
     {
-        pos_x = P[target].Pos[0];
-        pos_y = P[target].Pos[1];
-        pos_z = P[target].Pos[2];
-        aold = All.ErrTolForceAcc * P[target].OldAcc;
+        pos_x = P.Pos[target][0];
+        pos_y = P.Pos[target][1];
+        pos_z = P.Pos[target][2];
+        aold = All.ErrTolForceAcc * P.OldAcc[target];
     }
     else
     {
@@ -2677,7 +2674,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
             {
                 /* the index of the node is the index of the particle */
                 /* observe the sign */
-                if(P[no].Ti_current != All.Ti_Current)
+                if(P.Ti_current[no] != All.Ti_Current)
                 {
 #ifdef _OPENMP
 #pragma omp critical(_particledriftewald_)
@@ -2687,10 +2684,10 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
                     }
                 }
                 
-                dx = P[no].Pos[0] - pos_x;
-                dy = P[no].Pos[1] - pos_y;
-                dz = P[no].Pos[2] - pos_z;
-                mass = P[no].Mass;
+                dx = P.Pos[no][0] - pos_x;
+                dy = P.Pos[no][1] - pos_y;
+                dz = P.Pos[no][2] - pos_z;
+                mass = P.Mass[no];
             }
             else            /* we have an  internal node */
             {
@@ -2936,7 +2933,7 @@ int force_treeevaluate_ewald_correction(int target, int mode, int *exportflag, i
     
     if(mode == 0)
     {
-        P[target].GravAccel += {acc_x, acc_y, acc_z};
+        P.GravAccel[target] += {acc_x, acc_y, acc_z};
     }
     else
     {
@@ -2979,14 +2976,14 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
 #endif
     if(mode == 0)
     {
-        pos_x = P[target].Pos[0];
-        pos_y = P[target].Pos[1];
-        pos_z = P[target].Pos[2];
-        ptype = P[target].Type;
-        aold = All.ErrTolForceAcc * P[target].OldAcc;
+        pos_x = P.Pos[target][0];
+        pos_y = P.Pos[target][1];
+        pos_z = P.Pos[target][2];
+        ptype = P.Type[target];
+        aold = All.ErrTolForceAcc * P.OldAcc[target];
         soft = ForceSoftening_KernelRadius(target);
 #if defined(PMGRID) && defined(PM_PLACEHIGHRESREGION)
-        if(pmforce_is_particle_high_res(ptype, P[target].Pos))
+        if(pmforce_is_particle_high_res(ptype, P.Pos[target]))
         {
             rcut = All.Rcut[1];
             asmth = All.Asmth[1];
@@ -3031,11 +3028,11 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
             {
                 /* the index of the node is the index of the particle */
                 /* observe the sign  */
-                if(P[no].Ti_current != All.Ti_Current) {drift_particle(no, All.Ti_Current);}
-                dx = P[no].Pos[0] - pos_x;
-                dy = P[no].Pos[1] - pos_y;
-                dz = P[no].Pos[2] - pos_z;
-                mass = P[no].Mass;
+                if(P.Ti_current[no] != All.Ti_Current) {drift_particle(no, All.Ti_Current);}
+                dx = P.Pos[no][0] - pos_x;
+                dy = P.Pos[no][1] - pos_y;
+                dz = P.Pos[no][2] - pos_z;
+                mass = P.Mass[no];
             }
             else
             {
@@ -3234,7 +3231,7 @@ int force_treeevaluate_potential(int target, int mode, int *nexport, int *nsend_
     
     /* store result at the proper place */
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
-    if(mode == 0) {P[target].Potential = pot;} else {PotDataResult[target].Potential = pot;}
+    if(mode == 0) {P.Potential[target] = pot;} else {PotDataResult[target].Potential = pot;}
 #endif
     return 0;
 }
@@ -3255,10 +3252,10 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
     pot = 0;
     if(mode == 0)
     {
-        pos_x = P[target].Pos[0];
-        pos_y = P[target].Pos[1];
-        pos_z = P[target].Pos[2];
-        ptype = P[target].Type;
+        pos_x = P.Pos[target][0];
+        pos_y = P.Pos[target][1];
+        pos_z = P.Pos[target][2];
+        ptype = P.Type[target];
         soft  = ForceSoftening_KernelRadius(target);
     }
     else
@@ -3291,10 +3288,10 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
                 /* the index of the node is the index of the particle */
                 /* observe the sign */
                 
-                dx = P[no].Pos[0] - pos_x;
-                dy = P[no].Pos[1] - pos_y;
-                dz = P[no].Pos[2] - pos_z;
-                mass = P[no].Mass;
+                dx = P.Pos[no][0] - pos_x;
+                dy = P.Pos[no][1] - pos_y;
+                dz = P.Pos[no][2] - pos_z;
+                mass = P.Mass[no];
             }
             else
             {
@@ -3404,7 +3401,7 @@ int subfind_force_treeevaluate_potential(int target, int mode, int *nexport, int
     /* store result at the proper place */
     
     if(mode == 0)
-        P[target].u.DM_Potential = pot;
+        P.u.DM_Potential[target] = pot;
     else
         PotDataResult[target].Potential = pot;
     return 0;
@@ -3515,11 +3512,11 @@ void dump_particles(void)
     fd = fopen(buffer, "w");
     my_fwrite(&NumPart, 1, sizeof(int), fd);
     for(i = 0; i < NumPart; i++)
-        my_fwrite(&P[i].Pos[0], 3, sizeof(MyFloat), fd);
+        my_fwrite(&P.Pos[i][0], 3, sizeof(MyFloat), fd);
     for(i = 0; i < NumPart; i++)
-        my_fwrite(&P[i].Vel[0], 3, sizeof(MyFloat), fd);
+        my_fwrite(&P.Vel[i][0], 3, sizeof(MyFloat), fd);
     for(i = 0; i < NumPart; i++)
-        my_fwrite(&P[i].ID, 1, sizeof(int), fd);
+        my_fwrite(&P.ID[i], 1, sizeof(int), fd);
     fclose(fd);
 }
 
@@ -3850,34 +3847,32 @@ void force_refresh_node_moments(void)
     {
         no = Father[i];
         if(no < 0) {continue;}
-        struct particle_data *pa = &P[i];
-
-        Nodes[no].u.d.mass += pa->Mass;
-        Nodes[no].u.d.s += pa->Mass * pa->Pos;
-        Extnodes[no].vs += pa->Mass * pa->Vel;
+        Nodes[no].u.d.mass += P.Mass[i];
+        Nodes[no].u.d.s += P.Mass[i] * P.Pos[i];
+        Extnodes[no].vs += P.Mass[i] * P.Vel[i];
         Nodes[no].N_part++;
 
         MyFloat v, vmax_p = 0;
-        for(k = 0; k < 3; k++) {if((v = fabs(pa->Vel[k])) > vmax_p) {vmax_p = v;}}
+        for(k = 0; k < 3; k++) {if((v = fabs(P.Vel[i][k])) > vmax_p) {vmax_p = v;}}
         if(vmax_p > Extnodes[no].vmax) {Extnodes[no].vmax = vmax_p;}
 
         double soft_p = ForceSoftening_KernelRadius(i);
         if(soft_p > Nodes[no].maxsoft) {Nodes[no].maxsoft = soft_p;}
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        if(pa->Type == 5) {if(P[i].KernelRadius > Nodes[no].maxsoft) {Nodes[no].maxsoft = P[i].KernelRadius;}}
+        if(P.Type[i] == 5) {if(P.KernelRadius[i] > Nodes[no].maxsoft) {Nodes[no].maxsoft = P.KernelRadius[i];}}
 #endif
 
-        if(pa->Type == 0)
+        if(P.Type[i] == 0)
         {
-            double htmp = DMIN(All.MaxKernelRadius, P[i].KernelRadius);
+            double htmp = DMIN(All.MaxKernelRadius, P.KernelRadius[i]);
             if(htmp > Extnodes[no].hmax) {Extnodes[no].hmax = htmp;}
-            if(P[i].Particle_DivVel > Extnodes[no].divVmax) {Extnodes[no].divVmax = P[i].Particle_DivVel;}
+            if(P.Particle_DivVel[i] > Extnodes[no].divVmax) {Extnodes[no].divVmax = P.Particle_DivVel[i];}
         }
 
 #ifdef GRAVTREE_CALCULATE_GAS_MASS_IN_NODE
-        if(pa->Type == 0) {Nodes[no].gasmass += pa->Mass;}
+        if(P.Type[i] == 0) {Nodes[no].gasmass += P.Mass[i];}
 #if defined(SINK_ALPHADISK_ACCRETION) && defined(RT_USE_TREECOL_FOR_NH)
-        if(pa->Type == 5) {Nodes[no].gasmass += P[i].Sink_Mass_Reservoir;}
+        if(P.Type[i] == 5) {Nodes[no].gasmass += P.Sink_Mass_Reservoir[i];}
 #endif
 #endif
 #ifdef COSMIC_RAY_SUBGRID_LEBRON
@@ -3898,45 +3893,45 @@ void force_refresh_node_moments(void)
             for(k=0;k<CHIMES_LOCAL_UV_NBINS;k++) {Nodes[no].chimes_stellar_lum_G0[k] += chimes_lum_G0[k]; Nodes[no].chimes_stellar_lum_ion[k] += chimes_lum_ion[k];}
 #endif
 #ifdef RT_SEPARATELY_TRACK_LUMPOS
-            Nodes[no].rt_source_lum_s += l_sum * pa->Pos;
-            Extnodes[no].rt_source_lum_vs += l_sum * pa->Vel;
+            Nodes[no].rt_source_lum_s += l_sum * P.Pos[i];
+            Extnodes[no].rt_source_lum_vs += l_sum * P.Vel[i];
 #endif
         }}
 #endif
 #ifdef SINK_PHOTONMOMENTUM
-        if(pa->Type == 5 && pa->Mass > 0 && pa->DensityAroundParticle > 0 && pa->Sink_Mdot > 0) {
-            double BHLum = sink_lum_bol(pa->Sink_Mdot, pa->Sink_Mass, i);
+        if(P.Type[i] == 5 && P.Mass[i] > 0 && P.DensityAroundParticle[i] > 0 && P.Sink_Mdot[i] > 0) {
+            double BHLum = sink_lum_bol(P.Sink_Mdot[i], P.Sink_Mass[i], i);
             Nodes[no].sink_lum += BHLum;
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
-            Nodes[no].sink_lum_grad += pa->Sink_Specific_AngMom * BHLum;
+            Nodes[no].sink_lum_grad += P.Sink_Specific_AngMom[i] * BHLum;
 #else
-            Nodes[no].sink_lum_grad += pa->GradRho * BHLum;
+            Nodes[no].sink_lum_grad += P.GradRho[i] * BHLum;
 #endif
         }
 #endif
 #ifdef SINK_CALC_DISTANCES
-        if(pa->Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {
-            Nodes[no].sink_mass += pa->Mass;
-            Nodes[no].sink_pos += pa->Mass * pa->Pos; /* store as mass-weighted sum, normalize later */
+        if(P.Type[i] == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {
+            Nodes[no].sink_mass += P.Mass[i];
+            Nodes[no].sink_pos += P.Mass[i] * P.Pos[i]; /* store as mass-weighted sum, normalize later */
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SINGLE_STAR_FIND_BINARIES) || defined(SPECIAL_POINT_MOTION)
             Nodes[no].N_SINK += 1;
 #endif
 #if defined(SINGLE_STAR_TIMESTEPPING) || defined(SPECIAL_POINT_MOTION)
-            Nodes[no].sink_vel += pa->Mass * pa->Vel; /* mass-weighted, normalize later */
+            Nodes[no].sink_vel += P.Mass[i] * P.Vel[i]; /* mass-weighted, normalize later */
 #endif
 #ifdef SPECIAL_POINT_MOTION
-            Nodes[no].sink_acc += pa->Mass * pa->Acc_Total_PrevStep;
+            Nodes[no].sink_acc += P.Mass[i] * P.Acc_Total_PrevStep[i];
 #endif
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
-            if(pa->MaxFeedbackVel > Nodes[no].MaxFeedbackVel) {Nodes[no].MaxFeedbackVel = pa->MaxFeedbackVel;}
+            if(P.MaxFeedbackVel[i] > Nodes[no].MaxFeedbackVel) {Nodes[no].MaxFeedbackVel = P.MaxFeedbackVel[i];}
 #endif
         }
 #endif
 #ifdef ADAPTIVE_GRAVSOFT_FROM_TIDAL_CRITERION
-        {for(k=0;k<6;k++) {Nodes[no].tidal_tensorps_prevstep.data[k] += pa->Mass * pa->tidal_tensorps_prevstep.data[k];}}
+        {for(k=0;k<6;k++) {Nodes[no].tidal_tensorps_prevstep.data[k] += P.Mass[i] * P.tidal_tensorps_prevstep[i].data[k];}}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
-        if(pa->Type != 0) {Nodes[no].mass_dm += pa->Mass; Nodes[no].s_dm += pa->Mass * pa->Pos; Extnodes[no].vs_dm += pa->Mass * pa->Vel;}
+        if(P.Type[i] != 0) {Nodes[no].mass_dm += P.Mass[i]; Nodes[no].s_dm += P.Mass[i] * P.Pos[i]; Extnodes[no].vs_dm += P.Mass[i] * P.Vel[i];}
 #endif
     }
 

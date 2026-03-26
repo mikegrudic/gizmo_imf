@@ -941,11 +941,10 @@ All;
 
 
 
-#include "particle_data.h"
-#include "cell_data.h"
+#include "particle_soa.h"
+#include "cell_soa.h"
 
-static_assert(std::is_trivially_copyable<particle_data>::value, "particle_data must be trivially copyable for MPI");
-static_assert(std::is_trivially_copyable<gas_cell_data>::value, "gas_cell_data must be trivially copyable for MPI");
+/* SoA structs contain pointers, not data - trivially copyable check no longer applies */
 
 
 

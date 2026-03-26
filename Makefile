@@ -264,6 +264,7 @@ CORE_OBJS =	core/main.o core/accel.o core/timestep.o core/init.o file_io/restart
 
 SYSTEM_OBJS =   system/system.o \
 				system/allocate.o \
+				system/soa_helpers.o \
 				system/mymalloc.o \
 				system/parallel_sort.o \
                 system/peano.o \

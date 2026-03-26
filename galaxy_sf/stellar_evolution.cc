@@ -22,11 +22,11 @@
 int is_particle_single_star_eligible(long i)
 {
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-    if(P[i].Type == 0 || P[i].Type == 5) // only type=0 or type=5 (sinks) are eligible in our models here to be 'single star' candidates
+    if(P.Type[i] == 0 || P.Type[i] == 5) // only type=0 or type=5 (sinks) are eligible in our models here to be 'single star' candidates
     {
 #if defined(SINGLE_STAR_AND_SSP_HYBRID_MODEL) // here's the interesting regime, where we have some criterion for deciding which cells are eligible for 'single-star' status
-        if(P[i].Type == 5) {return 1;} // all type-5 elements are assumed sinks
-        if(P[i].Type == 0) {if(P[i].Mass*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;}} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
+        if(P.Type[i] == 5) {return 1;} // all type-5 elements are assumed sinks
+        if(P.Type[i] == 0) {if(P.Mass[i]*UNIT_MASS_IN_SOLAR > (SINGLE_STAR_AND_SSP_HYBRID_MODEL)) {return 0;} else {return 1;}} // use a simple mass threshold to decide which model we will use, specified by using this as a compile-time parameter
 #else
         return 1; // no hybrid model, so all particles satisfying these criteria are automatically single-star eligible
 #endif
@@ -42,7 +42,7 @@ double evaluate_light_to_mass_ratio(double stellar_age_in_gyr, int i)
     if(is_particle_single_star_eligible(i)) // SINGLE-STAR VERSION: calculate single-star luminosity (and convert to solar luminosity-to-mass ratio, which this output assumes)
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double m0=P[i].Mass; if(P[i].Type == 5) {m0=P[i].Sink_Mass;}
+        double m0=P.Mass[i]; if(P.Type[i] == 5) {m0=P.Sink_Mass[i];}
         return calculate_individual_stellar_luminosity(0, m0, i) / m0 * (UNIT_LUM_IN_SOLAR) / (UNIT_MASS_IN_SOLAR);
 #endif
     }
@@ -73,7 +73,7 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
     return 0; /* not defined */
 #endif
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* this is pre-calculated, simply return it */
-    return P[i].StarLuminosity_Solar / UNIT_LUM_IN_SOLAR;
+    return P.StarLuminosity_Solar[i] / UNIT_LUM_IN_SOLAR;
 #endif
     /* if above flags not defined, estimate accretion + main-sequence luminosity as simply as possible */
     double lum=0, lum_sol=0, c_code = C_LIGHT_CODE, m_solar = mass * UNIT_MASS_IN_SOLAR;
@@ -88,10 +88,10 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
         else {lum_sol = 32000. * m_solar;}
     }
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) && (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1) // now, account for pre-main sequence evolution and calculate accretion luminosity using protostellar radius
-    if(i > 0) {if(P[i].Type == 5) {
-        double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P[i].ProtoStellarRadius_inSolar*P[i].ProtoStellarRadius_inSolar * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
-        lum = DMAX(lum_sol,l_kh) / UNIT_LUM_IN_SOLAR + eps_protostar * (All.G * P[i].Mass / (P[i].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
-        P[i].StarLuminosity_Solar = lum * UNIT_LUM_IN_SOLAR; //store total luminosity of the star in solar units
+    if(i > 0) {if(P.Type[i] == 5) {
+        double eps_protostar=1.0, T4000_4 = pow(m_solar , 0.55), l_kh = 0.2263 * P.ProtoStellarRadius_inSolar[i]*P.ProtoStellarRadius_inSolar[i] * T4000_4; // protostellar temperature along Hayashi track and luminosity from KH contraction
+        lum = DMAX(lum_sol,l_kh) / UNIT_LUM_IN_SOLAR + eps_protostar * (All.G * P.Mass[i] / (P.ProtoStellarRadius_inSolar[i] / UNIT_LENGTH_IN_SOLAR)) * mdot; // assume GM/r liberated per unit mass. Note we need radius in code units here since everything else in 'lum' is code-units as well. for pre-ms evolution, if Hayashi-temp luminosity exceeds MS luminosity, use it. otherwise use main sequence luminosity, and assume the star is moving along the Henyey track
+        P.StarLuminosity_Solar[i] = lum * UNIT_LUM_IN_SOLAR; //store total luminosity of the star in solar units
     }}
 #endif
     return lum;
@@ -104,17 +104,17 @@ double calculate_individual_stellar_luminosity(double mdot, double mass, long i)
 double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr, int i, int mode)
 {
 #ifdef GALSF_SFR_IMF_VARIATION // fitting function from David Guszejnov's IMF calculations (ok for Mturnover in range 0.01-100) for how mass-to-light ratio varies with IMF shape/effective turnover mass
-    double log_mimf = log10(P[i].IMF_Mturnover);
+    double log_mimf = log10(P.IMF_Mturnover[i]);
     return (0.051+0.042*(log_mimf+2)+0.031*(log_mimf+2)*(log_mimf+2)) / 0.31;
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING // account for IMF sampling model if not evolving individual stars
-    double mu = 0.0115 * P[i].Mass * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
+    double mu = 0.0115 * P.Mass[i] * UNIT_MASS_IN_SOLAR; // 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
     double t=stellar_age_in_gyr*1000.,t1=3.7,t2=7.,t3=44.,a0=0.13,mu_min=1.e-3*mu;
     if(t>t3) {mu*=0;} else {if(t>t2) {mu*=(1.-a0)*(1.-(t-t2)/(t3-t2));} else {if(t>t1) {mu*=1.-a0*(t-t1)/(t2-t1);}}} // expectation value is declining with time, so 'effective multiplier' is larger
     if(mode > 0) {
-        return P[i].IMF_NumMassiveStars / DMAX(mu,mu_min); // scales just with the number of massive stars
+        return P.IMF_NumMassiveStars[i] / DMAX(mu,mu_min); // scales just with the number of massive stars
     } else {
-        if(t>=t3) {return 1;} else {return 0.01 + P[i].IMF_NumMassiveStars / DMAX(mu,mu_min);} // scales with a minimum and a long-timescale baseline
+        if(t>=t3) {return 1;} else {return 0.01 + P.IMF_NumMassiveStars[i] / DMAX(mu,mu_min);} // scales with a minimum and a long-timescale baseline
     }
 #endif
     return 1; // Chabrier or Kroupa IMF //
@@ -125,11 +125,11 @@ double calculate_relative_light_to_mass_ratio_from_imf(double stellar_age_in_gyr
 /* routine to compute the -ionizing- luminosity coming from either individual stars or an SSP */
 double particle_ionizing_luminosity_in_cgs(long i)
 {
-    if(P[i].Mass <= 0 || !isfinite(P[i].Mass)) {return 0;}
+    if(P.Mass[i] <= 0 || !isfinite(P.Mass[i])) {return 0;}
     if(is_particle_single_star_eligible(i)) /* SINGLE STAR VERSION: use effective temperature as a function of stellar mass and size to get ionizing photon production */
     {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-        double l_sol=sink_lum_bol(0,P[i].Mass,i)*(UNIT_LUM_IN_SOLAR), m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
+        double l_sol=sink_lum_bol(0,P.Mass[i],i)*(UNIT_LUM_IN_SOLAR), m_sol=P.Mass[i]*UNIT_MASS_IN_SOLAR, r_sol=pow(m_sol,0.738); // L/Lsun, M/Msun, R/Rsun
         double T_eff=5780.*pow(l_sol/(r_sol*r_sol),0.25), x0=157800./T_eff, fion=0; // ZAMS effective temperature; x0=h*nu/kT for nu>13.6 eV; fion=fraction of blackbody emitted above x0
         if(x0 < 30.) {double q=18./(x0*x0) + 1./(8. + x0 + 20.*exp(-x0/10.)); fion = exp(-1./q);} // accurate to <10% for a Planck spectrum to x0>30, well into vanishing flux //
         return fion * l_sol * SOLAR_LUM_CGS; // return value in cgs, as desired for this routine [l_sol is in L_sun, by definition above] //
@@ -137,7 +137,7 @@ double particle_ionizing_luminosity_in_cgs(long i)
     }
     else /* STELLAR POPULATION VERSION: use updated SB99 tracks: including rotation, new mass-loss tracks, etc. */
     {
-        if(P[i].Type != 5)
+        if(P.Type[i] != 5)
         {
             double lm_ssp=0, star_age=evaluate_stellar_age_Gyr(i), t0=0.0035, tmax=0.02;
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
@@ -147,10 +147,10 @@ double particle_ionizing_luminosity_in_cgs(long i)
 #endif
             if(star_age < 0.033) {lm_ssp *= 1.e-4 + calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1);}
             if(star_age >= tmax) {return 0;} // skip since old stars don't contribute
-            return lm_ssp * SOLAR_LUM_CGS * (P[i].Mass*UNIT_MASS_IN_SOLAR); // converts to cgs luminosity [lm_ssp is in Lsun/Msun, here]
-        } // (P[i].Type != 5)
+            return lm_ssp * SOLAR_LUM_CGS * (P.Mass[i]*UNIT_MASS_IN_SOLAR); // converts to cgs luminosity [lm_ssp is in Lsun/Msun, here]
+        } // (P.Type[i] != 5)
 #ifdef SINK_HII_HEATING /* AGN template: light-to-mass ratio L(>13.6ev)/Mparticle in Lsun/Msun, above is dNion/dt = 5.5e54 s^-1 (Lbol/1e45 erg/s) */
-        if(P[i].Type == 5) {return 0.18 * sink_lum_bol(P[i].Sink_Mdot,P[i].Mass,i) * UNIT_LUM_IN_CGS;}
+        if(P.Type[i] == 5) {return 0.18 * sink_lum_bol(P.Sink_Mdot[i],P.Mass[i],i) * UNIT_LUM_IN_CGS;}
 #endif
     }
     return 0; // catch
@@ -174,16 +174,16 @@ void particle2in_addFB_fromstars(struct addFB_evaluate_data_in_ *in, int i, int 
     if(fb_loop_iteration == 3) {particle2in_addFB_ageTracer(in,i);}
     return;
 #endif
-    if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
+    if(P.SNe_ThisTimeStep[i]<=0) {in->Msne=0; return;} // no event
     // 'dummy' example model assumes all SNe are identical with IMF-averaged properties from the AGORA model (Kim et al., 2016 ApJ, 833, 202)
-    in->Msne = P[i].SNe_ThisTimeStep * (14.8/UNIT_MASS_IN_SOLAR); // assume every SNe carries 14.8 solar masses (IMF-average)
+    in->Msne = P.SNe_ThisTimeStep[i] * (14.8/UNIT_MASS_IN_SOLAR); // assume every SNe carries 14.8 solar masses (IMF-average)
     in->SNe_v_ejecta = 2607. / UNIT_VEL_IN_KMS; // assume ejecta are ~2607 km/s [KE=1e51 erg, for M=14.8 Msun], which is IMF-averaged
 #ifdef SINGLE_STAR_SINK_DYNAMICS // if single-star exploding or returning mass, use its actual mass & assumed energy to obtain the velocity
     if(is_particle_single_star_eligible(i))
     {
-        in->Msne = DMIN(1.,P[i].SNe_ThisTimeStep) * P[i].Mass; // mass fraction of star being returned this timestep
-        in->SNe_v_ejecta = sqrt(2.*(1.e51/UNIT_ENERGY_IN_CGS)/P[i].Mass); // for SNe [total return], simple v=sqrt(2E/m)should be fine without relativistic corrections
-        if(P[i].SNe_ThisTimeStep<1) {double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR; in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS;} // scaling from size-mass relation+eddington factor, assuming line-driven winds //
+        in->Msne = DMIN(1.,P.SNe_ThisTimeStep[i]) * P.Mass[i]; // mass fraction of star being returned this timestep
+        in->SNe_v_ejecta = sqrt(2.*(1.e51/UNIT_ENERGY_IN_CGS)/P.Mass[i]); // for SNe [total return], simple v=sqrt(2E/m)should be fine without relativistic corrections
+        if(P.SNe_ThisTimeStep[i]<1) {double m_msun=P.Mass[i]*UNIT_MASS_IN_SOLAR; in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS;} // scaling from size-mass relation+eddington factor, assuming line-driven winds //
     }
 #endif
 #ifdef METALS
@@ -211,23 +211,23 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
 #if defined(SINGLE_STAR_SINK_DYNAMICS) && !defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* SINGLE-STAR version: simple implementation of single-star wind mass-loss and SNe rates */
     if(is_particle_single_star_eligible(i))
     {
-        double m_sol,l_sol; m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR; l_sol=sink_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR;
+        double m_sol,l_sol; m_sol=P.Mass[i]*UNIT_MASS_IN_SOLAR; l_sol=sink_lum_bol(0,P.Mass[i],i)*UNIT_LUM_IN_SOLAR;
 #ifdef SINGLE_STAR_FB_WINDS
         double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
-        P[i].SNe_ThisTimeStep = DMIN(0.5, (2.338 * alpha * pow(l_sol,7./8.) * pow(m_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*UNIT_TIME_IN_GYR)); // Castor, Abbot, & Klein scaling
+        P.SNe_ThisTimeStep[i] = DMIN(0.5, (2.338 * alpha * pow(l_sol,7./8.) * pow(m_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*UNIT_TIME_IN_GYR)); // Castor, Abbot, & Klein scaling
 #endif
 #ifdef SINGLE_STAR_FB_SNE
         double t_lifetime_Gyr = 10.*(m_sol/l_sol) + 0.003; /* crude estimate of main-sequence lifetime, capped at 3 Myr*/
-        if(evaluate_stellar_age_Gyr(i) >= t_lifetime_Gyr) {P[i].SNe_ThisTimeStep=1;}
+        if(evaluate_stellar_age_Gyr(i) >= t_lifetime_Gyr) {P.SNe_ThisTimeStep[i]=1;}
 #endif
         return 1;
     }
 #endif
 
 #ifdef GALSF_FB_THERMAL /* STELLAR-POPULATION version: pure thermal feedback: assumes AGORA model (Kim et al., 2016 ApJ, 833, 202) where everything occurs at 5Myr exactly */
-    if(P[i].SNe_ThisTimeStep != 0) {P[i].SNe_ThisTimeStep=-1; return 0;} // already had an event, so this particle is "done"
+    if(P.SNe_ThisTimeStep[i] != 0) {P.SNe_ThisTimeStep[i]=-1; return 0;} // already had an event, so this particle is "done"
     if(evaluate_stellar_age_Gyr(i) < 0.005) {return 0;} // enforce age limit of 5 Myr
-    P[i].SNe_ThisTimeStep = P[i].Mass*UNIT_MASS_IN_SOLAR / 91.; // 1 event per 91 solar masses
+    P.SNe_ThisTimeStep[i] = P.Mass[i]*UNIT_MASS_IN_SOLAR / 91.; // 1 event per 91 solar masses
     return 1;
 #endif
 
@@ -236,9 +236,9 @@ double mechanical_fb_calculate_eventrates(int i, double dt)
     if(star_age < 0.03)
     {
         double RSNe = 3.e-4; // assume a constant rate ~ 3e-4 SNe/Myr/solar mass for t = 0-30 Myr //
-        double p = RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
-        double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
-        P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
+        double p = RSNe * (P.Mass[i]*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
+        double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P.ID[i]+6) < p) {n_sn_0++;} // determine if SNe occurs
+        P.SNe_ThisTimeStep[i] = n_sn_0; // assign to particle
         return RSNe;
     }
 #endif
@@ -275,14 +275,14 @@ double mechanical_fb_calculate_eventrates_SNe(int i, double dt)
     double renorm = calculate_relative_light_to_mass_ratio_from_imf(star_age,i,1); // account for higher # of O-stars with a different IMF
     if(star_age<agemax) {RSNe *= renorm;}
 #ifdef GALSF_SFR_IMF_SAMPLING
-    if(star_age>agemax && P[i].IMF_NumMassiveStars>0) {RSNe += 2.516e-4*renorm;} // account for un-exploded O-stars
+    if(star_age>agemax && P.IMF_NumMassiveStars[i]>0) {RSNe += 2.516e-4*renorm;} // account for un-exploded O-stars
 #endif
-    double p = RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
-    double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID+6) < p) {n_sn_0++;} // determine if SNe occurs
+    double p = RSNe * (P.Mass[i]*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // unit conversion factor
+    double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P.ID[i]+6) < p) {n_sn_0++;} // determine if SNe occurs
 #ifdef GALSF_SFR_IMF_SAMPLING
-    if(star_age<agemax && P[i].IMF_NumMassiveStars<n_sn_0) {n_sn_0=P[i].IMF_NumMassiveStars;} // limit to number of O-stars for SNe //
+    if(star_age<agemax && P.IMF_NumMassiveStars[i]<n_sn_0) {n_sn_0=P.IMF_NumMassiveStars[i];} // limit to number of O-stars for SNe //
 #endif
-    P[i].SNe_ThisTimeStep = n_sn_0; // assign to particle
+    P.SNe_ThisTimeStep[i] = n_sn_0; // assign to particle
     return RSNe;
 }
 
@@ -294,9 +294,9 @@ void mechanical_fb_calculate_eventrates_Rprocess(int i, double dt)
     double star_age = evaluate_stellar_age_Gyr(i);
     if(star_age>=0.003) // rate is zero at <3e6 yr
     {
-        double p = 3.0e-5 / (1000.*star_age) * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // Nsne/Myr for a 1 Msun population
-        double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P[i].ID + 7) < p) {n_sn_0++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
-        P[i].RProcessEvent_ThisTimeStep = n_sn_0; // assign event
+        double p = 3.0e-5 / (1000.*star_age) * (P.Mass[i]*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR); // Nsne/Myr for a 1 Msun population
+        double n_sn_0=(float)floor(p); p-=n_sn_0; if(get_random_number(P.ID[i] + 7) < p) {n_sn_0++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
+        P.RProcessEvent_ThisTimeStep[i] = n_sn_0; // assign event
     }
 #endif
 }
@@ -343,19 +343,19 @@ double get_age_tracer_bin_start_time(int k)
 void mechanical_fb_calculate_eventrates_Agetracers(int i, double dt)
 {
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    P[i].AgeDeposition_ThisTimeStep=0; // reset
-    if(P[i].Type != 4) {return;} // only new stars are eligible sources
+    P.AgeDeposition_ThisTimeStep[i]=0; // reset
+    if(P.Type[i] != 4) {return;} // only new stars are eligible sources
     double rate_normalization = All.AgeTracerRateNormalization; // determines the fraction of time spent depositing tracers, or rate-per-particle
-    if(rate_normalization == 0 || rate_normalization <= -1) {P[i].AgeDeposition_ThisTimeStep=1; return;} // rate_normalization = 0 means deposit every time step
+    if(rate_normalization == 0 || rate_normalization <= -1) {P.AgeDeposition_ThisTimeStep[i]=1; return;} // rate_normalization = 0 means deposit every time step
     double stellar_age_myr = evaluate_stellar_age_Gyr(i)*1000.; int k = get_age_tracer_bin(stellar_age_myr); // get age in Myr and bin for age
     double bin_dt_myr = get_age_tracer_bin_start_time(k+1)-get_age_tracer_bin_start_time(k); // get bin duration in Myr
     if(rate_normalization <= 0) // there is a constant probability of event -per timestep-, with 'amount returned' depending on timestep duration
     {
-        if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
-            {if(get_random_number(P[i].ID + 3) < fabs(rate_normalization)) {P[i].AgeDeposition_ThisTimeStep=1./fabs(rate_normalization);}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
+        if(dt*UNIT_TIME_IN_MYR/bin_dt_myr > fabs(rate_normalization)) {P.AgeDeposition_ThisTimeStep[i]=1;} else  // if dt is large compared to bin spacing, might 'miss' an event, so we want to always make an event and return
+            {if(get_random_number(P.ID[i] + 3) < fabs(rate_normalization)) {P.AgeDeposition_ThisTimeStep[i]=1./fabs(rate_normalization);}} // rate limit according to the return fraction this represents fraction of time star should be depositing; if selected, deposit age tracer and use this scaling to increase the normalization of the tracer field
     } else { // there is a constant probability per -time- (target 'number of events per bin per particle'), with 'amount returned' constant
-        double p=fabs(rate_normalization)*(dt*UNIT_TIME_IN_MYR/bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P[i].ID + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
-        P[i].AgeDeposition_ThisTimeStep = n_events / fabs(rate_normalization); // assign event
+        double p=fabs(rate_normalization)*(dt*UNIT_TIME_IN_MYR/bin_dt_myr), n_events=(float)floor(p); p-=n_events; if(get_random_number(P.ID[i] + 3) < p) {n_events++;} // if > 1, this cuts that part off so we get appropriate n > 1 solution
+        P.AgeDeposition_ThisTimeStep[i] = n_events / fabs(rate_normalization); // assign event
     }
 #endif
     return;
@@ -370,12 +370,12 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     {
 #if defined(SINGLE_STAR_FB_WINDS)
         double fire_wind_rel_mass_res = 1e-4; /* relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass */
-        D_RETURN_FRAC = (fire_wind_rel_mass_res * P[i].Sink_Formation_Mass) / P[i].Mass;
+        D_RETURN_FRAC = (fire_wind_rel_mass_res * P.Sink_Formation_Mass[i]) / P.Mass[i];
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
-        if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
-        p = single_star_wind_mdot(i,0) * dt / P[i].Mass; /* actual mdot from its own subroutine, given in code units */
+        if(P.wind_mode[i] != 2) {return;} /* only some eligible particles have winds in this module */
+        p = single_star_wind_mdot(i,0) * dt / P.Mass[i]; /* actual mdot from its own subroutine, given in code units */
 #else /* otherwise use standard scaling from e.g. Castor, Abbot, & Klein */
-        double m_sol=P[i].Mass*UNIT_MASS_IN_SOLAR, l_sol=sink_lum_bol(0,P[i].Mass,i)*UNIT_LUM_IN_SOLAR; /* luminosity in solar */
+        double m_sol=P.Mass[i]*UNIT_MASS_IN_SOLAR, l_sol=sink_lum_bol(0,P.Mass[i],i)*UNIT_LUM_IN_SOLAR; /* luminosity in solar */
         double gam=DMIN(0.5,3.2e-5*l_sol/m_sol), alpha=0.5+0.4/(1.+16./m_sol), q0=(1.-alpha)*gam/(1.-gam), k0=1./30.; // Eddington factor (~L/Ledd for winds), capped at 1/2 for sanity reasons, approximate scaling for alpha factor with stellar type (weak effect)
         p = (2.338 * alpha * pow(L_sol,7./8.) * pow(M_sol,0.1845) * (1./q0) * pow(q0*k0,1./alpha) / m_sol) * (dt*UNIT_TIME_IN_GYR); // mdot in M_sun/Gyr, times dt
 #endif
@@ -410,8 +410,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     }
     
     double n_wind_0=(double)floor(p/D_RETURN_FRAC); p-=n_wind_0*D_RETURN_FRAC; // if p >> return frac, should have > 1 event, so we inject the correct wind mass
-    P[i].MassReturn_ThisTimeStep += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
-    if(get_random_number(P[i].ID + 5) < p/D_RETURN_FRAC) {P[i].MassReturn_ThisTimeStep += D_RETURN_FRAC;} // add the 'remainder' stochastically
+    P.MassReturn_ThisTimeStep[i] += n_wind_0*D_RETURN_FRAC; // add this in, then determine if there is a 'remainder' to be added as well
+    if(get_random_number(P.ID[i] + 5) < p/D_RETURN_FRAC) {P.MassReturn_ThisTimeStep[i] += D_RETURN_FRAC;} // add the 'remainder' stochastically
 }
 
 
@@ -422,8 +422,8 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
 void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 {
 #ifdef GALSF_FB_FIRE_RPROCESS
-    if(P[i].RProcessEvent_ThisTimeStep<=0) {in->Msne=0; return;} // no event
-    int k; double star_age=evaluate_stellar_age_Gyr(i), p=get_random_number(P[i].ID + 8), pcrit, tcrit;
+    if(P.RProcessEvent_ThisTimeStep[i]<=0) {in->Msne=0; return;} // no event
+    int k; double star_age=evaluate_stellar_age_Gyr(i), p=get_random_number(P.ID[i] + 8), pcrit, tcrit;
     for(k=0;k<NUM_RPROCESS_SPECIES;k++)
     {
         if(k==0) {tcrit=0.03;  pcrit=0.3333333333;}  // model 0: tmin > 3e7 yr, rate = 1e-5
@@ -432,7 +432,7 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
         if(k==3) {tcrit=0.003; pcrit=0.03333333333;} // model 3: tmin > 3e6 yr, rate = 1e-6
         if((star_age>=tcrit)&&(p<=pcrit)) {in->yields[1+NUM_LIVE_SPECIES_FOR_COOLTABLES+k]=1;} // units irrelevant//
     }
-    in->Msne = 0.01 * (double)P[i].RProcessEvent_ThisTimeStep / ((double)(UNIT_MASS_IN_SOLAR)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
+    in->Msne = 0.01 * (double)P.RProcessEvent_ThisTimeStep[i] / ((double)(UNIT_MASS_IN_SOLAR)); // mass ejected ~0.01*M_sun; only here for bookkeeping //
 #endif
 }
 
@@ -446,10 +446,10 @@ void particle2in_addFB_Rprocess(struct addFB_evaluate_data_in_ *in, int i)
 void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
 {
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    if(P[i].Type != 4) {return;} // only new stars are eligible for events
-    if(P[i].AgeDeposition_ThisTimeStep<=0) {return;} // no event
+    if(P.Type[i] != 4) {return;} // only new stars are eligible for events
+    if(P.AgeDeposition_ThisTimeStep[i]<=0) {return;} // no event
 
-    double M_norm = (P[i].Mass*UNIT_MASS_IN_SOLAR) * P[i].AgeDeposition_ThisTimeStep; /* AJE: may need to switch to normalizing over logbin spacing if bins are large too avoid small number issues  - this requires undoing the normalization in post */
+    double M_norm = (P.Mass[i]*UNIT_MASS_IN_SOLAR) * P.AgeDeposition_ThisTimeStep[i]; /* AJE: may need to switch to normalizing over logbin spacing if bins are large too avoid small number issues  - this requires undoing the normalization in post */
     double age_myr = evaluate_stellar_age_Gyr(i) * 1000.; int k = get_age_tracer_bin(age_myr); // get age in myr and corresponding tracer bin
     if(k==-9) {printf("Stellar age greater than maximum allows in AGE_TRACERS bins\n"); return;} // error trap for age > max bin
     double dt=GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i)*UNIT_TIME_IN_MYR, dt_half=0.5*dt, age_initial=age_myr-dt_half, age_final=age_myr+dt_half; // get particle timestep in Myr, and age at beginning/end of timestep centered on us
@@ -478,22 +478,22 @@ void particle2in_addFB_ageTracer(struct addFB_evaluate_data_in_ *in, int i)
 
 void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 {
-    int k; if(P[i].SNe_ThisTimeStep<=0) {in->Msne=0; return;} // no event
+    int k; if(P.SNe_ThisTimeStep[i]<=0) {in->Msne=0; return;} // no event
     double t_gyr = evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr > 0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
     double Msne=10.5; if(SNeIaFlag) {Msne=1.4;} // average ejecta mass for single event (normalized to give total mass loss correctly)
 #ifdef METALS
     double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne); // call subroutine to collect the yields
     for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=yields[k];} // assign them back to the vector
 #endif
-    in->Msne = P[i].SNe_ThisTimeStep * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
+    in->Msne = P.SNe_ThisTimeStep[i] * (Msne/UNIT_MASS_IN_SOLAR); // total mass in code units
 #ifdef SINGLE_STAR_SINK_DYNAMICS
-    if(is_particle_single_star_eligible(i)) {in->Msne = P[i].Mass;} // conserve mass and destroy star completely
+    if(is_particle_single_star_eligible(i)) {in->Msne = P.Mass[i];} // conserve mass and destroy star completely
 #endif
-    double SNeEgy = All.SNe_Energy_Renormalization*P[i].SNe_ThisTimeStep * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
+    double SNeEgy = All.SNe_Energy_Renormalization*P.SNe_ThisTimeStep[i] * 1.0e51/UNIT_ENERGY_IN_CGS; // assume each SNe has 1e51 erg
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2)
-    if(SNeIaFlag==0) {double z_eff = P[i].Metallicity[10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
+    if(SNeIaFlag==0) {double z_eff = P.Metallicity[i][10]/All.SolarAbundances[10]; if(z_eff < 1) {SNeEgy *= pow(z_eff + 1.e-5 , -0.12);}} // updated to use same metallicity used for stellar evolution, rather than total metallicity, if this derives from pre-explosion winds, etc, for consistency
 #if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 1)
-    if(i>0) {double z0 = P[i].Metallicity[0]/All.SolarAbundances[0];
+    if(i>0) {double z0 = P.Metallicity[i][0]/All.SolarAbundances[0];
 #if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 2)
         SNeEgy *= pow(z0/0.1 + 1.e-3 , -0.2);
 #else
@@ -504,11 +504,11 @@ void particle2in_addFB_SNe(struct addFB_evaluate_data_in_ *in, int i)
 #endif
     in->SNe_v_ejecta = sqrt(2.0*SNeEgy/(in->Msne)); // v_ej in code units
 #ifdef SNE_NONSINK_SPAWN
-    if(P[i].Type == 4) {
+    if(P.Type[i] == 4) {
         double frac_spawned = 0.5;
-        P[i].unspawned_wind_mass += frac_spawned * (in->Msne);
+        P.unspawned_wind_mass[i] += frac_spawned * (in->Msne);
         in->Msne *= 1.-frac_spawned;
-        double n_unspawned = P[i].unspawned_wind_mass / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
+        double n_unspawned = P.unspawned_wind_mass[i] / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
         if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
     } // designate some fraction of the SNe ejecta for spawning new high-res cells, instead of coupling to pre-existing neighbor cells //
 #endif
@@ -523,7 +523,7 @@ void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *
     if(!is_particle_single_star_eligible(i)) {if(t_gyr > 0.044) {SNeIaFlag=1;} else {SNeIaFlag=0;}} /* match to rates tabulation above to determine if Ia or CC */
 #endif
     if(SNeIaFlag==1) {*Msne=1.4;} else {*Msne=8.72;} /* default to a mean mass for Ia vs CC SNe; for updated table of SNe rates and energetics, this is the updated mean mass per explosion to give the correct total SNe mass */
-    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} /* initialize to surface abundances */
+    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P.Metallicity[i][k];} /* initialize to surface abundances */
     if(NUM_METAL_SPECIES>=10) { // All, then He,C,N,O,Ne,Mg,Si,S,Ca,Fe
         if(SNeIaFlag) { /* SNIa :: from Iwamoto et al. 1999; 'W7' models: total ejecta mass = Msne = 1.4. yields below are -fractional- */
             yields[0]=1; /* total metal mass (species below, + residuals primarily in Ar, Cr, Mn, Ni) */ yields[1]=0; /*He*/
@@ -569,12 +569,12 @@ void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *
         } else { /* SNII (IMF-averaged... may not be the best approx on short timescales..., Nomoto 2006 (arXiv:0605725). here divided by ejecta mass total. */
             yields[0]=0.19;/*Z [total metal mass]*/ yields[1]=0.369;/*He*/ yields[2]=0.0127;/*C*/ yields[3]=0.00456;/*N*/ yields[4]=0.111;/*O*/
             yields[5]=0.0381;/*Ne*/ yields[6]=0.00940;/*Mg*/ yields[7]=0.00889;/*Si*/ yields[8]=0.00378;/*S*/ yields[9]=0.000436;/*Ca*/ yields[10]=0.00706;/*Fe*/
-            if(P[i].Metallicity[0]<0.033) {yields[3]*=P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} /* metal-dependent yields: N scaling is strongly dependent on initial metallicity of the star */
+            if(P.Metallicity[i][0]<0.033) {yields[3]*=P.Metallicity[i][0]/All.SolarAbundances[0];} else {yields[3]*=1.65;} /* metal-dependent yields: N scaling is strongly dependent on initial metallicity of the star */
             yields[0] += yields[3]-0.00456; // augment total metal mass for this correction //
         }}
     if(NUM_METAL_SPECIES==3 || NUM_METAL_SPECIES==4) {if(SNeIaFlag) {yields[0]=1; yields[1]=0.00614; yields[2]=0.531; /* All Z, Mg, Fe in total mass (SnIa) */} else {yields[0]=2.0; yields[1]=0.12; yields[2]=0.0741; /* SnII (per-SNe IMF-weighted averages) */}}
     if(NUM_METAL_SPECIES==1) {if(SNeIaFlag) {yields[0]=1;} else {yields[0]=0.19;}} /* toy model to use if only evolving one species */
-    int k; for(k=0;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[k]=yields[k]*(1.-P[i].Metallicity[0]) + (P[i].Metallicity[k]-All.SolarAbundances[k]);} /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
+    int k; for(k=0;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[k]=yields[k]*(1.-P.Metallicity[i][0]) + (P.Metallicity[i][k]-All.SolarAbundances[k]);} /* add a check to allow for larger abundances in the progenitor stars (usually irrelevant) */
     if(SNeIaFlag) {if(NUM_METAL_SPECIES>=10) {yields[1]=0.0;}} // no He yield for Ia SNe //
 #endif // fire-2 vs fire-2.x yields clause
 #ifdef STARFORGE_FEEDBACK_TRACERS
@@ -594,7 +594,7 @@ void get_SNe_yields(double *yields, int i, double t_gyr, int SNeIaFlag, double *
 
 void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 {
-    int k; if(P[i].MassReturn_ThisTimeStep<=0) {in->Msne=0; return;} // no event
+    int k; if(P.MassReturn_ThisTimeStep[i]<=0) {in->Msne=0; return;} // no event
     
     /* STELLAR POPULATION-AVERAGED VERSION: calculate wind kinetic luminosity + internal energy (hot winds from O-stars, slow from AGB winds) */
 #if (GALSF_FB_FIRE_STELLAREVOLUTION <= 2)
@@ -612,7 +612,7 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
 #if defined(SINGLE_STAR_FB_WINDS) /* SINGLE-STAR VERSION: instead of a stellar population, this is wind from a single star */
     if(is_particle_single_star_eligible(i))
     {
-        double m_msun=P[i].Mass*UNIT_MASS_IN_SOLAR;
+        double m_msun=P.Mass[i]*UNIT_MASS_IN_SOLAR;
         in->SNe_v_ejecta = (616. * sqrt((1.+0.1125*m_msun)/(1.+0.0125*m_msun)) * pow(m_msun,0.131)) / UNIT_VEL_IN_KMS; // scaling from size-mass relation+eddington factor, assuming line-driven winds //
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
         in->SNe_v_ejecta = single_star_wind_velocity(i); /* for fancy models, wind velocity in subroutine, based on Leitherer 1992 and stellar evolutions tage, size, etc. */
@@ -624,14 +624,14 @@ void particle2in_addFB_winds(struct addFB_evaluate_data_in_ *in, int i)
     double yields[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; get_wind_yields(yields, i);
     for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=yields[k];} // assign them back to the vector
 #endif
-    in->Msne = P[i].Mass * P[i].MassReturn_ThisTimeStep; // mass (in code units) returned
+    in->Msne = P.Mass[i] * P.MassReturn_ThisTimeStep[i]; // mass (in code units) returned
 }
 
 
 #ifdef METALS
 void get_wind_yields(double *yields, int i)
 {
-    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} // return surface abundances, to leading order //
+    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P.Metallicity[i][k];} // return surface abundances, to leading order //
 #if defined(SINGLE_STAR_FB_WINDS)
     if(is_particle_single_star_eligible(i))
     {
@@ -668,7 +668,7 @@ void get_wind_yields(double *yields, int i)
 #else
         /* the interesting species are He & CNO: below is based on a compilation of van den Hoek & Groenewegen 1997, Marigo 2001, Izzard 2004 */
         yields[1]=0.36; /*He*/ yields[2]=0.016; /*C*/ yields[3]=0.0041; /*N*/ yields[4]=0.0118; /*O*/
-        if(P[i].Metallicity[0]<0.033) {yields[4] *= P[i].Metallicity[0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;} // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
+        if(P.Metallicity[i][0]<0.033) {yields[4] *= P.Metallicity[i][0]/All.SolarAbundances[0];} else {yields[4] *= 1.65;} // metal-dependent yields: O scaling is strongly dependent on initial metallicity of the star //
         yields[0]=0.0; for(k=2;k<=NUM_LIVE_SPECIES_FOR_COOLTABLES;k++) {yields[0]+=yields[k];}
 #endif
     } else {yields[0]=0.032; for(k=1;k<NUM_METAL_SPECIES;k++) {yields[k]=0.0;}} /* if <10 species, adopt toy model for simple enrichment [not using extended networks] */
@@ -689,9 +689,9 @@ double Z_for_stellar_evol(int i)
 {
     if(i<0) {return 1;}
 #ifdef METALS
-    double Z_solar = P[i].Metallicity[0]/All.SolarAbundances[0]; // use total metallicity
+    double Z_solar = P.Metallicity[i][0]/All.SolarAbundances[0]; // use total metallicity
 #if (GALSF_FB_FIRE_STELLAREVOLUTION > 2) && defined(COOL_METAL_LINES_BY_SPECIES)
-    int i_Fe=10; Z_solar = P[i].Metallicity[i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!
+    int i_Fe=10; Z_solar = P.Metallicity[i][i_Fe]/All.SolarAbundances[i_Fe]; // use Fe, specifically, for computing stellar properties, as its most relevant here. MAKE SURE this is set to the correct abundance in the list, to match Fe!
 #endif
     return DMIN(DMAX(Z_solar,0.01),3.); // stellar evolution tables here are not arbitrarily extrapolable, so this is bounded //
 #else
@@ -705,32 +705,32 @@ void update_stellarnumber_and_timedistribofstarformation(void)
 {
     int i; for (int i : ActiveParticleList)
     {
-        if(P[i].Type == 4 && P[i].Mass > 0)
+        if(P.Type[i] == 4 && P.Mass[i] > 0)
         {
-            double dt_since_form_code = evaluate_time_since_t_initial_in_Gyr(P[i].StellarAge) / UNIT_TIME_IN_GYR; // time since spawn in code [physical] units
-            if((dt_since_form_code < P[i].TimeDistribOfStarFormation) && (P[i].TimeDistribOfStarFormation > 0)) // candidate for 'spawning'
+            double dt_since_form_code = evaluate_time_since_t_initial_in_Gyr(P.StellarAge[i]) / UNIT_TIME_IN_GYR; // time since spawn in code [physical] units
+            if((dt_since_form_code < P.TimeDistribOfStarFormation[i]) && (P.TimeDistribOfStarFormation[i] > 0)) // candidate for 'spawning'
             {
-                double dt_remaining = P[i].TimeDistribOfStarFormation - dt_since_form_code; // time remaining to spawn
+                double dt_remaining = P.TimeDistribOfStarFormation[i] - dt_since_form_code; // time remaining to spawn
                 double dt_timestep = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i); // timestep being taken [code units]
-                double d_tau = DMAX(DMIN( dt_timestep , dt_remaining) , 0) / P[i].TimeDistribOfStarFormation; // effective step size in dimensionless units
+                double d_tau = DMAX(DMIN( dt_timestep , dt_remaining) , 0) / P.TimeDistribOfStarFormation[i]; // effective step size in dimensionless units
                 double f_highz=0.0115, f_m; f_m = f_highz; // 1/mass in solar per O-star number
 #ifdef FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT // SIMPLE_POPTHREE_MODEL
-                double f_lowz=2., zmin=-7, zmax=-5, z0=log10(P[i].Metallicity[0]/0.01 + 1.e-15);
+                double f_lowz=2., zmin=-7, zmax=-5, z0=log10(P.Metallicity[i][0]/0.01 + 1.e-15);
 #if (FIRE_SNE_ENERGY_METAL_DEPENDENCE_EXPERIMENT > 3)
                 zmin=-5.; zmax=-3.;
 #endif
                 if(z0<=zmin) {f_m=f_lowz;} else if(z0<zmax) {f_m=f_lowz + (f_highz-f_lowz)*(z0-zmin)/(zmax-zmin);}
 #endif
-                double n_expected_total = f_m * P[i].Mass * UNIT_MASS_IN_SOLAR; // default f_m above is 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
+                double n_expected_total = f_m * P.Mass[i] * UNIT_MASS_IN_SOLAR; // default f_m above is 1 O-star per 100 Msun [more exactly calculated here as number of stars per solar mass with mass > 8 Msun, from our adopted Kroupa IMF from 0.01-100 Msun]
                 double dn_expected_in_dt = n_expected_total * d_tau; // expected number to spawn in this particular interval
                 gsl_rng *random_generator_for_massivestars; // allocate rng
                 random_generator_for_massivestars = gsl_rng_alloc(gsl_rng_ranlxd1); // setup generator
-                gsl_rng_set(random_generator_for_massivestars, P[i].ID + 49531 + All.NumCurrentTiStep); // seed random number
+                gsl_rng_set(random_generator_for_massivestars, P.ID[i] + 49531 + All.NumCurrentTiStep); // seed random number
                 unsigned int n_to_add = gsl_ran_poisson(random_generator_for_massivestars, dn_expected_in_dt); // actually draw the number
                 if(n_to_add > 0) // hey, new stars!
                 {
-                    P[i].IMF_WeightedMeanStellarFormationTime = (P[i].IMF_NumMassiveStars * P[i].StellarAge + n_to_add * All.Time) / (P[i].IMF_NumMassiveStars + n_to_add); // update the effective stellar age (so e.g. if we lose stars, this can keep updating)
-                    P[i].IMF_NumMassiveStars += n_to_add; // add this to the number of massive stars that we are tracking explicitly
+                    P.IMF_WeightedMeanStellarFormationTime[i] = (P.IMF_NumMassiveStars[i] * P.StellarAge[i] + n_to_add * All.Time) / (P.IMF_NumMassiveStars[i] + n_to_add); // update the effective stellar age (so e.g. if we lose stars, this can keep updating)
+                    P.IMF_NumMassiveStars[i] += n_to_add; // add this to the number of massive stars that we are tracking explicitly
                 }
             }
         }
@@ -741,10 +741,10 @@ void update_stellarnumber_and_timedistribofstarformation(void)
 
 #ifdef METALS
 void get_jet_yields(double *yields, int i) {
-    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P[i].Metallicity[k];} /* return surface abundances, to leading order */
+    int k; for(k=0;k<NUM_METAL_SPECIES;k++) {yields[k]=P.Metallicity[i][k];} /* return surface abundances, to leading order */
 #ifdef SNE_NONSINK_SPAWN
     double t_gyr=evaluate_stellar_age_Gyr(i); int SNeIaFlag=0; if(t_gyr>0.03753) {SNeIaFlag=1;}; /* assume SNe before critical time are core-collapse, later are Ia */
-    if(P[i].Type==4) {double Msne; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne);}
+    if(P.Type[i]==4) {double Msne; get_SNe_yields(yields,i,t_gyr,SNeIaFlag,&Msne);}
 #endif
 #ifdef STARFORGE_FEEDBACK_TRACERS
     for(k=0;k<NUM_STARFORGE_FEEDBACK_TRACERS;k++) {yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+k]=0;} yields[NUM_METAL_SPECIES-NUM_STARFORGE_FEEDBACK_TRACERS+0]=1; // this is 'fully' jet material, so mark as such here, so it is noted for all wind routines [whichever form of the wind subroutine we actually use, otherwise it would only appear in the jet version]
@@ -759,9 +759,9 @@ void get_jet_yields(double *yields, int i) {
 double single_star_jet_velocity(int n)
 {
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION) /* use the fancy stellar evolution modules to calculate these for stars or protostars */
-    return (All.Sink_outflow_jetlaunchvelscaling * sqrt(All.G * P[n].Sink_Mass / (P[n].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR))); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
+    return (All.Sink_outflow_jetlaunchvelscaling * sqrt(All.G * P.Sink_Mass[n] / (P.ProtoStellarRadius_inSolar[n] / UNIT_LENGTH_IN_SOLAR))); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum
 #else
-    return (All.Sink_outflow_jetlaunchvelscaling * sqrt(All.G * P[n].Sink_Mass / (10. / UNIT_LENGTH_IN_SOLAR))); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
+    return (All.Sink_outflow_jetlaunchvelscaling * sqrt(All.G * P.Sink_Mass[n] / (10. / UNIT_LENGTH_IN_SOLAR))); // we use the flag as a multiplier times the Kepler velocity at the protostellar radius. Really we'd want v_kick = v_kep * m_accreted / m_kicked to get the right momentum; without a better guess, assume fiducial protostellar radius of 10*Rsun, as in Federrath 2014
 #endif
 }
 #endif
@@ -773,11 +773,11 @@ double single_star_jet_velocity(int n)
 /* 'top-level' function to update the size (and other properties like effective temperature) of accreting protostars along relevant stellar evolution tracks */
 void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, double dt)
 {
-    if(P[n].Type != 5) {return;} // only type-5 particles are eligible here
+    if(P.Type[n] != 5) {return;} // only type-5 particles are eligible here
     
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1)
     /* this is the simple version written by Phil: intentionally simplified PS evolution tracks, designed to make it easy to understand and model the evolution and reduce un-necessary complications */
-    double lum_sol = 0.0, m_initial = DMAX(1.e-37 , (P[n].Sink_Mass - dm)), mu = DMAX(0, dm/m_initial), m_solar = P[n].Sink_Mass*UNIT_MASS_IN_SOLAR, T4000_4 = pow(m_solar, 0.55); // m_initial = mass before the accretion, mu = relative mass accreted, m_solar = mass in solar units, T4000_4 = (temperature/4000K)^4 along Hayashi track
+    double lum_sol = 0.0, m_initial = DMAX(1.e-37 , (P.Sink_Mass[n] - dm)), mu = DMAX(0, dm/m_initial), m_solar = P.Sink_Mass[n]*UNIT_MASS_IN_SOLAR, T4000_4 = pow(m_solar, 0.55); // m_initial = mass before the accretion, mu = relative mass accreted, m_solar = mass in solar units, T4000_4 = (temperature/4000K)^4 along Hayashi track
     if(m_solar > 0.012) // below this limit, negligible luminosity //
     {
         if(m_solar < 0.43) {lum_sol = 0.185 * m_solar*m_solar;} else if(m_solar < 2.) {lum_sol = m_solar*m_solar*m_solar*m_solar;}
@@ -785,38 +785,38 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     }
     double R_Hayashi_Henyey = 2.1 * sqrt(lum_sol / T4000_4); // size below which, at the temperature above, contraction must occur along the Henyey track at constant luminosity
     double t_R_evol = 0, contraction_factor = 0; // timescale for contraction
-    if(P[n].ProtoStellarRadius_inSolar <= R_Hayashi_Henyey)
+    if(P.ProtoStellarRadius_inSolar[n] <= R_Hayashi_Henyey)
     {// currently on Henyey track, contracting at constant Luminosity
-        t_R_evol = 1.815e7 * m_solar*m_solar / (P[n].ProtoStellarRadius_inSolar * lum_sol) / (UNIT_TIME_IN_YR); // contraction timescale
+        t_R_evol = 1.815e7 * m_solar*m_solar / (P.ProtoStellarRadius_inSolar[n] * lum_sol) / (UNIT_TIME_IN_YR); // contraction timescale
         contraction_factor = 1. / (1. + dt/t_R_evol);
     } else {// currently on Hayashi track, contracting at constant Temperature
-        t_R_evol = 8.021e7 * m_solar*m_solar / (P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar * T4000_4) / (UNIT_TIME_IN_YR); // contraction timescale
+        t_R_evol = 8.021e7 * m_solar*m_solar / (P.ProtoStellarRadius_inSolar[n]*P.ProtoStellarRadius_inSolar[n]*P.ProtoStellarRadius_inSolar[n] * T4000_4) / (UNIT_TIME_IN_YR); // contraction timescale
         contraction_factor = 1. / pow(1 + 3.*dt/t_R_evol, 1./3.);
     }
     double r_new = DMAX(10. * m_solar, 5.24 * pow(m_solar, 1./3)), R_main_sequence_ignition; // r_new = size of newly-formed protostar; R_main_sequence_ignition = main sequence radius - where contraction should halt
     if (m_solar < 0.012) {r_new =  5.24 * pow(m_solar, 1./3);} // constant density for Jupiter-type objects
-    P[n].ProtoStellarRadius_inSolar = (P[n].ProtoStellarRadius_inSolar * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
+    P.ProtoStellarRadius_inSolar[n] = (P.ProtoStellarRadius_inSolar[n] * contraction_factor + r_new * mu) / (1. + mu); // new size (contraction + accretion both accounted for)
     if(m_solar <= 1) {R_main_sequence_ignition = pow(m_solar,0.8);} else {R_main_sequence_ignition = pow(m_solar,0.57);}
-    if(P[n].ProtoStellarRadius_inSolar <= R_main_sequence_ignition)
+    if(P.ProtoStellarRadius_inSolar[n] <= R_main_sequence_ignition)
     {
-        P[n].ProtoStellarRadius_inSolar = R_main_sequence_ignition; P[n].ProtoStellarStage = 5; // using same notation for MS as SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1
+        P.ProtoStellarRadius_inSolar[n] = R_main_sequence_ignition; P.ProtoStellarStage[n] = 5; // using same notation for MS as SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 1
     }
     
 #elif (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2) /* Protostellar evolution model based on the ORION version, see Offner 2009 Appendix B */
     double fk = 1.; // fraction of kinetic energy accreta has when it arrives at the accretion shock, relative to freefall from infinity
     double f_acc = 1.; // fraction of accretion power that is radiated away (the rest is advected into the star)
     double max_rel_dr = 0.01; // maximum relative change in radius per step, if the change over a single timestep is larger than this than we subcycle the evolution of the stellar radius
-    double mass = P[n].Sink_Mass; // mass of star/protostar at the end of the timestep
-    double mass_D = P[n].Mass_D; // amount of D in the protostar
-    double mdot = P[n].Sink_Mdot; // accretion rate, shorter to write it this way
+    double mass = P.Sink_Mass[n]; // mass of star/protostar at the end of the timestep
+    double mass_D = P.Mass_D[n]; // amount of D in the protostar
+    double mdot = P.Sink_Mdot[n]; // accretion rate, shorter to write it this way
     double mdot_m_solar_per_year = mdot * UNIT_MASS_IN_SOLAR / UNIT_TIME_IN_YR; // accretion rate in msolar/yr
     double m_solar = mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
     double m_initial = DMAX(1.e-37 , (mass - dm)); // mass before accretion
-    int stage = P[n].ProtoStellarStage; /* what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: SNe, 7: relic, see Offner 2009 Appendix B*/
+    int stage = P.ProtoStellarStage[n]; /* what stage of stellar evolution the particle is in 0: pre collapse, 1: no burning, 2: fixed Tc burnig, 3: variable Tc burning, 4: shell burning, 5: main sequence, 6: SNe, 7: relic, see Offner 2009 Appendix B*/
     if (stage == 0) {// set the radius for the pre-collapse phase according to Eq B1 in Offner 2009, this overwrites the original prescription from sfr_eff.c
-        P[n].ProtoStellarRadius_inSolar = DMAX(2.5 * pow(mdot_m_solar_per_year/1e-5,1./3), 2.);
+        P.ProtoStellarRadius_inSolar[n] = DMAX(2.5 * pow(mdot_m_solar_per_year/1e-5,1./3), 2.);
     }
-    double r = P[n].ProtoStellarRadius_inSolar / UNIT_LENGTH_IN_SOLAR; // star radius in code units
+    double r = P.ProtoStellarRadius_inSolar[n] / UNIT_LENGTH_IN_SOLAR; // star radius in code units
     int stage_increase = 0;
     double lum_Hayashi = ps_lum_Hayashi_BB(mass, r); // blackbody radiation assuming the star follows the Hayashi track
     double lum_MS = ps_lum_MS(mass); // luminosity of main sequence star of m mass
@@ -874,69 +874,69 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
             }
             
             // Update stellar properties
-            P[n].ProtoStellarRadius_inSolar = r * UNIT_LENGTH_IN_SOLAR;
-            P[n].Mass_D = mass_D;
+            P.ProtoStellarRadius_inSolar[n] = r * UNIT_LENGTH_IN_SOLAR;
+            P.Mass_D[n] = mass_D;
             // Debug message
             // Check whether the star can progress to the next state
             // move from "no burn" to "burning at fixed Tc" phase when central temperature gets high enough for D ignition
-            if ( (stage==1) && (Tc >= 1.5e6) && ((All.Time-P[n].StellarAge) > DMAX(3.*dt, 1e-4/(UNIT_TIME_IN_MYR)) ) ){ // further check that the sink has been promoted at least a couple of timesteps and 100 yr ago, so that we don't start D burning immediately after forming the sink (relevant in low res cases)
+            if ( (stage==1) && (Tc >= 1.5e6) && ((All.Time-P.StellarAge[n]) > DMAX(3.*dt, 1e-4/(UNIT_TIME_IN_MYR)) ) ){ // further check that the sink has been promoted at least a couple of timesteps and 100 yr ago, so that we don't start D burning immediately after forming the sink (relevant in low res cases)
                 stage_increase = 1; // particle qualifies to the "fixed Tc burn" phase
             }
             // move from "burning at fixed Tc" to "variable Tc burn" phase when D runs out
-            if ( (stage==2) && (P[n].Mass_D <= 0) ){
-                P[n].Mass_D = 0;
+            if ( (stage==2) && (P.Mass_D[n] <= 0) ){
+                P.Mass_D[n] = 0;
                 stage_increase = 1; // particle qualifies to the "variable Tc burn" phase
             }
             // move from "variable Tc burn" to "shell burn" phase when radiation becomes strong enough to form a radiative zone
             if ( (stage==3) && (t_KH/t_acc < 3.) ){
                 stage_increase = 1; // particle qualifies to the "shell burn" phase
-                P[n].ProtoStellarRadius_inSolar *= 3; //star swells due to the formation of radiative barrier
+                P.ProtoStellarRadius_inSolar[n] *= 3; //star swells due to the formation of radiative barrier
             }
             // move from "shell burn" to "main sequence" phase when the radius reaches the main sequence radius
-            if ( (stage<5) && (P[n].ProtoStellarRadius_inSolar <= ps_radius_MS_in_solar(mass)) ){
+            if ( (stage<5) && (P.ProtoStellarRadius_inSolar[n] <= ps_radius_MS_in_solar(mass)) ){
                 stage_increase = 1; // particle qualifies to become a ZAMS star
-                P[n].ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass);
+                P.ProtoStellarRadius_inSolar[n] = ps_radius_MS_in_solar(mass);
             }
         }
         else{ // the protostar is in the "pre-collapse" state, no internal evolution, just check if it can be promoted to the next stage
-            P[n].Mass_D = P[n].Sink_Mass; //no D burned so far
+            P.Mass_D[n] = P.Sink_Mass[n]; //no D burned so far
             if (m_solar >= 0.01){
                 stage_increase = 1; // particle qualifies to the "no burning stage"
             }
         }
         if(stage_increase) {
-            P[n].ProtoStellarStage += stage_increase;
-            P[n].StellarAge = All.Time; // store the time of the last promotion
-            if(P[n].ProtoStellarStage == 5) {P[n].ZAMS_Mass = P[n].Sink_Mass;} // store the mass at which we reached the main sequence
+            P.ProtoStellarStage[n] += stage_increase;
+            P.StellarAge[n] = All.Time; // store the time of the last promotion
+            if(P.ProtoStellarStage[n] == 5) {P.ZAMS_Mass[n] = P.Sink_Mass[n];} // store the mass at which we reached the main sequence
         } //increase evolutionary stage if the particle satisfies the requirements
     }
     else{ // for main sequence stars or SNe or relics
-        if(P[n].ProtoStellarStage == 5) { // MS stars
-            P[n].ProtoStellarRadius_inSolar = ps_radius_MS_in_solar(mass); // update the mass if the mass changes (unlikely)
+        if(P.ProtoStellarStage[n] == 5) { // MS stars
+            P.ProtoStellarRadius_inSolar[n] = ps_radius_MS_in_solar(mass); // update the mass if the mass changes (unlikely)
 #ifdef SINGLE_STAR_FB_SNE
             // Check age and see if we need to blow up this star
             double age_Gyr = evaluate_stellar_age_Gyr(n);
             if ( age_Gyr > stellar_lifetime_in_Gyr(n) ) {
-                P[n].ProtoStellarStage = 6; // time to explode
-                P[n].Mass_final = P[n].Sink_Mass; // record the final mass the star had
+                P.ProtoStellarStage[n] = 6; // time to explode
+                P.Mass_final[n] = P.Sink_Mass[n]; // record the final mass the star had
                 double n_stars_within_star_particle = 1; // allow for compact binary representations that might evolve differently
 #if defined(SINK_COUNTPROGS) && defined(SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES)
-                n_stars_within_star_particle = (double)P[i].Sink_CountProgs; // this was our tracker of binary consolidation events
+                n_stars_within_star_particle = (double)P.Sink_CountProgs[i]; // this was our tracker of binary consolidation events
 #endif
-                if(P[n].Sink_Mass/n_stars_within_star_particle <= 1.4/UNIT_MASS_IN_SOLAR) {P[n].ProtoStellarStage = 7;} // should collapse to WD, no explosion
+                if(P.Sink_Mass[n]/n_stars_within_star_particle <= 1.4/UNIT_MASS_IN_SOLAR) {P.ProtoStellarStage[n] = 7;} // should collapse to WD, no explosion
 #ifdef SINGLE_STAR_RELICS
-                // if(P[n].Sink_Mass < 20./UNIT_MASS_IN_SOLAR) {P[n].Sink_Mass = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6 -- handled in SNe routines now, at -end- of SNe
-                if(P[n].Sink_Mass >= 20./UNIT_MASS_IN_SOLAR) {P[n].ProtoStellarStage = 7;} // direct-collapse to relic (BH), skipping SNe entirely
+                // if(P.Sink_Mass[n] < 20./UNIT_MASS_IN_SOLAR) {P.Sink_Mass[n] = 1.4;} // Collapse to NS of mass 1.4 Msun. Still maintain ProtoStellarStage = 6 -- handled in SNe routines now, at -end- of SNe
+                if(P.Sink_Mass[n] >= 20./UNIT_MASS_IN_SOLAR) {P.ProtoStellarStage[n] = 7;} // direct-collapse to relic (BH), skipping SNe entirely
 #endif
 #if defined(SINK_ALPHADISK_ACCRETION)
-                P[n].Sink_Mass_Reservoir = 0; // probably does not matter, but let's make sure these don't cause issues
-                P[n].Mass = P[n].Sink_Mass;
+                P.Sink_Mass_Reservoir[n] = 0; // probably does not matter, but let's make sure these don't cause issues
+                P.Mass[n] = P.Sink_Mass[n];
 #endif
                 // Save properties of SN progenitor.
                 char buf[DEFAULT_PATH_BUFFERSIZE_TOUSE]; FILE *FdSinkSNDetails;
                 snprintf(buf, DEFAULT_PATH_BUFFERSIZE_TOUSE, "%s%s", All.OutputDir, "SN_details.txt");
                 FdSinkSNDetails = fopen(buf, "a");
-                fprintf(FdSinkSNDetails, "%.16g %llu %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P[n].ID, P[n].Sink_Mass, P[n].Pos[0], P[n].Pos[1],P[n].Pos[2],P[n].Vel[0], P[n].Vel[1],P[n].Vel[2]); fflush(FdSinkSNDetails);
+                fprintf(FdSinkSNDetails, "%.16g %llu %g %g %g %g %g %g %g \n", All.Time, (unsigned long long)P.ID[n], P.Sink_Mass[n], P.Pos[n][0], P.Pos[n][1],P.Pos[n][2],P.Vel[n][0], P.Vel[n][1],P.Vel[n][2]); fflush(FdSinkSNDetails);
                 fclose(FdSinkSNDetails);
             }
 #endif
@@ -947,26 +947,26 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
     /* Power based parametrization from ORION (2 params)*/
     // lum_acc = facc * fk * All.G*mass*mdot/r; // luminosity radiated at the accretion shock
     // lum_disk = (1.-fk) * All.G*mass*mdot/r; // luminosity released by material that traverses the inner disk
-    // P[n].StarLuminosity_Solar = (lum_acc + lum_disk + lum_int) * UNIT_LUM_IN_SOLAR ; //luminosity of the star
+    // P.StarLuminosity_Solar[n] = (lum_acc + lum_disk + lum_int) * UNIT_LUM_IN_SOLAR ; //luminosity of the star
     /*********************************************/
     
-    P[n].StarLuminosity_Solar = ((f_acc*fk + (1-fk)) * All.G*mass*mdot/r + lum_int) * UNIT_LUM_IN_SOLAR; // disk + accretion shock + internal luminosity (=MAX(L_MS,L_Hayashi))
+    P.StarLuminosity_Solar[n] = ((f_acc*fk + (1-fk)) * All.G*mass*mdot/r + lum_int) * UNIT_LUM_IN_SOLAR; // disk + accretion shock + internal luminosity (=MAX(L_MS,L_Hayashi))
     
-    if(P[n].ProtoStellarStage == 0) {P[n].StarLuminosity_Solar = 0;} // no luminosity yet
-    if(P[n].ProtoStellarStage == 7) {
-        P[n].StarLuminosity_Solar = 0; // default to no luminosity for safety
+    if(P.ProtoStellarStage[n] == 0) {P.StarLuminosity_Solar[n] = 0;} // no luminosity yet
+    if(P.ProtoStellarStage[n] == 7) {
+        P.StarLuminosity_Solar[n] = 0; // default to no luminosity for safety
 #ifdef SINGLE_STAR_RELICS
-        if(P[n].Mass_final > 1.4) { // only interested here in the systems with -compact- remnants, for this calculation
-            P[n].ProtoStellarRadius_inSolar = 6. * (2.12e-6 * P[n].Sink_Mass*UNIT_MASS_IN_SOLAR); // relics 'radius' = 6 * (G*Mbh/c^2), for ISCO
+        if(P.Mass_final[n] > 1.4) { // only interested here in the systems with -compact- remnants, for this calculation
+            P.ProtoStellarRadius_inSolar[n] = 6. * (2.12e-6 * P.Sink_Mass[n]*UNIT_MASS_IN_SOLAR); // relics 'radius' = 6 * (G*Mbh/c^2), for ISCO
             double eps_r = evaluate_sink_radiative_efficiency(mdot,mass,n); // get compact remnant radiative efficiency
-            P[n].StarLuminosity_Solar = eps_r * (1.44e13 * mdot_m_solar_per_year); // radiative efficiency times Mdot*c^2, in units of Lsolar
+            P.StarLuminosity_Solar[n] = eps_r * (1.44e13 * mdot_m_solar_per_year); // radiative efficiency times Mdot*c^2, in units of Lsolar
         }
 #endif
     }
 #endif //end of SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2
     
 #if defined(SINGLE_STAR_FB_TIMESTEPLIMIT)
-    P[n].MaxFeedbackVel = single_star_feedback_velocity_fortimestep(n);
+    P.MaxFeedbackVel[n] = single_star_feedback_velocity_fortimestep(n);
 #endif
     
     return;
@@ -975,23 +975,23 @@ void singlestar_subgrid_protostellar_evolution_update_track(int n, double dm, do
 #if defined(SINGLE_STAR_FB_WINDS)
 /* Let's get the wind mass loss rate for MS stars. n is the index of the particle (P[n]). mode is 1 when called by the wind spawning routine (sink.c) and 2 if called by the FIRE wind module (in this file, mechanical_fb_calculate_eventrates_Winds). The function decides which type of wind feedback is appropriate for the current star and will only give a nonzero mdot to one of these */
 double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then the wind mode is not changed by calling this function
-    if(P[n].Type != 5) {return 0;} // only type-5 particles are eligible here
+    if(P.Type[n] != 5) {return 0;} // only type-5 particles are eligible here
 
     double minimum_stellarmass_for_winds_solar  = 2.0;  // minimum stellar mass allowed to have winds
     int    model_wolf_rayet_phase_explicitly    = 1;    // assumes that O stars turn into WR stars at the end of their lifetime, increasing their mass loss rate
     double n_particles_for_discrete_wind_spawn  = 1e-1; // parameter for switching between wind spawning and just depositing momentum to nearby gas (FIRE winds) -- particle number required to trigger 'explicit' spawn module. Setting it to 0 ensures that we always spawn winds, while a high value (e.g. 1e6) ensures we always use the FIRE wind module
 
     double wind_mass_loss_rate=0; //mass loss rate in code units
-    if(P[n].ProtoStellarStage != 5) {return 0;}
-    double m_solar = P[n].Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
+    if(P.ProtoStellarStage[n] != 5) {return 0;}
+    double m_solar = P.Mass[n] * UNIT_MASS_IN_SOLAR; // mass in units of Msun
     if (m_solar < minimum_stellarmass_for_winds_solar){return 0.0;} //no winds for low mass stars
     // winds are for MS only: we are assuming that METALS are also on
-    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; //relative metallicity to solar
+    double ZZ = P.Metallicity[n][0]/All.SolarAbundances[0]; //relative metallicity to solar
     double logmdot_wind; // log10(Mdot / (Msun/yr))
 
     // phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
-    double L = ps_lum_MS(P[n].Sink_Mass) * UNIT_LUM_IN_SOLAR, R = P[n].ProtoStellarRadius_inSolar; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
-    logmdot_wind = -6 + 1.5 * log10(P[n].StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
+    double L = ps_lum_MS(P.Sink_Mass[n]) * UNIT_LUM_IN_SOLAR, R = P.ProtoStellarRadius_inSolar[n]; double Teff = 5780.*sqrt(sqrt(L/(R*R)));
+    logmdot_wind = -6 + 1.5 * log10(P.StarLuminosity_Solar[n] / 1e6) + 0.69 * log10(ZZ); // "de Jager / 3"
 #if (SINGLE_STAR_FB_WINDS > 0)
     double vinf_over_vesc = single_star_wind_velocity(n)/single_star_escape_speed(n);
 #endif 
@@ -1012,9 +1012,9 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
 	    + 0.85 * log10(ZZ); // Vink 2001,  arXiv:astro-ph/0101509
     }
 #else // default STARFORGE phenomenological prescription: "de Jager / 3" model from Smith 2014, with limiter for "weak-wind problem"
-    logmdot_wind = -6 + 1.5 * log10(P[n].StarLuminosity_Solar / 1e6) + 0.69 * log10(ZZ);
+    logmdot_wind = -6 + 1.5 * log10(P.StarLuminosity_Solar[n] / 1e6) + 0.69 * log10(ZZ);
 #endif
-    logmdot_wind = DMIN(-7.65 + 2.9*log10(P[n].StarLuminosity_Solar/ 1e5), logmdot_wind); // weak-wind problem
+    logmdot_wind = DMIN(-7.65 + 2.9*log10(P.StarLuminosity_Solar[n]/ 1e5), logmdot_wind); // weak-wind problem
 
     if(model_wolf_rayet_phase_explicitly) {if(evaluate_stellar_age_Gyr(n) > (stellar_lifetime_in_Gyr(n)-singlestar_WR_lifetime_Gyr(n))){logmdot_wind += 1.;}} //Our star is in the WR phase, for now use the simple prescription of having 10x higher wind loss rates based on Smith 2014
 
@@ -1031,40 +1031,40 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
     if ( set_mode && (wind_mass_loss_rate>0) ) {
         // let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
         double v_wind = single_star_wind_velocity(n);
-        double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensityAroundParticle)) / (v_wind*v_wind*v_wind));
+        double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P.DensityAroundParticle[n])) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / target_mass_for_wind_spawning(n);
 
-        int old_wind_mode = P[n].wind_mode;
+        int old_wind_mode = P.wind_mode[n];
         if (N_wind >= n_particles_for_discrete_wind_spawn){
-            P[n].wind_mode = 1; // we can spawn enough particles per wind time
+            P.wind_mode[n] = 1; // we can spawn enough particles per wind time
         } else{
-            P[n].wind_mode = 2; // we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
+            P.wind_mode[n] = 2; // we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
 #ifdef SINGLE_STAR_FB_JETS
         double spawning_min_wind_jet_mom_ratio = 10.0; // if winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
-        if ( (P[n].wind_mode == 1) && (P[n].Sink_Mdot>0) ){ // we want to spawn winds but we have jets too
-            double jet_mom_inj = single_star_jet_velocity(n) * P[n].Sink_Mdot;
+        if ( (P.wind_mode[n] == 1) && (P.Sink_Mdot[n]>0) ){ // we want to spawn winds but we have jets too
+            double jet_mom_inj = single_star_jet_velocity(n) * P.Sink_Mdot[n];
             double wind_mom_inj = v_wind * wind_mass_loss_rate;
-            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P[n].wind_mode = 2;} //w e switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
+            if (spawning_min_wind_jet_mom_ratio < (spawning_min_wind_jet_mom_ratio * jet_mom_inj) ){ P.wind_mode[n] = 2;} //w e switch back to the FIRE wind injection so that we can spawn the jet and have winds at the same time
         }
 #endif
-        if (old_wind_mode != P[n].wind_mode){
-            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",(unsigned long long)P[n].ID,P[n].wind_mode,All.Time, wind_mass_loss_rate);
+        if (old_wind_mode != P.wind_mode[n]){
+            printf("Wind mode change for star %llu to %d at %g. Mdot_wind %g\n",(unsigned long long)P.ID[n],P.wind_mode[n],All.Time, wind_mass_loss_rate);
         }
     }
     return wind_mass_loss_rate;
 }
 
 double singlestar_WR_lifetime_Gyr(int n) { // calculate lifetime for star in Wolf-Rayet Phase
-    double m_solar = P[n].Mass * UNIT_MASS_IN_SOLAR; // mass in units of Msun
-    double ZZ = P[n].Metallicity[0]/All.SolarAbundances[0]; // relative metallicity to solar
+    double m_solar = P.Mass[n] * UNIT_MASS_IN_SOLAR; // mass in units of Msun
+    double ZZ = P.Metallicity[n][0]/All.SolarAbundances[0]; // relative metallicity to solar
     if (m_solar<=20.0){return 0.;} // no WR phase below that
     return DMAX(0., 1.5e-3 * DMIN(1., ((m_solar-20.)/80.)) * pow(ZZ,0.5) ); // using prescription based on Fig 7 from Meynet & Maeder 2005, all >10 Msun star spend the end of their lifetime as WR
 }
 
 
 double single_star_wind_velocity(int n) { /* Let's get the wind velocity for MS stars */
-    double T_eff = 5814.33 * pow( P[n].StarLuminosity_Solar/(P[n].ProtoStellarRadius_inSolar*P[n].ProtoStellarRadius_inSolar), 0.25 ); // effective temperature in K
+    double T_eff = 5814.33 * pow( P.StarLuminosity_Solar[n]/(P.ProtoStellarRadius_inSolar[n]*P.ProtoStellarRadius_inSolar[n]), 0.25 ); // effective temperature in K
     double v_esc = single_star_escape_speed(n); // surface escape velocity - wind escape velocity should be O(1) factor times this, factor given below
     if(T_eff < 1.25e4){ return 0.7 * v_esc;}  // Lamers 1995
     else if (T_eff < 2.1e4) {return 1.3 * v_esc;}
@@ -1072,7 +1072,7 @@ double single_star_wind_velocity(int n) { /* Let's get the wind velocity for MS 
 }
 
 double single_star_escape_speed(int n){
-    return (617.7 / UNIT_VEL_IN_KMS) * sqrt(P[n].Mass*UNIT_MASS_IN_SOLAR / P[n].ProtoStellarRadius_inSolar);
+    return (617.7 / UNIT_VEL_IN_KMS) * sqrt(P.Mass[n]*UNIT_MASS_IN_SOLAR / P.ProtoStellarRadius_inSolar[n]);
 }
 #endif // SINGLE_STAR_FB_WINDS
 
@@ -1083,29 +1083,29 @@ double single_star_feedback_velocity_fortimestep(int n) {
 #ifdef SELFGRAVITY_OFF
     return 0; 
 #endif    
-    if(P[n].Type != 5) {return 0;}
-    double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P[n].DensityAroundParticle; v_shell=0;
+    if(P.Type[n] != 5) {return 0;}
+    double v_fb, force, h, rho, v_shell; v_fb=0; force=0; h=Get_Particle_Size(n); rho=P.DensityAroundParticle[n]; v_shell=0;
 #ifdef SINGLE_STAR_FB_WINDS
     double v_wind = single_star_wind_velocity(n);
     double mdot = single_star_wind_mdot(n, 0);
     force += mdot * v_wind;
     double Lwind = 0.5 * mdot * v_wind * v_wind;
     // estimate the velocity of a wind shell swept up on the scale of a single resolution element in the similarity solution R ~ (L/rho)^1/3 t^(3/5) - use this if slower than v_wind (ie the free-expansion phase is unresolved)
-    if(P[n].DensityAroundParticle) {
+    if(P.DensityAroundParticle[n]) {
       v_shell = 0.38 * cbrt(Lwind/(rho*h*h));
     } else {v_shell = MAX_REAL_NUMBER;}
     v_fb = DMAX(v_fb, DMIN(v_shell, v_wind));
 #endif
 #if defined(RADTRANSFER) || defined(SINGLE_STAR_FB_LOCAL_RP)
     v_shell = 0;
-    if(P[n].DensityAroundParticle) {
-      force += sink_lum_bol(P[n].Sink_Mdot, P[n].Sink_Mass, n) / C_LIGHT_CODE;
+    if(P.DensityAroundParticle[n]) {
+      force += sink_lum_bol(P.Sink_Mdot[n], P.Sink_Mass[n], n) / C_LIGHT_CODE;
       v_shell = sqrt(0.053 * force / rho) / h; // terminal velocity assuming momentum-conserving solution R ~ (F / rho)^(1/4) t^1/2 = h
     } else {v_shell = 0;}
     v_fb = DMAX(v_fb, v_shell);
 #endif
 #ifdef SINGLE_STAR_FB_SNE
-    if(P[n].ProtoStellarStage == 6) {v_fb = DMAX(v_fb, single_star_SN_velocity(n));}
+    if(P.ProtoStellarStage[n] == 6) {v_fb = DMAX(v_fb, single_star_SN_velocity(n));}
 #endif    
 #ifdef RADTRANSFER
     v_fb = DMAX(v_fb, C_LIGHT_CODE_REDUCED(n));  // produces a timestep criterion redundant with the RSOL CFL condition, but can be important if running fancy timestepping hacks that violate CFL under special circumstances
@@ -1118,9 +1118,9 @@ double single_star_feedback_velocity_fortimestep(int n) {
 
 
 double stellar_lifetime_in_Gyr(int n) { //Estimate lifetime of star, using simple MS approximation t/Gyr ~ 9.6 M/L in solar
-    double m_solar = P[n].Mass * UNIT_MASS_IN_SOLAR, lum = P[n].StarLuminosity_Solar; // mass in units of Msun
+    double m_solar = P.Mass[n] * UNIT_MASS_IN_SOLAR, lum = P.StarLuminosity_Solar[n]; // mass in units of Msun
 #if (SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION == 2)
-    lum = ps_lum_MS(P[n].ZAMS_Mass) * UNIT_LUM_IN_SOLAR; // just calculate the ZAMS luminosity
+    lum = ps_lum_MS(P.ZAMS_Mass[n]) * UNIT_LUM_IN_SOLAR; // just calculate the ZAMS luminosity
 #endif
     return 9.6*(m_solar/lum) + 0.0034; // gives ~10Gyr for solar-type stars, ~40Myr for 8msun ZAMS, and asymptotes to 3.7 Myr at high mass [assuming those stars are near-Eddington-limited, where the 9.6*(M/L) term becomes -> 0.3 Myr
 }
@@ -1136,7 +1136,7 @@ double single_star_relic_SN_mass(int n) { // Estimate mass of the relic that sho
 
 #if defined(SINGLE_STAR_FB_SNE)
 double single_star_SN_velocity(int n) { // Initial velocity of SNe ejecta: 10^51 erg/SN, distributed evenly among the mass
-    return sqrt(1.0 * (2e51/UNIT_ENERGY_IN_CGS)/P[n].Mass_final); //simple v=sqrt(2E/m)should be fine without relativistic corrections
+    return sqrt(1.0 * (2e51/UNIT_ENERGY_IN_CGS)/P.Mass_final[n]); //simple v=sqrt(2E/m)should be fine without relativistic corrections
 }
 #endif
 

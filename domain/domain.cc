@@ -130,7 +130,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
 
     UseAllParticles = UseAllTimeBins;
     
-    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+    for(i = 0; i < NumPart; i++) {if(P.Ti_current[i] != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
     
     force_treefree();
     domain_free();
@@ -255,7 +255,7 @@ void domain_Decomposition(int UseAllTimeBins, int SaveKeys, int do_particle_merg
     PRINT_STATUS(" ..domain decomposition done. (took %g sec)", timediff(t0, t1));
     CPU_Step[CPU_DOMAIN] += measure_time();
 
-    for(i = 0; i < NumPart; i++) {if(P[i].Type > 5 || P[i].Type < 0) {printf("task=%d:  P[i=%d].Type=%d\n", ThisTask, i, P[i].Type); endrun(111111);}}
+    for(i = 0; i < NumPart; i++) {if(P.Type[i] > 5 || P.Type[i] < 0) {printf("task=%d:  P.Type[i=%d]=%d\n", ThisTask, i, P.Type[i]); endrun(111111);}}
 
 #ifdef SUBFIND
     if(GrNr < 0)			/* we don't do it when SUBFIND is executed for a certain group */
@@ -299,7 +299,7 @@ void domain_Decomposition_light(int UseAllTimeBins)
     rearrange_particle_sequence();
     UseAllParticles = UseAllTimeBins;
 
-    for(i = 0; i < NumPart; i++) {if(P[i].Ti_current != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
+    for(i = 0; i < NumPart; i++) {if(P.Ti_current[i] != All.Ti_Current) {drift_particle(i, All.Ti_Current);}}
 
 #ifdef BOX_PERIODIC
     do_box_wrapping();
@@ -330,9 +330,9 @@ void domain_Decomposition_light(int UseAllTimeBins)
     Key = PersistentKey; /* reuse persistent key storage directly */
     for(i = 0; i < NumPart; i++)
     {
-        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
-        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
-        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
         Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
     }
 
@@ -353,13 +353,13 @@ void domain_Decomposition_light(int UseAllTimeBins)
     particle_costfactor = (float *) mymalloc("particle_costfactor", NumPart * sizeof(float));
     for(i = 0, gravcost = gascost = 0; i < NumPart; i++)
     {
-        NtypeLocal[P[i].Type]++;
+        NtypeLocal[P.Type[i]]++;
         double wt_0 = domain_particle_costfactor(i);
         double wt_mult = domain_particle_cost_multiplier(i);
         particle_costfactor[i] = (float)wt_0;
         particle_total_cost[i] = (float)((1 + wt_mult) * wt_0);
         gravcost += particle_total_cost[i];
-        if(P[i].Type == 0) {if(TimeBinActive[P[i].TimeBin] || UseAllParticles) {gascost += wt_0;}}
+        if(P.Type[i] == 0) {if(TimeBinActive[P.TimeBin[i]] || UseAllParticles) {gascost += wt_0;}}
     }
     sumup_large_ints(6, NtypeLocal, Ntype);
     for(i = 0, totpartcount = 0; i < 6; i++) {totpartcount += Ntype[i];}
@@ -412,7 +412,7 @@ void domain_Decomposition_light(int UseAllTimeBins)
     {
         no = domain_toptree_leaf(Key[i], topNodes);
         int task = DomainTask[no];
-        if(task != ThisTask) {P[i].Type |= 32;}
+        if(task != ThisTask) {P.Type[i] |= 32;}
     }
 
     /* exchange particles */
@@ -441,9 +441,9 @@ void domain_Decomposition_light(int UseAllTimeBins)
     /* update persistent keys for moved particles */
     for(i = 0; i < NumPart; i++)
     {
-        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
-        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
-        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
         PersistentKey[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
     }
     Key = NULL; /* no longer valid as a mymalloc pointer */
@@ -520,9 +520,9 @@ double domain_particle_cost_multiplier(int i)
 {
     double multiplier = 0;
     
-    if(P[i].Type == 0) /* for gas, weight particles with large neighbor number more, since they require more work */
+    if(P.Type[i] == 0) /* for gas, weight particles with large neighbor number more, since they require more work */
     {
-        double nngb_reduced = P[i].NumNgb; /* remember, in density.c we reduce this by pow(1/NUMDIMS), for use in other routines: need to correct here */
+        double nngb_reduced = P.NumNgb[i]; /* remember, in density.c we reduce this by pow(1/NUMDIMS), for use in other routines: need to correct here */
 #if (NUMDIMS==3)
         multiplier = nngb_reduced*nngb_reduced*nngb_reduced / All.DesNumNgb;
 #elif (NUMDIMS==2)
@@ -535,7 +535,7 @@ double domain_particle_cost_multiplier(int i)
 
 #if defined(GALSF) /* with star formation active, we will up-weight star particles which are active feedback sources */
 #ifndef CHIMES /* With CHIMES, the chemistry dominates the cost, so we boost (dense) gas but not stars. */
-    if(((P[i].Type == 4)||((All.ComovingIntegrationOn==0)&&((P[i].Type == 2)||(P[i].Type==3))))&&(P[i].Mass>0))
+    if(((P.Type[i] == 4)||((All.ComovingIntegrationOn==0)&&((P.Type[i] == 2)||(P.Type[i]==3))))&&(P.Mass[i]>0))
     {
         double star_age = evaluate_stellar_age_Gyr(i);
         if(star_age>0.1) {multiplier = 3.125;} else {if(star_age>0.035) {multiplier = 5.;} else {multiplier = 10.;}}
@@ -545,11 +545,11 @@ double domain_particle_cost_multiplier(int i)
 
 #ifdef CHIMES 
     /* With CHIMES, cost is dominated by the chemistry, particularly in dense gas. We therefore boost the cost factor of gas particles with nH >~ 1 cm^-3. */
-    if(P[i].Type == 0) {double nH_cgs = CellP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier = 10.0;}}
+    if(P.Type[i] == 0) {double nH_cgs = CellP.Density[i] * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier = 10.0;}}
 #endif
     
 #ifdef CRFLUID_EVOLVE_SPECTRUM // again, cost totally dominated by dense gas here, this helps significantly
-    if(P[i].Type == 0) {double nH_cgs = CellP[i].Density * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier *= 100.;} else {multiplier *= 10.;}}
+    if(P.Type[i] == 0) {double nH_cgs = CellP.Density[i] * All.cf_a3inv * UNIT_DENSITY_IN_NHCGS; if(nH_cgs > 1) {multiplier *= 100.;} else {multiplier *= 10.;}}
 #endif
     
     return multiplier;
@@ -559,7 +559,7 @@ double domain_particle_cost_multiplier(int i)
 /* simple function to return costfactor for pure gravity calculation: based just on gravcost calculation, with constant for safety */
 double domain_particle_costfactor(int i)
 {
-    return 0.1 + P[i].GravCost[TakeLevel];
+    return 0.1 + P.GravCost[i][TakeLevel];
 }
 
 
@@ -588,15 +588,15 @@ int domain_decompose(void)
     for(i = 0, gravcost = gascost = 0; i < NumPart; i++)
     {
 #ifdef SUBFIND
-        if(GrNr >= 0 && P[i].GrNr != GrNr) {continue;}
+        if(GrNr >= 0 && P.GrNr[i] != GrNr) {continue;}
 #endif
-        NtypeLocal[P[i].Type]++;
+        NtypeLocal[P.Type[i]]++;
         double wt_0 = domain_particle_costfactor(i);
         double wt_mult = domain_particle_cost_multiplier(i);
         particle_costfactor[i] = (float)wt_0;
         particle_total_cost[i] = (float)((1 + wt_mult) * wt_0);
         gravcost += particle_total_cost[i];
-        if(P[i].Type == 0) {if(TimeBinActive[P[i].TimeBin] || UseAllParticles) {gascost += wt_0;}}
+        if(P.Type[i] == 0) {if(TimeBinActive[P.TimeBin[i]] || UseAllParticles) {gascost += wt_0;}}
     }
     /* because Ntype[] is of type `long long', we cannot do a simple MPI_Allreduce() to sum the total particle numbers */
     sumup_large_ints(6, NtypeLocal, Ntype);
@@ -659,12 +659,12 @@ int domain_decompose(void)
     for(i = 0; i < NumPart; i++)
     {
 #ifdef SUBFIND
-      if(GrNr >= 0 && P[i].GrNr != GrNr) {continue;}
+      if(GrNr >= 0 && P.GrNr[i] != GrNr) {continue;}
 #endif
 
       no = domain_toptree_leaf(Key[i], topNodes);
       int task = DomainTask[no];
-      if(task != ThisTask) {P[i].Type |= 32;}
+      if(task != ThisTask) {P.Type[i] |= 32;}
     }
 
     int iter = 0, ret;
@@ -742,10 +742,10 @@ int domain_check_memory_bound(int multipledomains)
 
       for(i = 0; i < NumPart; i++)
 	  {
-	    if(P[i].GrNr != GrNr)
+	    if(P.GrNr[i] != GrNr)
 	    {
 	      load++;
-	      if(P[i].Type == 0) {gasload++;}
+	      if(P.Type[i] == 0) {gasload++;}
 	    }
 	  }
       MPI_Allreduce(&load, &max_load, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
@@ -775,8 +775,8 @@ void domain_exchange(void)
   long *count, *count_gas, *offset, *offset_gas;
   long *count_recv, *count_recv_gas, *offset_recv, *offset_recv_gas;
   long i, n, ngrp, no, target;
-  struct particle_data *partBuf;
-  struct gas_cell_data *gasBuf;
+  particle_soa partBuf = {};
+  cell_soa gasBuf = {};
   peanokey *keyBuf;
 
   count = (long *) mymalloc("count", NTask * sizeof(long));
@@ -819,8 +819,8 @@ void domain_exchange(void)
 
     }
 
-  partBuf = (struct particle_data *) mymalloc("partBuf", count_togo * sizeof(struct particle_data));
-  gasBuf = (struct gas_cell_data *) mymalloc("gasBuf", count_togo_gas * sizeof(struct gas_cell_data));
+  if(count_togo > 0) allocate_P(partBuf, count_togo, "partBuf");
+  if(count_togo_gas > 0) allocate_CellP(gasBuf, count_togo_gas, "gasBuf");
 #ifdef CHIMES 
   struct gasVariables *gasChimesBuf;
   ChimesFloat *gasAbundancesBuf, *gasAbundancesRecvBuf, *tempAbundanceArray;
@@ -837,17 +837,17 @@ void domain_exchange(void)
 
   for(n = 0; n < NumPart; n++)
     {
-      if((P[n].Type & (32 + 16)) == (32 + 16)) /* flagged with both 16 and 32 */
+      if((P.Type[n] & (32 + 16)) == (32 + 16)) /* flagged with both 16 and 32 */
 	{
-	  P[n].Type &= 15; /* clear 16 and 32 */
+	  P.Type[n] &= 15; /* clear 16 and 32 */
 
 	  no = domain_toptree_leaf(Key[n], topNodes);
 
 	  target = DomainTask[no];
 
-	  if(P[n].Type == 0)
+	  if(P.Type[n] == 0)
 	    {
-	      partBuf[offset_gas[target] + count_gas[target]] = P[n];
+	      copy_particle_between_P(partBuf, offset_gas[target] + count_gas[target], P, n);
 	      keyBuf[offset_gas[target] + count_gas[target]] = Key[n];
 #ifdef CHIMES 
 	      for(i = 0; i < ChimesGlobalVars.totalNumberOfSpecies; i++) {gasAbundancesBuf[((offset_gas[target] + count_gas[target]) * ChimesGlobalVars.totalNumberOfSpecies) + i] = ChimesGasVars[n].abundances[i];}
@@ -858,21 +858,21 @@ void domain_exchange(void)
 	      ChimesGasVars[n].H2_dissocJ = NULL; 
 	      gasChimesBuf[offset_gas[target] + count_gas[target]] = ChimesGasVars[n];
 #endif 
-	      gasBuf[offset_gas[target] + count_gas[target]] = CellP[n];
+	      copy_particle_between_CellP(gasBuf, offset_gas[target] + count_gas[target], CellP, n);
 	      count_gas[target]++;
 	    }
 	  else
 	    {
-	      partBuf[offset[target] + count[target]] = P[n];
+	      copy_particle_between_P(partBuf, offset[target] + count[target], P, n);
 	      keyBuf[offset[target] + count[target]] = Key[n];
 	      count[target]++;
 	    }
 
 
-	  if(P[n].Type == 0)
+	  if(P.Type[n] == 0)
 	    {
-	      P[n] = P[N_gas - 1];
-	      CellP[n] = CellP[N_gas - 1];
+	      copy_particle_P(P, n, N_gas - 1);
+	      copy_particle_CellP(CellP, n, N_gas - 1);
 	      Key[n] = Key[N_gas - 1];
 
 #ifdef CHIMES 
@@ -892,7 +892,7 @@ void domain_exchange(void)
 		}
 #endif 
 
-	      P[N_gas - 1] = P[NumPart - 1];
+	      copy_particle_P(P, N_gas - 1, NumPart - 1);
 	      Key[N_gas - 1] = Key[NumPart - 1];
 
 	      NumPart--;
@@ -901,7 +901,7 @@ void domain_exchange(void)
 	    }
 	  else
 	    {
-	      P[n] = P[NumPart - 1];
+	      copy_particle_P(P, n, NumPart - 1);
 	      Key[n] = Key[NumPart - 1];
 	      NumPart--;
 	      n--;
@@ -919,7 +919,7 @@ void domain_exchange(void)
 
   if(count_totget)
     {
-      memmove(P + N_gas + count_totget, P + N_gas, (NumPart - N_gas) * sizeof(struct particle_data));
+      move_particles_P(P, N_gas + count_totget, N_gas, NumPart - N_gas);
       memmove(Key + N_gas + count_totget, Key + N_gas, (NumPart - N_gas) * sizeof(peanokey));
     }
 
@@ -950,16 +950,13 @@ void domain_exchange(void)
 	{
 	  if(count_gas[target] > 0 || count_recv_gas[target] > 0)
 	    {
-            MPI_Sizelimited_Sendrecv(partBuf + offset_gas[target], count_gas[target] * sizeof(struct particle_data),
-			   MPI_BYTE, target, TAG_PDATA_GAS,
-			   P + offset_recv_gas[target], count_recv_gas[target] * sizeof(struct particle_data),
-			   MPI_BYTE, target, TAG_PDATA_GAS, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Sendrecv_P_fields(partBuf, offset_gas[target], count_gas[target],
+                                  P, offset_recv_gas[target], count_recv_gas[target],
+                                  target, TAG_PDATA_GAS);
 
-            MPI_Sizelimited_Sendrecv(gasBuf + offset_gas[target], count_gas[target] * sizeof(struct gas_cell_data),
-			   MPI_BYTE, target, TAG_GASDATA,
-			   CellP + offset_recv_gas[target],
-			   count_recv_gas[target] * sizeof(struct gas_cell_data), MPI_BYTE, target,
-			   TAG_GASDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Sendrecv_CellP_fields(gasBuf, offset_gas[target], count_gas[target],
+                                      CellP, offset_recv_gas[target], count_recv_gas[target],
+                                      target, TAG_GASDATA);
 #ifdef CHIMES 
             MPI_Sizelimited_Sendrecv(gasChimesBuf + offset_gas[target], count_gas[target] * sizeof(struct gasVariables),
 			   MPI_BYTE, target, TAG_CHIMESDATA, ChimesGasVars + offset_recv_gas[target],
@@ -990,10 +987,9 @@ void domain_exchange(void)
 
 	  if(count[target] > 0 || count_recv[target] > 0)
 	    {
-	      MPI_Sendrecv(partBuf + offset[target], count[target] * sizeof(struct particle_data),
-			   MPI_BYTE, target, TAG_PDATA,
-			   P + offset_recv[target], count_recv[target] * sizeof(struct particle_data),
-			   MPI_BYTE, target, TAG_PDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	      MPI_Sendrecv_P_fields(partBuf, offset[target], count[target],
+	                           P, offset_recv[target], count_recv[target],
+	                           target, TAG_PDATA);
 
 	      MPI_Sendrecv(keyBuf + offset[target], count[target] * sizeof(peanokey),
 			   MPI_BYTE, target, TAG_KEY,
@@ -1039,8 +1035,8 @@ void domain_exchange(void)
   myfree(gasAbundancesBuf);
   myfree(gasChimesBuf);
 #endif 
-  myfree(gasBuf);
-  myfree(partBuf);
+  if(count_togo_gas > 0) deallocate_CellP(gasBuf);
+  if(count_togo > 0) deallocate_P(partBuf);
 
 
   myfree(offset_recv_gas);
@@ -1420,29 +1416,31 @@ int domain_countToGo(size_t nlimit)
         toGoGas[n] = 0;
     }
 
-    package = (sizeof(struct particle_data) + sizeof(struct gas_cell_data) + sizeof(peanokey));
+    #define APPROX_SIZEOF_PARTICLE_SOA_ENTRY 256
+    #define APPROX_SIZEOF_CELL_SOA_ENTRY 256
+    package = (APPROX_SIZEOF_PARTICLE_SOA_ENTRY + APPROX_SIZEOF_CELL_SOA_ENTRY + sizeof(peanokey));
     if(package >= nlimit) {endrun(212);}
 
     for(n = 0; n < NumPart && package < nlimit; n++)
     {
 #ifdef SUBFIND
-        if(GrNr >= 0 && P[n].GrNr != GrNr) {continue;}
+        if(GrNr >= 0 && P.GrNr[n] != GrNr) {continue;}
 #endif
-        if(P[n].Type & 32)
+        if(P.Type[n] & 32)
         {
             no = domain_toptree_leaf(Key[n], topNodes);
 
             if(DomainTask[no] != ThisTask)
             {
                 toGo[DomainTask[no]] += 1;
-                nlimit -= sizeof(struct particle_data) + sizeof(peanokey);
-                
-                if((P[n].Type & 15) == 0)
+                nlimit -= APPROX_SIZEOF_PARTICLE_SOA_ENTRY + sizeof(peanokey);
+
+                if((P.Type[n] & 15) == 0)
                 {
                     toGoGas[DomainTask[no]] += 1;
-                    nlimit -= sizeof(struct gas_cell_data);
+                    nlimit -= APPROX_SIZEOF_CELL_SOA_ENTRY;
                 }
-                P[n].Type |= 16;    /* flag this particle for export */
+                P.Type[n] |= 16;    /* flag this particle for export */
             }
         }
     }
@@ -1582,20 +1580,20 @@ int domain_countToGo(size_t nlimit)
                 
                 for(n = 0; n < NumPart; n++)
                 {
-                    if(P[n].Type & 32)
+                    if(P.Type[n] & 32)
                     {
-                        P[n].Type &= (15 + 32);    /* clear 16 */
+                        P.Type[n] &= (15 + 32);    /* clear 16 */
                         
                         no = domain_toptree_leaf(Key[n], topNodes);
                         target = DomainTask[no];
                         
-                        if((P[n].Type & 15) == 0)
+                        if((P.Type[n] & 15) == 0)
                         {
                             if(local_toGoGas[target] < toGoGas[target] && local_toGo[target] < toGo[target])
                             {
                                 local_toGo[target] += 1;
                                 local_toGoGas[target] += 1;
-                                P[n].Type |= 16;
+                                P.Type[n] |= 16;
                             }
                         }
                         else
@@ -1603,7 +1601,7 @@ int domain_countToGo(size_t nlimit)
                             if(local_toGo[target] < toGo[target])
                             {
                                 local_toGo[target] += 1;
-                                P[n].Type |= 16;
+                                P.Type[n] |= 16;
                             }
                         }
                     }
@@ -1897,19 +1895,19 @@ int domain_determineTopTree(void)
   for(i = 0, count = 0; i < NumPart; i++)
     {
 #ifdef SUBFIND
-      if(GrNr >= 0 && P[i].GrNr != GrNr) {continue;}
+      if(GrNr >= 0 && P.GrNr[i] != GrNr) {continue;}
 #endif
 
         /* new code */
-        peano1D xb = domain_double_to_int(((P[i].Pos[0] - DomainCorner[0]) / DomainLen) + 1.0);
-        peano1D yb = domain_double_to_int(((P[i].Pos[1] - DomainCorner[1]) / DomainLen) + 1.0);
-        peano1D zb = domain_double_to_int(((P[i].Pos[2] - DomainCorner[2]) / DomainLen) + 1.0);
+        peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+        peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+        peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
         mp[count].key = Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
         
       /* old code
-      mp[count].key = Key[i] = peano_hilbert_key((int) ((P[i].Pos[0] - DomainCorner[0]) * DomainFac),
-						 (int) ((P[i].Pos[1] - DomainCorner[1]) * DomainFac),
-						 (int) ((P[i].Pos[2] - DomainCorner[2]) * DomainFac),
+      mp[count].key = Key[i] = peano_hilbert_key((int) ((P.Pos[i][0] - DomainCorner[0]) * DomainFac),
+						 (int) ((P.Pos[i][1] - DomainCorner[1]) * DomainFac),
+						 (int) ((P.Pos[i][2] - DomainCorner[2]) * DomainFac),
 						 BITS_PER_DIMENSION);
        */
 
@@ -2096,7 +2094,7 @@ void domain_sumCost(void)
   for(n = 0; n < NumPart; n++)
     {
 #ifdef SUBFIND
-      if(GrNr >= 0 && P[n].GrNr != GrNr) {continue;}
+      if(GrNr >= 0 && P.GrNr[n] != GrNr) {continue;}
 #endif
 
       no = domain_toptree_leaf(Key[n], topNodes);
@@ -2109,21 +2107,21 @@ void domain_sumCost(void)
          speedup on noh), but may hurt spatial locality for self-gravitating problems where dense
          cores need to stay on the same rank for efficient tree walks. Use with caution and benchmark. */
       float freq_weight = 1.0f;
-      if(All.HighestOccupiedTimeBin > P[n].TimeBin) {
-          int dbin = All.HighestOccupiedTimeBin - P[n].TimeBin;
+      if(All.HighestOccupiedTimeBin > P.TimeBin[n]) {
+          int dbin = All.HighestOccupiedTimeBin - P.TimeBin[n];
           if(dbin > 30) {dbin = 30;}
           freq_weight = (float)sqrt((double)(1 << dbin));
       }
       local_domainWork[no] += particle_total_cost[n] * freq_weight;
       local_domainCount[no] += 1;
-      if(P[n].Type == 0) {
-          if(TimeBinActive[P[n].TimeBin] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n] * freq_weight;}
+      if(P.Type[n] == 0) {
+          if(TimeBinActive[P.TimeBin[n]] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n] * freq_weight;}
           local_domainCountGas[no] += 1;}
 #else
       local_domainWork[no] += particle_total_cost[n];
       local_domainCount[no] += 1;
-      if(P[n].Type == 0) {
-          if(TimeBinActive[P[n].TimeBin] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n];}
+      if(P.Type[n] == 0) {
+          if(TimeBinActive[P.TimeBin[n]] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n];}
           local_domainCountGas[no] += 1;}
 #endif
     }
@@ -2169,13 +2167,13 @@ void domain_findExtent(void)
   for(i = 0; i < NumPart; i++)
     {
 #ifdef SUBFIND
-      if(GrNr >= 0 && P[i].GrNr != GrNr) {continue;}
+      if(GrNr >= 0 && P.GrNr[i] != GrNr) {continue;}
 #endif
 
       for(j = 0; j < 3; j++)
 	{
-	  if(xmin[j] > P[i].Pos[j]) {xmin[j] = P[i].Pos[j];}
-	  if(xmax[j] < P[i].Pos[j]) {xmax[j] = P[i].Pos[j];}
+	  if(xmin[j] > P.Pos[i][j]) {xmin[j] = P.Pos[i][j];}
+	  if(xmax[j] < P.Pos[i][j]) {xmax[j] = P.Pos[i][j];}
 	}
     }
 

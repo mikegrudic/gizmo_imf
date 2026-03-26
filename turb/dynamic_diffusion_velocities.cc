@@ -34,7 +34,7 @@ struct kernel_DiffFilter {
 #define CORE_FUNCTION_NAME DiffFilter_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_DiffFilter    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_DiffFilter  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if((P[i].Type==0)&&(P[i].TimeBin>=0)&&(P[i].Mass>0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if((P.Type[i]==0)&&(P.TimeBin[i]>=0)&&(P.Mass[i]>0)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 struct INPUT_STRUCT_NAME {
@@ -51,12 +51,12 @@ struct INPUT_STRUCT_NAME {
 *DATAIN_NAME, *DATAGET_NAME;
 
 static inline void particle2in_DiffFilter(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration) {
-    in->Pos = P[i].Pos; in->VelPred = CellP[i].VelPred;
-    in->Density = CellP[i].Density;
-    in->KernelRadius = P[i].KernelRadius;
-    in->Mass = DMAX(0,P[i].Mass);
+    in->Pos = P.Pos[i]; in->VelPred = CellP.VelPred[i];
+    in->Density = CellP.Density[i];
+    in->KernelRadius = P.KernelRadius[i];
+    in->Mass = DMAX(0,P.Mass[i]);
 #ifdef GALSF_SUBGRID_WINDS
-    in->DelayTime = CellP[i].DelayTime;
+    in->DelayTime = CellP.DelayTime[i];
 #endif
 }
 
@@ -72,10 +72,10 @@ struct OUTPUT_STRUCT_NAME {
 #define MAX_ADD(x,y,mode) ((y > x) ? (x = y) : (1)) // simpler definition now used
 #define MIN_ADD(x,y,mode) ((y < x) ? (x = y) : (1))
 static inline void out2particle_DiffFilter(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration) {
-    int k; for (k = 0; k < 3; k++) {ASSIGN_ADD_PRESET(CellP[i].Velocity_bar[k], out->Velocity_bar[k], mode);}
-    MAX_ADD(CellP[i].FilterWidth_bar, out->FilterWidth_bar, mode);
-    MAX_ADD(CellP[i].MaxDistance_for_grad, out->MaxDistance_for_grad, mode);
-    ASSIGN_ADD_PRESET(CellP[i].Norm_hat, out->Norm_hat, mode);
+    int k; for (k = 0; k < 3; k++) {ASSIGN_ADD_PRESET(CellP.Velocity_bar[i][k], out->Velocity_bar[k], mode);}
+    MAX_ADD(CellP.FilterWidth_bar[i], out->FilterWidth_bar, mode);
+    MAX_ADD(CellP.MaxDistance_for_grad[i], out->MaxDistance_for_grad, mode);
+    ASSIGN_ADD_PRESET(CellP.Norm_hat[i], out->Norm_hat, mode);
 }
 
 /* operations that need to be performed before entering the main loop */
@@ -84,12 +84,12 @@ void dynamic_diff_vel_calc_initial_operations_preloop(void)
 {
     /* Because of the smoothing operation, need to set bar quantity to current fluid value first */
     for (int i : ActiveParticleList) {
-        if (P[i].Type == 0) {
-            CellP[i].Norm_hat = 0;
-            CellP[i].h_turb = Get_Particle_Size(i); // All.cf_atime unnecessary, will multiply later
-            CellP[i].FilterWidth_bar = 0;
-            CellP[i].MaxDistance_for_grad = 0;
-            CellP[i].Velocity_bar = CellP[i].VelPred / All.TurbDynamicDiffSmoothing;
+        if (P.Type[i] == 0) {
+            CellP.Norm_hat[i] = 0;
+            CellP.h_turb[i] = Get_Particle_Size(i); // All.cf_atime unnecessary, will multiply later
+            CellP.FilterWidth_bar[i] = 0;
+            CellP.MaxDistance_for_grad[i] = 0;
+            CellP.Velocity_bar[i] = CellP.VelPred[i] / All.TurbDynamicDiffSmoothing;
         }
     }
 }
@@ -129,20 +129,20 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
             for (n = 0; n < numngb; n++) {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS
-                if (local.DelayTime == 0 && CellP[j].DelayTime > 0) {continue;}
-                if (local.DelayTime > 0 && CellP[j].DelayTime == 0) {continue;}
+                if (local.DelayTime == 0 && CellP.DelayTime[j] > 0) {continue;}
+                if (local.DelayTime > 0 && CellP.DelayTime[j] == 0) {continue;}
 #endif
-                if (P[j].Mass <= 0) {continue;}
-                if (CellP[j].Density <= 0) {continue;}
+                if (P.Mass[j] <= 0) {continue;}
+                if (CellP.Density[j] <= 0) {continue;}
 
-                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
-                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
-                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P.Pos[j][0];
+                kernel.dp[1] = local.Pos[1] - P.Pos[j][1];
+                kernel.dp[2] = local.Pos[2] - P.Pos[j][2];
                 nearest_xyz(kernel.dp);
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                double mean_weight = 0.5 * (local.Density + CellP[j].Density) / (local.Density * CellP[j].Density);
-                double h_j = P[j].KernelRadius;
-                double V_j = P[j].Mass * mean_weight;
+                double mean_weight = 0.5 * (local.Density + CellP.Density[j]) / (local.Density * CellP.Density[j]);
+                double h_j = P.KernelRadius[j];
+                double V_j = P.Mass[j] * mean_weight;
                 if (r2 <= 0) {continue;}
 
                 double h_avg = 0.5 * (kernel.h_i + h_j);
@@ -159,7 +159,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                     uhat = DMIN(rhat * hhatinv, 1.0);
                     kernel_main(uhat, hhatinv3, hhatinv4, &wkhat, &dwkhat, kernel_mode_i);
                 } else {wkhat = dwkhat = 0;}
-                if (rhat < hhat) {out.Norm_hat += P[j].Mass * wkhat;}
+                if (rhat < hhat) {out.Norm_hat += P.Mass[j] * wkhat;}
                 if ((r2 >= h2_i) && (r2 >= (h_j * h_j))) {continue;}
                 kernel.r = sqrt(r2);
                 if (kernel.r > out.FilterWidth_bar) {out.FilterWidth_bar = kernel.r;}
@@ -174,7 +174,7 @@ int DiffFilter_evaluate(int target, int mode, int *exportflag, int *exportnodeco
                 /* Because we are using the average h value between i,j: W_ij = W_ji */
                 if (kernel.r < h_avg) {
                     for (k = 0; k < 3; k++) {
-                        VelPred_diff[k] = CellP[j].VelPred[k] - local.VelPred[k];
+                        VelPred_diff[k] = CellP.VelPred[j][k] - local.VelPred[k];
                         out.Velocity_bar[k] += VelPred_diff[k] * weight_i;
                     }
                 }

@@ -45,7 +45,7 @@ void set_mesh_motion(int i)
 /* no mesh motion (simple but here anyways) */
 void MeshMotion_FixedGrid(int i)
 {
-    CellP[i].ParticleVel = {};
+    CellP.ParticleVel[i] = {};
 }
 
 
@@ -56,16 +56,16 @@ void MeshMotion_FixedGrid(int i)
     The shearing motion of the background is folded into the smooth mesh motion. */
 void MeshMotion_KeplerianOrbit(int i)
 {
-    double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
+    double dp[3]; dp[0]=P.Pos[i][0]; dp[1]=P.Pos[i][1]; dp[2]=P.Pos[i][2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    int k; for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
+    int k; for(k = 0; k < 3; k++) {dp[k] = -P.Min_xyz_to_Sink[i][k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y; dp[2] -= boxHalf_Z;
 #endif
     double r2 = dp[0]*dp[0] + dp[1]*dp[1], r = sqrt(r2), Omega=sqrt(1./(r2*r)); // orbital frequency
-    CellP[i].ParticleVel[0] = Omega * dp[1];
-    CellP[i].ParticleVel[1] = -Omega * dp[0];
-    CellP[i].ParticleVel[2] = 0;
+    CellP.ParticleVel[i][0] = Omega * dp[1];
+    CellP.ParticleVel[i][1] = -Omega * dp[0];
+    CellP.ParticleVel[i][2] = 0;
 }
 
 
@@ -80,20 +80,20 @@ void MeshMotion_KeplerianOrbit(int i)
 void MeshMotion_CircularOrbitExternalGravity(int i)
 {
     double a, dp[3], r, r2, Omega; int k;
-    dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
+    dp[0]=P.Pos[i][0]; dp[1]=P.Pos[i][1]; dp[2]=P.Pos[i][2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P.Min_xyz_to_Sink[i][k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
     r2 = dp[0]*dp[0] + dp[1]*dp[1]; r = sqrt(r2);
-    a = P[i].GravAccel.norm_sq();
+    a = P.GravAccel[i].norm_sq();
     if(a > 0)
     {
         Omega = sqrt(a/r); // orbital frequency
-        CellP[i].ParticleVel[0] = Omega * dp[1];
-        CellP[i].ParticleVel[1] = -Omega * dp[0];
-        CellP[i].ParticleVel[2] = 0;
+        CellP.ParticleVel[i][0] = Omega * dp[1];
+        CellP.ParticleVel[i][1] = -Omega * dp[0];
+        CellP.ParticleVel[i][2] = 0;
     }
 }
 
@@ -105,7 +105,7 @@ void MeshMotion_CircularOrbitExternalGravity(int i)
 void MeshMotion_FreeFallExternalGravity(int i)
 {
     double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-    CellP[i].ParticleVel += P[i].GravAccel * dt;
+    CellP.ParticleVel[i] += P.GravAccel[i] * dt;
 }
 
 
@@ -116,13 +116,13 @@ void MeshMotion_FreeFallExternalGravity(int i)
 void MeshMotion_UniformExpansion(int i)
 {
     double dvdr = 1; // velocity divergence (or effective "Hubble constant") of the flow, in code units //
-    int k; double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
+    int k; double dp[3]; dp[0]=P.Pos[i][0]; dp[1]=P.Pos[i][1]; dp[2]=P.Pos[i][2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P.Min_xyz_to_Sink[i][k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
-    for(k=0;k<3;k++) {CellP[i].ParticleVel[k] = dvdr * dp[k];}
+    for(k=0;k<3;k++) {CellP.ParticleVel[i][k] = dvdr * dp[k];}
 }
 
 
@@ -133,13 +133,13 @@ void MeshMotion_UniformExpansion(int i)
 void MeshMotion_UniformCollapse(int i)
 {
     double dvdr = -1; // velocity divergence (or effective "Hubble constant") of the flow, in code units //
-    int k; double dp[3]; dp[0]=P[i].Pos[0]; dp[1]=P[i].Pos[1]; dp[2]=P[i].Pos[2];
+    int k; double dp[3]; dp[0]=P.Pos[i][0]; dp[1]=P.Pos[i][1]; dp[2]=P.Pos[i][2];
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE)
-    for(k = 0; k < 3; k++) {dp[k] = -P[i].Min_xyz_to_Sink[k];}
+    for(k = 0; k < 3; k++) {dp[k] = -P.Min_xyz_to_Sink[i][k];}
 #elif defined(BOX_PERIODIC)
     dp[0] -= boxHalf_X; dp[1] -= boxHalf_Y;
 #endif
-    for(k=0;k<3;k++) {CellP[i].ParticleVel[k] = dvdr * dp[k];}
+    for(k=0;k<3;k++) {CellP.ParticleVel[i][k] = dvdr * dp[k];}
 }
 
 
@@ -150,10 +150,10 @@ void MeshMotion_UniformCollapse(int i)
 void MeshMotion_ShearingSheet(int i)
 {
 #ifdef BOX_SHEARING
-    CellP[i].ParticleVel[0] = CellP[i].ParticleVel[1] = CellP[i].ParticleVel[2] = 0;
-    CellP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] = -BOX_SHEARING_Q * (P[i].Pos[0]-boxHalf_X) * BOX_SHEARING_OMEGA_BOX_CENTER; // equilibrium motion is purely in phi
+    CellP.ParticleVel[i][0] = CellP.ParticleVel[i][1] = CellP.ParticleVel[i][2] = 0;
+    CellP.ParticleVel[i][BOX_SHEARING_PHI_COORDINATE] = -BOX_SHEARING_Q * (P.Pos[i][0]-boxHalf_X) * BOX_SHEARING_OMEGA_BOX_CENTER; // equilibrium motion is purely in phi
 #ifdef GRAIN_RDI_TESTPROBLEM
-     CellP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] -= All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER); // equilibrium motion is purely in phi
+     CellP.ParticleVel[i][BOX_SHEARING_PHI_COORDINATE] -= All.Pressure_Gradient_Accel / (2. * BOX_SHEARING_OMEGA_BOX_CENTER); // equilibrium motion is purely in phi
 #endif
 #endif
 }

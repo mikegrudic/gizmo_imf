@@ -4,16 +4,16 @@
  --------------------------------------------------------------------------------- */
 #ifdef CBE_INTEGRATOR
 {
-    int m; double V_i=local.V_i, V_j=get_particle_volume_ags(j), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P[j].Mass/V_j*All.cf_a3inv, Face_Area_Vec[3], Face_Area_Norm=0, psi_i, psi_j, vf0_dot_dp=0, vface_guess[3]; // calculate densities (in physical units)
+    int m; double V_i=local.V_i, V_j=get_particle_volume_ags(j), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P.Mass[j]/V_j*All.cf_a3inv, Face_Area_Vec[3], Face_Area_Norm=0, psi_i, psi_j, vf0_dot_dp=0, vface_guess[3]; // calculate densities (in physical units)
     psi_i=1./(1. + kernel.h_i/kernel.h_j); psi_i=0.5; psi_j=1-psi_i; rho_i*=psi_i; rho_j*=psi_j;
     
     // calculate effective faces and face velocity between elements //
     for(k=0;k<3;k++)
     {
         Face_Area_Vec[k] = -(kernel.wk_i*V_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2]) +
-                             kernel.wk_j*V_j * (P[j].NV_T[k][0]*kernel.dp[0] + P[j].NV_T[k][1]*kernel.dp[1] + P[j].NV_T[k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
+                             kernel.wk_j*V_j * (P.NV_T[j][k][0]*kernel.dp[0] + P.NV_T[j][k][1]*kernel.dp[1] + P.NV_T[j][k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
         Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k]; // physical units
-        vface_guess[k] = 0.5*(local.Vel[k] + P[j].Vel[k]) / All.cf_atime; // physical units
+        vface_guess[k] = 0.5*(local.Vel[k] + P.Vel[j][k]) / All.cf_atime; // physical units
         vf0_dot_dp += vface_guess[k] * kernel.dp[k];
     }
     Face_Area_Norm = sqrt(Face_Area_Norm);
@@ -26,11 +26,11 @@
         for(k=0;k<CBE_INTEGRATOR_NMOMENTS;k++)
         {
             local_CBE_basis_moments[m][k] = local.CBE_basis_moments[m][k];
-            Pj_CBE_basis_moments[m][k] = P[j].CBE_basis_moments[m][k];
+            Pj_CBE_basis_moments[m][k] = P.CBE_basis_moments[j][m][k];
             if((k>0)&&(k<4))
             {
                 local_CBE_basis_moments[m][k] += local_CBE_basis_moments[m][0]*local.Vel[k-1]/All.cf_atime; // physical
-                Pj_CBE_basis_moments[m][k] += Pj_CBE_basis_moments[m][0]*P[j].Vel[k-1]/All.cf_atime; // physical
+                Pj_CBE_basis_moments[m][k] += Pj_CBE_basis_moments[m][0]*P.Vel[j][k-1]/All.cf_atime; // physical
             }
         }
     }
@@ -48,7 +48,7 @@
         }
         if(vi_dot_dp < 0) {theta_i[m]=1;} // approaching interaction face
         if(vj_dot_dp > 0) {theta_j[m]=1;} // approaching interaction face
-        double w0_i = theta_i[m] * rho_i / local.Mass, w0_j = theta_j[m] * rho_j / P[j].Mass;
+        double w0_i = theta_i[m] * rho_i / local.Mass, w0_j = theta_j[m] * rho_j / P.Mass[j];
         v_wt_sum += w0_i*local_CBE_basis_moments[m][0] + w0_j*Pj_CBE_basis_moments[m][0]; // summed weights for interaction
         for(k=0;k<3;k++) {vface_new[k] += w0_i*local_CBE_basis_moments[m][k+1] + w0_j*Pj_CBE_basis_moments[m][k+1];} // summed velocities
     }
@@ -110,7 +110,7 @@
         
         // now loop over each basis for each particle and actually compute fluxes //
         double wt_prefac_i = -rho_i / local.Mass; // normalized the fluxes, no need to re-compute below
-        double wt_prefac_j = -rho_j / P[j].Mass;
+        double wt_prefac_j = -rho_j / P.Mass[j];
         double vface_dot_A = vface[0]*Face_Area_Vec[0] + vface[1]*Face_Area_Vec[1] + vface[2]*Face_Area_Vec[2]; // v_face . A_face
         for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         {
@@ -125,7 +125,7 @@
                 {
                     flux[k] *= wt_prefac_i; // normalize appropriately
                     out.CBE_basis_moments_dt[m][k] += flux[k]; // flux out of "i"
-                    //if(TimeBinActive[P[j].TimeBin]) {P[j].CBE_basis_moments_dt[j_m][k] -= flux[k];} // flux into "j" (if j is active)
+                    //if(TimeBinActive[P.TimeBin[j]]) {P.CBE_basis_moments_dt[j][j_m][k] -= flux[k];} // flux into "j" (if j is active)
                 }
             }
             // fluxes from "j" side
@@ -136,18 +136,18 @@
                 {
                     flux[k] *= wt_prefac_j; // normalize appropriately
                     out.CBE_basis_moments_dt[i_m][k] += flux[k]; // flux out of "i"
-                    //if(TimeBinActive[P[j].TimeBin]) {P[j].CBE_basis_moments_dt[m][k] -= flux[k];} // flux into "j" (if j is active)
+                    //if(TimeBinActive[P.TimeBin[j]]) {P.CBE_basis_moments_dt[j][m][k] -= flux[k];} // flux into "j" (if j is active)
                 } // normalize appropriately
             }
             vsig = DMAX(DMAX(fabs(vsig_i),fabs(vsig_j)),vsig);
         } // for(m=0;m<CBE_INTEGRATOR_NBASIS;m++)
         vsig /= Face_Area_Norm  * All.cf_atime; // into appropriate sound-speed units
         if(vsig > out.AGS_vsig) {out.AGS_vsig = vsig;} // set signal velocity if new value found
-        //if(TimeBinActive[P[j].TimeBin]) {if(vsig > P[j].AGS_vsig) P[j].AGS_vsig = vsig;}
+        //if(TimeBinActive[P.TimeBin[j]]) {if(vsig > P.AGS_vsig[j]) P.AGS_vsig[j] = vsig;}
 #ifdef WAKEUP
-        if(!(TimeBinActive[P[j].TimeBin]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*P[j].AGS_vsig) {
+        if(!(TimeBinActive[P.TimeBin[j]]) && (All.Time > All.TimeBegin)) {if(vsig > WAKEUP*P.AGS_vsig[j]) {
             #pragma omp atomic write
-            P[j].wakeup = 1;
+            P.wakeup[j] = 1;
             #pragma omp atomic write
             NeedToWakeupParticles_local = 1;
         }}

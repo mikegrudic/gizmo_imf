@@ -460,8 +460,8 @@ static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) 
 
 int compare_densities_for_sort(const void *a, const void *b)
 {
-    double x = CellP[ *(int *) a].Density;
-    double y = CellP[ *(int *) b].Density;
+    double x = CellP.Density[ *(int *) a];
+    double y = CellP.Density[ *(int *) b];
     if (x < y) {return -1;} else if(x > y) {return 1;}
     return 0;
 }

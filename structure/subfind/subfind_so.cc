@@ -44,19 +44,19 @@ int Subfind_DensityOtherProps_evaluate(int target, int mode, int *nexport, int *
       if(ngb < 0) {return -2;}
       for(n = 0; n < ngb; n++)
         { j = Ngblist[n];
-            double dp[3]; for(k=0;k<3;k++) {dp[k]=P[j].Pos[k]-subhalo_pos[k];} NEAREST_XYZ(dp[0],dp[1],dp[2],-1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; if(r2>Hsearch*Hsearch) continue; /* position offset */
-            out.M200+=P[j].Mass;
+            double dp[3]; for(k=0;k<3;k++) {dp[k]=P.Pos[j][k]-subhalo_pos[k];} NEAREST_XYZ(dp[0],dp[1],dp[2],-1); double r2=dp[0]*dp[0]+dp[1]*dp[1]+dp[2]*dp[2]; if(r2>Hsearch*Hsearch) continue; /* position offset */
+            out.M200+=P.Mass[j];
             
 #ifdef SUBFIND_ADDIO_VELDISP
-            for(k=0;k<3;k++) {double dv=P[j].Vel[k]/All.cf_atime+All.cf_hubble_a*All.cf_atime*dp[k]; out.V200[k]+=P[j].Mass*dv; out.Disp200+=P[j].Mass*dv*dv;}
+            for(k=0;k<3;k++) {double dv=P.Vel[j][k]/All.cf_atime+All.cf_hubble_a*All.cf_atime*dp[k]; out.V200[k]+=P.Mass[j]*dv; out.Disp200+=P.Mass[j]*dv*dv;}
 #endif
 #ifdef SUBFIND_ADDIO_BARYONS
-            if(P[j].Type==0)
+            if(P.Type[j]==0)
             {
-                double temp_keV = 6.14e-16 * (CellP[j].InternalEnergy/UNIT_SPECEGY_IN_CGS); /* temp in keV, for fully-ionized primordial gas */
-                out.gas_mass += P[j].Mass; out.temp += P[j].Mass * temp_keV;
-                out.xlum += 1.52e-20 * (P[j].Mass*UNIT_MASS_IN_CGS) * (CellP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_CGS) * sqrt(temp_keV); /* converts to 1e44 erg/s assuming thermal brems for fully-ionized primordial composition */
-            } else if (P[j].Type==4) {out.star_mass += P[j].Mass;}
+                double temp_keV = 6.14e-16 * (CellP.InternalEnergy[j]/UNIT_SPECEGY_IN_CGS); /* temp in keV, for fully-ionized primordial gas */
+                out.gas_mass += P.Mass[j]; out.temp += P.Mass[j] * temp_keV;
+                out.xlum += 1.52e-20 * (P.Mass[j]*UNIT_MASS_IN_CGS) * (CellP.Density[j]*All.cf_a3inv*UNIT_DENSITY_IN_CGS) * sqrt(temp_keV); /* converts to 1e44 erg/s assuming thermal brems for fully-ionized primordial composition */
+            } else if (P.Type[j]==4) {out.star_mass += P.Mass[j];}
 #endif
             
         }
@@ -567,19 +567,19 @@ double subfind_ovderdens_treefind(MyDouble searchcenter[3], MyFloat rkern, int t
 	  no = Nextnode[no];
 
         dist = rkern; double xtmp; xtmp=0;
-      dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
-      dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dy > dist)
 	    continue;
-      dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
 	    continue;
 
-	  mass += P[p].Mass;
+	  mass += P.Mass[p];
 	}
       else
 	{

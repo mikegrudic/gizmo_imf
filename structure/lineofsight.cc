@@ -152,23 +152,23 @@ void find_particles_and_save_them(int num)
 
   for(n = 0, count_local = 0; n < N_gas; n++)
     {
-      if(P[n].Type == 0)
+      if(P.Type[n] == 0)
 	{
-        dx = P[n].Pos[Los->xaxis] - Los->Xpos;
-        dy = P[n].Pos[Los->yaxis] - Los->Ypos;
+        dx = P.Pos[n][Los->xaxis] - Los->Xpos;
+        dy = P.Pos[n][Los->yaxis] - Los->Ypos;
         dz = 0;
         NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
-	  if(r2 < P[n].KernelRadius * P[n].KernelRadius)
+	  if(r2 < P.KernelRadius[n] * P.KernelRadius[n])
 	    {
-	      particles[count_local].Pos = P[n].Pos;
-	      particles[count_local].KernelRadius = P[n].KernelRadius;
-	      particles[count_local].Vz = P[n].Vel[Los->zaxis];
-	      particles[count_local].Utherm = CellP[n].InternalEnergyPred;
-	      particles[count_local].Mass = P[n].Mass;
-	      particles[count_local].Metallicity = P[n].Metallicity[0];
+	      particles[count_local].Pos = P.Pos[n];
+	      particles[count_local].KernelRadius = P.KernelRadius[n];
+	      particles[count_local].Vz = P.Vel[n][Los->zaxis];
+	      particles[count_local].Utherm = CellP.InternalEnergyPred[n];
+	      particles[count_local].Mass = P.Mass[n];
+	      particles[count_local].Metallicity = P.Metallicity[n][0];
 
 	      count_local++;
 	    }
@@ -270,19 +270,19 @@ void add_along_lines_of_sight(void)
 
   for(n = 0; n < N_gas; n++)
     {
-      if(P[n].Type == 0)
+      if(P.Type[n] == 0)
 	{
-        dx = P[n].Pos[Los->xaxis] - Los->Xpos;
-        dy = P[n].Pos[Los->yaxis] - Los->Ypos;
+        dx = P.Pos[n][Los->xaxis] - Los->Xpos;
+        dy = P.Pos[n][Los->yaxis] - Los->Ypos;
         dz = 0;
         NEAREST_XYZ(dx,dy,dz,-1);
 
 	  r2 = dx * dx + dy * dy;
 
-	  if(r2 < P[n].KernelRadius * P[n].KernelRadius)
+	  if(r2 < P.KernelRadius[n] * P.KernelRadius[n])
 	    {
-	      z0 = (P[n].Pos[Los->zaxis] - P[n].KernelRadius) / All.BoxSize * PIXELS;
-	      z1 = (P[n].Pos[Los->zaxis] + P[n].KernelRadius) / All.BoxSize * PIXELS;
+	      z0 = (P.Pos[n][Los->zaxis] - P.KernelRadius[n]) / All.BoxSize * PIXELS;
+	      z1 = (P.Pos[n][Los->zaxis] + P.KernelRadius[n]) / All.BoxSize * PIXELS;
 	      iz0 = (int) z0;
 	      iz1 = (int) z1;
 	      if(z0 < 0)
@@ -290,22 +290,22 @@ void add_along_lines_of_sight(void)
 
 	      for(iz = iz0; iz <= iz1; iz++)
 		{
-            dx = P[n].Pos[Los->xaxis] - Los->Xpos;
-            dy = P[n].Pos[Los->yaxis] - Los->Ypos;
-            dz = (iz + 0.5) / PIXELS * All.BoxSize - P[n].Pos[Los->zaxis];
+            dx = P.Pos[n][Los->xaxis] - Los->Xpos;
+            dy = P.Pos[n][Los->yaxis] - Los->Ypos;
+            dz = (iz + 0.5) / PIXELS * All.BoxSize - P.Pos[n][Los->zaxis];
             NEAREST_XYZ(dx,dy,dz,-1);
 		  r = sqrt(r2 + dz * dz);
 
-		  if(P[n].KernelRadius > All.BoxSize)
+		  if(P.KernelRadius[n] > All.BoxSize)
 		    {
-		      printf("Here:%d  n=%d %g\n", ThisTask, n, P[n].KernelRadius);
+		      printf("Here:%d  n=%d %g\n", ThisTask, n, P.KernelRadius[n]);
 		      endrun(89);
 		    }
 
-		  if(r < P[n].KernelRadius)
+		  if(r < P.KernelRadius[n])
 		    {
-		      u = r / P[n].KernelRadius;
-		      h3inv = 1.0 / (P[n].KernelRadius * P[n].KernelRadius * P[n].KernelRadius);
+		      u = r / P.KernelRadius[n];
+		      h3inv = 1.0 / (P.KernelRadius[n] * P.KernelRadius[n] * P.KernelRadius[n]);
               kernel_main(u, h3inv, 1, &wk, &dwk, -1);
                 
 		      bin = iz;
@@ -314,28 +314,28 @@ void add_along_lines_of_sight(void)
 		      while(bin < 0)
                   bin += PIXELS;
 
-              utherm = DMAX(All.MinEgySpec, CellP[i].InternalEnergyPred);
+              utherm = DMAX(All.MinEgySpec, CellP.InternalEnergyPred[i]);
               double mu_in = 1, nHe0, nHepp, nhp;
-              temp = ThermalProperties(utherm, CellP[n].Density * All.cf_a3inv, n, &mu_in, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
+              temp = ThermalProperties(utherm, CellP.Density[n] * All.cf_a3inv, n, &mu_in, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
 
 		      /* do total gas */
-		      weight = P[n].Mass * wk;
+		      weight = P.Mass[n] * wk;
 		      Los->Rho[bin] += weight;
-		      Los->Metallicity[bin] += P[n].Metallicity[0] * weight;
+		      Los->Metallicity[bin] += P.Metallicity[n][0] * weight;
 		      Los->Temp[bin] += temp * weight;
-		      Los->Vpec[bin] += P[n].Vel[Los->zaxis] * weight;
+		      Los->Vpec[bin] += P.Vel[n][Los->zaxis] * weight;
 
 		      /* do neutral hydrogen */
-		      weight = nh0 * HYDROGEN_MASSFRAC * P[n].Mass * wk;
+		      weight = nh0 * HYDROGEN_MASSFRAC * P.Mass[n] * wk;
 		      Los->RhoHI[bin] += weight;
 		      Los->TempHI[bin] += temp * weight;
-		      Los->VpecHI[bin] += P[n].Vel[Los->zaxis] * weight;
+		      Los->VpecHI[bin] += P.Vel[n][Los->zaxis] * weight;
 
 		      /* do HeII */
-		      weight = 4 * nHeII * HYDROGEN_MASSFRAC * P[n].Mass * wk;
+		      weight = 4 * nHeII * HYDROGEN_MASSFRAC * P.Mass[n] * wk;
 		      Los->RhoHeII[bin] += weight;
 		      Los->TempHeII[bin] += temp * weight;
-		      Los->VpecHeII[bin] += P[n].Vel[Los->zaxis] * weight;
+		      Los->VpecHeII[bin] += P.Vel[n][Los->zaxis] * weight;
 		    }
 		}
 	    }

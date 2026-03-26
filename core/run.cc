@@ -263,8 +263,8 @@ void calculate_non_standard_physics(void)
             Max_Unspawned_MassUnits_fromSink=Max_Unspawned_MassUnits_fromSink_global=0.;
         }
 #if defined(SNE_NONSINK_SPAWN)
-        {int i; for(i=0;i<NumPart;i++) {if(P[i].Type != 4) {continue;}
-            double n_unspawned = P[i].unspawned_wind_mass / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
+        {int i; for(i=0;i<NumPart;i++) {if(P.Type[i] != 4) {continue;}
+            double n_unspawned = P.unspawned_wind_mass[i] / ((SINK_WIND_SPAWN)*target_mass_for_wind_spawning(i)); // number of spawned gas cells that can be made from the mass in the reservoir
             if(n_unspawned> Max_Unspawned_MassUnits_fromSink) {Max_Unspawned_MassUnits_fromSink = n_unspawned;} // track the maximum integer number of elements this sink could spawn
         }}
 #endif
@@ -314,7 +314,7 @@ void calculate_non_standard_physics(void)
 #endif
 
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-    int i; for (int i : ActiveParticleList){if(P[i].Type == 5 && P[i].do_gas_search_this_timestep){P[i].dt_since_last_gas_search = 0;}}
+    int i; for (int i : ActiveParticleList){if(P.Type[i] == 5 && P.do_gas_search_this_timestep[i]){P.dt_since_last_gas_search[i] = 0;}}
 #endif
 
 }
@@ -478,7 +478,7 @@ void make_list_of_active_particles(void)
         {
             for(int i = FirstInTimeBin[n]; i >= 0; i = NextInTimeBin[i])
             {
-                if(P[i].Mass > 0) {ActiveParticleList.push_back(i);}
+                if(P.Mass[i] > 0) {ActiveParticleList.push_back(i);}
             }
         }
     }

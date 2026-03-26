@@ -21,21 +21,21 @@
 {
 #ifdef CHIMES_TURB_DIFF_IONS  // turbulent diffusion of CHIMES ions and molecules (passive scalar mixing) //
         
-    if((local.Mass>0)&&(P[j].Mass>0)&&((local.TD_DiffCoeff>MIN_REAL_NUMBER)||(CellP[j].TD_DiffCoeff>MIN_REAL_NUMBER)))
+    if((local.Mass>0)&&(P.Mass[j]>0)&&((local.TD_DiffCoeff>MIN_REAL_NUMBER)||(CellP.TD_DiffCoeff[j]>MIN_REAL_NUMBER)))
     {
         double wt_i=0.5, wt_j=0.5, cmag, d_scalar;
-        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*CellP[j].TD_DiffCoeff; // physical
+        double diffusion_wt = wt_i*local.TD_DiffCoeff + wt_j*CellP.TD_DiffCoeff[j]; // physical
 #ifdef HYDRO_SPH
-        diffusion_wt *= 0.5*(local.Density + CellP[j].Density)*All.cf_a3inv; // physical
+        diffusion_wt *= 0.5*(local.Density + CellP.Density[j])*All.cf_a3inv; // physical
 #else
         diffusion_wt *= Riemann_out.Face_Density; // physical
 #endif
         /* calculate implied mass flux 'across the boundary' to prevent excessively large coefficients */
-        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P[j].Mass)) );
+        double massflux = fabs( Face_Area_Norm * diffusion_wt / (DMIN(kernel.h_i,kernel.h_j)*All.cf_atime) * dt_hydrostep / (DMIN(local.Mass,P.Mass[j])) );
         if(massflux > 0.25) {diffusion_wt *= 0.25/massflux;}
         
         int k_species;
-        double rho_i = local.Density*All.cf_a3inv, rho_j = CellP[j].Density*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
+        double rho_i = local.Density*All.cf_a3inv, rho_j = CellP.Density[j]*All.cf_a3inv, rho_ij = 0.5*(rho_i+rho_j); // physical
 
         // Loop through all CHIMES species to compute the change in
         // the total number of ions/molecules of that species.
@@ -50,10 +50,10 @@
             
             double local_abundance_times_mass = local.ChimesNIons[k_species], external_abundance_times_mass; // values we will need
             #pragma omp atomic read
-            external_abundance_times_mass = CellP[j].ChimesNIons[k_species]; // this variable can be reset owing to how we code this, needs to be carefully read for thread safety here.
+            external_abundance_times_mass = CellP.ChimesNIons[j][k_species]; // this variable can be reset owing to how we code this, needs to be carefully read for thread safety here.
             double external_abundance_times_mass_0 = external_abundance_times_mass; // save initial value for below
             
-            d_scalar = (local_abundance_times_mass / local.Mass) - (external_abundance_times_mass / P[j].Mass); // physical
+            d_scalar = (local_abundance_times_mass / local.Mass) - (external_abundance_times_mass / P.Mass[j]); // physical
             for(k = 0; k < 3; k++)
             {
                 double grad_direct = d_scalar * kernel.dp[k] * rinv * rinv; // 1/code length
@@ -76,16 +76,16 @@
             cmag *= -diffusion_wt * dt_hydrostep; // physical
             if(fabs(cmag) > 0)
             {
-                double zlim = 0.25 * DMIN( DMIN(local.Mass, P[j].Mass) * fabs(d_scalar) , DMAX(local_abundance_times_mass , external_abundance_times_mass) );
+                double zlim = 0.25 * DMIN( DMIN(local.Mass, P.Mass[j]) * fabs(d_scalar) , DMAX(local_abundance_times_mass , external_abundance_times_mass) );
                 if(fabs(cmag) > zlim) {cmag *= zlim / fabs(cmag);}
 #ifndef HYDRO_SPH
-                double dmet = ((external_abundance_times_mass / P[j].Mass) - (local_abundance_times_mass / local.Mass)) * fabs(mdot_estimated) * dt_hydrostep;
+                double dmet = ((external_abundance_times_mass / P.Mass[j]) - (local_abundance_times_mass / local.Mass)) * fabs(mdot_estimated) * dt_hydrostep;
                 cmag = MINMOD(dmet,cmag); // limiter based on mass exchange from MFV HLLC solver //
 #endif
                 out.ChimesIonsYield[k_species] += cmag;
                 external_abundance_times_mass -= cmag; // that metal mass must come out of the neighbor element
                 #pragma omp atomic
-                CellP[j].ChimesNIons[k_species] += external_abundance_times_mass - external_abundance_times_mass_0; // here we enforce machine-accurate conservation by swapping right here. that means we need to be very careful to do this in a thread-safe manner
+                CellP.ChimesNIons[j][k_species] += external_abundance_times_mass - external_abundance_times_mass_0; // here we enforce machine-accurate conservation by swapping right here. that means we need to be very careful to do this in a thread-safe manner
             }
         }
     } 

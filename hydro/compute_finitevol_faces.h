@@ -16,7 +16,7 @@
     /* note the 'default' formulation from Lanson and Vila takes wt_i=V_i, wt_j=V_j; but this assumes negligible variation in h between particles;
      it is more accurate to use a centered wt (centered face area), which we get by linear interpolation, in extreme discontinuities of particle separation */
     if((fabs(V_i-V_j)/DMIN(V_i,V_j))/NUMDIMS > 1.25) {wt_i=wt_j=V_i*V_j*(kernel.wk_i+kernel.wk_j)/(V_i*kernel.wk_i+V_j*kernel.wk_j);} else {wt_i=V_i; wt_j=V_j;} //wt_i=wt_j = 2.*V_i*V_j / (V_i + V_j); // more conservatively, could use DMIN(V_i,V_j), but that is less accurate
-    Face_Area_Vec = (kernel.wk_i * wt_i * local.NV_T.matvec(kernel.dp) + kernel.wk_j * wt_j * CellP[j].NV_T.matvec(kernel.dp)) * (All.cf_atime*All.cf_atime); /* Face_Area_Norm has units of area, need to convert to physical */
+    Face_Area_Vec = (kernel.wk_i * wt_i * local.NV_T.matvec(kernel.dp) + kernel.wk_j * wt_j * tile.nv_t[n].matvec(kernel.dp)) * (All.cf_atime*All.cf_atime); /* Face_Area_Norm has units of area, need to convert to physical */
     Face_Area_Norm = Face_Area_Vec.norm_sq();
     double facenormal_dot_dp = dot(Face_Area_Vec, kernel.dp); /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
 
@@ -29,12 +29,12 @@
         for(k=0;k<3;k++)
         {
             Bi_dot_dx +=   local.Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
-            Bj_dot_dx -= CellP[j].Tensor_CRK_Face_Corrections[k+1] * kernel.dp[k];
+            Bj_dot_dx -= CellP.Tensor_CRK_Face_Corrections[j][k+1] * kernel.dp[k];
             int k_x;
             for(k_x=0;k_x<3;k_x++)
             {
                 dAi_etc_dot_dx[k_x] +=   local.Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
-                dAj_etc_dot_dx[k_x] -= CellP[j].Tensor_CRK_Face_Corrections[7+3*k+k_x] * kernel.dp[k];
+                dAj_etc_dot_dx[k_x] -= CellP.Tensor_CRK_Face_Corrections[j][7+3*k+k_x] * kernel.dp[k];
             }
         }
         Face_Area_Norm = 0; facenormal_dot_dp = 0;
@@ -42,8 +42,8 @@
         {
             double Ai = -V_i*V_j*(    local.Tensor_CRK_Face_Corrections[0] * (1. + Bi_dot_dx) * dwk_ij * (+kernel.dp[k])
                                  + (  local.Tensor_CRK_Face_Corrections[4+k] + dAi_etc_dot_dx[k]) * wk_ij);
-            double Aj = -V_i*V_j*(  CellP[j].Tensor_CRK_Face_Corrections[0] * (1. + Bj_dot_dx) * dwk_ij * (-kernel.dp[k])
-                                 + (CellP[j].Tensor_CRK_Face_Corrections[4+k] + dAj_etc_dot_dx[k]) * wk_ij);
+            double Aj = -V_i*V_j*(  CellP.Tensor_CRK_Face_Corrections[j][0] * (1. + Bj_dot_dx) * dwk_ij * (-kernel.dp[k])
+                                 + (CellP.Tensor_CRK_Face_Corrections[j][4+k] + dAj_etc_dot_dx[k]) * wk_ij);
             Face_Area_Vec[k] = (Ai - Aj) * All.cf_atime*All.cf_atime;
             Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k];
             facenormal_dot_dp += Face_Area_Vec[k] * kernel.dp[k]; /* check that face points same direction as vector normal: should be true for positive-definite (well-conditioned) NV_T */
@@ -53,7 +53,7 @@
 
 
     /* if the effective gradient matrix is ill-conditioned (or not positive-definite!): for stability, we revert to the "RSPH" EOM */
-    if((CellP[j].ConditionNumber*CellP[j].ConditionNumber > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
+    if((tile.condition_number[n]*tile.condition_number[n] > 1.0e12 + cnumcrit2) || (facenormal_dot_dp < 0))
     {
         Face_Area_Norm = -(wt_i*V_i*kernel.dwk_i + wt_j*V_j*kernel.dwk_j) / kernel.r;
         Face_Area_Norm *= All.cf_atime*All.cf_atime; /* Face_Area_Norm has units of area, need to convert to physical */

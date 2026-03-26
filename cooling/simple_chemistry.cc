@@ -16,7 +16,7 @@ and references therein.
 MyFloat photoionization_rate_C(int i, MyFloat shieldfac)
 {
     MyFloat G0 = get_FUV_G0(i, shieldfac, 1); // mode 1 accounts for dust-, self-, and H2 cross-shielding
-    return 3.43e-10 * G0 + 520 * CellP[i].MolecularMassFraction * Get_CosmicRayIonizationRate_cgs(i);
+    return 3.43e-10 * G0 + 520 * CellP.MolecularMassFraction[i] * Get_CosmicRayIonizationRate_cgs(i);
 }
 
 /* direct cosmic ray ionization rate of C */
@@ -34,7 +34,7 @@ MyFloat total_ionization_rate_C(int i, MyFloat shieldfac)
 /* Grain charging parameter psi = G0 sqrt(T) / ne in cgs units */
 MyFloat grain_charge_psi(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac)
 {
-    MyFloat ne = CellP[i].Density * All.cf_a3inv * HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS / PROTONMASS_CGS * x_elec;
+    MyFloat ne = CellP.Density[i] * All.cf_a3inv * HYDROGEN_MASSFRAC * UNIT_DENSITY_IN_CGS / PROTONMASS_CGS * x_elec;
     MyFloat G0 = get_FUV_G0(i, shieldfac, 0);
     return G0 * sqrt(temp) / ne + 50; // add 50 to prevent from becoming too small in strongly shielded gas, following Kim 2023
 }
@@ -89,7 +89,7 @@ MyFloat alpha_recomb_grain(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfa
         {8.270, 2.051E-4, 1.252, 1.590E2, 6.072E-2, 0.5980, 4.497E-7}  // Ca++
     };
 
-    MyFloat Z = P[i].Metallicity[0] / All.SolarAbundances[0];
+    MyFloat Z = P.Metallicity[i][0] / All.SolarAbundances[0];
     return Z * 1e-14 * C[j][0] / (1 + C[j][1] * pow(psi, C[j][2]) * (1 + C[j][3] * pow(temp, C[j][4]) * pow(psi, -C[j][5] - C[j][6] * log(temp))));
 }
 
@@ -104,7 +104,7 @@ MyFloat f_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac)
     MyFloat k_cplus_H2 = 2.31e-13 * pow(temp, -1.3) * exp(-23 / temp);
     MyFloat nHcgs = nH_CGS(i);
     MyFloat ne = nHcgs * x_elec;
-    MyFloat nH2 = 0.5 * nHcgs * CellP[i].MolecularMassFraction;
+    MyFloat nH2 = 0.5 * nHcgs * CellP.MolecularMassFraction[i];
     MyFloat result = ionization_rate / (ionization_rate + k_gr * nHcgs + (k_rr + k_dr) * ne + k_cplus_H2 * nH2);
     return result;
 }
@@ -118,23 +118,23 @@ MyFloat f_Oplus(MyFloat nHp)
 /* Fraction of C atoms in CO: Kim 2023 Eq 25 */
 MyFloat f_CO(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac, MyFloat nHp)
 {
-    MyFloat xi_cr16 = Get_CosmicRayIonizationRate_cgs(i) / 1e-16, Zd = P[i].Metallicity[0] / All.SolarAbundances[0];
+    MyFloat xi_cr16 = Get_CosmicRayIonizationRate_cgs(i) / 1e-16, Zd = P.Metallicity[i][0] / All.SolarAbundances[0];
     MyFloat G0 = get_FUV_G0(i, shieldfac, 0);
     MyFloat n_COcrit = pow(4e3 * Zd / (xi_cr16 * xi_cr16), cbrt(G0)) * (50 * xi_cr16 / pow(Zd, 1.4));
     MyFloat nHcgs = nH_CGS(i);
-    MyFloat f_CO = 0.5 * CellP[i].MolecularMassFraction * (1 - DMAX(f_Cplus(i, temp, x_elec, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
+    MyFloat f_CO = 0.5 * CellP.MolecularMassFraction[i] * (1 - DMAX(f_Cplus(i, temp, x_elec, shieldfac), f_Oplus(nHp))) / (1 + pow(n_COcrit / nHcgs, 2));
     return f_CO;
 }
 
 /* Contribution of C+ to electron abundance */
 MyFloat return_electron_fraction_from_Cplus(int i, MyFloat temp, MyFloat x_elec, MyFloat shieldfac){
-    MyFloat x_Cplus = P[i].Metallicity[2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(i, temp, x_elec, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
+    MyFloat x_Cplus = P.Metallicity[i][2]/All.SolarAbundances[2] * 1.6e-4 * f_Cplus(i, temp, x_elec, shieldfac); // Assumes gas-phase C abundance 1.6e-4 (Sofia 2004)
     return x_Cplus;
 }
 
 /* Contribution of O+ to electrons - essentially always negligible in ISM conditions but included for completeness */
 MyFloat return_electron_fraction_from_Oplus(int i, MyFloat nHp){
-    MyFloat x_Oplus = P[i].Metallicity[4]/All.SolarAbundances[4] * 3.2e-4 * f_Oplus(nHp); // Assumes gas-phase O abundance 3.2e-4 (Savage & Sembach 1996)
+    MyFloat x_Oplus = P.Metallicity[i][4]/All.SolarAbundances[4] * 3.2e-4 * f_Oplus(nHp); // Assumes gas-phase O abundance 3.2e-4 (Savage & Sembach 1996)
     return x_Oplus;
 }
 
@@ -159,7 +159,7 @@ MyFloat return_electron_fraction_from_alkali(int i, MyFloat temp){
     if(temp<100){
         return 0.; // negligible below critical temperature
     }
-    MyFloat x_K =  1e-7 * P[i].Metallicity[0]/All.SolarAbundances[0];
+    MyFloat x_K =  1e-7 * P.Metallicity[i][0]/All.SolarAbundances[0];
     MyFloat xe = 6.47e-13 * sqrt(x_K/1e-7) * sqrt(sqrt(temp*temp*temp/1e9))  * sqrt(2.4e15 / nH_CGS(i)) * exp(-25188/temp)/1.15e-11; // low-ionization approximation
     xe = 1./(1/x_K + 1/xe); // smooth interpolant to limit to x_K
     return xe;

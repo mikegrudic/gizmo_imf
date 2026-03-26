@@ -111,10 +111,10 @@ void fof_fof(int num)
   force_treefree();
 
   for(i = 0, ndm = 0, mass = 0; i < NumPart; i++)
-    if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+    if(((1 << P.Type[i]) & (MyFOF_PRIMARY_LINK_TYPES)))
       {
         ndm++;
-        mass += P[i].Mass;
+        mass += P.Mass[i];
       }
   sumup_large_ints(1, &ndm, &ndmtot);
   MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -147,7 +147,7 @@ void fof_fof(int num)
   /* build index list of particles of selected primary species */
   d = (struct unbind_data *) mymalloc("d", NumPart * sizeof(struct unbind_data));
   for(i = 0, n = 0; i < NumPart; i++)
-    if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+    if(((1 << P.Type[i]) & (MyFOF_PRIMARY_LINK_TYPES)))
       d[n++].index = i;
 
   force_treeallocate((int) (All.TreeAllocFactor * All.MaxPart) + NTopnodes, All.MaxPart);
@@ -159,7 +159,7 @@ void fof_fof(int num)
       Head[i] = Tail[i] = i;
       Len[i] = 1;
       Next[i] = -1;
-      MinID[i] = P[i].ID;
+      MinID[i] = P.ID[i];
       MinIDTask[i] = ThisTask;
     }
 
@@ -373,7 +373,7 @@ void fof_find_groups(void)
   /* first, link only among local particles */
   for(i = 0, marked = 0, npart = 0; i < NumPart; i++)
     {
-      if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+      if(((1 << P.Type[i]) & (MyFOF_PRIMARY_LINK_TYPES)))
 	{
 	  fof_find_dmparticles_evaluate(i, -1, &dummy, &dummy);
 
@@ -425,7 +425,7 @@ void fof_find_groups(void)
 	  /* do local particles and prepare export list */
 	  for(nexport = 0; i < NumPart; i++)
 	    {
-	      if(((1 << P[i].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+	      if(((1 << P.Type[i]) & (MyFOF_PRIMARY_LINK_TYPES)))
 		{
 		  if(NonlocalFlag[i] && ChangedFlag[i])
 		    {
@@ -461,7 +461,7 @@ void fof_find_groups(void)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      FoFDataIn[j].Pos = P[place].Pos;
+	      FoFDataIn[j].Pos = P.Pos[place];
 	      FoFDataIn[j].MinID = MinID[Head[place]];
 	      FoFDataIn[j].MinIDTask = MinIDTask[Head[place]];
 
@@ -590,7 +590,7 @@ int fof_find_dmparticles_evaluate(int target, int mode, int *nexport, int *nsend
   links = 0;
 
   if(mode == 0 || mode == -1)
-    pos = P[target].Pos.data_ptr();
+    pos = P.Pos[target].data_ptr();
   else
     pos = FoFDataGet[target].Pos.data_ptr();
 
@@ -701,7 +701,7 @@ void fof_compile_catalogue(void)
 	  FOF_GList[i].LocCount = 1;
 	  FOF_GList[i].ExtCount = 0;
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(((1 << P[FOF_PList[i].Pindex].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+	  if(((1 << P.Type[FOF_PList[i].Pindex]) & (MyFOF_PRIMARY_LINK_TYPES)))
 	    FOF_GList[i].LocDMCount = 1;
 	  else
 	    FOF_GList[i].LocDMCount = 0;
@@ -714,7 +714,7 @@ void fof_compile_catalogue(void)
 	  FOF_GList[i].ExtCount = 1;
 #ifdef FOF_DENSITY_SPLIT_TYPES
 	  FOF_GList[i].LocDMCount = 0;
-	  if(((1 << P[FOF_PList[i].Pindex].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+	  if(((1 << P.Type[FOF_PList[i].Pindex]) & (MyFOF_PRIMARY_LINK_TYPES)))
 	    FOF_GList[i].ExtDMCount = 1;
 	  else
 	    FOF_GList[i].ExtDMCount = 0;
@@ -921,7 +921,7 @@ void fof_compute_group_properties(int gr, int start, int len)
     {
       Group[gr].CM[k] = 0;
       Group[gr].Vel[k] = 0;
-      Group[gr].FirstPos[k] = P[FOF_PList[start].Pindex].Pos[k];
+      Group[gr].FirstPos[k] = P.Pos[FOF_PList[start].Pindex][k];
     }
 
   for(k = 0; k < 6; k++)
@@ -935,44 +935,44 @@ void fof_compute_group_properties(int gr, int start, int len)
       index = FOF_PList[start + k].Pindex;
 
       Group[gr].Len++;
-      Group[gr].Mass += P[index].Mass;
-      Group[gr].LenType[P[index].Type]++;
-      Group[gr].MassType[P[index].Type] += P[index].Mass;
+      Group[gr].Mass += P.Mass[index];
+      Group[gr].LenType[P.Type[index]]++;
+      Group[gr].MassType[P.Type[index]] += P.Mass[index];
 
 
 #ifdef GALSF
-      if(P[index].Type == 0)
-	Group[gr].Sfr += CellP[index].Sfr;
+      if(P.Type[index] == 0)
+	Group[gr].Sfr += CellP.Sfr[index];
 #endif
 
 #ifdef SINK_PARTICLES
-      if(P[index].Type == 5)
+      if(P.Type[index] == 5)
 	{
-	  Group[gr].Sink_Mdot += P[index].Sink_Mdot;
-	  Group[gr].Sink_Mass += P[index].Sink_Mass;
+	  Group[gr].Sink_Mdot += P.Sink_Mdot[index];
+	  Group[gr].Sink_Mass += P.Sink_Mass[index];
 	}
 
 #ifdef SINK_SEED_FROM_FOF
 #if (SINK_SEED_FROM_FOF==0)
-      if(P[index].Type==0)
+      if(P.Type[index]==0)
 #elif (SINK_SEED_FROM_FOF==1)
-      if(P[index].Type==4)
+      if(P.Type[index]==4)
 #endif
-         if(P[index].Potential < Group[gr].MinPot)
+         if(P.Potential[index] < Group[gr].MinPot)
         {
-          Group[gr].MinPot = P[index].Potential;
+          Group[gr].MinPot = P.Potential[index];
           Group[gr].index_maxdens = index;
           Group[gr].task_maxdens = ThisTask;
         }
 #endif
 #endif // SINK_PARTICLES
 
-        for(j = 0; j < 3; j++) {xyz[j] = P[index].Pos[j] - Group[gr].FirstPos[j];}
+        for(j = 0; j < 3; j++) {xyz[j] = P.Pos[index][j] - Group[gr].FirstPos[j];}
         NEAREST_XYZ(xyz[0],xyz[1],xyz[2],-1);
         for(j = 0; j < 3; j++)
         {
-            Group[gr].CM[j] += P[index].Mass * xyz[j];
-            Group[gr].Vel[j] += P[index].Mass * P[index].Vel[j];
+            Group[gr].CM[j] += P.Mass[index] * xyz[j];
+            Group[gr].Vel[j] += P.Mass[index] * P.Vel[index][j];
         }
     }
 }
@@ -1212,7 +1212,7 @@ void fof_save_groups(int num)
 
 #ifdef SUBFIND
   for(i = 0; i < NumPart; i++)
-    P[i].GrNr = TotNgroups + 1;	/* will mark particles that are not in any group */
+    P.GrNr[i] = TotNgroups + 1;	/* will mark particles that are not in any group */
 #endif
 
   for(i = 0, start = 0, Nids = 0; i < NgroupsExt; i++)
@@ -1231,9 +1231,9 @@ void fof_save_groups(int num)
 	if(FOF_PList[start + lenloc].MinID == FOF_GList[i].MinID)
 	  {
 	    ID_list[Nids].GrNr = FOF_GList[i].GrNr;
-	    ID_list[Nids].ID = P[FOF_PList[start + lenloc].Pindex].ID;
+	    ID_list[Nids].ID = P.ID[FOF_PList[start + lenloc].Pindex];
 #ifdef SUBFIND
-	    P[FOF_PList[start + lenloc].Pindex].GrNr = FOF_GList[i].GrNr;
+	    P.GrNr[FOF_PList[start + lenloc].Pindex] = FOF_GList[i].GrNr;
 #endif
 	    Nids++;
 	    lenloc++;
@@ -1428,7 +1428,7 @@ void fof_find_nearest_dmparticle(void)
 
   for(n = 0; n < NumPart; n++)
     {
-      if(((1 << P[n].Type) & (MyFOF_SECONDARY_LINK_TYPES)))
+      if(((1 << P.Type[n]) & (MyFOF_SECONDARY_LINK_TYPES)))
 	{
 	  fof_nearest_distance[n] = 1.0e30;
 	  fof_nearest_rkern[n] = 0.1 * LinkL;
@@ -1463,7 +1463,7 @@ void fof_find_nearest_dmparticle(void)
 
 	  /* do local particles and prepare export list */
 	  for(nexport = 0; i < NumPart; i++)
-	    if(((1 << P[i].Type) & (MyFOF_SECONDARY_LINK_TYPES)))
+	    if(((1 << P.Type[i]) & (MyFOF_SECONDARY_LINK_TYPES)))
 	      {
 		if(fof_nearest_distance[i] > 1.0e29)
 		  {
@@ -1495,7 +1495,7 @@ void fof_find_nearest_dmparticle(void)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      FoFDataIn[j].Pos = P[place].Pos;
+	      FoFDataIn[j].Pos = P.Pos[place];
 	      FoFDataIn[j].KernelRadius = fof_nearest_rkern[place];
 
 	      memcpy(FoFDataIn[j].NodeList,
@@ -1579,7 +1579,7 @@ void fof_find_nearest_dmparticle(void)
       /* do final operations on results */
       for(i = 0, npleft = 0; i < NumPart; i++)
 	{
-	  if(((1 << P[i].Type) & (MyFOF_SECONDARY_LINK_TYPES)))
+	  if(((1 << P.Type[i]) & (MyFOF_SECONDARY_LINK_TYPES)))
 	    {
 	      if(fof_nearest_distance[i] > 1.0e29)
 		{
@@ -1591,8 +1591,8 @@ void fof_find_nearest_dmparticle(void)
 		      if(iter >= MAXITER - 10)
 			{
 			  printf("i=%d task=%d ID=%llu KernelRadius=%g  pos=(%g|%g|%g)\n",
-				 i, ThisTask, (unsigned long long) P[i].ID, fof_nearest_rkern[i],
-				 P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+				 i, ThisTask, (unsigned long long) P.ID[i], fof_nearest_rkern[i],
+				 P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 			  fflush(stdout);
 			}
 		    }
@@ -1636,7 +1636,7 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 
   if(mode == 0)
     {
-      pos = P[target].Pos.data_ptr();
+      pos = P.Pos[target].data_ptr();
       h = fof_nearest_rkern[target];
     }
   else
@@ -1668,9 +1668,9 @@ int fof_find_nearest_dmparticle_evaluate(int target, int mode, int *nexport, int
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
             j = Ngblist[n];
-            dx = pos[0] - P[j].Pos[0];
-            dy = pos[1] - P[j].Pos[1];
-            dz = pos[2] - P[j].Pos[2];
+            dx = pos[0] - P.Pos[j][0];
+            dy = pos[1] - P.Pos[j][1];
+            dz = pos[2] - P.Pos[j][2];
             NEAREST_XYZ(dx,dy,dz,1);
             r2 = dx * dx + dy * dy + dz * dz;
             if(r2 < r2max && r2 < h * h)
@@ -1806,55 +1806,55 @@ void fof_make_sink_particles(void)
   for(n = 0; n < nimport; n++)
     {
 #if (SINK_SEED_FROM_FOF==0)
-        if(P[import_indices[n]].Type != 0)
+        if(P.Type[import_indices[n]] != 0)
 #elif (SINK_SEED_FROM_FOF==1)
-            if(P[import_indices[n]].Type != 4)
+            if(P.Type[import_indices[n]] != 4)
 #endif
                 endrun(7772);
         
-        P[import_indices[n]].Type = 5;    /* make it a sink particle particle */
+        P.Type[import_indices[n]] = 5;    /* make it a sink particle particle */
 #ifdef GALSF
-        P[import_indices[n]].StellarAge = All.Time; /* reset formation time to match BH formation */
+        P.StellarAge[import_indices[n]] = All.Time; /* reset formation time to match BH formation */
 #endif
         /* generate BH mass */
         if(All.SeedSinkMassSigma > 0)
         {
             /* compute gaussian random number: mean=0, sigma=All.SeedSinkMassSigma */
             random_generator_forbh = gsl_rng_alloc(gsl_rng_ranlxd1);
-            gsl_rng_set(random_generator_forbh, P[import_indices[n]].ID + 17 + All.NumCurrentTiStep);
+            gsl_rng_set(random_generator_forbh, P.ID[import_indices[n]] + 17 + All.NumCurrentTiStep);
             random_number_forbh = gsl_ran_gaussian(random_generator_forbh, All.SeedSinkMassSigma);
-            P[import_indices[n]].Sink_Mass = pow( 10., log10(All.SeedSinkMass) + random_number_forbh );
+            P.Sink_Mass[import_indices[n]] = pow( 10., log10(All.SeedSinkMass) + random_number_forbh );
             unitmass_in_msun = UNIT_MASS_IN_SOLAR;
-            if( P[import_indices[n]].Sink_Mass < 100./unitmass_in_msun )
-                P[import_indices[n]].Sink_Mass = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
+            if( P.Sink_Mass[import_indices[n]] < 100./unitmass_in_msun )
+                P.Sink_Mass[import_indices[n]] = 100./unitmass_in_msun;      // enforce lower limit of Mseed = 100 x Msun
         } else {
-            P[import_indices[n]].Sink_Mass = All.SeedSinkMass;
+            P.Sink_Mass[import_indices[n]] = All.SeedSinkMass;
         }
-        P[import_indices[n]].Sink_Mdot = 0;
+        P.Sink_Mdot[import_indices[n]] = 0;
         /* set hydro-ish variables */
-        if(P[import_indices[n]].Type == 0){
+        if(P.Type[import_indices[n]] == 0){
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            P[import_indices[n]].Mass = CellP[import_indices[n]].MassTrue + CellP[import_indices[n]].dMass;
+            P.Mass[import_indices[n]] = CellP.MassTrue[import_indices[n]] + CellP.dMass[import_indices[n]];
 #endif
-            P[import_indices[n]].DensityAroundParticle = CellP[import_indices[n]].Density;
+            P.DensityAroundParticle[import_indices[n]] = CellP.Density[import_indices[n]];
         }
         /* set some specific BH variables that are needed below */
 #ifdef SINK_INCREASE_DYNAMIC_MASS
-        P[import_indices[n]].Mass *= SINK_INCREASE_DYNAMIC_MASS;
+        P.Mass[import_indices[n]] *= SINK_INCREASE_DYNAMIC_MASS;
 #endif
 #ifdef SINK_ALPHADISK_ACCRETION
-        P[import_indices[n]].Sink_Mass_Reservoir = All.SeedReservoirMass;
+        P.Sink_Mass_Reservoir[import_indices[n]] = All.SeedReservoirMass;
 #endif
 #ifdef SINK_WIND_SPAWN
-        P[import_indices[n]].unspawned_wind_mass = 0;
+        P.unspawned_wind_mass[import_indices[n]] = 0;
 #endif
 #ifdef SINK_COUNTPROGS
-        P[import_indices[n]].Sink_CountProgs = 1;
+        P.Sink_CountProgs[import_indices[n]] = 1;
 #endif
         /* record that we actually made a BH, count numbers for book-keeping in domains */
 #if (SINK_SEED_FROM_FOF != 1)
         Stars_converted++;
-        TimeBinCountGas[P[import_indices[n]].TimeBin]--;
+        TimeBinCountGas[P.TimeBin[import_indices[n]]]--;
 #endif
 
     }
@@ -1885,7 +1885,7 @@ int compare_group_mass_ID(const void *a, const void *b)
   return 0;
 }
 
-void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to CellP[].HostHaloMass for fluid cells */
+void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to CellP.HostHaloMass[] for fluid cells */
 {
   int i, j, k, start, lenloc, nimport;
   struct group_mass_MinID *required_groups, *groups_to_export;
@@ -1965,7 +1965,7 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to CellP[].
 
   qsort(required_groups, NgroupsExt, sizeof(struct group_mass_MinID), compare_group_mass_ID);
 
-    for(i = 0; i < N_gas; i++) {if(P[i].Type==0) {CellP[i].HostHaloMass = 0;}}
+    for(i = 0; i < N_gas; i++) {if(P.Type[i]==0) {CellP.HostHaloMass[i] = 0;}}
 
   for(i = 0, start = 0; i < NgroupsExt; i++)
     {
@@ -1982,8 +1982,8 @@ void fof_assign_HostHaloMass(void)	/* assigns mass of host FoF group to CellP[].
       for(lenloc = 0; start + lenloc < NumPart;)
 	if(FOF_PList[start + lenloc].MinID == required_groups[i].MinID)
 	  {
-	    if(P[FOF_PList[start + lenloc].Pindex].Type == 0)
-	      CellP[FOF_PList[start + lenloc].Pindex].HostHaloMass = required_groups[i].mass;
+	    if(P.Type[FOF_PList[start + lenloc].Pindex] == 0)
+	      CellP.HostHaloMass[FOF_PList[start + lenloc].Pindex] = required_groups[i].mass;
 
 	    lenloc++;
 	  }
@@ -2560,13 +2560,13 @@ void read_fof(int num)
   t0 = my_second();
 
   for(i = 0; i < NumPart; i++)
-    P[i].SubNr = i;
+    P.SubNr[i] = i;
 
   qsort(P, NumPart, sizeof(struct particle_data), io_compare_P_ID);
   qsort(ID_list, Nids, sizeof(fof_id_list), fof_compare_ID_list_ID);
 
   for(i = 0; i < NumPart; i++)
-    P[i].GrNr = TotNgroups + 1;	/* will mark particles that are not in any group */
+    P.GrNr[i] = TotNgroups + 1;	/* will mark particles that are not in any group */
 
   t1 = my_second();
   if(ThisTask == 0)
@@ -2605,12 +2605,12 @@ void read_fof(int num)
 
 	      for(i = 0, j = 0; i < list_of_nids[recvTask]; i++)
 		{
-		  while(j < NumPart - 1 && P[j].ID < recv_ID_list[i].ID)
+		  while(j < NumPart - 1 && P.ID[j] < recv_ID_list[i].ID)
 		    j++;
 
-		  if(recv_ID_list[i].ID == P[j].ID)
+		  if(recv_ID_list[i].ID == P.ID[j])
 		    {
-		      P[j].GrNr = recv_ID_list[i].GrNr;
+		      P.GrNr[j] = recv_ID_list[i].GrNr;
 		      matches++;
 		    }
 		}

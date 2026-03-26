@@ -44,7 +44,7 @@ void reconstruct_timebins(void)
     
     for(i = 0; i < NumPart; i++)
     {
-        bin = P[i].TimeBin;
+        bin = P.TimeBin[i];
         
         if(TimeBinCount[bin] > 0)
         {
@@ -59,20 +59,20 @@ void reconstruct_timebins(void)
             PrevInTimeBin[i] = NextInTimeBin[i] = -1;
         }
         TimeBinCount[bin]++;
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
             TimeBinCountGas[bin]++;
         
 #ifdef GALSF
-        if(P[i].Type == 0)
-            TimeBinSfr[bin] += CellP[i].Sfr;
+        if(P.Type[i] == 0)
+            TimeBinSfr[bin] += CellP.Sfr[i];
 #endif
 #ifdef SINK_PARTICLES
-        if(P[i].Type == 5)
+        if(P.Type[i] == 5)
         {
-            TimeBin_Sink_mass[bin] += P[i].Sink_Mass;
-            TimeBin_Sink_dynamicalmass[bin] += P[i].Mass;
-            TimeBin_Sink_Mdot[bin] += P[i].Sink_Mdot;
-            TimeBin_Sink_Medd[bin] += P[i].Sink_Mdot / P[i].Sink_Mass;
+            TimeBin_Sink_mass[bin] += P.Sink_Mass[i];
+            TimeBin_Sink_dynamicalmass[bin] += P.Mass[i];
+            TimeBin_Sink_Mdot[bin] += P.Sink_Mdot[i];
+            TimeBin_Sink_Medd[bin] += P.Sink_Mdot[i] / P.Sink_Mass[i];
         }
 #endif
     }
@@ -100,7 +100,7 @@ void reconstruct_timebins(void)
 
 void drift_particle(int i, integertime time1)
 {
-    int j __attribute__((unused)); double dt_drift; integertime time0 = P[i].Ti_current;
+    int j __attribute__((unused)); double dt_drift; integertime time0 = P.Ti_current[i];
     if(time1 < time0)
     {
         printf("i=%d time0=%lld time1=%lld\n", i, (long long)time0, (long long)time1);
@@ -112,53 +112,53 @@ void drift_particle(int i, integertime time1)
         
 #if !defined(FREEZE_HYDRO)
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME)
-    if(P[i].Type==0) {advect_mesh_point(i,dt_drift);} else {P[i].Pos += P[i].Vel * dt_drift;}
+    if(P.Type[i]==0) {advect_mesh_point(i,dt_drift);} else {P.Pos[i] += P.Vel[i] * dt_drift;}
 #elif (SINGLE_STAR_TIMESTEPPING > 0)
     Vec3<double> fewbody_drift_dx, fewbody_kick_dv; // if super-timestepping, the updates above account for COM motion of the binary; now we account for the internal motion
-    if( (P[i].Type == 5) && (P[i].SuperTimestepFlag>=2) )
+    if( (P.Type[i] == 5) && (P.SuperTimestepFlag[i]>=2) )
     {
-        Vec3<double> COM_Vel = P[i].Vel + P[i].comp_dv * (P[i].comp_Mass/(P[i].Mass+P[i].comp_Mass)); //center of mass velocity
-        P[i].Pos += COM_Vel * dt_drift; //center of mass drift
+        Vec3<double> COM_Vel = P.Vel[i] + P.comp_dv[i] * (P.comp_Mass[i]/(P.Mass[i]+P.comp_Mass[i])); //center of mass velocity
+        P.Pos[i] += COM_Vel * dt_drift; //center of mass drift
         odeint_super_timestep(i, dt_drift, fewbody_kick_dv, fewbody_drift_dx, 1); // do_fewbody_drift
-        P[i].GravAccel = P[i].COM_GravAccel; //Overwrite the acceleration with center of mass value
-        P[i].Pos += fewbody_drift_dx; //Keplerian evolution
-        P[i].Vel += fewbody_kick_dv; //move on binary.orbit
+        P.GravAccel[i] = P.COM_GravAccel[i]; //Overwrite the acceleration with center of mass value
+        P.Pos[i] += fewbody_drift_dx; //Keplerian evolution
+        P.Vel[i] += fewbody_kick_dv; //move on binary.orbit
     } else {
-       P[i].Pos += P[i].Vel * dt_drift;
+       P.Pos[i] += P.Vel[i] * dt_drift;
     }
 #else
-    P[i].Pos += P[i].Vel * dt_drift;
+    P.Pos[i] += P.Vel[i] * dt_drift;
 #endif
 #endif // FREEZE_HYDRO clause
 #if (NUMDIMS==1)
-    P[i].Pos[1]=P[i].Pos[2]=0; // force zero-ing
+    P.Pos[i][1]=P.Pos[i][2]=0; // force zero-ing
 #endif
 #if (NUMDIMS==2)
-    P[i].Pos[2]=0; // force zero-ing
+    P.Pos[i][2]=0; // force zero-ing
 #endif
 
 #ifdef DILATION_FOR_STELLAR_KINEMATICS_ONLY
     double a_fac = return_timestep_dilation_factor(i,0);
     if(a_fac > 1.) {
         double cfac = dt_drift * (1. - 1./a_fac);
-        P[i].Pos += P[i].vel_of_nearest_special * cfac; /* add back in the mean drift of the surrounding stuff to dilate only the local dynamics */
+        P.Pos[i] += P.vel_of_nearest_special[i] * cfac; /* add back in the mean drift of the surrounding stuff to dilate only the local dynamics */
     }
 #endif
 
-    double divv_fac = P[i].Particle_DivVel * dt_drift;
+    double divv_fac = P.Particle_DivVel[i] * dt_drift;
     double divv_fac_max = 0.3; //1.5; // don't allow KernelRadius to change too much in predict-step //
 #ifdef AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE
-    if(ags_density_isactive(i) && P[i].Type>0) {divv_fac_max=4;} // can [should] allow larger changes when using adapting soft for all
+    if(ags_density_isactive(i) && P.Type[i]>0) {divv_fac_max=4;} // can [should] allow larger changes when using adapting soft for all
 #endif
     if(divv_fac > +divv_fac_max) divv_fac = +divv_fac_max;
     if(divv_fac < -divv_fac_max) divv_fac = -divv_fac_max;
     
 #ifdef GRAIN_FLUID
-    if((1 << P[i].Type) & (GRAIN_PTYPES))
+    if((1 << P.Type[i]) & (GRAIN_PTYPES))
     {
-        P[i].KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
-        if(P[i].KernelRadius < All.MinKernelRadius) {P[i].KernelRadius = All.MinKernelRadius;}
-        if(P[i].KernelRadius > All.MaxKernelRadius) {P[i].KernelRadius = All.MaxKernelRadius;}
+        P.KernelRadius[i] *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(P.KernelRadius[i] < All.MinKernelRadius) {P.KernelRadius[i] = All.MinKernelRadius;}
+        if(P.KernelRadius[i] > All.MaxKernelRadius) {P.KernelRadius[i] = All.MaxKernelRadius;}
     }
 #endif
 
@@ -166,17 +166,17 @@ void drift_particle(int i, integertime time1)
     if(ags_density_isactive(i) && (dt_drift>0)) /* particle is AGS-active */
     {
         double minsoft = ags_return_minsoft(i), maxsoft = ags_return_maxsoft(i);
-        P[i].AGS_KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
-        if(P[i].AGS_KernelRadius < minsoft) {P[i].AGS_KernelRadius = minsoft;}
-        if(P[i].AGS_KernelRadius > maxsoft) {P[i].AGS_KernelRadius = maxsoft;}
-    } else {P[i].AGS_KernelRadius = ForceSoftening_KernelRadius(i);} /* non-AGS-active particles use fixed softening */
+        P.AGS_KernelRadius[i] *= exp((double)divv_fac / ((double)NUMDIMS));
+        if(P.AGS_KernelRadius[i] < minsoft) {P.AGS_KernelRadius[i] = minsoft;}
+        if(P.AGS_KernelRadius[i] > maxsoft) {P.AGS_KernelRadius[i] = maxsoft;}
+    } else {P.AGS_KernelRadius[i] = ForceSoftening_KernelRadius(i);} /* non-AGS-active particles use fixed softening */
 #endif
     
 #ifdef DM_FUZZY
     do_dm_fuzzy_drift_kick(i, dt_drift, 1);
 #endif
     
-    if((P[i].Type == 0) && (P[i].Mass > 0))
+    if((P.Type[i] == 0) && (P.Mass[i] > 0))
         {
             double dt_gravkick, dt_gravkick_pm, dt_hydrokick, dt_entr;
             dt_entr = dt_hydrokick = (time1 - time0) * UNIT_INTEGERTIME_IN_PHYSICAL(i);
@@ -184,52 +184,52 @@ void drift_particle(int i, integertime time1)
             
 #ifdef PMGRID
             dt_gravkick_pm = get_gravkick_factor(time0, time1, -1, 0);
-            CellP[i].VelPred += P[i].GravAccel*dt_gravkick + P[i].GravPM*dt_gravkick_pm + CellP[i].HydroAccel*(dt_hydrokick*All.cf_atime); /* make sure v is in code units */
+            CellP.VelPred[i] += P.GravAccel[i]*dt_gravkick + P.GravPM[i]*dt_gravkick_pm + CellP.HydroAccel[i]*(dt_hydrokick*All.cf_atime); /* make sure v is in code units */
 #else
-            CellP[i].VelPred += P[i].GravAccel * dt_gravkick + CellP[i].HydroAccel * (dt_hydrokick*All.cf_atime); /* make sure v is in code units */
+            CellP.VelPred[i] += P.GravAccel[i] * dt_gravkick + CellP.HydroAccel[i] * (dt_hydrokick*All.cf_atime); /* make sure v is in code units */
 #endif
 #if (SINGLE_STAR_TIMESTEPPING > 0)
-	        if((P[i].Type == 5) && (P[i].SuperTimestepFlag>=2)) {CellP[i].VelPred += Vec3<double>{fewbody_kick_dv[0], fewbody_kick_dv[1], fewbody_kick_dv[2]};}
+	        if((P.Type[i] == 5) && (P.SuperTimestepFlag[i]>=2)) {CellP.VelPred[i] += Vec3<double>{fewbody_kick_dv[0], fewbody_kick_dv[1], fewbody_kick_dv[2]};}
 #endif	    
             
 #if defined(TURB_DRIVING)
-            CellP[i].VelPred += CellP[i].TurbAccel * dt_gravkick;
+            CellP.VelPred[i] += CellP.TurbAccel[i] * dt_gravkick;
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
-            CellP[i].VelPred += CellP[i].Rad_Accel * (All.cf_atime * dt_hydrokick);
+            CellP.VelPred[i] += CellP.Rad_Accel[i] * (All.cf_atime * dt_hydrokick);
 #endif
             
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            P[i].Mass = DMAX(P[i].Mass + CellP[i].DtMass * dt_entr, 0.5 * CellP[i].MassTrue);
+            P.Mass[i] = DMAX(P.Mass[i] + CellP.DtMass[i] * dt_entr, 0.5 * CellP.MassTrue[i]);
 #endif
             
-            CellP[i].Density *= exp(-divv_fac);
-            double etmp = CellP[i].InternalEnergyPred + CellP[i].DtInternalEnergy * dt_entr;
+            CellP.Density[i] *= exp(-divv_fac);
+            double etmp = CellP.InternalEnergyPred[i] + CellP.DtInternalEnergy[i] * dt_entr;
 #if defined(RADTRANSFER) && defined(RT_EVOLVE_ENERGY) /* block here to deal with tricky cases where radiation energy density is -much- larger than thermal */ 
-            int kfreq; double erad_tot=0,tot_e_min=0,enew=0,int_e_min=0,dErad=0,rsol_fac=C_LIGHT_CODE_REDUCED(i)/C_LIGHT_CODE; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=CellP[i].Rad_E_gamma_Pred[kfreq];}
+            int kfreq; double erad_tot=0,tot_e_min=0,enew=0,int_e_min=0,dErad=0,rsol_fac=C_LIGHT_CODE_REDUCED(i)/C_LIGHT_CODE; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {erad_tot+=CellP.Rad_E_gamma_Pred[i][kfreq];}
             if(erad_tot > 0)
             {
-                int_e_min=0.025*CellP[i].InternalEnergyPred; tot_e_min=0.025*(erad_tot/rsol_fac+CellP[i].InternalEnergyPred*P[i].Mass);
-                enew=DMAX(erad_tot/rsol_fac+etmp*P[i].Mass,tot_e_min); etmp=(enew-erad_tot/rsol_fac)/P[i].Mass; if(etmp<int_e_min) {dErad=rsol_fac*(etmp-int_e_min); etmp=int_e_min;}
-                if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;} CellP[i].InternalEnergyPred = etmp; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {CellP[i].Rad_E_gamma_Pred[kfreq] *= 1 + dErad/erad_tot;}
+                int_e_min=0.025*CellP.InternalEnergyPred[i]; tot_e_min=0.025*(erad_tot/rsol_fac+CellP.InternalEnergyPred[i]*P.Mass[i]);
+                enew=DMAX(erad_tot/rsol_fac+etmp*P.Mass[i],tot_e_min); etmp=(enew-erad_tot/rsol_fac)/P.Mass[i]; if(etmp<int_e_min) {dErad=rsol_fac*(etmp-int_e_min); etmp=int_e_min;}
+                if(dErad<-0.975*erad_tot) {dErad=-0.975*erad_tot;} CellP.InternalEnergyPred[i] = etmp; for(kfreq=0;kfreq<N_RT_FREQ_BINS;kfreq++) {CellP.Rad_E_gamma_Pred[i][kfreq] *= 1 + dErad/erad_tot;}
             } else {
-                if(etmp<0.5*CellP[i].InternalEnergyPred) {CellP[i].InternalEnergyPred *= 0.5;} else {CellP[i].InternalEnergyPred=etmp;}
+                if(etmp<0.5*CellP.InternalEnergyPred[i]) {CellP.InternalEnergyPred[i] *= 0.5;} else {CellP.InternalEnergyPred[i]=etmp;}
             }
 #else
-            if(etmp<0.5*CellP[i].InternalEnergyPred) {CellP[i].InternalEnergyPred *= 0.5;} else {CellP[i].InternalEnergyPred=etmp;}
+            if(etmp<0.5*CellP.InternalEnergyPred[i]) {CellP.InternalEnergyPred[i] *= 0.5;} else {CellP.InternalEnergyPred[i]=etmp;}
 #endif
-            if(CellP[i].InternalEnergyPred<All.MinEgySpec) CellP[i].InternalEnergyPred=All.MinEgySpec;
+            if(CellP.InternalEnergyPred[i]<All.MinEgySpec) CellP.InternalEnergyPred[i]=All.MinEgySpec;
             
 #ifdef HYDRO_PRESSURE_SPH
-            CellP[i].EgyWtDensity *= exp(-divv_fac);
+            CellP.EgyWtDensity[i] *= exp(-divv_fac);
 #endif
             
 #if (HYDRO_FIX_MESH_MOTION > 0)
-            P[i].KernelRadius *= exp((double)divv_fac / ((double)NUMDIMS));
-            if(P[i].KernelRadius < All.MinKernelRadius) {P[i].KernelRadius = All.MinKernelRadius;}
-            if(P[i].KernelRadius > All.MaxKernelRadius) {P[i].KernelRadius = All.MaxKernelRadius;}
+            P.KernelRadius[i] *= exp((double)divv_fac / ((double)NUMDIMS));
+            if(P.KernelRadius[i] < All.MinKernelRadius) {P.KernelRadius[i] = All.MinKernelRadius;}
+            if(P.KernelRadius[i] > All.MaxKernelRadius) {P.KernelRadius[i] = All.MaxKernelRadius;}
 #ifdef ADAPTIVE_GRAVSOFT_FORALL
-            if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P[i].AGS_KernelRadius = P[i].KernelRadius;} /* gas is AGS-active, so needs to be set here to match updated KernelRadius */
+            if(1 & ADAPTIVE_GRAVSOFT_FORALL) {P.AGS_KernelRadius[i] = P.KernelRadius[i];} /* gas is AGS-active, so needs to be set here to match updated KernelRadius */
 #endif
 #endif
             drift_extra_physics(i, time0, time1, dt_entr);
@@ -238,9 +238,9 @@ void drift_particle(int i, integertime time1)
         }
     
     /* check for reflecting or outflow or otherwise special boundaries: if so, do the reflection/boundary! */
-    apply_special_boundary_conditions(i,P[i].Mass,0);
+    apply_special_boundary_conditions(i,P.Mass[i],0);
 
-    P[i].Ti_current = time1;
+    P.Ti_current[i] = time1;
 }
 
 
@@ -260,21 +260,21 @@ void drift_extra_physics(int i, integertime tstart, integertime tend, double dt_
 {
 #ifdef MAGNETIC
     double BphysVolphys_to_BcodeVolCode = 1 / All.cf_atime;
-    CellP[i].BPred += CellP[i].DtB * (dt_entr * BphysVolphys_to_BcodeVolCode); // fluxes are always physical, convert to code units //
+    CellP.BPred[i] += CellP.DtB[i] * (dt_entr * BphysVolphys_to_BcodeVolCode); // fluxes are always physical, convert to code units //
 #ifdef DIVBCLEANING_DEDNER
     double PhiphysVolphys_to_PhicodeVolCode = 1 / All.cf_a3inv; // for mass-based phi fluxes (otherwise coefficient is 1)
-    double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * CellP[i].DtPhi;
-    CellP[i].PhiPred += dtphi_code  * dt_entr;
+    double dtphi_code = (PhiphysVolphys_to_PhicodeVolCode) * CellP.DtPhi[i];
+    CellP.PhiPred[i] += dtphi_code  * dt_entr;
     double t_damp = Get_Gas_PhiField_DampingTimeInv(i);
     if((t_damp>0) && (!isnan(t_damp)))
     {
-        CellP[i].PhiPred *= exp( -dt_entr * t_damp );
+        CellP.PhiPred[i] *= exp( -dt_entr * t_damp );
     }
 #endif
 #ifdef MHD_ALTERNATIVE_LEAPFROG_SCHEME
-    CellP[i].B = CellP[i].BPred;
+    CellP.B[i] = CellP.BPred[i];
 #ifdef DIVBCLEANING_DEDNER
-    CellP[i].Phi=CellP[i].PhiPred;
+    CellP.Phi[i]=CellP.PhiPred[i];
 #endif
 #endif
 #endif
@@ -311,47 +311,47 @@ void do_box_wrapping(void)
     {
         for(j = 0; j < 3; j++)
         {
-            while(P[i].Pos[j] < 0)
+            while(P.Pos[i][j] < 0)
             {
-                P[i].Pos[j] += boxsize[j];
+                P.Pos[i][j] += boxsize[j];
 #ifdef BOX_SHEARING
                 if(j==0)
                 {
-                    P[i].Vel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
-                    P[i].dp[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset * P[i].Mass;
-                    if(P[i].Type==0)
+                    P.Vel[i][BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                    P.dp[i][BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset * P.Mass[i];
+                    if(P.Type[i]==0)
                     {
-                        CellP[i].VelPred[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                        CellP.VelPred[i][BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) // if have moving cells need to wrap them, too (if cells aren't moving, should never reach this wrap) //
-                        CellP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
+                        CellP.ParticleVel[i][BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Vel_Offset;
 #endif
                     }
 #if (BOX_SHEARING > 1)
                     /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                    P[i].Pos[BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
+                    P.Pos[i][BOX_SHEARING_PHI_COORDINATE] -= Shearing_Box_Pos_Offset;
 #endif
                 }
 #endif
             }
             
-            while(P[i].Pos[j] >= boxsize[j])
+            while(P.Pos[i][j] >= boxsize[j])
             {
-                P[i].Pos[j] -= boxsize[j];
+                P.Pos[i][j] -= boxsize[j];
 #ifdef BOX_SHEARING
                 if(j==0)
                 {
-                    P[i].Vel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
-                    P[i].dp[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset * P[i].Mass;
-                    if(P[i].Type==0)
+                    P.Vel[i][BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                    P.dp[i][BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset * P.Mass[i];
+                    if(P.Type[i]==0)
                     {
-                        CellP[i].VelPred[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                        CellP.VelPred[i][BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) // if have moving cells need to wrap them, too (if cells aren't moving, should never reach this wrap) //
-                        CellP[i].ParticleVel[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
+                        CellP.ParticleVel[i][BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Vel_Offset;
 #endif
                     }
 #if (BOX_SHEARING > 1)
                     /* if we're not assuming axisymmetry, we need to shift the coordinates for the shear flow at the boundary */
-                    P[i].Pos[BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
+                    P.Pos[i][BOX_SHEARING_PHI_COORDINATE] += Shearing_Box_Pos_Offset;
 #endif
                 }
 #endif
@@ -378,13 +378,13 @@ double INLINE_FUNC Get_Particle_Size(int i)
         don't have to re-compute it each time. That makes this function fast enough to 
         call -inside- of loops (e.g. hydro computations) */
 #if (NUMDIMS == 1)
-    return 2.00000 * P[i].KernelRadius / P[i].NumNgb; // (2)^(1/1)
+    return 2.00000 * P.KernelRadius[i] / P.NumNgb[i]; // (2)^(1/1)
 #endif
 #if (NUMDIMS == 2)
-    return 1.77245 * P[i].KernelRadius / P[i].NumNgb; // (pi)^(1/2)
+    return 1.77245 * P.KernelRadius[i] / P.NumNgb[i]; // (pi)^(1/2)
 #endif
 #if (NUMDIMS == 3)
-    return 1.61199 * P[i].KernelRadius / P[i].NumNgb; // (4pi/3)^(1/3)
+    return 1.61199 * P.KernelRadius[i] / P.NumNgb[i]; // (4pi/3)^(1/3)
 #endif
 }
 
@@ -411,7 +411,7 @@ double evaluate_NH_from_GradRho(MyFloat gradrho[3], double rkern, double rho, do
     if(rho>0)
     {
 #ifdef RT_USE_TREECOL_FOR_NH        
-        gradrho_mag = include_h * rho * rkern / numngb_ndim; if(target>=0) {gradrho_mag += P[target].SigmaEff;}
+        gradrho_mag = include_h * rho * rkern / numngb_ndim; if(target>=0) {gradrho_mag += P.SigmaEff[target];}
 #else             
         gradrho_mag = sqrt(gradrho[0]*gradrho[0]+gradrho[1]*gradrho[1]+gradrho[2]*gradrho[2]);
         if(gradrho_mag > 0) {gradrho_mag = rho*rho/gradrho_mag;} else {gradrho_mag=0;}
@@ -439,16 +439,16 @@ double Get_DtB_FaceArea_Limiter(int i)
     /* define some variables */
     double dt_entr = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
     /* check the magnitude of the predicted change in B-fields, vs. B-magnitude */
-    Vec3<double> dB = CellP[i].DtB * (dt_entr / All.cf_atime); /* converts to code units of Vol_code*B_code = Vol_phys*B_phys/a */
-    double dBmag = dB.norm(), Bmag = CellP[i].BPred.norm();
+    Vec3<double> dB = CellP.DtB[i] * (dt_entr / All.cf_atime); /* converts to code units of Vol_code*B_code = Vol_phys*B_phys/a */
+    double dBmag = dB.norm(), Bmag = CellP.BPred[i].norm();
     /* also make sure to check the actual pressure, since if P>>B, we will need to allow larger changes in B per timestep */
-    double P_BV_units = sqrt(2.*CellP[i].Pressure*All.cf_a3inv)*P[i].Mass/CellP[i].Density / All.cf_a2inv;
+    double P_BV_units = sqrt(2.*CellP.Pressure[i]*All.cf_a3inv)*P.Mass[i]/CellP.Density[i] / All.cf_a2inv;
     /* the above should be in CODE Bcode*Vol_code units! */
     double Bmag_max = DMAX(Bmag, DMIN( P_BV_units, 10.*Bmag ));
     /* now check how accurately the cell is 'closed': the face areas are ideally zero */
-    double area_sum = fabs(CellP[i].Face_Area[0])+fabs(CellP[i].Face_Area[1])+fabs(CellP[i].Face_Area[2]);
+    double area_sum = fabs(CellP.Face_Area[i][0])+fabs(CellP.Face_Area[i][1])+fabs(CellP.Face_Area[i][2]);
     /* but this needs to be normalized to the 'expected' area given KernelRadius */
-    double area_norm = Get_Particle_Expected_Area(P[i].KernelRadius * All.cf_atime);
+    double area_norm = Get_Particle_Expected_Area(P.KernelRadius[i] * All.cf_atime);
     /* ok, with that in hand, define an error tolerance based on this */
     if(area_norm>0)
     {
@@ -469,8 +469,8 @@ double Get_DtB_FaceArea_Limiter(int i)
 #ifdef DIVBCLEANING_DEDNER
 double INLINE_FUNC Get_Gas_PhiField(int i_particle_id)
 {
-    //return CellP[i_particle_id].PhiPred * CellP[i_particle_id].Density / P[i_particle_id].Mass; // volumetric phy-flux (requires extra term compared to mass-based flux)
-    return CellP[i_particle_id].PhiPred / P[i_particle_id].Mass; // mass-based phi-flux
+    //return CellP.PhiPred[i_particle_id] * CellP.Density[i_particle_id] / P.Mass[i_particle_id]; // volumetric phy-flux (requires extra term compared to mass-based flux)
+    return CellP.PhiPred[i_particle_id] / P.Mass[i_particle_id]; // mass-based phi-flux
 }
 
 double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
@@ -478,7 +478,7 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
     /* this timescale should always be returned as a -physical- time */
 #ifdef HYDRO_SPH
     /* PFH: add simple damping (-phi/tau) term */
-    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (CellP[i_particle_id].MaxSignalVel / (All.cf_atime*Get_Particle_Size(i_particle_id)));
+    double damping_tinv = 0.5 * All.DivBcleanParabolicSigma * (CellP.MaxSignalVel[i_particle_id] / (All.cf_atime*Get_Particle_Size(i_particle_id)));
 #else
     double damping_tinv;
 #ifdef SELFGRAVITY_OFF
@@ -488,26 +488,26 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
     // only see a small performance drop from fastestwavespeed above to maxsignalvel below, despite the fact that below is purely local (so allows more flexible adapting to high dynamic range)
     damping_tinv = 0.0;
     
-    if(P[i_particle_id].KernelRadius > 0)
+    if(P.KernelRadius[i_particle_id] > 0)
     {
         double h_eff = Get_Particle_Size(i_particle_id);
-        double vsig2 = 0.5 * fabs(CellP[i_particle_id].MaxSignalVel);
+        double vsig2 = 0.5 * fabs(CellP.MaxSignalVel[i_particle_id]);
         double phi_B_eff = 0.0;
         if(vsig2 > 0) {phi_B_eff = Get_Gas_PhiField(i_particle_id) / (All.cf_atime * vsig2);}
         double vsig1 = 0.0;
-        if(CellP[i_particle_id].Density > 0)
+        if(CellP.Density[i_particle_id] > 0)
         {
             vsig1 = sqrt( Get_Gas_effective_soundspeed_i(i_particle_id)*Get_Gas_effective_soundspeed_i(i_particle_id) +
                  (1. / All.cf_atime) *
                  (Get_Gas_BField(i_particle_id,0)*Get_Gas_BField(i_particle_id,0) +
                   Get_Gas_BField(i_particle_id,1)*Get_Gas_BField(i_particle_id,1) +
                   Get_Gas_BField(i_particle_id,2)*Get_Gas_BField(i_particle_id,2) +
-                  phi_B_eff*phi_B_eff) / CellP[i_particle_id].Density );
+                  phi_B_eff*phi_B_eff) / CellP.Density[i_particle_id] );
         }
         vsig1 = DMAX(vsig1, vsig2);
         vsig2 = 0.0;
-        vsig2 = CellP[i_particle_id].Gradients.Velocity.frobenius_norm();
-        vsig2 = 3.0 * h_eff * DMAX( vsig2, fabs(P[i_particle_id].Particle_DivVel)) / All.cf_atime;
+        vsig2 = CellP.Gradients.Velocity[i_particle_id].frobenius_norm();
+        vsig2 = 3.0 * h_eff * DMAX( vsig2, fabs(P.Particle_DivVel[i_particle_id])) / All.cf_atime;
         double prefac_fastest = 0.1;
         double prefac_tinv = 0.5;
         double area_0 = 0.1;
@@ -516,11 +516,11 @@ double INLINE_FUNC Get_Gas_PhiField_DampingTimeInv(int i_particle_id)
         prefac_tinv = 2.0;
         area_0 = 0.05;
         vsig2 *= 5.0;
-        if(CellP[i_particle_id].FlagForConstrainedGradients <= 0) prefac_tinv *= 30;
+        if(CellP.FlagForConstrainedGradients[i_particle_id] <= 0) prefac_tinv *= 30;
 #endif
-        prefac_tinv *= sqrt(1. + CellP[i_particle_id].ConditionNumber/100.);
-        double area = fabs(CellP[i_particle_id].Face_Area[0]) + fabs(CellP[i_particle_id].Face_Area[1]) + fabs(CellP[i_particle_id].Face_Area[2]);
-        area /= Get_Particle_Expected_Area(P[i_particle_id].KernelRadius);
+        prefac_tinv *= sqrt(1. + CellP.ConditionNumber[i_particle_id]/100.);
+        double area = fabs(CellP.Face_Area[i_particle_id][0]) + fabs(CellP.Face_Area[i_particle_id][1]) + fabs(CellP.Face_Area[i_particle_id][2]);
+        area /= Get_Particle_Expected_Area(P.KernelRadius[i_particle_id]);
         prefac_tinv *= (1. + area/area_0)*(1. + area/area_0);
         
         double vsig_max = DMAX( DMAX(vsig1,vsig2) , prefac_fastest * All.FastestWaveSpeed );
@@ -551,9 +551,9 @@ void advect_mesh_point(int i, double dt)
 {
 #if (HYDRO_FIX_MESH_MOTION == 2) || (HYDRO_FIX_MESH_MOTION == 3) // cylindrical or spherical coordinates
     // define the location relative to the origin (needed in these coordinate systems)
-    Vec3<double> dp = P[i].Pos; Vec3<double> dp_offset = {}; // assume center is at coordinate origin
+    Vec3<double> dp = P.Pos[i]; Vec3<double> dp_offset = {}; // assume center is at coordinate origin
 #if defined(GRAVITY_ANALYTIC_ANCHOR_TO_PARTICLE) // unless we use a special anchor, to define the center
-    dp_offset = P[i].Pos - P[i].Min_xyz_to_Sink;
+    dp_offset = P.Pos[i] - P.Min_xyz_to_Sink[i];
 #elif defined(BOX_PERIODIC) // or if periodic, the box mid-point is instead the center
 #if (NUMDIMS==1)
     dp_offset[0] = -boxHalf_X;
@@ -566,15 +566,15 @@ void advect_mesh_point(int i, double dt)
     dp += dp_offset;
 #if (HYDRO_FIX_MESH_MOTION == 2) // cylindrical
     double r2=dp[0]*dp[0]+dp[1]*dp[1], r=sqrt(r2), c0=dp[0]/r, s0=dp[1]/r, z=dp[2]; // get r, sin/cos theta, z
-    double vr=c0*CellP[i].ParticleVel[0] + s0*CellP[i].ParticleVel[1], vt=s0*CellP[i].ParticleVel[0] - c0*CellP[i].ParticleVel[1], vz=CellP[i].ParticleVel[2]; // velocities in these directions
+    double vr=c0*CellP.ParticleVel[i][0] + s0*CellP.ParticleVel[i][1], vt=s0*CellP.ParticleVel[i][0] - c0*CellP.ParticleVel[i][1], vz=CellP.ParticleVel[i][2]; // velocities in these directions
     double r_n=r+vr*dt, z_n=z+vz*dt, c_n=c0-s0*(vt/r)*dt, s_n=s0+c0*(vt/r)*dt; // updated cylindrical values
     dp[0] = c_n*r_n; dp[1] = s_n*r_n; dp[2] = z_n; // back to coordinates
-    CellP[i].ParticleVel[0] = c_n*vr + s_n*vt; // re-set velocities in these coordinates //
-    CellP[i].ParticleVel[1] = s_n*vr - c_n*vt;
-    CellP[i].ParticleVel[2] = vz;
+    CellP.ParticleVel[i][0] = c_n*vr + s_n*vt; // re-set velocities in these coordinates //
+    CellP.ParticleVel[i][1] = s_n*vr - c_n*vt;
+    CellP.ParticleVel[i][2] = vz;
     return;
 #elif (HYDRO_FIX_MESH_MOTION == 3) // spherical
-    Vec3<double> v = CellP[i].ParticleVel; double r2=dp.norm_sq(); // assume center is at coordinate origin
+    Vec3<double> v = CellP.ParticleVel[i]; double r2=dp.norm_sq(); // assume center is at coordinate origin
     double r=sqrt(r2), rxy=sqrt(dp[0]*dp[0]+dp[1]*dp[1]), vr=dot(dp,v)/r; // updated r is easy
     double ct = 1./sqrt(1.+dp[1]*dp[1]/(dp[0]*dp[0])), st = (dp[1]/dp[0])*ct; // cos and sin theta
     double cp = sqrt(1.-dp[2]*dp[2]/(r*r)), sp = dp[2]/r; // cos and sin phi
@@ -582,18 +582,18 @@ void advect_mesh_point(int i, double dt)
     double r_n=r+vr*dt, ct_n=ct-st*t_dot, st_n=st+ct*t_dot, cp_n=cp-sp*t_dot, sp_n=sp+cp*t_dot; // updated angles and positions in spherical
     dp[0] = r_n * ct_n * cp_n; dp[1] = r_n * st_n * cp_n; dp[2] = r_n * sp_n; // back to coordinates
     rxy = sqrt(dp[0]*dp[0] + dp[1]*dp[1]); // updated rxy
-    CellP[i].ParticleVel[0] = (dp[0]/r_n) * vr + dp[1] * t_dot + dp[0]*dp[2]/rxy * p_dot; // back to cartesian velocities
-    CellP[i].ParticleVel[1] = (dp[1]/r_n) * vr - dp[0] * t_dot + dp[1]*dp[2]/rxy * p_dot; // back to cartesian velocities
-    CellP[i].ParticleVel[2] = (dp[2]/r_n) * vr - rxy * p_dot; // back to cartesian velocities
+    CellP.ParticleVel[i][0] = (dp[0]/r_n) * vr + dp[1] * t_dot + dp[0]*dp[2]/rxy * p_dot; // back to cartesian velocities
+    CellP.ParticleVel[i][1] = (dp[1]/r_n) * vr - dp[0] * t_dot + dp[1]*dp[2]/rxy * p_dot; // back to cartesian velocities
+    CellP.ParticleVel[i][2] = (dp[2]/r_n) * vr - rxy * p_dot; // back to cartesian velocities
     return;
 #endif
     // ok now have the updated x/y/z positions relative to the origin, convert these back to the simulation coordinate frame
-    P[i].Pos = dp - dp_offset;
+    P.Pos[i] = dp - dp_offset;
 #endif // ok done with cylindrical/spherical coordinates
     
     
     // ok anything else ('normal' coordinates), does down here
-    P[i].Pos += CellP[i].ParticleVel * dt; // for standard grid velocities, this is trivial //
+    P.Pos[i] += CellP.ParticleVel[i] * dt; // for standard grid velocities, this is trivial //
     return;
 }
 

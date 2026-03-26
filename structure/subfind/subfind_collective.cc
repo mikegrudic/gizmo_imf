@@ -91,15 +91,15 @@ void subfind_unbind_independent_ones(int count_cand)
     for(k = 0, i = 0; k < count_cand; k++)
     if(candidates[k].parent == 0)
     {
-        while(P[i].submark < candidates[k].nsub)
+        while(P.submark[i] < candidates[k].nsub)
         {
             i++;
             if(i >= NumPart) {endrun(13213);}
         }
-        if(P[i].submark >= 0 && P[i].submark < HIGHBIT)
+        if(P.submark[i] >= 0 && P.submark[i] < HIGHBIT)
         {
             len = 0;
-            nsubs = P[i].submark;
+            nsubs = P.submark[i];
             if(nsubs != candidates[k].nsub)
             {
                 printf("TASK=%d i=%d k=%d nsubs=%d candidates[k].nsub=%d\n", ThisTask, i, k, nsubs, candidates[k].nsub);
@@ -108,10 +108,10 @@ void subfind_unbind_independent_ones(int count_cand)
             
             while(i < NumPart)
             {
-                if(P[i].submark == nsubs)
+                if(P.submark[i] == nsubs)
                 {
-                    P[i].submark = HIGHBIT;
-                    if((P[i].origintask & HIGHBIT) == 0)
+                    P.submark[i] = HIGHBIT;
+                    if((P.origintask[i] & HIGHBIT) == 0)
                     {
                         ud[len].index = i;
                         len++;
@@ -130,7 +130,7 @@ void subfind_unbind_independent_ones(int count_cand)
                 /* ok, we found a substructure */
                 candidates[k].bound_length = len;
                 
-                for(j = 0; j < len; j++) {P[ud[j].index].submark = nsubs; }   /* we use this to flag the substructures */
+                for(j = 0; j < len; j++) {P.submark[ud[j].index] = nsubs; }   /* we use this to flag the substructures */
             }
             else {candidates[k].bound_length = 0;}
         }
@@ -147,7 +147,7 @@ void subfind_process_group_collectively(int num)
     struct cand_dat *tmp_candidates = 0; MyIDType SubMostBoundID; double t0, t1, tt0, tt1;
     
     if(ThisTask == 0) {printf("\ncollectively doing halo %d, num=%d\n", GrNr, num);}
-    for(i = 0, NumPartGroup = 0; i < NumPart; i++) {if(P[i].GrNr == GrNr) {NumPartGroup++;}}
+    for(i = 0, NumPartGroup = 0; i < NumPart; i++) {if(P.GrNr[i] == GrNr) {NumPartGroup++;}}
     
     MPI_Allreduce(&NumPartGroup, &totgrouplen1, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     
@@ -167,10 +167,10 @@ void subfind_process_group_collectively(int num)
     t1 = my_second();
     if(ThisTask == 0) {printf("domain_Decomposition() took %g sec  (presently allocated=%g MB)\n", timediff(t0, t1), AllocatedBytes / (1024.0 * 1024.0));}
     
-    for(i = 0; i < NumPart; i++) {P[i].origindex = i;}
+    for(i = 0; i < NumPart; i++) {P.origindex[i] = i;}
     qsort(P, NumPart, sizeof(struct particle_data), subfind_compare_P_GrNrGrNr);
-    /* now we have the particles of the group at the beginning, but fluid cells are not aligned.  They can however be accessed via CellP[P[i].origindex] */
-    for(i = 0, NumPartGroup = 0; i < NumPart; i++) {if(P[i].GrNr == GrNr) {NumPartGroup++;}}
+    /* now we have the particles of the group at the beginning, but fluid cells are not aligned.  They can however be accessed via CellP[P.origindex[i]] */
+    for(i = 0, NumPartGroup = 0; i < NumPart; i++) {if(P.GrNr[i] == GrNr) {NumPartGroup++;}}
     
     subfind_loctree_copyExtent();    /* this will make sure that all the serial trees start from the same root node geometry */
     
@@ -197,7 +197,7 @@ void subfind_process_group_collectively(int num)
     
     for(i = 0; i < NumPartGroup; i++)
     {
-        sd[i].density = P[i].u.DM_Density;
+        sd[i].density = P.u.DM_Density[i];
         sd[i].ngbcount = NgbLoc[i].count;
         sd[i].index = (((long long) ThisTask) << 32) + i;
         sd[i].ngb_index1 = NgbLoc[i].index[0];
@@ -326,9 +326,9 @@ void subfind_process_group_collectively(int num)
         
         for(i = 0; i < NumPart; i++)
         {
-            P[i].origintask = P[i].targettask = ThisTask;
-            P[i].submark = HIGHBIT;
-            if(i < NumPartGroup) {if(Tail[i] >= 0) {P[i].origintask |= HIGHBIT;}}    /* this means this particle is already bound to a substructure */
+            P.origintask[i] = P.targettask[i] = ThisTask;
+            P.submark[i] = HIGHBIT;
+            if(i < NumPartGroup) {if(Tail[i] >= 0) {P.origintask[i] |= HIGHBIT;}}    /* this means this particle is already bound to a substructure */
             
         }
         
@@ -402,7 +402,7 @@ void subfind_process_group_collectively(int num)
             printf("unbinding of independent ones took %g sec\n", timediff(t0, t1));
             fflush(stdout);
         }
-        for(i = 0; i < NumPart; i++) {P[i].origintask &= (HIGHBIT - 1);}    /* clear high bit if set */
+        for(i = 0; i < NumPart; i++) {P.origintask[i] &= (HIGHBIT - 1);}    /* clear high bit if set */
         t0 = my_second();
         subfind_distribute_particles(2);    /* bring them back to their original processor */
         t1 = my_second();
@@ -411,7 +411,7 @@ void subfind_process_group_collectively(int num)
         /* reestablish the original order */
         qsort(P, NumPart, sizeof(struct particle_data), subfind_compare_P_GrNrGrNr);
         /* now mark the bound particles */
-        for(i = 0; i < NumPartGroup; i++) {if(P[i].submark >= 0 && P[i].submark < nsubs) {Tail[i] = P[i].submark;}} /* we use this to flag bound parts of substructures */
+        for(i = 0; i < NumPartGroup; i++) {if(P.submark[i] >= 0 && P.submark[i] < nsubs) {Tail[i] = P.submark[i];}} /* we use this to flag bound parts of substructures */
         for(i = 0; i < count_cand; i++) {if(candidates[i].parent == 0) {candidates[i].parent = -1;}}
     }
     while(tot_count_leaves > 0);
@@ -637,7 +637,7 @@ void subfind_process_group_collectively(int num)
                     Nsubgroups++;
                 }
                 /* Let's now assign the subgroup number */
-                for(i = 0; i < LocalLen; i++) {P[ud[i].index].SubNr = subnr;}
+                for(i = 0; i < LocalLen; i++) {P.SubNr[ud[i].index] = subnr;}
                 subnr++;
             }
         }
@@ -656,7 +656,7 @@ void subfind_process_group_collectively(int num)
     domain_free();
     domain_allocate_trick();
     qsort(P, NumPart, sizeof(struct particle_data), subfind_compare_P_origindex);    /* reorder them such that the gas particles match again */
-    for(i = 0; i < NumPart; i++) {if(P[i].origindex != i) {endrun(7777);}}
+    for(i = 0; i < NumPart; i++) {if(P.origindex[i] != i) {endrun(7777);}}
 }
 
 
@@ -981,9 +981,9 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
 	  for(i = 0, minindex = -1, minpot = 1.0e30; i < num; i++)
 	    {
-	      if(P[d[i].index].u.DM_Potential < minpot || minindex == -1)
+	      if(P.u.DM_Potential[d[i].index] < minpot || minindex == -1)
 		{
-		  minpot = P[d[i].index].u.DM_Potential;
+		  minpot = P.u.DM_Potential[d[i].index];
 		  minindex = d[i].index;
 		}
 	    }
@@ -1006,7 +1006,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 	  if(ThisTask == mincpu)
 	    {
 	      for(j = 0; j < 3; j++)
-		pos[j] = P[minindex].Pos[j];
+		pos[j] = P.Pos[minindex][j];
 	    }
 
 	  MPI_Bcast(&pos[0], 3, MPI_DOUBLE, mincpu, MPI_COMM_WORLD);
@@ -1024,15 +1024,15 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 	  part_index = d[i].index;
 
      
-        double dp[3]; for(j=0;j<3;j++) {dp[j]=P[part_index].Pos[j]-pos[j];}
+        double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[part_index][j]-pos[j];}
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
         
 	  for(j = 0; j < 3; j++)
 	    {
-	      sloc[j] += P[part_index].Mass * dp[j];
-	      vloc[j] += P[part_index].Mass * P[part_index].Vel[j];
+	      sloc[j] += P.Mass[part_index] * dp[j];
+	      vloc[j] += P.Mass[part_index] * P.Vel[part_index][j];
 	    }
-	  massloc += P[part_index].Mass;
+	  massloc += P.Mass[part_index];
 	}
 
       MPI_Allreduce(sloc, s, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1058,23 +1058,23 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 	{
 	  part_index = d[i].index;
 
-        double dp[3]; for(j=0;j<3;j++) {dp[j]=P[part_index].Pos[j]-s[j];}
+        double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[part_index][j]-s[j];}
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
 
 	  for(j = 0; j < 3; j++)
 	    {
-	      dv[j] = vel_to_phys * (P[part_index].Vel[j] - v[j]);
+	      dv[j] = vel_to_phys * (P.Vel[part_index][j] - v[j]);
             dx[j] = dp[j] * atime;
 	      dv[j] += H_of_a * dx[j];
 	    }
 
-	  P[part_index].v.DM_BindingEnergy =
-	    P[part_index].u.DM_Potential + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+	  P.v.DM_BindingEnergy[part_index] =
+	    P.u.DM_Potential[part_index] + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(P[part_index].Type == 0) P[part_index].v.DM_BindingEnergy += P[part_index].w.int_energy;
+	  if(P.Type[part_index] == 0) P.v.DM_BindingEnergy[part_index] += P.w.int_energy[part_index];
 #endif
-	  bnd_energy[i] = P[part_index].v.DM_BindingEnergy;
+	  bnd_energy[i] = P.v.DM_BindingEnergy[part_index];
 	}
 
       parallel_sort(bnd_energy, num, sizeof(double), subfind_compare_binding_energy);
@@ -1140,7 +1140,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 	{
 	  p = d[i].index;
 
-	  if(P[p].v.DM_BindingEnergy > 0 && P[p].v.DM_BindingEnergy > energy_limit)
+	  if(P.v.DM_BindingEnergy[p] > 0 && P.v.DM_BindingEnergy[p] > energy_limit)
 	    {
 	      unbound++;
 
@@ -1148,7 +1148,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 	      num--;
 	      i--;
 	    }
-	  else if(P[p].Type != 0)
+	  else if(P.Type[p] != 0)
 	    (*num_non_gas)++;
 	}
 
@@ -1318,14 +1318,14 @@ void subfind_poll_for_requests(void)
 	  target = ibuf[1];
 	  submark = ibuf[2];
 
-	  if(P[index].submark != HIGHBIT)
+	  if(P.submark[index] != HIGHBIT)
 	    {
-	      printf("TasK=%d i=%d P[i].submark=%d?\n", ThisTask, index, P[index].submark);
+	      printf("TasK=%d i=%d P.submark[i]=%d?\n", ThisTask, index, P.submark[index]);
 	      endrun(132);
 	    }
 
-	  P[index].targettask = target;
-	  P[index].submark = submark;
+	  P.targettask[index] = target;
+	  P.submark[index] = submark;
 	  break;
 	case TAG_ADDBOUND:
 	  MPI_Recv(ibuf, 2, MPI_INT, source, TAG_ADDBOUND, MPI_COMM_WORLD, &status);
@@ -1491,14 +1491,14 @@ void subfind_distlinklist_mark_particle(long long index, int target, int submark
 
   if(ThisTask == task)
     {
-      if(P[i].submark != HIGHBIT)
+      if(P.submark[i] != HIGHBIT)
 	{
-	  printf("Tas=%d i=%d P[i].submark=%d?\n", ThisTask, i, P[i].submark);
+	  printf("Tas=%d i=%d P.submark[i]=%d?\n", ThisTask, i, P.submark[i]);
 	  endrun(131);
 	}
 
-      P[i].targettask = target;
-      P[i].submark = submark;
+      P.targettask[i] = target;
+      P.submark[i] = submark;
     }
   else
     {

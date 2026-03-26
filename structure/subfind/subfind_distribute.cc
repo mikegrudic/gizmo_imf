@@ -109,13 +109,13 @@ void subfind_distribute_particles(int mode)
     {
       if(mode == 1)
 	{
-	  if(P[n].targettask != ThisTask)
-	    Send_count[P[n].targettask] += 1;
+	  if(P.targettask[n] != ThisTask)
+	    Send_count[P.targettask[n]] += 1;
 	}
       else if(mode == 2)
 	{
-	  if(P[n].origintask != ThisTask)
-	    Send_count[P[n].origintask] += 1;
+	  if(P.origintask[n] != ThisTask)
+	    Send_count[P.origintask[n]] += 1;
 	}
     }
 
@@ -145,16 +145,16 @@ void subfind_distribute_particles(int mode)
     {
       if(mode == 0)
 	{
-        if(!(P[n].GrNr > Ncollective && P[n].GrNr <= TotNgroups)) {continue;}	/* particle is in small group */
-	  target = (P[n].GrNr - 1) % NTask;
+        if(!(P.GrNr[n] > Ncollective && P.GrNr[n] <= TotNgroups)) {continue;}	/* particle is in small group */
+	  target = (P.GrNr[n] - 1) % NTask;
 	}
       else if(mode == 1)
 	{
-	  target = P[n].targettask;
+	  target = P.targettask[n];
 	}
       else if(mode == 2)
 	{
-	  target = P[n].origintask;
+	  target = P.origintask[n];
 	}
 
       if(target != ThisTask)
@@ -221,11 +221,11 @@ void subfind_exchange(void)
 
   for(n = 0; n < NumPart; n++)
     {
-      if(P[n].targettask != ThisTask)
+      if(P.targettask[n] != ThisTask)
 	{
-	  local_toGo[P[n].targettask]++;
-	  if(P[n].Type == 0)
-	    local_toGoGas[P[n].targettask]++;
+	  local_toGo[P.targettask[n]]++;
+	  if(P.Type[n] == 0)
+	    local_toGoGas[P.targettask[n]]++;
 	}
     }
 
@@ -285,11 +285,11 @@ void subfind_exchange(void)
 
   for(n = 0; n < NumPart; n++)
     {
-      if(P[n].targettask != ThisTask)
+      if(P.targettask[n] != ThisTask)
 	{
-	  target = P[n].targettask;
+	  target = P.targettask[n];
 
-	  if(P[n].Type == 0)
+	  if(P.Type[n] == 0)
 	    {
 	      partBuf[offset_gas[target] + count_gas[target]] = P[n];
 	      gasBuf[offset_gas[target] + count_gas[target]] = CellP[n];
@@ -302,7 +302,7 @@ void subfind_exchange(void)
 	    }
 
 
-	  if(P[n].Type == 0)
+	  if(P.Type[n] == 0)
 	    {
 	      P[n] = P[N_gas - 1];
 	      CellP[n] = CellP[N_gas - 1];

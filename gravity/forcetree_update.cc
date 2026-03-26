@@ -27,8 +27,8 @@ void force_update_tree(void)
     /* note: the current list of active particles still refers to that synchronized at the previous time. */
     for (int i : ActiveParticleList)
     {
-        force_kick_node(i, P[i].dp);    /* kick the parent nodes with this momentum difference, also updated maximum velocity, softening and soundspeed, if needed */
-        P[i].dp = {};
+        force_kick_node(i, P.dp[i]);    /* kick the parent nodes with this momentum difference, also updated maximum velocity, softening and soundspeed, if needed */
+        P.dp[i] = {};
     }
     force_finish_kick_nodes();
     myfree(DomainList);
@@ -44,11 +44,11 @@ void force_kick_node(int i, Vec3<MyDouble>& dp)
     {double lum[N_RT_FREQ_BINS]; int active_check = rt_get_source_luminosity(i,-1,lum); rt_source_lum_dp = active_check ? dp : Vec3<MyDouble>{};}
 #endif
 #ifdef DM_SCALARFIELD_SCREENING
-    Vec3<MyDouble> dp_dm = (P[i].Type != 0) ? dp : Vec3<MyDouble>{};
+    Vec3<MyDouble> dp_dm = (P.Type[i] != 0) ? dp : Vec3<MyDouble>{};
 #endif
 
   for(j = 0, vmax = 0; j < 3; j++)
-    if((v = fabs(P[i].Vel[j])) > vmax)
+    if((v = fabs(P.Vel[i][j])) > vmax)
       vmax = v;
 
   no = Father[i];
@@ -339,21 +339,21 @@ void force_update_hmax(void)
   for (int i : ActiveParticleList)
   {
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-    if(P[i].Mass > 0)
+    if(P.Mass[i] > 0)
 #else
-    if(P[i].Type == 0 && P[i].Mass > 0)
+    if(P.Type[i] == 0 && P.Mass[i] > 0)
 #endif
       {
         no = Father[i];
-        divVel = P[i].Particle_DivVel;
+        divVel = P.Particle_DivVel[i];
         
         while(no >= 0)
         {
             force_drift_node(no, All.Ti_Current);
 #if defined(ADAPTIVE_GRAVSOFT_FORALL)
-            double htmp = DMIN(P[i].AGS_KernelRadius, All.MaxKernelRadius);
+            double htmp = DMIN(P.AGS_KernelRadius[i], All.MaxKernelRadius);
 #else
-            double htmp = DMIN(P[i].KernelRadius, All.MaxKernelRadius);
+            double htmp = DMIN(P.KernelRadius[i], All.MaxKernelRadius);
 #endif
             if(htmp > Extnodes[no].hmax || divVel > Extnodes[no].divVmax)
             {

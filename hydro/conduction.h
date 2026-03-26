@@ -12,19 +12,19 @@
 /* --------------------------------------------------------------------------------- */
 {
     double scalar_i = local.InternalEnergyPred; // physical units
-    double scalar_j = CellP[j].InternalEnergyPred; // physical units
+    double scalar_j = tile.ie_pred[n]; // physical units
     double kappa_i = local.Kappa_Conduction; // physical units
-    double kappa_j = CellP[j].Kappa_Conduction; // physical units
+    double kappa_j = CellP.Kappa_Conduction[j]; // physical units
     
-    if((kappa_i>MIN_REAL_NUMBER)&&(kappa_j>MIN_REAL_NUMBER)&&(local.Mass>0)&&(P[j].Mass>0))
+    if((kappa_i>MIN_REAL_NUMBER)&&(kappa_j>MIN_REAL_NUMBER)&&(local.Mass>0)&&(tile.mass[n]>0))
     {
         double d_scalar = scalar_i - scalar_j;
         double rho_i, rho_j, rho_ij;
-        rho_i = local.Density*All.cf_a3inv; rho_j = CellP[j].Density*All.cf_a3inv; rho_ij = 0.5*(rho_i+rho_j); // physical units
+        rho_i = local.Density*All.cf_a3inv; rho_j = tile.density[n]*All.cf_a3inv; rho_ij = 0.5*(rho_i+rho_j); // physical units
         
         // NOT SPH: Now we use the more accurate finite-volume formulation, with the effective faces we have already calculated //
         double *grad_i = local.Gradients.InternalEnergy.data_ptr();  // physical u / code length
-        double *grad_j = CellP[j].Gradients.InternalEnergy.data_ptr();
+        double *grad_j = CellP.Gradients.InternalEnergy[j].data_ptr();
         
         double flux_wt = rho_ij;
         double diffusion_wt = 0.5*(kappa_i+kappa_j);
@@ -82,8 +82,8 @@
         if(fabs(diffusion_wt) > 0)
         {
             // enforce a flux limiter for stability (to prevent overshoot) //
-            //double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, P[j].Mass*scalar_j);
-            double du_ij_cond = DMIN( 0.25*fabs(local.Mass*scalar_i-P[j].Mass*scalar_j) , DMAX(local.Mass*scalar_i , P[j].Mass*scalar_j));
+            //double du_ij_cond = 1.0*DMIN(local.Mass*scalar_i, tile.mass[n]*scalar_j);
+            double du_ij_cond = DMIN( 0.25*fabs(local.Mass*scalar_i-tile.mass[n]*scalar_j) , DMAX(local.Mass*scalar_i , tile.mass[n]*scalar_j));
             if(check_for_stability_sign<0) {du_ij_cond *= 1.e-2;}
             if(fabs(diffusion_wt)>du_ij_cond) {diffusion_wt *= du_ij_cond/fabs(diffusion_wt);}
             Fluxes.p += diffusion_wt / dt_hydrostep;

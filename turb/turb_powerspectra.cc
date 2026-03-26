@@ -1122,9 +1122,9 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	  for(n = 0; n < numngb_inbox; n++)
 	    {
 	      j = Ngblist[n];
-	      dx = pos[0] - P[j].Pos[0];
-	      dy = pos[1] - P[j].Pos[1];
-	      dz = pos[2] - P[j].Pos[2];
+	      dx = pos[0] - P.Pos[j][0];
+	      dy = pos[1] - P.Pos[j][1];
+	      dz = pos[2] - P.Pos[j][2];
           NEAREST_XYZ(dx,dy,dz,1); /*  now find the closest image in the given box size  */
 	      r2 = dx * dx + dy * dy + dz * dz;
 	      if(r2 < r2max && r2 < h * h)
@@ -1160,46 +1160,46 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	  int k = (target - i * TURB_DRIVING_SPECTRUMGRID * TURB_DRIVING_SPECTRUMGRID - j * TURB_DRIVING_SPECTRUMGRID); 
 	  int ip = TURB_DRIVING_SPECTRUMGRID2 * (TURB_DRIVING_SPECTRUMGRID * i + j) + k;
 
-	  velfield[0][ip] = P[index].Vel[0];
-	  velfield[1][ip] = P[index].Vel[1];
-	  velfield[2][ip] = P[index].Vel[2];
+	  velfield[0][ip] = P.Vel[index][0];
+	  velfield[1][ip] = P.Vel[index][1];
+	  velfield[2][ip] = P.Vel[index][2];
 
 #ifdef TURB_DIFF_DYNAMIC
-          velbarfield[0][ip] = CellP[index].Velocity_bar[0];
-          velbarfield[1][ip] = CellP[index].Velocity_bar[1];
-          velbarfield[2][ip] = CellP[index].Velocity_bar[2];
+          velbarfield[0][ip] = CellP.Velocity_bar[index][0];
+          velbarfield[1][ip] = CellP.Velocity_bar[index][1];
+          velbarfield[2][ip] = CellP.Velocity_bar[index][2];
 
-          velhatfield[0][ip] = CellP[index].Velocity_hat[0];
-          velhatfield[1][ip] = CellP[index].Velocity_hat[1];
-          velhatfield[2][ip] = CellP[index].Velocity_hat[2];
+          velhatfield[0][ip] = CellP.Velocity_hat[index][0];
+          velhatfield[1][ip] = CellP.Velocity_hat[index][1];
+          velhatfield[2][ip] = CellP.Velocity_hat[index][2];
 #endif
 
-	  smoothedvelfield[0][ip] = CellP[index].SmoothedVel[0];
-	  smoothedvelfield[1][ip] = CellP[index].SmoothedVel[1];
-	  smoothedvelfield[2][ip] = CellP[index].SmoothedVel[2];
+	  smoothedvelfield[0][ip] = CellP.SmoothedVel[index][0];
+	  smoothedvelfield[1][ip] = CellP.SmoothedVel[index][1];
+	  smoothedvelfield[2][ip] = CellP.SmoothedVel[index][2];
 
-	  velrhofield[0][ip] = sqrt(CellP[index].Density) * P[index].Vel[0];
-	  velrhofield[1][ip] = sqrt(CellP[index].Density) * P[index].Vel[1];
-	  velrhofield[2][ip] = sqrt(CellP[index].Density) * P[index].Vel[2];
+	  velrhofield[0][ip] = sqrt(CellP.Density[index]) * P.Vel[index][0];
+	  velrhofield[1][ip] = sqrt(CellP.Density[index]) * P.Vel[index][1];
+	  velrhofield[2][ip] = sqrt(CellP.Density[index]) * P.Vel[index][2];
 
-	  vorticityfield[0][ip] = CellP[index].Vorticity[0];
-	  vorticityfield[1][ip] = CellP[index].Vorticity[1];
-	  vorticityfield[2][ip] = CellP[index].Vorticity[2];
+	  vorticityfield[0][ip] = CellP.Vorticity[index][0];
+	  vorticityfield[1][ip] = CellP.Vorticity[index][1];
+	  vorticityfield[2][ip] = CellP.Vorticity[index][2];
 
 
-	  if(CellP[index].DuDt_diss >= 0)
+	  if(CellP.DuDt_diss[index] >= 0)
 	    {
-	      dis1field[ip] = sqrt(CellP[index].DuDt_diss);
+	      dis1field[ip] = sqrt(CellP.DuDt_diss[index]);
 	      dis2field[ip] = 0;
 	    }
 	  else
 	    {
 	      dis1field[ip] = 0;
-	      dis2field[ip] = sqrt(-CellP[index].DuDt_diss);
+	      dis2field[ip] = sqrt(-CellP.DuDt_diss[index]);
 	    }
 
 	  randomfield[ip] = RandomValue[index];
-	  densityfield[ip] = CellP[index].Density;
+	  densityfield[ip] = CellP.Density[index];
 	}
     }
   else
@@ -1210,26 +1210,26 @@ int powerspec_turb_find_nearest_evaluate(int target, int mode, int *nexport, int
 	    terminate("index >= N_gas");
 
 	  DataResult[target].Distance = sqrt(r2max);
-	  DataResult[target].Vel[0] = P[index].Vel[0];
-	  DataResult[target].Vel[1] = P[index].Vel[1];
-	  DataResult[target].Vel[2] = P[index].Vel[2];
+	  DataResult[target].Vel[0] = P.Vel[index][0];
+	  DataResult[target].Vel[1] = P.Vel[index][1];
+	  DataResult[target].Vel[2] = P.Vel[index][2];
 #ifdef TURB_DIFF_DYNAMIC
-          DataResult[target].VelBar[0] = CellP[index].Velocity_bar[0];
-          DataResult[target].VelBar[1] = CellP[index].Velocity_bar[1];
-          DataResult[target].VelBar[2] = CellP[index].Velocity_bar[2];
-          DataResult[target].VelHat[0] = CellP[index].Velocity_hat[0];
-          DataResult[target].VelHat[1] = CellP[index].Velocity_hat[1];
-          DataResult[target].VelHat[2] = CellP[index].Velocity_hat[2];
+          DataResult[target].VelBar[0] = CellP.Velocity_bar[index][0];
+          DataResult[target].VelBar[1] = CellP.Velocity_bar[index][1];
+          DataResult[target].VelBar[2] = CellP.Velocity_bar[index][2];
+          DataResult[target].VelHat[0] = CellP.Velocity_hat[index][0];
+          DataResult[target].VelHat[1] = CellP.Velocity_hat[index][1];
+          DataResult[target].VelHat[2] = CellP.Velocity_hat[index][2];
 #endif
-	  DataResult[target].SmoothedVel[0] = CellP[index].SmoothedVel[0];
-	  DataResult[target].SmoothedVel[1] = CellP[index].SmoothedVel[1];
-	  DataResult[target].SmoothedVel[2] = CellP[index].SmoothedVel[2];
-	  DataResult[target].Vorticity[0] = CellP[index].Vorticity[0];
-	  DataResult[target].Vorticity[1] = CellP[index].Vorticity[1];
-	  DataResult[target].Vorticity[2] = CellP[index].Vorticity[2];
-	  DataResult[target].Density = CellP[index].Density;
-	  DataResult[target].DuDt_diss = CellP[index].DuDt_diss;
-	  DataResult[target].DuDt_drive = CellP[index].DuDt_drive;
+	  DataResult[target].SmoothedVel[0] = CellP.SmoothedVel[index][0];
+	  DataResult[target].SmoothedVel[1] = CellP.SmoothedVel[index][1];
+	  DataResult[target].SmoothedVel[2] = CellP.SmoothedVel[index][2];
+	  DataResult[target].Vorticity[0] = CellP.Vorticity[index][0];
+	  DataResult[target].Vorticity[1] = CellP.Vorticity[index][1];
+	  DataResult[target].Vorticity[2] = CellP.Vorticity[index][2];
+	  DataResult[target].Density = CellP.Density[index];
+	  DataResult[target].DuDt_diss = CellP.DuDt_diss[index];
+	  DataResult[target].DuDt_drive = CellP.DuDt_drive[index];
 	  DataResult[target].RandomValue = RandomValue[index];
 	}
       else

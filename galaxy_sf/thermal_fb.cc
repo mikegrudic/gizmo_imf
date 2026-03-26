@@ -30,8 +30,8 @@ void determine_where_addthermalFB_events_occur(void)
     int i; double check = 0;
     for (int i : ActiveParticleList)
     {
-        if(P[i].Type != 4) {continue;}
-        if(P[i].Mass <= 0) {continue;}
+        if(P.Type[i] != 4) {continue;}
+        if(P.Mass[i] <= 0) {continue;}
         check += mechanical_fb_calculate_eventrates(i,1); // this should do the calculation and add to number of SNe as needed //
     } // for (int i : ActiveParticleList) //
 }
@@ -42,7 +42,7 @@ struct kernel_addthermalFB {Vec3<double> dp; double r, wk, dwk, hinv, hinv3, hin
 #define CORE_FUNCTION_NAME addthermalFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_addthermalFB    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_addthermalFB  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(addthermalFB_evaluate_active_check(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(addthermalFB_evaluate_active_check(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -60,8 +60,8 @@ struct INPUT_STRUCT_NAME
 /* define properties to be injected. these must be scalar-only -- the simple routine below will not conserve vector inputs/ejecta (e.g. momentum) */
 void particle2in_addthermalFB(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    if((P[i].SNe_ThisTimeStep<=0)||(P[i].DensityAroundParticle<=0)||(P[i].Mass<=0)) {in->Msne=0; return;} // trap for no sne
-    int k; in->KernelRadius=P[i].KernelRadius; in->wt_sum=P[i].DensityAroundParticle; for(k=0;k<3;k++) {in->Pos[k]=P[i].Pos[k];} // simple kernel-weighted deposition
+    if((P.SNe_ThisTimeStep[i]<=0)||(P.DensityAroundParticle[i]<=0)||(P.Mass[i]<=0)) {in->Msne=0; return;} // trap for no sne
+    int k; in->KernelRadius=P.KernelRadius[i]; in->wt_sum=P.DensityAroundParticle[i]; for(k=0;k<3;k++) {in->Pos[k]=P.Pos[i][k];} // simple kernel-weighted deposition
     struct addFB_evaluate_data_in_ local; particle2in_addFB_fromstars(&local,i,0); // get feedback properties from generic routine //
     in->Msne = local.Msne; in->Esne = 0.5 * local.Msne * local.SNe_v_ejecta*local.SNe_v_ejecta; // assign mass and energy to be used below
 #ifdef METALS
@@ -78,17 +78,17 @@ struct OUTPUT_STRUCT_NAME
 
 void out2particle_addthermalFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    if(P[i].Mass > 0) {P[i].dp -= out->M_coupled * P[i].Vel; P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}}
+    if(P.Mass[i] > 0) {P.dp[i] -= out->M_coupled * P.Vel[i]; P.Mass[i] -= out->M_coupled; if((P.Mass[i]<0)||(isnan(P.Mass[i]))) {P.Mass[i]=0;}}
 }
 
 
 int addthermalFB_evaluate_active_check(int i);
 int addthermalFB_evaluate_active_check(int i)
 {
-    if(P[i].Type != 4) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
-    if(P[i].KernelRadius <= 0) {return 0;}
-    if(P[i].NumNgb <= 0) {return 0;}
-    if(P[i].SNe_ThisTimeStep>0) {return 1;}
+    if(P.Type[i] != 4) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
+    if(P.KernelRadius[i] <= 0) {return 0;}
+    if(P.NumNgb[i] <= 0) {return 0;}
+    if(P.SNe_ThisTimeStep[i]>0) {return 1;}
     return 0;
 }
 
@@ -130,26 +130,26 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Type != 0) {continue;} // require a gas particle //
+                if(P.Type[j] != 0) {continue;} // require a gas particle //
                 double Mass_j, InternalEnergy_j, rho_j; // initialize holders for the local variables that might change below
                 #pragma omp atomic read
-                Mass_j = P[j].Mass; // this can get modified below, so we need to read it thread-safe now
+                Mass_j = P.Mass[j]; // this can get modified below, so we need to read it thread-safe now
                 #pragma omp atomic read
-                InternalEnergy_j = CellP[j].InternalEnergy; // this can get modified below, so we need to read it thread-safe now
+                InternalEnergy_j = CellP.InternalEnergy[j]; // this can get modified below, so we need to read it thread-safe now
                 #pragma omp atomic read
-                rho_j = CellP[j].Density;
+                rho_j = CellP.Density[j];
                 double InternalEnergy_j_0 = InternalEnergy_j, Mass_j_0 = Mass_j, rho_j_0 = rho_j; // save initial values to use below
 #ifdef METALS
                 double Metallicity_j[NUM_METAL_SPECIES], Metallicity_j_0[NUM_METAL_SPECIES];
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic read
-                    Metallicity_j[k] = P[j].Metallicity[k]; // this can get modified below, so we need to read it thread-safe now
+                    Metallicity_j[k] = P.Metallicity[j][k]; // this can get modified below, so we need to read it thread-safe now
                     Metallicity_j_0[k] = Metallicity_j[k]; // save initial values to  use below
                 }
 #endif
 
                 if(Mass_j <= 0) {continue;} // require the particle has mass //
-                for(k=0; k<3; k++) {kernel.dp[k] = local.Pos[k] - P[j].Pos[k];}
+                for(k=0; k<3; k++) {kernel.dp[k] = local.Pos[k] - P.Pos[j][k];}
                 nearest_xyz(kernel.dp); // find the closest image in the given box size  //
                 r2 = kernel.dp.norm_sq();
                 if(r2<=0) {continue;} // same particle //
@@ -164,7 +164,7 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 
                 /* inject mass */
                 double dM_ejecta_in = wk * local.Msne;
-                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in/(P[j].KernelRadius*P[j].KernelRadius*P[j].KernelRadius);}
+                if(P.KernelRadius[j]<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in/(P.KernelRadius[j]*P.KernelRadius[j]*P.KernelRadius[j]);}
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
 #ifdef METALS
@@ -180,38 +180,38 @@ int addthermalFB_evaluate(int target, int mode, int *exportflag, int *exportnode
                 double Esne51 = local.Esne * UNIT_ENERGY_IN_CGS/1.e51;
                 double density_to_n = All.cf_a3inv*UNIT_DENSITY_IN_NHCGS;
                 double pressure_to_p4 = density_to_n*U_TO_TEMP_UNITS / 1.0e4; 
-                double dt_ram = 7.08 * pow(Esne51*rho_j*density_to_n,0.34) * pow(CellP[j].Pressure*pressure_to_p4,-0.70) / (UNIT_TIME_IN_MYR);
+                double dt_ram = 7.08 * pow(Esne51*rho_j*density_to_n,0.34) * pow(CellP.Pressure[j]*pressure_to_p4,-0.70) / (UNIT_TIME_IN_MYR);
                 double current_delaytime = 0;
                 #pragma omp atomic read
-                current_delaytime = CellP[j].DelayTimeCoolingSNe; // will modify this immediately below, so need a clean read
+                current_delaytime = CellP.DelayTimeCoolingSNe[j]; // will modify this immediately below, so need a clean read
                 if(dt_ram > current_delaytime) {
                     #pragma omp atomic
-                    CellP[j].DelayTimeCoolingSNe += dt_ram - current_delaytime; // clean write to update delaytime
+                    CellP.DelayTimeCoolingSNe[j] += dt_ram - current_delaytime; // clean write to update delaytime
                 }
 #endif
                 
                 /* we updated variables that need to get assigned to element 'j' -- let's do it */
                 #pragma omp atomic
-                P[j].Mass += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]
+                P.Mass[j] += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 #pragma omp atomic
-                CellP[j].MassTrue += Mass_j - Mass_j_0; // finite mass update
+                CellP.MassTrue[j] += Mass_j - Mass_j_0; // finite mass update
 #endif
                 if(rho_j_0 > 0) {
                     #pragma omp atomic
-                    CellP[j].Density *= rho_j / rho_j_0; // inject mass at constant particle volume [no need to be exactly conservative here] //
+                    CellP.Density[j] *= rho_j / rho_j_0; // inject mass at constant particle volume [no need to be exactly conservative here] //
                 }
                 for(k=0;k<3;k++) {
                     #pragma omp atomic
-                    P[j].dp[k] += (Mass_j - Mass_j_0) * P[j].Vel[k]; // momentum change from mass gain at constant velocity
+                    P.dp[j][k] += (Mass_j - Mass_j_0) * P.Vel[j][k]; // momentum change from mass gain at constant velocity
                 }
                 #pragma omp atomic
-                CellP[j].InternalEnergy += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                CellP.InternalEnergy[j] += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                 #pragma omp atomic
-                CellP[j].InternalEnergyPred += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                CellP.InternalEnergyPred[j] += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic
-                    P[j].Metallicity[k] += Metallicity_j[k] - Metallicity_j_0[k]; // delta-update
+                    P.Metallicity[j][k] += Metallicity_j[k] - Metallicity_j_0[k]; // delta-update
                 }
                 
             } // for(n = 0; n < numngb; n++)

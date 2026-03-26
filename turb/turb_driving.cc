@@ -293,18 +293,18 @@ void set_turb_ampl(void)
             PRINT_STATUS(" ..updating fields tracked for following injected energy and dissipation");
             for(i=0; i < NumPart; i++)
             {
-                if(P[i].Type == 0)
+                if(P.Type[i] == 0)
                 {
-                    if(P[i].Mass > 0)
+                    if(P.Mass[i] > 0)
                     {
-                        e_diss_sum += CellP[i].EgyDiss;
-                        CellP[i].DuDt_diss = (CellP[i].EgyDiss / P[i].Mass) / delta;
-                        CellP[i].EgyDiss = 0;
-                        e_drive_sum += CellP[i].EgyDrive;
-                        CellP[i].DuDt_drive = (CellP[i].EgyDrive / P[i].Mass) / delta;
-                        CellP[i].EgyDrive = 0;
+                        e_diss_sum += CellP.EgyDiss[i];
+                        CellP.DuDt_diss[i] = (CellP.EgyDiss[i] / P.Mass[i]) / delta;
+                        CellP.EgyDiss[i] = 0;
+                        e_drive_sum += CellP.EgyDrive[i];
+                        CellP.DuDt_drive[i] = (CellP.EgyDrive[i] / P.Mass[i]) / delta;
+                        CellP.EgyDrive[i] = 0;
                     } else {
-                        CellP[i].DuDt_diss = CellP[i].EgyDiss = CellP[i].DuDt_drive = CellP[i].EgyDrive = 0;
+                        CellP.DuDt_diss[i] = CellP.EgyDiss[i] = CellP.DuDt_drive[i] = CellP.EgyDrive[i] = 0;
                     }
                 }
             }
@@ -330,7 +330,7 @@ void add_turb_accel()
     int i, m; double acc[3], fac_sol = 2.*solenoidal_frac_total_weight_renormalization();
     for (int i : ActiveParticleList)
     {
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
             double fx = 0, fy = 0, fz = 0;
 #ifdef _OPENMP
@@ -338,7 +338,7 @@ void add_turb_accel()
 #endif
             for(m=0; m<StNModes; m++) // calc force
             {
-                double kxx = StMode[3*m+0]*P[i].Pos[0], kyy = StMode[3*m+1]*P[i].Pos[1], kzz = StMode[3*m+2]*P[i].Pos[2];
+                double kxx = StMode[3*m+0]*P.Pos[i][0], kyy = StMode[3*m+1]*P.Pos[i][1], kzz = StMode[3*m+2]*P.Pos[i][2];
                 double kdotx = kxx+kyy+kzz, ampl = StAmpl[m], realt = cos(kdotx), imagt = sin(kdotx);
                 
                 fx += ampl*(StAka[3*m+0]*realt - StAkb[3*m+0]*imagt);
@@ -347,7 +347,7 @@ void add_turb_accel()
             }
             fx *= fac_sol; fy *= fac_sol; fz *= fac_sol;
             
-            if(P[i].Mass > 0.)
+            if(P.Mass[i] > 0.)
             {
                 acc[0] = fx; acc[1] = acc[2] = 0;
 #if (NUMDIMS > 1)
@@ -356,9 +356,9 @@ void add_turb_accel()
 #if (NUMDIMS > 2)
                 acc[2] = fz;
 #endif
-                CellP[i].TurbAccel = {acc[0], acc[1], acc[2]};
+                CellP.TurbAccel[i] = {acc[0], acc[1], acc[2]};
             } else {
-                CellP[i].TurbAccel = {};
+                CellP.TurbAccel[i] = {};
             }
         }
     }
@@ -373,14 +373,14 @@ void do_turb_driving_step_first_half(void)
     int i; integertime ti_step, tstart, tend; double dt_gravkick;
     for (int i : ActiveParticleList)
     {
-        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P[i].Ti_begstep; tend = P[i].Ti_begstep + ti_step / 2;	/* beginning / midpoint of step */
+        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P.Ti_begstep[i]; tend = P.Ti_begstep[i] + ti_step / 2;	/* beginning / midpoint of step */
         dt_gravkick = get_gravkick_factor(tstart, tend, -1, 0);
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
-            double ekin0 = 0.5 * P[i].Mass * P[i].Vel.norm_sq();
-            Vec3<double> dvel = CellP[i].TurbAccel * dt_gravkick; Vec3<double> vtmp = P[i].Vel + dvel;
-            double ekin1 = 0.5 * P[i].Mass * vtmp.norm_sq();
-            CellP[i].EgyDrive += ekin1 - ekin0;
+            double ekin0 = 0.5 * P.Mass[i] * P.Vel[i].norm_sq();
+            Vec3<double> dvel = CellP.TurbAccel[i] * dt_gravkick; Vec3<double> vtmp = P.Vel[i] + dvel;
+            double ekin1 = 0.5 * P.Mass[i] * vtmp.norm_sq();
+            CellP.EgyDrive[i] += ekin1 - ekin0;
         }
     }
     CPU_Step[CPU_DRIFT] += measure_time();
@@ -394,14 +394,14 @@ void do_turb_driving_step_second_half(void)
     int i; integertime ti_step, tstart, tend; double dt_gravkick;
     for (int i : ActiveParticleList)
     {
-        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P[i].Ti_begstep + ti_step / 2; tend = P[i].Ti_begstep + ti_step;	/* midpoint/end of step */
+        ti_step = GET_PARTICLE_INTEGERTIME(i); tstart = P.Ti_begstep[i] + ti_step / 2; tend = P.Ti_begstep[i] + ti_step;	/* midpoint/end of step */
         dt_gravkick = get_gravkick_factor(tstart, tend, -1, 0);
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
-            double ekin0 = 0.5 * P[i].Mass * P[i].Vel.norm_sq();
-            Vec3<double> dvel = CellP[i].TurbAccel * dt_gravkick; Vec3<double> vtmp = P[i].Vel + dvel;
-            double ekin1 = 0.5 * P[i].Mass * vtmp.norm_sq();
-            CellP[i].EgyDrive += ekin1 - ekin0;
+            double ekin0 = 0.5 * P.Mass[i] * P.Vel[i].norm_sq();
+            Vec3<double> dvel = CellP.TurbAccel[i] * dt_gravkick; Vec3<double> vtmp = P.Vel[i] + dvel;
+            double ekin1 = 0.5 * P.Mass[i] * vtmp.norm_sq();
+            CellP.EgyDrive[i] += ekin1 - ekin0;
         }
     }
     CPU_Step[CPU_DRIFT] += measure_time();
@@ -415,13 +415,13 @@ void log_turb_temp(void)
     int i; double dudt_drive = 0, dudt_diss = 0, mass = 0, ekin = 0, ethermal = 0;
     for(i = 0; i < NumPart; i++)
     {
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
-            dudt_drive += P[i].Mass * CellP[i].DuDt_drive;
-            dudt_diss += P[i].Mass * CellP[i].DuDt_diss;
-            ekin += 0.5 * P[i].Mass * P[i].Vel.norm_sq();
-            ethermal += P[i].Mass * CellP[i].InternalEnergy;
-            mass += P[i].Mass;
+            dudt_drive += P.Mass[i] * CellP.DuDt_drive[i];
+            dudt_diss += P.Mass[i] * CellP.DuDt_diss[i];
+            ekin += 0.5 * P.Mass[i] * P.Vel[i].norm_sq();
+            ethermal += P.Mass[i] * CellP.InternalEnergy[i];
+            mass += P.Mass[i];
         }
     }
     double glob_mass, glob_dudt_drive, glob_dudt_diss, glob_ekin, glob_ethermal;

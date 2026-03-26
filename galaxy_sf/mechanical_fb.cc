@@ -19,24 +19,24 @@ int N_Gas_Couplings_ThisTask; // define variable to use below to record if and h
 int addFB_evaluate_active_check(int i, int fb_loop_iteration);
 int addFB_evaluate_active_check(int i, int fb_loop_iteration)
 {
-    if(P[i].Type <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
-    if(P[i].KernelRadius <= 0) {return 0;}
-    if(P[i].NumNgb <= 0) {return 0;}
+    if(P.Type[i] <= 1) {return 0;} // note quantities used here must -not- change in the loop [hence not using mass here], b/c can change offsets for return from different processors, giving a negative mass and undefined behaviors
+    if(P.KernelRadius[i] <= 0) {return 0;}
+    if(P.NumNgb[i] <= 0) {return 0;}
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-    if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) {return 0;}
+    if(P.Type[i] == 5 && !P.do_gas_search_this_timestep[i]) {return 0;}
 #endif
-    if(P[i].SNe_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) {return 1;}}
+    if(P.SNe_ThisTimeStep[i]>0) {if(fb_loop_iteration<0 || fb_loop_iteration==0) {return 1;}}
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-    if(P[i].MassReturn_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) {return 1;}}
+    if(P.MassReturn_ThisTimeStep[i]>0) {if(fb_loop_iteration<0 || fb_loop_iteration==1) {return 1;}}
 #ifdef GALSF_FB_FIRE_RPROCESS
-    if(P[i].RProcessEvent_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) {return 1;}}
+    if(P.RProcessEvent_ThisTimeStep[i]>0) {if(fb_loop_iteration<0 || fb_loop_iteration==2) {return 1;}}
 #endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-    if(P[i].AgeDeposition_ThisTimeStep>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) {return 1;}}
+    if(P.AgeDeposition_ThisTimeStep[i]>0) {if(fb_loop_iteration<0 || fb_loop_iteration==3) {return 1;}}
 #endif
 #endif
 #if defined(SINGLE_STAR_FB_WINDS) && defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-    if(P[i].wind_mode != 2 || P[i].ProtoStellarStage != 5) {return 0;}
+    if(P.wind_mode[i] != 2 || P.ProtoStellarStage[i] != 5) {return 0;}
 #endif
     return 0;
 }
@@ -52,37 +52,37 @@ void determine_where_SNe_occur(void)
     // loop over particles //
     for (int i : ActiveParticleList)
     {
-        P[i].SNe_ThisTimeStep=0;
+        P.SNe_ThisTimeStep[i]=0;
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
-        P[i].MassReturn_ThisTimeStep=0;
+        P.MassReturn_ThisTimeStep[i]=0;
 #ifdef GALSF_FB_FIRE_RPROCESS
-        P[i].RProcessEvent_ThisTimeStep=0;
+        P.RProcessEvent_ThisTimeStep[i]=0;
 #endif
 #ifdef GALSF_FB_FIRE_AGE_TRACERS
-        P[i].AgeDeposition_ThisTimeStep=0;
+        P.AgeDeposition_ThisTimeStep[i]=0;
 #endif
 #endif
     
 
 #if defined(SINGLE_STAR_SINK_DYNAMICS)
-        if(P[i].Type == 0) {continue;} // any non-gas type is eligible to be a 'star' here
+        if(P.Type[i] == 0) {continue;} // any non-gas type is eligible to be a 'star' here
 #if defined(SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION)
-        if(P[i].Type == 5)
+        if(P.Type[i] == 5)
         {   // single sink type, for type 5
-            if((P[i].ProtoStellarStage != 5) && (P[i].ProtoStellarStage != 6)) {continue;} // only MS or SN-tagged particles eligible to have winds or SN in this routine
+            if((P.ProtoStellarStage[i] != 5) && (P.ProtoStellarStage[i] != 6)) {continue;} // only MS or SN-tagged particles eligible to have winds or SN in this routine
         } else { // stellar population type allowed here
-            if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
-            if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
+            if(All.ComovingIntegrationOn) {if(P.Type[i] != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
+            if(All.ComovingIntegrationOn==0) {if((P.Type[i]<2)||(P.Type[i]>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
         }
 #endif
 #else
-        if(All.ComovingIntegrationOn) {if(P[i].Type != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
-        if(All.ComovingIntegrationOn==0) {if((P[i].Type<2)||(P[i].Type>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
+        if(All.ComovingIntegrationOn) {if(P.Type[i] != 4) {continue;}} // in cosmological simulations, 'stars' have particle type=4
+        if(All.ComovingIntegrationOn==0) {if((P.Type[i]<2)||(P.Type[i]>4)) {continue;}} // in non-cosmological sims, types 2,3,4 are valid 'stars'
 #endif
-        if(P[i].Mass<=0) {continue;}
+        if(P.Mass[i]<=0) {continue;}
         dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-        if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
+        if(P.Type[i] == 5) {dt = P.dt_since_last_gas_search[i];}
 #endif
         if(dt<=0) {continue;} // no time, no events
         star_age = evaluate_stellar_age_Gyr(i);
@@ -90,11 +90,11 @@ void determine_where_SNe_occur(void)
         // now use a calculation of mechanical event rates to determine where/when the events actually occur //
         npossible++;
         double RSNe = mechanical_fb_calculate_eventrates(i,dt);
-        rmean += RSNe; ptotal += RSNe * (P[i].Mass*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR);
+        rmean += RSNe; ptotal += RSNe * (P.Mass[i]*UNIT_MASS_IN_SOLAR) * (dt*UNIT_TIME_IN_MYR);
 #ifdef GALSF_SFR_IMF_SAMPLING
-        if(P[i].Type<5) {if(P[i].IMF_NumMassiveStars>0) {P[i].IMF_NumMassiveStars=DMAX(0,P[i].IMF_NumMassiveStars-P[i].SNe_ThisTimeStep);}} // lose an O-star for every SNe //
+        if(P.Type[i]<5) {if(P.IMF_NumMassiveStars[i]>0) {P.IMF_NumMassiveStars[i]=DMAX(0,P.IMF_NumMassiveStars[i]-P.SNe_ThisTimeStep[i]);}} // lose an O-star for every SNe //
 #endif
-        if(P[i].SNe_ThisTimeStep>0) {ntotal+=P[i].SNe_ThisTimeStep; nhosttotal++;}
+        if(P.SNe_ThisTimeStep[i]>0) {ntotal+=P.SNe_ThisTimeStep[i]; nhosttotal++;}
         dtmean += dt;
     } // for (int i : ActiveParticleList) //
 
@@ -138,7 +138,7 @@ static struct temporary_mech_fb_data_tohold
 #define CORE_FUNCTION_NAME addFB_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_addFB    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_addFB  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(addFB_evaluate_active_check(i,loop_iteration)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(addFB_evaluate_active_check(i,loop_iteration)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 // define kernel structure (purely for convenience, will hold variables below) //
@@ -154,22 +154,22 @@ struct OUTPUT_STRUCT_NAME
 void particle2in_addFB(struct addFB_evaluate_data_in_ *in, int i, int loop_iteration)
 {
     // pre-assign various values that will be used regardless of feedback physics //
-    int k; in->Pos = P[i].Pos; in->Vel = P[i].Vel;
-    double heff = P[i].KernelRadius / P[i].NumNgb; in->V_i = heff*heff*heff; in->KernelRadius = P[i].KernelRadius;
+    int k; in->Pos = P.Pos[i]; in->Vel = P.Vel[i];
+    double heff = P.KernelRadius[i] / P.NumNgb[i]; in->V_i = heff*heff*heff; in->KernelRadius = P.KernelRadius[i];
 #ifdef METALS
     for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {in->yields[k]=0.0;}
 #endif
-    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P[i].Area_weighted_sum[k];}
+    for(k=0;k<AREA_WEIGHTED_SUM_ELEMENTS;k++) {in->Area_weighted_sum[k] = P.Area_weighted_sum[i][k];}
     in->Msne = 0; in->unit_mom_SNe = 0; in->SNe_v_ejecta = 0;
-    if((P[i].DensityAroundParticle <= 0)||(P[i].Mass <= 0)) {return;} // events not possible [catch for mass->0]
-    if(loop_iteration < 0) {in->Msne=P[i].Mass; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
+    if((P.DensityAroundParticle[i] <= 0)||(P.Mass[i] <= 0)) {return;} // events not possible [catch for mass->0]
+    if(loop_iteration < 0) {in->Msne=P.Mass[i]; in->unit_mom_SNe=1.e-4; in->SNe_v_ejecta=1.0e-4; return;} // weighting loop
     particle2in_addFB_fromstars(in,i,loop_iteration); // subroutine that actually deals with the assignment of feedback properties
     in->unit_mom_SNe = in->Msne * in->SNe_v_ejecta;
 }
 
 void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    if(P[i].Mass > 0)
+    if(P.Mass[i] > 0)
     {
         if(loop_iteration < 0)
         {
@@ -177,12 +177,12 @@ void out2particle_addFB(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loo
 #ifdef GALSF_USE_SNE_ONELOOP_SCHEME
             kmin=0; kmax=AREA_WEIGHTED_SUM_ELEMENTS;
 #endif
-            for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P[i].Area_weighted_sum[k], out->Area_weighted_sum[k], mode);}
+            for(k=kmin;k<kmax;k++) {ASSIGN_ADD(P.Area_weighted_sum[i][k], out->Area_weighted_sum[k], mode);}
         } else {
-            P[i].dp -= out->M_coupled * P[i].Vel; /* track momentum change from mass loss for tree node update */
-            P[i].Mass -= out->M_coupled; if((P[i].Mass<0)||(isnan(P[i].Mass))) {P[i].Mass=0;}
+            P.dp[i] -= out->M_coupled * P.Vel[i]; /* track momentum change from mass loss for tree node update */
+            P.Mass[i] -= out->M_coupled; if((P.Mass[i]<0)||(isnan(P.Mass[i]))) {P.Mass[i]=0;}
 #ifdef SINGLE_STAR_FB_WINDS
-            P[i].Sink_Mass -= out->M_coupled; if((P[i].Sink_Mass<0)||(isnan(P[i].Sink_Mass))) {P[i].Sink_Mass=0;}
+            P.Sink_Mass[i] -= out->M_coupled; if((P.Sink_Mass[i]<0)||(isnan(P.Sink_Mass[i]))) {P.Sink_Mass[i]=0;}
 #endif
         }
     }
@@ -235,30 +235,30 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Type != 0) {continue;} // require a gas particle //
+                if(P.Type[j] != 0) {continue;} // require a gas particle //
 #ifdef SINK_WIND_SPAWN
-                if(P[j].ID == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
+                if(P.ID[j] == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
 #endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
                 #pragma omp atomic read
-                Mass_j = P[j].Mass; // this can get modified below, so we need to read it thread-safe now
+                Mass_j = P.Mass[j]; // this can get modified below, so we need to read it thread-safe now
                 
                 // quick block of checks to make sure it's actually worth continuing!
                 if(Mass_j <= 0) continue; // require the particle has mass //
-                kernel.dp = local.Pos - P[j].Pos;
+                kernel.dp = local.Pos - P.Pos[j];
                 nearest_xyz(kernel.dp); // find the closest image in the given box size  //
                 r2 = kernel.dp.norm_sq();
                 if(r2<=0) {continue;} // same particle //
-                double h2j = P[j].KernelRadius * P[j].KernelRadius;
+                double h2j = P.KernelRadius[j] * P.KernelRadius[j];
                 if((r2>h2)&&(r2>h2j)) {continue;} // outside kernel (in both 'directions') //
                 if(r2 > r2max_phys) {continue;} // outside long-range cutoff //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) {continue;}
 
                 // calculate kernel quantities //
                 #pragma omp atomic read
-                rho_j = CellP[j].Density;
+                rho_j = CellP.Density[j];
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./P[j].KernelRadius, hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
+                double hinv_j = 1./P.KernelRadius[j], hinv3_j = hinv_j*hinv_j*hinv_j; /* note these lines and many below assume 3D sims! */
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = Mass_j / rho_j;
                 if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.dwk=kernel.wk=0;}
                 if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
@@ -286,17 +286,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
                 // ok worth initializing other variables we will use below
                 #pragma omp atomic read
-                InternalEnergy_j = CellP[j].InternalEnergy; // this can get modified below, so we need to read it thread-safe now
+                InternalEnergy_j = CellP.InternalEnergy[j]; // this can get modified below, so we need to read it thread-safe now
                 for(k=0;k<3;k++) {
                     #pragma omp atomic read
-                    Vel_j[k] = P[j].Vel[k]; // this can get modified below, so we need to read it thread-safe now
+                    Vel_j[k] = P.Vel[j][k]; // this can get modified below, so we need to read it thread-safe now
                 }
                 double InternalEnergy_j_0 = InternalEnergy_j, Mass_j_0 = Mass_j, rho_j_0 = rho_j, Vel_j_0[3]; for(k=0;k<3;k++) {Vel_j_0[k]=Vel_j[k];} // save initial values to use below
 #ifdef METALS
                 double Metallicity_j[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION], Metallicity_j_0[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION];
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic read
-                    Metallicity_j[k] = P[j].Metallicity[k]; // this can get modified below, so we need to read it thread-safe now
+                    Metallicity_j[k] = P.Metallicity[j][k]; // this can get modified below, so we need to read it thread-safe now
                 }
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
                 double Mass_Fraction_Where_Dust_Destroyed = 0;
@@ -378,7 +378,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 
                 /* inject actual mass from mass return */
                 int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
-                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
+                if(P.KernelRadius[j]<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
@@ -434,30 +434,30 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
-                P[j].Mass += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]. done this way to ensure conservation.
+                P.Mass[j] += Mass_j - Mass_j_0; // finite mass update [delta difference added here, allowing for another element to update in the meantime]. done this way to ensure conservation.
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 #pragma omp atomic
-                CellP[j].MassTrue += Mass_j - Mass_j_0; // finite mass update
+                CellP.MassTrue[j] += Mass_j - Mass_j_0; // finite mass update
 #endif
                 if(rho_j_0 > 0) {
                     #pragma omp atomic
-                    CellP[j].Density *= rho_j / rho_j_0; // inject mass at constant particle volume [no need to be exactly conservative here] //
+                    CellP.Density[j] *= rho_j / rho_j_0; // inject mass at constant particle volume [no need to be exactly conservative here] //
                 }
                 for(k=0;k<3;k++) {
                     #pragma omp atomic
-                    P[j].Vel[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    P.Vel[j][k] += Vel_j[k] - Vel_j_0[k]; // delta-update
                     #pragma omp atomic
-                    CellP[j].VelPred[k] += Vel_j[k] - Vel_j_0[k]; // delta-update
+                    CellP.VelPred[j][k] += Vel_j[k] - Vel_j_0[k]; // delta-update
                     #pragma omp atomic
-                    P[j].dp[k] += Mass_j*Vel_j[k] - Mass_j_0*Vel_j_0[k]; // discrete momentum change
+                    P.dp[j][k] += Mass_j*Vel_j[k] - Mass_j_0*Vel_j_0[k]; // discrete momentum change
                 }
                 #pragma omp atomic
-                CellP[j].InternalEnergy += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                CellP.InternalEnergy[j] += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                 #pragma omp atomic
-                CellP[j].InternalEnergyPred += InternalEnergy_j - InternalEnergy_j_0; // delta-update
+                CellP.InternalEnergyPred[j] += InternalEnergy_j - InternalEnergy_j_0; // delta-update
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
                     #pragma omp atomic
-                    P[j].Metallicity[k] += Metallicity_j[k] - Metallicity_j_0[k]; // delta-update
+                    P.Metallicity[j][k] += Metallicity_j[k] - Metallicity_j_0[k]; // delta-update
                 }
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
                 double Z_injected[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]={0}; for(k=0;k<NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION;k++) {Z_injected[k]=Mass_j*Metallicity_j[k] - Mass_j_0*Metallicity_j_0[k];}
@@ -564,30 +564,30 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Type != 0) {continue;} // require a gas particle //
+                if(P.Type[j] != 0) {continue;} // require a gas particle //
 #ifdef SINK_WIND_SPAWN
-                if(P[j].ID == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
+                if(P.ID[j] == All.SpawnedWindCellID) {continue;} // dont couple to jet cells
 #endif
                 double Mass_j, InternalEnergy_j, rho_j, Vel_j[3]; // initialize holders for the local variables that might change below
 #pragma omp atomic read
-                Mass_j = P[j].Mass; // this can get modified below, so we need to read it thread-safe now
+                Mass_j = P.Mass[j]; // this can get modified below, so we need to read it thread-safe now
                 
                 // now consider a block of conditions we will use to evaluate whether its worth opening this loop at all //
                 if(Mass_j <= 0) {continue;} // require the particle has mass //
-                kernel.dp = local.Pos - P[j].Pos;
+                kernel.dp = local.Pos - P.Pos[j];
                 nearest_xyz(kernel.dp); // find the closest image in the given box size  //
                 r2 = kernel.dp.norm_sq();
                 if(r2<=0) {continue;} // same particle //
-                double h2j = P[j].KernelRadius * P[j].KernelRadius;
+                double h2j = P.KernelRadius[j] * P.KernelRadius[j];
                 if((r2>h2)&&(r2>h2j)) {continue;} // outside kernel (in both 'directions') //
                 if(r2 > r2max_phys) {continue;} // outside long-range cutoff //
                 kernel.r = sqrt(r2); if(kernel.r <= 0) {continue;}
                 
                 // calculate kernel quantities //
 #pragma omp atomic read
-                rho_j = CellP[j].Density;
+                rho_j = CellP.Density[j];
                 u = kernel.r * kernel.hinv;
-                double hinv_j = 1./P[j].KernelRadius, hinv3_j = hinv_j*hinv_j*hinv_j;
+                double hinv_j = 1./P.KernelRadius[j], hinv3_j = hinv_j*hinv_j*hinv_j;
                 double wk_j = 0, dwk_j = 0, u_j = kernel.r * hinv_j, hinv4_j = hinv_j*hinv3_j, V_j = Mass_j / rho_j;
                 if(u<1) {kernel_main(u, kernel.hinv3, kernel.hinv4, &kernel.wk, &kernel.dwk, 1);} else {kernel.wk=kernel.dwk=0;}
                 if(u_j<1) {kernel_main(u_j, hinv3_j, hinv4_j, &wk_j, &dwk_j, 1);} else {wk_j=dwk_j=0;}
@@ -608,17 +608,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                 // ok worth initializing other variables we will use below
 #pragma omp atomic read
-                InternalEnergy_j = CellP[j].InternalEnergy; // this can get modified below, so we need to read it thread-safe now
+                InternalEnergy_j = CellP.InternalEnergy[j]; // this can get modified below, so we need to read it thread-safe now
                 for(k=0;k<3;k++) {
 #pragma omp atomic read
-                    Vel_j[k] = P[j].Vel[k]; // this can get modified below, so we need to read it thread-safe now
+                    Vel_j[k] = P.Vel[j][k]; // this can get modified below, so we need to read it thread-safe now
                 }
                 double InternalEnergy_j_0,Mass_j_0,rho_j_0,Vel_j_0[3]; InternalEnergy_j_0=InternalEnergy_j; Mass_j_0=Mass_j; rho_j_0=rho_j; for(k=0;k<3;k++) {Vel_j_0[k]=Vel_j[k];} // save initial values to use below
 #ifdef METALS
                 double Metallicity_j[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION], Metallicity_j_0[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION];
                 for(k=0;k<NUM_METAL_SPECIES;k++) {
 #pragma omp atomic read
-                    Metallicity_j[k] = P[j].Metallicity[k]; // this can get modified below, so we need to read it thread-safe now
+                    Metallicity_j[k] = P.Metallicity[j][k]; // this can get modified below, so we need to read it thread-safe now
                 }
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
                 double Mass_Fraction_Where_Dust_Destroyed=0.; // mass fraction of gas cleared of dust from SNe
@@ -714,7 +714,7 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 
                 /* inject actual mass from mass return */
                 int couple_anything_but_scalar_mass_and_metals = 1; // key to indicate whether or not we actually need to do the next set of steps beyond pure scalar mass+metal couplings //
-                if(P[j].KernelRadius<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
+                if(P.KernelRadius[j]<=0) {if(rho_j>0){rho_j*=(1+dM_ejecta_in/Mass_j);} else {rho_j=dM_ejecta_in*kernel.hinv3;}} else {rho_j+=kernel_zero*dM_ejecta_in*hinv3_j;}
                 rho_j *= 1 + dM_ejecta_in/Mass_j; // inject mass at constant particle volume //
                 Mass_j += dM_ejecta_in;
                 out.M_coupled += dM_ejecta_in;
@@ -807,32 +807,32 @@ void verify_and_assign_local_mechfb_integrals(void)
     int j,k,ndone=0; for(j=0;j<N_gas;j++)
     {
         if(LocalGasMechFBInfoTemp[j].N_injected <= 0) {continue;} /* all mechanisms deposit non-zero mass, so skip if this is not >0*/
-        if(P[j].Type==0 && P[j].Mass>0)
+        if(P.Type[j]==0 && P.Mass[j]>0)
         {
-            double m0=P[j].Mass, dm=LocalGasMechFBInfoTemp[j].m_injected; P[j].Mass += dm; /* update mass */
+            double m0=P.Mass[j], dm=LocalGasMechFBInfoTemp[j].m_injected; P.Mass[j] += dm; /* update mass */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-            m0=CellP[j].MassTrue; CellP[j].MassTrue += dm; /* update conserved mass */
+            m0=CellP.MassTrue[j]; CellP.MassTrue[j] += dm; /* update conserved mass */
 #endif
             double mf=m0+dm; /* save for below */
-            for(k=0;k<NUM_METAL_SPECIES;k++) {P[j].Metallicity[k] = (m0/mf)*P[j].Metallicity[k] + (1./mf)*LocalGasMechFBInfoTemp[j].Z_injected[k];} /* update metallicity */
+            for(k=0;k<NUM_METAL_SPECIES;k++) {P.Metallicity[j][k] = (m0/mf)*P.Metallicity[j][k] + (1./mf)*LocalGasMechFBInfoTemp[j].Z_injected[k];} /* update metallicity */
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
             update_ISMDustChem_after_mechanical_injection(j, LocalGasMechFBInfoTemp[j].Mass_Fraction_Where_Dust_Destroyed, m0, mf, LocalGasMechFBInfoTemp[j].Z_injected); /* update dust chemistry quantities */
 #endif
-            CellP[j].Density *= mf/m0; /* update density [semi-drift] */
+            CellP.Density[j] *= mf/m0; /* update density [semi-drift] */
             double dTE=LocalGasMechFBInfoTemp[j].TE_injected;
             if(dTE > 0)
             {
-                double TE_0=m0*CellP[j].InternalEnergy; dTE=DMAX(-TE_0,dTE); /* ensure against non-negative values */
-                double dU = (-dm/mf)*CellP[j].InternalEnergy + (1./mf)*dTE; /* using new mass get updated internal energy */
-                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j), implied_heating_cgs=(dU*UNIT_SPECEGY_IN_CGS*PROTONMASS_CGS)/(dt*UNIT_TIME_IN_CGS), typical_cooling_cgs=1.e-23*(CellP[j].Density*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
-                if((implied_heating_cgs < 0.3*typical_cooling_cgs) && (dt > MIN_REAL_NUMBER) && ((dU < 4.*CellP[j].InternalEnergy) || ((dU < 1000.*CellP[j].InternalEnergy) && ((dU+CellP[j].InternalEnergy)*U_TO_TEMP_UNITS*2./3.*1.28 < 5.e5)))) {CellP[j].DtInternalEnergy += dU/dt;} else {CellP[j].InternalEnergy += dU; CellP[j].InternalEnergyPred += dU;}
-                //CellP[j].InternalEnergy += dU; CellP[j].InternalEnergyPred += dU; /* update internal energy; simpler (old) way to do it - less accurate phase diagrams at high density, however */
+                double TE_0=m0*CellP.InternalEnergy[j]; dTE=DMAX(-TE_0,dTE); /* ensure against non-negative values */
+                double dU = (-dm/mf)*CellP.InternalEnergy[j] + (1./mf)*dTE; /* using new mass get updated internal energy */
+                double dt = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(j), implied_heating_cgs=(dU*UNIT_SPECEGY_IN_CGS*PROTONMASS_CGS)/(dt*UNIT_TIME_IN_CGS), typical_cooling_cgs=1.e-23*(CellP.Density[j]*All.cf_a3inv*UNIT_DENSITY_IN_NHCGS);
+                if((implied_heating_cgs < 0.3*typical_cooling_cgs) && (dt > MIN_REAL_NUMBER) && ((dU < 4.*CellP.InternalEnergy[j]) || ((dU < 1000.*CellP.InternalEnergy[j]) && ((dU+CellP.InternalEnergy[j])*U_TO_TEMP_UNITS*2./3.*1.28 < 5.e5)))) {CellP.DtInternalEnergy[j] += dU/dt;} else {CellP.InternalEnergy[j] += dU; CellP.InternalEnergyPred[j] += dU;}
+                //CellP.InternalEnergy[j] += dU; CellP.InternalEnergyPred[j] += dU; /* update internal energy; simpler (old) way to do it - less accurate phase diagrams at high density, however */
             }
             double dKE=LocalGasMechFBInfoTemp[j].KE_injected, dp[3];
             if(dKE != 0 || LocalGasMechFBInfoTemp[j].p_injected[0] != 0 || LocalGasMechFBInfoTemp[j].p_injected[1] != 0 || LocalGasMechFBInfoTemp[j].p_injected[2] != 0 )
             {
                 double KE_0=0, p0[3], p2=0, dp2=0, pdp=0; /* define variables for momentum update (the non-trivial update term) */
-                for(k=0;k<3;k++) {p0[k]=m0*P[j].Vel[k]/All.cf_atime; dp[k]=LocalGasMechFBInfoTemp[j].p_injected[k]; p2+=p0[k]*p0[k]; dp2+=dp[k]*dp[k]; pdp+=p0[k]*dp[k];} /* define variables */
+                for(k=0;k<3;k++) {p0[k]=m0*P.Vel[j][k]/All.cf_atime; dp[k]=LocalGasMechFBInfoTemp[j].p_injected[k]; p2+=p0[k]*p0[k]; dp2+=dp[k]*dp[k]; pdp+=p0[k]*dp[k];} /* define variables */
                 KE_0=p2/(2.*m0); dKE=DMAX(-KE_0,dKE); /* limit to retain positive definite kinetic energy */
                 double a0=dp2, b0=2.*pdp, c0=p2*dm/m0+2.*mf*dKE, sfac=b0*b0+4.*a0*c0, f0=0; /* assume coupled delta_p = f0*delta_p, and solve for the multiplier f0 that gives the desired total kinetic energy change */
                 if(sfac<=0 || !isfinite(sfac)) {if((fabs(a0)<1.e-40) || !isfinite(b0/a0)) {f0=0;} else {f0=-b0/(2.*a0);}} // catches for floating-point error
@@ -840,8 +840,8 @@ void verify_and_assign_local_mechfb_integrals(void)
                     else {if(fabs(a0)<1.e-40 || !isfinite(a0)) {f0=0;} else {f0=(-b0+sqrt(b0*b0+4.*a0*c0))/(2.*a0);}}} // catches for floating-point error, if pass all of them, use exact solution for desired KE
                 if(f0<0 || !isfinite(f0)) {f0=0;} else {if(f0>1.) {f0=1.;}} /* limit to physical values (should never be an issue but again because of float error it could be) */
                 for(k=0;k<3;k++) {
-                    double dv = (-dm/mf)*P[j].Vel[k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
-                    P[j].Vel[k] += dv; CellP[j].VelPred[k] += dv; P[j].dp[k] += f0*dp[k]; /* update velocities */
+                    double dv = (-dm/mf)*P.Vel[j][k] + f0*(1./mf)*dp[k]*All.cf_atime; /* calculate total momentum change and mass change and therefore final velocity (in code units) */
+                    P.Vel[j][k] += dv; CellP.VelPred[j][k] += dv; P.dp[j][k] += f0*dp[k]; /* update velocities */
                 }
             }
             ndone++; /* note another cell accounted for */
@@ -861,7 +861,7 @@ void mechanical_fb_calc_toplevel(void)
     /* allocate temporary stucture which will hold the total change, to compare when done to check for non-linear effects if too many cells act at once */
     LocalGasMechFBInfoTemp = (struct temporary_mech_fb_data_tohold *) mymalloc("LocalGasMechFBInfoTemp",N_gas * sizeof(struct temporary_mech_fb_data_tohold)); /* allocate */
     N_Gas_Couplings_ThisTask = 0; /* initialize this to zero [default to assume no coupled feedback] */
-    int i; for(i=0;i<N_gas;i++) {if(P[i].Type==0) {memset(&LocalGasMechFBInfoTemp[i], 0, sizeof(struct temporary_mech_fb_data_tohold));}} /* zero it out before loops */
+    int i; for(i=0;i<N_gas;i++) {if(P.Type[i]==0) {memset(&LocalGasMechFBInfoTemp[i], 0, sizeof(struct temporary_mech_fb_data_tohold));}} /* zero it out before loops */
     mechanical_fb_calc(-2); /* compute weights for coupling [first weight-calculation pass] */
 #endif
     mechanical_fb_calc(-1); /* compute weights for coupling [second weight-calculation pass] */

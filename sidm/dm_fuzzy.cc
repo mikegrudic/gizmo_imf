@@ -147,40 +147,40 @@ void do_dm_fuzzy_drift_kick(int i, double dt, int mode)
     if(mode==0)
     {
         // calculate various energies: quantum potential QP0, 'stored' numerical pressure NQ0, kinetic energy KE0
-        double dNQ=P[i].AGS_Dt_Numerical_QuantumPotential*dt, NQ0=P[i].AGS_Numerical_QuantumPotential, NQ1=NQ0+dNQ, KE0=0.5*P[i].Mass*P[i].Vel.norm_sq()*All.cf_a2inv;
+        double dNQ=P.AGS_Dt_Numerical_QuantumPotential[i]*dt, NQ0=P.AGS_Numerical_QuantumPotential[i], NQ1=NQ0+dNQ, KE0=0.5*P.Mass[i]*P.Vel[i].norm_sq()*All.cf_a2inv;
         double f00 = 0.5 * All.ScalarField_hbar_over_mass; // this encodes the coefficient with the mass of the particle: units vel*L = hbar / particle_mass
-        double d2rho = P[i].AGS_Gradients2_Density[0][0] + P[i].AGS_Gradients2_Density[1][1] + P[i].AGS_Gradients2_Density[2][2]; // laplacian
-        double drho2 = P[i].AGS_Gradients_Density.norm_sq();
-        double QP0 = (f00*f00 / P[i].AGS_Density) * (d2rho - 0.5*drho2/P[i].AGS_Density); // quantum 'potential'
+        double d2rho = P.AGS_Gradients2_Density[i][0][0] + P.AGS_Gradients2_Density[i][1][1] + P.AGS_Gradients2_Density[i][2][2]; // laplacian
+        double drho2 = P.AGS_Gradients_Density[i].norm_sq();
+        double QP0 = (f00*f00 / P.AGS_Density[i]) * (d2rho - 0.5*drho2/P.AGS_Density[i]); // quantum 'potential'
         NQ1 = DMAX(0,DMAX(NQ1,0.1*NQ0)); NQ1 = DMIN(NQ1,1.1*DMAX(DMAX(KE0+NQ0,fabs(QP0)),KE0+NQ0+QP0)); // limit kick to not produce unphysical energy over-or-under-shoot
-        P[i].AGS_Numerical_QuantumPotential = NQ1;
+        P.AGS_Numerical_QuantumPotential[i] = NQ1;
     }
 
 #if (DM_FUZZY > 0) /* if using direct-wavefunction integration methods */
-    double vol_inv = P[i].AGS_Density / P[i].Mass;
+    double vol_inv = P.AGS_Density[i] / P.Mass[i];
     if(mode == 0)
     {
-        //double psimag_mass_old = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
-        P[i].AGS_Psi_Re += P[i].AGS_Dt_Psi_Re * dt;
-        P[i].AGS_Psi_Im += P[i].AGS_Dt_Psi_Im * dt;
-        double mass_old = P[i].Mass, dmass = P[i].AGS_Dt_Psi_Mass * dt, mass_new = mass_old + dmass;
+        //double psimag_mass_old = (P.AGS_Psi_Re[i]*P.AGS_Psi_Re[i] + P.AGS_Psi_Im[i]*P.AGS_Psi_Im[i]) * vol_inv;
+        P.AGS_Psi_Re[i] += P.AGS_Dt_Psi_Re[i] * dt;
+        P.AGS_Psi_Im[i] += P.AGS_Dt_Psi_Im[i] * dt;
+        double mass_old = P.Mass[i], dmass = P.AGS_Dt_Psi_Mass[i] * dt, mass_new = mass_old + dmass;
         dmass = DMIN(DMAX(dmass,-0.5*mass_old),0.5*mass_old);
         mass_new = mass_old + dmass;
-        double psimag_mass_new = (P[i].AGS_Psi_Re*P[i].AGS_Psi_Re + P[i].AGS_Psi_Im*P[i].AGS_Psi_Im) * vol_inv;
+        double psimag_mass_new = (P.AGS_Psi_Re[i]*P.AGS_Psi_Re[i] + P.AGS_Psi_Im[i]*P.AGS_Psi_Im[i]) * vol_inv;
 #if (DM_FUZZY == 2)
         mass_new = psimag_mass_new; /* uses direct [NON-MASS-CONSERVING] integration of psi field */
 #endif
         double psi_corr_fac = sqrt(mass_new / (MIN_REAL_NUMBER + psimag_mass_new));
-        P[i].Mass = mass_new; P[i].AGS_Psi_Re *= psi_corr_fac; P[i].AGS_Psi_Im *= psi_corr_fac;
+        P.Mass[i] = mass_new; P.AGS_Psi_Re[i] *= psi_corr_fac; P.AGS_Psi_Im[i] *= psi_corr_fac;
 
-        P[i].AGS_Density = P[i].Mass * vol_inv;
-        P[i].AGS_Psi_Re_Pred = P[i].AGS_Psi_Re;
-        P[i].AGS_Psi_Im_Pred = P[i].AGS_Psi_Im;
+        P.AGS_Density[i] = P.Mass[i] * vol_inv;
+        P.AGS_Psi_Re_Pred[i] = P.AGS_Psi_Re[i];
+        P.AGS_Psi_Im_Pred[i] = P.AGS_Psi_Im[i];
     } else {
         /* in drift mode, AGS_Density should automatically be drifted already by the predictor step, but not the other quantities here */
-        P[i].AGS_Psi_Re_Pred += P[i].AGS_Dt_Psi_Re * dt;
-        P[i].AGS_Psi_Im_Pred += P[i].AGS_Dt_Psi_Im * dt;
-        P[i].AGS_Density *= 1. + DMIN(DMAX(P[i].AGS_Dt_Psi_Mass*dt/P[i].Mass,-0.5),0.5);
+        P.AGS_Psi_Re_Pred[i] += P.AGS_Dt_Psi_Re[i] * dt;
+        P.AGS_Psi_Im_Pred[i] += P.AGS_Dt_Psi_Im[i] * dt;
+        P.AGS_Density[i] *= 1. + DMIN(DMAX(P.AGS_Dt_Psi_Mass[i]*dt/P.Mass[i],-0.5),0.5);
     }
 #endif
 }
@@ -193,15 +193,15 @@ void do_dm_fuzzy_initialization(void)
     int i;
     for(i = 0; i < NumPart; i++)
     {
-        double volume = P[i].AGS_Density / P[i].Mass, psimag = sqrt(P[i].AGS_Density), phase = 0;
+        double volume = P.AGS_Density[i] / P.Mass[i], psimag = sqrt(P.AGS_Density[i]), phase = 0;
         /* approximation for initial phase below is fine for slowly-varying k, otherwise not ideal */
-        phase = dot(P[i].Pos, P[i].Vel) / All.ScalarField_hbar_over_mass;
+        phase = dot(P.Pos[i], P.Vel[i]) / All.ScalarField_hbar_over_mass;
 
-        P[i].AGS_Psi_Re = psimag * volume * cos(phase); /* remember, we evolve the volume-integrated value of psi */
-        P[i].AGS_Psi_Im = psimag * volume * sin(phase);
+        P.AGS_Psi_Re[i] = psimag * volume * cos(phase); /* remember, we evolve the volume-integrated value of psi */
+        P.AGS_Psi_Im[i] = psimag * volume * sin(phase);
 
-        P[i].AGS_Dt_Psi_Mass = 0; P[i].AGS_Dt_Psi_Re = 0; P[i].AGS_Dt_Psi_Im = 0;
-        P[i].AGS_Psi_Re_Pred = P[i].AGS_Psi_Re; P[i].AGS_Psi_Im_Pred = P[i].AGS_Psi_Im;
+        P.AGS_Dt_Psi_Mass[i] = 0; P.AGS_Dt_Psi_Re[i] = 0; P.AGS_Dt_Psi_Im[i] = 0;
+        P.AGS_Psi_Re_Pred[i] = P.AGS_Psi_Re[i]; P.AGS_Psi_Im_Pred[i] = P.AGS_Psi_Im[i];
     }
 #endif
 }
@@ -292,7 +292,7 @@ struct kernel_DMGrad {double dp[3],r,wk_i, wk_j, dwk_i, dwk_j,h_i;};
 #define CORE_FUNCTION_NAME DMGrad_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
 #define INPUTFUNCTION_NAME particle2in_DMGrad    /* name of the function which loads the element data needed (for e.g. broadcast to other processors, neighbor search) */
 #define OUTPUTFUNCTION_NAME out2particle_DMGrad  /* name of the function which takes the data returned from other processors and combines it back to the original elements */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(ags_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(ags_density_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -308,16 +308,16 @@ struct INPUT_STRUCT_NAME
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void particle2in_DMGrad(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    in->Pos = P[i].Pos;
-    in->AGS_KernelRadius = P[i].AGS_KernelRadius;
-    in->Type = P[i].Type;
-    in->GQuant.AGS_Density = P[i].AGS_Density;
-    in->GQuant.AGS_Gradients_Density[0] = P[i].AGS_Gradients_Density[0]; in->GQuant.AGS_Gradients_Density[1] = P[i].AGS_Gradients_Density[1]; in->GQuant.AGS_Gradients_Density[2] = P[i].AGS_Gradients_Density[2];
+    in->Pos = P.Pos[i];
+    in->AGS_KernelRadius = P.AGS_KernelRadius[i];
+    in->Type = P.Type[i];
+    in->GQuant.AGS_Density = P.AGS_Density[i];
+    in->GQuant.AGS_Gradients_Density[0] = P.AGS_Gradients_Density[i][0]; in->GQuant.AGS_Gradients_Density[1] = P.AGS_Gradients_Density[i][1]; in->GQuant.AGS_Gradients_Density[2] = P.AGS_Gradients_Density[i][2];
 #if (DM_FUZZY > 0)
-    in->GQuant.AGS_Psi_Re = P[i].AGS_Psi_Re_Pred * P[i].AGS_Density / P[i].Mass;
-    in->GQuant.AGS_Gradients_Psi_Re[0] = P[i].AGS_Gradients_Psi_Re[0]; in->GQuant.AGS_Gradients_Psi_Re[1] = P[i].AGS_Gradients_Psi_Re[1]; in->GQuant.AGS_Gradients_Psi_Re[2] = P[i].AGS_Gradients_Psi_Re[2];
-    in->GQuant.AGS_Psi_Im = P[i].AGS_Psi_Im_Pred * P[i].AGS_Density / P[i].Mass;
-    in->GQuant.AGS_Gradients_Psi_Im[0] = P[i].AGS_Gradients_Psi_Im[0]; in->GQuant.AGS_Gradients_Psi_Im[1] = P[i].AGS_Gradients_Psi_Im[1]; in->GQuant.AGS_Gradients_Psi_Im[2] = P[i].AGS_Gradients_Psi_Im[2];
+    in->GQuant.AGS_Psi_Re = P.AGS_Psi_Re_Pred[i] * P.AGS_Density[i] / P.Mass[i];
+    in->GQuant.AGS_Gradients_Psi_Re[0] = P.AGS_Gradients_Psi_Re[i][0]; in->GQuant.AGS_Gradients_Psi_Re[1] = P.AGS_Gradients_Psi_Re[i][1]; in->GQuant.AGS_Gradients_Psi_Re[2] = P.AGS_Gradients_Psi_Re[i][2];
+    in->GQuant.AGS_Psi_Im = P.AGS_Psi_Im_Pred[i] * P.AGS_Density[i] / P.Mass[i];
+    in->GQuant.AGS_Gradients_Psi_Im[0] = P.AGS_Gradients_Psi_Im[i][0]; in->GQuant.AGS_Gradients_Psi_Im[1] = P.AGS_Gradients_Psi_Im[i][1]; in->GQuant.AGS_Gradients_Psi_Im[2] = P.AGS_Gradients_Psi_Im[i][2];
 #endif
 }
 
@@ -344,10 +344,10 @@ static inline void out2particle_DMGrad(struct OUTPUT_STRUCT_NAME *out, int i, in
         int k;
         MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Density,out->Maxima.AGS_Density,mode);
         MIN_ADD(DMGradDataPasser[i].Minima.AGS_Density,out->Minima.AGS_Density,mode);
-        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Density[k],out->Gradients[k].AGS_Density,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P.AGS_Gradients_Density[i][k],out->Gradients[k].AGS_Density,mode);}
 #if (DM_FUZZY > 0)
-        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Re[k],out->Gradients[k].AGS_Psi_Re,mode);}
-        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients_Psi_Im[k],out->Gradients[k].AGS_Psi_Im,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P.AGS_Gradients_Psi_Re[i][k],out->Gradients[k].AGS_Psi_Re,mode);}
+        for(k=0;k<3;k++) {ASSIGN_ADD_PRESET(P.AGS_Gradients_Psi_Im[i][k],out->Gradients[k].AGS_Psi_Im,mode);}
 #endif
     } else {
         int k,k2;
@@ -355,10 +355,10 @@ static inline void out2particle_DMGrad(struct OUTPUT_STRUCT_NAME *out, int i, in
         {
             MAX_ADD(DMGradDataPasser[i].Maxima.AGS_Gradients_Density[k],out->Maxima.AGS_Gradients_Density[k],mode);
             MIN_ADD(DMGradDataPasser[i].Minima.AGS_Gradients_Density[k],out->Minima.AGS_Gradients_Density[k],mode);
-            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Density[k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
+            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P.AGS_Gradients2_Density[i][k2][k],out->Gradients[k].AGS_Gradients_Density[k2],mode);}
 #if (DM_FUZZY > 0)
-            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Re[k2][k],out->Gradients[k].AGS_Gradients_Psi_Re[k2],mode);}
-            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P[i].AGS_Gradients2_Psi_Im[k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
+            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P.AGS_Gradients2_Psi_Re[i][k2][k],out->Gradients[k].AGS_Gradients_Psi_Re[k2],mode);}
+            for(k2=0;k2<3;k2++) {ASSIGN_ADD_PRESET(P.AGS_Gradients2_Psi_Im[i][k2][k],out->Gradients[k].AGS_Gradients_Psi_Im[k2],mode);}
 #endif
         }
         // do we need limiters here for the density gradients? Not clear if this all needs computing
@@ -372,7 +372,7 @@ void construct_gradient_DMGrad(double *grad, int i)
     /* use the NV_T matrix-based gradient estimator */
     int k; double v_tmp[3];
     for(k=0;k<3;k++) {v_tmp[k] = grad[k];}
-    for(k=0;k<3;k++) {grad[k] = P[i].NV_T[k][0]*v_tmp[0] + P[i].NV_T[k][1]*v_tmp[1] + P[i].NV_T[k][2]*v_tmp[2];}
+    for(k=0;k<3;k++) {grad[k] = P.NV_T[i][k][0]*v_tmp[0] + P.NV_T[i][k][1]*v_tmp[1] + P.NV_T[i][k][2]*v_tmp[2];}
 }
 
 
@@ -410,9 +410,9 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
             for(n = 0; n < numngb_inbox; n++) /* neighbor loop */
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if((P[j].Mass <= 0)||(P[j].AGS_Density <= 0)) {continue;} /* make sure neighbor is valid */
+                if((P.Mass[j] <= 0)||(P.AGS_Density[j] <= 0)) {continue;} /* make sure neighbor is valid */
                 /* calculate position relative to target */
-                kernel.dp[0] = local.Pos[0] - P[j].Pos[0]; kernel.dp[1] = local.Pos[1] - P[j].Pos[1]; kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P.Pos[j][0]; kernel.dp[1] = local.Pos[1] - P.Pos[j][1]; kernel.dp[2] = local.Pos[2] - P.Pos[j][2];
                 nearest_xyz(kernel.dp);
                 r2 = kernel.dp[0]*kernel.dp[0] + kernel.dp[1]*kernel.dp[1] + kernel.dp[2]*kernel.dp[2];
                 if((r2 <= 0) || (r2 >= h2_i)) continue;
@@ -422,26 +422,26 @@ int DMGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount,
                 /* DIFFERENCE & SLOPE LIMITING: need to check maxima and minima of particle values in the kernel, to avoid 'overshoot' with our gradient estimators. this check should be among all interacting pairs */
                 if(loop_iteration <= 0)
                 {
-                    double d_rho = P[j].AGS_Density - local.GQuant.AGS_Density;
+                    double d_rho = P.AGS_Density[j] - local.GQuant.AGS_Density;
                     MINMAX_CHECK(d_rho,out.Minima.AGS_Density,out.Maxima.AGS_Density);
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Density += -kernel.wk_i * kernel.dp[k] * d_rho;} /* sign is important here! */
 #if (DM_FUZZY > 0)
-                    d_rho = P[j].AGS_Psi_Re_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Re;
+                    d_rho = P.AGS_Psi_Re_Pred[j] * P.AGS_Density[j] / P.Mass[j] - local.GQuant.AGS_Psi_Re;
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Re += -kernel.wk_i * kernel.dp[k] * d_rho;}
-                    d_rho = P[j].AGS_Psi_Im_Pred * P[j].AGS_Density / P[j].Mass - local.GQuant.AGS_Psi_Im;
+                    d_rho = P.AGS_Psi_Im_Pred[j] * P.AGS_Density[j] / P.Mass[j] - local.GQuant.AGS_Psi_Im;
                     for(k=0;k<3;k++) {out.Gradients[k].AGS_Psi_Im += -kernel.wk_i * kernel.dp[k] * d_rho;}
 #endif
                 } else {
                     int k2; double d_grad_rho;
                     for(k=0;k<3;k++)
                     {
-                        d_grad_rho = P[j].AGS_Gradients_Density[k] - local.GQuant.AGS_Gradients_Density[k];
+                        d_grad_rho = P.AGS_Gradients_Density[j][k] - local.GQuant.AGS_Gradients_Density[k];
                         MINMAX_CHECK(d_grad_rho,out.Minima.AGS_Gradients_Density[k],out.Maxima.AGS_Gradients_Density[k]);
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Density[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
 #if (DM_FUZZY > 0)
-                        d_grad_rho = P[j].AGS_Gradients_Psi_Re[k] - local.GQuant.AGS_Gradients_Psi_Re[k];
+                        d_grad_rho = P.AGS_Gradients_Psi_Re[j][k] - local.GQuant.AGS_Gradients_Psi_Re[k];
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Re[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
-                        d_grad_rho = P[j].AGS_Gradients_Psi_Im[k] - local.GQuant.AGS_Gradients_Psi_Im[k];
+                        d_grad_rho = P.AGS_Gradients_Psi_Im[j][k] - local.GQuant.AGS_Gradients_Psi_Im[k];
                         for(k2=0;k2<3;k2++) {out.Gradients[k2].AGS_Gradients_Psi_Im[k] += -kernel.wk_i * kernel.dp[k2] * d_grad_rho;}
 #endif
                     }
@@ -472,7 +472,7 @@ void DMGrad_gradient_calc(void)
     CPU_Step[CPU_MISC] += measure_time(); double t00_truestart = my_second();
     PRINT_STATUS(" ..calculating higher-order gradients for DM density field\n");
     /* initialize data, if needed */
-    if(All.Time==All.TimeBegin) {int i; for (int i : ActiveParticleList) {P[i].AGS_Numerical_QuantumPotential=0;}}
+    if(All.Time==All.TimeBegin) {int i; for (int i : ActiveParticleList) {P.AGS_Numerical_QuantumPotential[i]=0;}}
 
     /* allocate memory shared across all loops */
     DMGradDataPasser = (struct temporary_dmgradients_data_topass *) mymalloc("DMGradDataPasser",NumPart * sizeof(struct temporary_dmgradients_data_topass));
@@ -490,10 +490,10 @@ void DMGrad_gradient_calc(void)
             if(loop_iteration <= 0)
             {
                 /* now we can properly calculate (second-order accurate) gradients of hydrodynamic quantities from this loop */
-                construct_gradient_DMGrad(P[i].AGS_Gradients_Density,i);
+                construct_gradient_DMGrad(P.AGS_Gradients_Density[i],i);
 #if (DM_FUZZY > 0)
-                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Re,i);
-                construct_gradient_DMGrad(P[i].AGS_Gradients_Psi_Im,i);
+                construct_gradient_DMGrad(P.AGS_Gradients_Psi_Re[i],i);
+                construct_gradient_DMGrad(P.AGS_Gradients_Psi_Im[i],i);
 #endif
                 /* finally, we need to apply a sensible slope limiter to the gradients, to prevent overshooting */
                 /* (actually not clear that we need to slope-limit these, because we are not using the gradients for reconstruction.
@@ -503,23 +503,23 @@ void DMGrad_gradient_calc(void)
                 for(k=0;k<3;k++)
                 {
                     /* construct the gradient-of-gradient */
-                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Density[k],i);
+                    construct_gradient_DMGrad(P.AGS_Gradients2_Density[i][k],i);
 #if (DM_FUZZY > 0)
-                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Re[k],i);
-                    construct_gradient_DMGrad(P[i].AGS_Gradients2_Psi_Im[k],i);
+                    construct_gradient_DMGrad(P.AGS_Gradients2_Psi_Re[i][k],i);
+                    construct_gradient_DMGrad(P.AGS_Gradients2_Psi_Im[i][k],i);
 #endif
                 }
                 /* symmetrize the gradients */
                 int k0[3]={0,0,1},k1[3]={1,2,2}; double tmp;
                 for(k=0;k<3;k++)
                 {
-                    tmp = 0.5 * (P[i].AGS_Gradients2_Density[k0[k]][k1[k]] + P[i].AGS_Gradients2_Density[k1[k]][k0[k]]);
-                    P[i].AGS_Gradients2_Density[k0[k]][k1[k]] = P[i].AGS_Gradients2_Density[k1[k]][k0[k]] = tmp;
+                    tmp = 0.5 * (P.AGS_Gradients2_Density[i][k0[k]][k1[k]] + P.AGS_Gradients2_Density[i][k1[k]][k0[k]]);
+                    P.AGS_Gradients2_Density[i][k0[k]][k1[k]] = P.AGS_Gradients2_Density[i][k1[k]][k0[k]] = tmp;
 #if (DM_FUZZY > 0)
-                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]]);
-                    P[i].AGS_Gradients2_Psi_Re[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Re[k1[k]][k0[k]] = tmp;
-                    tmp = 0.5 * (P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] + P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]]);
-                    P[i].AGS_Gradients2_Psi_Im[k0[k]][k1[k]] = P[i].AGS_Gradients2_Psi_Im[k1[k]][k0[k]] = tmp;
+                    tmp = 0.5 * (P.AGS_Gradients2_Psi_Re[i][k0[k]][k1[k]] + P.AGS_Gradients2_Psi_Re[i][k1[k]][k0[k]]);
+                    P.AGS_Gradients2_Psi_Re[i][k0[k]][k1[k]] = P.AGS_Gradients2_Psi_Re[i][k1[k]][k0[k]] = tmp;
+                    tmp = 0.5 * (P.AGS_Gradients2_Psi_Im[i][k0[k]][k1[k]] + P.AGS_Gradients2_Psi_Im[i][k1[k]][k0[k]]);
+                    P.AGS_Gradients2_Psi_Im[i][k0[k]][k1[k]] = P.AGS_Gradients2_Psi_Im[i][k1[k]][k0[k]] = tmp;
 #endif
                 }
             }

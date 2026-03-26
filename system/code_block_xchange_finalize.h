@@ -19,6 +19,9 @@ static inline void *SECONDARY_SUBFUN_NAME(void *p, int loop_iteration)
 #undef EVALUATION_CALL
 }
 
+#ifdef NGB_SEARCH_BOTH_WAYS
+#undef NGB_SEARCH_BOTH_WAYS
+#endif
 #undef CONDITIONFUNCTION_FOR_EVALUATION
 #undef SECONDARY_SUBFUN_NAME
 #undef PRIMARY_SUBFUN_NAME

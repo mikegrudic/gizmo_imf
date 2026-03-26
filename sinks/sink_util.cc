@@ -31,7 +31,7 @@ void sink_start(void)
     {
         if(sink_isactive(i))
         {
-            P[i].IndexMapToTempStruc = N_active_loc_Sink;         /* allows access via SinkTempInfo[P[i].IndexMapToTempStruc] */
+            P.IndexMapToTempStruc[i] = N_active_loc_Sink;         /* allows access via SinkTempInfo[P.IndexMapToTempStruc[i]] */
             N_active_loc_Sink++;                     /* N_active_loc_Sink now set for BH routines */
         }
     }
@@ -174,9 +174,9 @@ void sink_properties_loop(void) /* Note, normalize_temp_info_struct is now done 
         n = SinkTempInfo[i].index;
         dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(n);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-        dt = P[n].dt_since_last_gas_search;
+        dt = P.dt_since_last_gas_search[n];
 #endif
-        P[n].Sink_Mdot=0;  /* always initialize/default to zero accretion rate */
+        P.Sink_Mdot[n]=0;  /* always initialize/default to zero accretion rate */
         set_sink_long_range_rp(i, n);
         set_sink_mdot(i, n, dt);
         set_sink_drag(i, n, dt);
@@ -191,9 +191,9 @@ void sink_properties_loop(void) /* Note, normalize_temp_info_struct is now done 
 int is_star_eligible_for_binary_merge_away(int j)
 {
     int merge_key = 1;
-    if(P[j].ProtoStellarStage < 5) {merge_key = 0;} /* only allow mergers once the stars reach the main sequence */
+    if(P.ProtoStellarStage[j] < 5) {merge_key = 0;} /* only allow mergers once the stars reach the main sequence */
     double star_age = evaluate_stellar_age_Gyr(j) / UNIT_TIME_IN_GYR; /* stellar age */
-    if(P[j].Sink_Mass < 2.*P[j].Sink_Mdot*star_age) {merge_key = 0;} /* dont allow mergers if the star is still growing very rapidly */
+    if(P.Sink_Mass[j] < 2.*P.Sink_Mdot[j]*star_age) {merge_key = 0;} /* dont allow mergers if the star is still growing very rapidly */
     return merge_key;
 }
 #endif

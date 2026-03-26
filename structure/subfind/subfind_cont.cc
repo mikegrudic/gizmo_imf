@@ -53,9 +53,9 @@ void subfind_contamination(void)
 
   for(i = 0, count = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
-    if(!((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+    if(!((1 << P.Type[i]) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
-    if(!((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
+    if(!((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
       d[count++].index = i;
 
@@ -312,19 +312,19 @@ int subfind_contamination_treefind(MyDouble searchcenter[3], MyFloat rkern, int 
 	  no = Nextnode[no];
 
         dist = rkern; double xtmp; xtmp=0;
-	  dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+	  dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
-      dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dy > dist)
 	    continue;
-      dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dz > dist)
 	    continue;
 	  if(dx * dx + dy * dy + dz * dz > dist * dist)
 	    continue;
 
-	  mass += P[p].Mass;
+	  mass += P.Mass[p];
 	  count++;
 	}
       else

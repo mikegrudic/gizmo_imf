@@ -10,6 +10,8 @@
  * This file was written by Phil Hopkins (phopkins@caltech.edu) for GIZMO.
  */
 /* --------------------------------------------------------------------------------- */
+#include "hydro_tile.h"
+/* --------------------------------------------------------------------------------- */
 /*!   -- this subroutine writes to shared memory [updating -some- essential neighbor values, setting wakeups, etc.]:
   this should ideally be avoided whenever possible; need to protect these write operations for openmp below.
   note that the 'j_is_active_for_fluxes' flag much more aggressively
@@ -128,6 +130,8 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
         startnode = Nodes[startnode].u.d.nextnode;	/* open it */
     }
 
+    HydroNeighborTile tile;
+
     while(startnode >= 0)
     {
         while(startnode >= 0)
@@ -135,16 +139,19 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
             /* --------------------------------------------------------------------------------- */
             /* get the neighbor list */
             /* --------------------------------------------------------------------------------- */
-            numngb = ngb_treefind_pairs_threads(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+            numngb = ngb_treefind_optimized(local.Pos, kernel.h_i, target, &startnode, mode, exportflag, exportnodecount, exportindex, ngblist, 1);
             if(numngb < 0) {return -2;}
+
+            /* Tile gather: load neighbor data into contiguous arrays for cache efficiency */
+            hydro_tile_gather(tile, ngblist, numngb);
 
             for(n = 0; n < numngb; n++)
             {
-                j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Mass <= 0) {continue;}
-                if(CellP[j].Density <= 0) {continue;}
+                j = tile.ngb_idx[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
+                if(tile.mass[n] <= 0) {continue;}
+                if(tile.density[n] <= 0) {continue;}
 #ifdef GALSF_SUBGRID_WINDS
-                if(CellP[j].DelayTime > 0) {continue;} /* no hydro forces for decoupled wind particles */
+                if(tile.delay_time[n] > 0) {continue;} /* no hydro forces for decoupled wind particles */
 #endif
 
                 /* check if I need to compute this pair-wise interaction from "i" to "j", or skip it and let it be computed from "j" to "i" */
@@ -152,10 +159,10 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 dt_hydrostep = DMAX(dt_hydrostep_i , dt_hydrostep_j); // this is used for flux-limiting, so we always want to be more conservative and use the larger timestep //
                 double FluxCorrectionFactor_to_i = 1, FluxCorrectionFactor_to_j = 1; // these, by default, won't do anything, but will be used below in final flux assignment
                 int j_is_active_for_fluxes = 0;
-                kernel.dp = local.Pos - P[j].Pos;
+                kernel.dp = local.Pos - tile.pos[n];
                 nearest_xyz(kernel.dp); /* find the closest image in the given box size  */
                 r2 = kernel.dp.norm_sq();
-                kernel.h_j = P[j].KernelRadius;
+                kernel.h_j = tile.h[n];
 
                 /* force applied for all particles inside each-others kernels! */
                 if((r2 >= kernel.h_i * kernel.h_i) && (r2 >= kernel.h_j * kernel.h_j)) continue;
@@ -174,14 +181,14 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 rinv = 1 / kernel.r;
                 /* we require a 'softener' to prevent numerical madness in interpolating functions */
                 rinv_soft = 1.0 / sqrt(r2 + 0.0001*kernel.h_i*kernel.h_i);
-                Vec3<MyDouble> VelPred_j = CellP[j].VelPred; // set the velocity of neighbor
-                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,VelPred_j,-1); /* in a shearing box, wrap velocities for shearing boxes if needed [literally does nothing if not shearing box here] */
+                Vec3<MyDouble> VelPred_j = tile.velpred[n]; // set the velocity of neighbor
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,tile.pos[n],VelPred_j,-1); /* in a shearing box, wrap velocities for shearing boxes if needed [literally does nothing if not shearing box here] */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                Vec3<MyDouble> ParticleVel_j = CellP[j].VelPred; // set the com-element velocity of neighbor
-                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,ParticleVel_j,-1); /* wrap velocities for shearing boxes if needed */
+                Vec3<MyDouble> ParticleVel_j = tile.velpred[n]; // set the com-element velocity of neighbor
+                NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,tile.pos[n],ParticleVel_j,-1); /* wrap velocities for shearing boxes if needed */
 #endif
                 kernel.dv = local.Vel - VelPred_j;
-                kernel.rho_ij_inv = 2.0 / (local.Density + CellP[j].Density);
+                kernel.rho_ij_inv = 2.0 / (local.Density + tile.density[n]);
                 double Particle_Size_j; Particle_Size_j = Get_Particle_Size(j) * All.cf_atime; /* physical units */
 
                 /* --------------------------------------------------------------------------------- */
@@ -195,18 +202,18 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef MAGNETIC
                 double BPred_j[3];
                 for(k=0;k<3;k++) {BPred_j[k]=Get_Gas_BField(j,k);} /* defined j b-field in appropriate units for everything */
-                NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,P[j].Pos,BPred_j,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
+                NGB_SHEARBOX_BOUNDARY_BCORR_(local.Pos,tile.pos[n],BPred_j,-1); /* in a shearing box, wrap magnetic fields for shearing boxes if needed [literally does nothing if not shearing box here] */
 #ifdef DIVBCLEANING_DEDNER
                 double PhiPred_j = Get_Gas_PhiField(j); /* define j phi-field in appropriate units */
 #endif
                 kernel.b2_j = BPred_j[0]*BPred_j[0] + BPred_j[1]*BPred_j[1] + BPred_j[2]*BPred_j[2];
-                kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / CellP[j].Density;
+                kernel.alfven2_j = kernel.b2_j * fac_magnetic_pressure / tile.density[n];
                 kernel.alfven2_j = DMIN(kernel.alfven2_j, 1000. * kernel.sound_j*kernel.sound_j);
                 double vcsa2_j = kernel.sound_j*kernel.sound_j + kernel.alfven2_j;
                 double Bpro2_j = (BPred_j[0]*kernel.dp[0] + BPred_j[1]*kernel.dp[1] + BPred_j[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_j *= Bpro2_j;
                 double magneticspeed_j = sqrt(0.5 * (vcsa2_j + sqrt(DMAX((vcsa2_j*vcsa2_j -
-                        4 * kernel.sound_j*kernel.sound_j * Bpro2_j*fac_magnetic_pressure/CellP[j].Density), 0))));
+                        4 * kernel.sound_j*kernel.sound_j * Bpro2_j*fac_magnetic_pressure/tile.density[n]), 0))));
                 double Bpro2_i = (local.BPred[0]*kernel.dp[0] + local.BPred[1]*kernel.dp[1] + local.BPred[2]*kernel.dp[2]) / kernel.r;
                 Bpro2_i *= Bpro2_i;
                 double magneticspeed_i = sqrt(0.5 * (vcsa2_i + sqrt(DMAX((vcsa2_i*vcsa2_i -
@@ -228,7 +235,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #ifdef ENERGY_ENTROPY_SWITCH_IS_ACTIVE
                 double KE = kernel.dv.norm_sq();
                 if(KE > out.MaxKineticEnergyNgb) {out.MaxKineticEnergyNgb = KE;}
-                if(j_is_active_for_fluxes) {if(KE > CellP[j].MaxKineticEnergyNgb) CellP[j].MaxKineticEnergyNgb = KE;}
+                if(j_is_active_for_fluxes) {if(KE > tile.max_ke_ngb[n]) CellP.MaxKineticEnergyNgb[j] = KE;}
 #endif
 #ifdef TURB_DIFF_METALS
                 double mdot_estimated = 0;
@@ -238,11 +245,11 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
                 
                 /* --------------------------------------------------------------------------------- */
-                /* calculate the kernel functions (centered on both 'i' and 'j') */
+                /* calculate the kernel functions (centered on both 'i' and 'j') — branchless for SIMD */
                 if(kernel.r < kernel.h_i)
                 {
                     u = kernel.r * hinv_i;
-                    kernel_main(u, hinv3_i, hinv4_i, &kernel.wk_i, &kernel.dwk_i, kernel_mode);
+                    kernel_main_branchless(u, hinv3_i, hinv4_i, &kernel.wk_i, &kernel.dwk_i);
                 }
                 else
                 {
@@ -253,7 +260,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 {
                     kernel_hinv(kernel.h_j, &hinv_j, &hinv3_j, &hinv4_j);
                     u = kernel.r * hinv_j;
-                    kernel_main(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j, kernel_mode);
+                    kernel_main_branchless(u, hinv3_j, hinv4_j, &kernel.wk_j, &kernel.dwk_j);
                 }
                 else
                 {
@@ -291,7 +298,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                     face_vel_j += VelPred_j[k] * kernel.dp[k] / (kernel.r * All.cf_atime);
                 }
                 // SPH: use the sph 'effective areas' oriented along the lines between particles and direct-difference gradients
-                Face_Area_Norm = local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * CellP[j].Density) * All.cf_atime*All.cf_atime;
+                Face_Area_Norm = local.Mass * tile.mass[n] * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * tile.density[n]) * All.cf_atime*All.cf_atime;
                 Face_Area_Vec = kernel.dp * (Face_Area_Norm / kernel.r);
 #endif
 
@@ -360,25 +367,25 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 /* --------------------------------------------------------------------------------- */
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
                 double dmass_holder = Fluxes.rho * dt_hydrostep_i, dmass_limiter;
-                if(dmass_holder > 0) {dmass_limiter=P[j].Mass;} else {dmass_limiter=local.Mass;}
+                if(dmass_holder > 0) {dmass_limiter=tile.mass[n];} else {dmass_limiter=local.Mass;}
                 dmass_limiter *= 0.1;
                 if(fabs(dmass_holder) > dmass_limiter) {dmass_holder *= dmass_limiter / fabs(dmass_holder);}
                 if((local.dt_hydrostep_i < dt_hydrostep_j) || (local.dt_hydrostep_i==dt_hydrostep_j && j_is_active_for_fluxes==1)) {
                     out.dMass += FluxCorrectionFactor_to_i * dmass_holder;
                     #pragma omp atomic
-                    CellP[j].dMass -= FluxCorrectionFactor_to_j * dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
+                    CellP.dMass[j] -= FluxCorrectionFactor_to_j * dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
                 }
                 if(local.dt_hydrostep_i==dt_hydrostep_j && j_is_active_for_fluxes==0) {
                     out.dMass += FluxCorrectionFactor_to_i * 0.5*dmass_holder;
                     #pragma omp atomic
-                    CellP[j].dMass -= FluxCorrectionFactor_to_j * 0.5*dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
+                    CellP.dMass[j] -= FluxCorrectionFactor_to_j * 0.5*dmass_holder; // here to ensure machine-accurate conservation with different timesteps we need to set this: careful to be thread-safe
                 }
                  /* this gets subtracted here to ensure the exchange is exact */
                 out.DtMass += FluxCorrectionFactor_to_i * Fluxes.rho;
                 Vec3<double> gravwork = kernel.dp * Fluxes.rho;
                 out.GravWorkTerm += gravwork * FluxCorrectionFactor_to_i;
 #ifdef METALS   /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
-                if(Fluxes.rho > 0) {out.Dyield[k] += FluxCorrectionFactor_to_i * (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;}
+                if(Fluxes.rho > 0) {out.Dyield[k] += FluxCorrectionFactor_to_i * (tile.metallicity[n][k] - local.Metallicity[k]) * dmass_holder;}
 #endif
 #endif
                 for(k=0;k<3;k++) {out.Acc[k] += FluxCorrectionFactor_to_i * Fluxes.v[k];}
@@ -418,40 +425,40 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 if(j_is_active_for_fluxes)
                 {
 #ifdef HYDRO_MESHLESS_FINITE_VOLUME
-                    CellP[j].DtMass -= FluxCorrectionFactor_to_j * Fluxes.rho;
-                    CellP[j].GravWorkTerm -= gravwork * FluxCorrectionFactor_to_j;
+                    CellP.DtMass[j] -= FluxCorrectionFactor_to_j * Fluxes.rho;
+                    CellP.GravWorkTerm[j] -= gravwork * FluxCorrectionFactor_to_j;
 #ifdef METALS       /* if we have mass fluxes, we need to have metal fluxes if we're using them (or any other passive scalars) */
-                    if(Fluxes.rho < 0) {CellP[j].Dyield[k] = FluxCorrectionFactor_to_j * (P[j].Metallicity[k] - local.Metallicity[k]) * dmass_holder;}
+                    if(Fluxes.rho < 0) {CellP.Dyield[j][k] = FluxCorrectionFactor_to_j * (tile.metallicity[n][k] - local.Metallicity[k]) * dmass_holder;}
 #endif
 #endif
-                    for(k=0;k<3;k++) {CellP[j].HydroAccel[k] -= FluxCorrectionFactor_to_j * Fluxes.v[k];}
-                    CellP[j].DtInternalEnergy -= FluxCorrectionFactor_to_j * Fluxes.p;
+                    for(k=0;k<3;k++) {CellP.HydroAccel[j][k] -= FluxCorrectionFactor_to_j * Fluxes.v[k];}
+                    CellP.DtInternalEnergy[j] -= FluxCorrectionFactor_to_j * Fluxes.p;
 #ifdef MAGNETIC
 #ifndef HYDRO_SPH
-                    CellP[j].Face_Area -= Face_Area_Vec;
+                    CellP.Face_Area[j] -= Face_Area_Vec;
 #endif
 #ifndef FREEZE_HYDRO
-                    for(k=0;k<3;k++) {CellP[j].DtB[k] -= FluxCorrectionFactor_to_j * Fluxes.B[k];}
-                    CellP[j].divB -= Fluxes.B_normal_corrected;
+                    for(k=0;k<3;k++) {CellP.DtB[j][k] -= FluxCorrectionFactor_to_j * Fluxes.B[k];}
+                    CellP.divB[j] -= Fluxes.B_normal_corrected;
 #if defined(DIVBCLEANING_DEDNER) && defined(HYDRO_MESHLESS_FINITE_VOLUME) // mass-based phi-flux
-                    CellP[j].DtPhi -= FluxCorrectionFactor_to_j * Fluxes.phi;
+                    CellP.DtPhi[j] -= FluxCorrectionFactor_to_j * Fluxes.phi;
 #endif
 #ifdef HYDRO_SPH
-                    for(k=0;k<3;k++) {CellP[j].DtInternalEnergy -= FluxCorrectionFactor_to_j * magfluxv[k]*VelPred_j[k]/All.cf_atime;}
-                    CellP[j].DtInternalEnergy += FluxCorrectionFactor_to_j * resistivity_heatflux;
+                    for(k=0;k<3;k++) {CellP.DtInternalEnergy[j] -= FluxCorrectionFactor_to_j * magfluxv[k]*VelPred_j[k]/All.cf_atime;}
+                    CellP.DtInternalEnergy[j] += FluxCorrectionFactor_to_j * resistivity_heatflux;
 #else
                     double wt_face_sum = Face_Area_Norm * (-face_area_dot_vel+face_vel_j);
-                    CellP[j].DtInternalEnergy -= FluxCorrectionFactor_to_j * 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
+                    CellP.DtInternalEnergy[j] -= FluxCorrectionFactor_to_j * 0.5 * kernel.b2_j*All.cf_a2inv*All.cf_a2inv * wt_face_sum;
 #ifdef DIVBCLEANING_DEDNER
                     for(k=0; k<3; k++)
                     {
-                        CellP[j].DtB_PhiCorr[k] -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_db * Face_Area_Vec[k];
-                        CellP[j].DtB[k] -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_mean * Face_Area_Vec[k];
-                        CellP[j].DtInternalEnergy -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
+                        CellP.DtB_PhiCorr[j][k] -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_db * Face_Area_Vec[k];
+                        CellP.DtB[j][k] -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_mean * Face_Area_Vec[k];
+                        CellP.DtInternalEnergy[j] -= FluxCorrectionFactor_to_j * Riemann_out.phi_normal_mean * Face_Area_Vec[k] * BPred_j[k]*All.cf_a2inv;
                     }
 #endif
 #ifdef MHD_NON_IDEAL
-                    for(k=0;k<3;k++) {CellP[j].DtInternalEnergy -= FluxCorrectionFactor_to_j * BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
+                    for(k=0;k<3;k++) {CellP.DtInternalEnergy[j] -= FluxCorrectionFactor_to_j * BPred_j[k]*All.cf_a2inv*bflux_from_nonideal_effects[k];}
 #endif
 #endif
 #endif
@@ -463,13 +470,13 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 /* don't forget to save the signal velocity for time-stepping! */
                 /* --------------------------------------------------------------------------------- */
                 if(kernel.vsig > out.MaxSignalVel) {out.MaxSignalVel = kernel.vsig;}
-                if(j_is_active_for_fluxes) {if(kernel.vsig > CellP[j].MaxSignalVel) CellP[j].MaxSignalVel = kernel.vsig;}
+                if(j_is_active_for_fluxes) {if(kernel.vsig > tile.max_signal_vel[n]) CellP.MaxSignalVel[j] = kernel.vsig;}
 #ifdef WAKEUP
-                if(!(TimeBinActive[P[j].TimeBin]))
+                if(!(TimeBinActive[tile.timebin[n]]))
                 {
-                    if(kernel.vsig > WAKEUP*CellP[j].MaxSignalVel) {
+                    if(kernel.vsig > WAKEUP*tile.max_signal_vel[n]) {
                         #pragma omp atomic write
-                        P[j].wakeup = 1;
+                        P.wakeup[j] = 1;
                         #pragma omp atomic write
                         NeedToWakeupParticles_local = 1;
                     }

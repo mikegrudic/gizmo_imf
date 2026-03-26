@@ -108,30 +108,30 @@ static struct temporary_data_dyndiff {
 
 static inline void particle2in_DynamicDiff(struct DynamicDiffdata_in *in, int i, int dynamic_iteration) {
     int k, v;
-    in->Pos = P[i].Pos;
-    in->Velocity_bar = CellP[i].Velocity_bar;
-    in->Velocity_hat = CellP[i].Velocity_hat;
+    in->Pos = P.Pos[i];
+    in->Velocity_bar = CellP.Velocity_bar[i];
+    in->Velocity_hat = CellP.Velocity_hat[i];
     for (k = 0; k < 3; k++) {
         for (v = 0; v < 3; v++) {
-            in->VelShear_bar[k][v] = CellP[i].VelShear_bar[k][v];
+            in->VelShear_bar[k][v] = CellP.VelShear_bar[i][k][v];
         }
     }
 
-    in->TD_DynDiffCoeff = CellP[i].TD_DynDiffCoeff;
-    in->Density = CellP[i].Density;
-    in->MagShear_bar = CellP[i].MagShear_bar;
-    in->KernelRadius = P[i].KernelRadius;
-    in->Mass = P[i].Mass;
-    in->Norm_hat = CellP[i].Norm_hat;
-    in->FilterWidth_bar = CellP[i].FilterWidth_bar;
-    in->Dynamic_numerator = CellP[i].Dynamic_numerator;
-    in->Dynamic_denominator = CellP[i].Dynamic_denominator;
+    in->TD_DynDiffCoeff = CellP.TD_DynDiffCoeff[i];
+    in->Density = CellP.Density[i];
+    in->MagShear_bar = CellP.MagShear_bar[i];
+    in->KernelRadius = P.KernelRadius[i];
+    in->Mass = P.Mass[i];
+    in->Norm_hat = CellP.Norm_hat[i];
+    in->FilterWidth_bar = CellP.FilterWidth_bar[i];
+    in->Dynamic_numerator = CellP.Dynamic_numerator[i];
+    in->Dynamic_denominator = CellP.Dynamic_denominator[i];
 
 #ifdef GALSF_SUBGRID_WINDS
-    in->DelayTime = CellP[i].DelayTime;
+    in->DelayTime = CellP.DelayTime[i];
 #endif
 
-    if (SHOULD_I_USE_SPH_GRADIENTS(CellP[i].ConditionNumber)) {in->Mass *= -1;}
+    if (SHOULD_I_USE_SPH_GRADIENTS(CellP.ConditionNumber[i])) {in->Mass *= -1;}
 }
 
 
@@ -214,25 +214,25 @@ void dynamic_diff_calc(void) {
 
     /* Because of smoothing operation, we don't zero these out, they get set to their current value */
     for (int i : ActiveParticleList) {
-        if (P[i].Type == 0) {
+        if (P.Type[i] == 0) {
             memset(&DynamicDiffDataPasser[i], 0, sizeof(struct temporary_data_dyndiff));
 
             /* A little optimization to save calculating this 9 times per active particle */
-            prefactor = CellP[i].TD_DynDiffCoeff * CellP[i].FilterWidth_bar * CellP[i].FilterWidth_bar * CellP[i].MagShear_bar * smoothInv;
+            prefactor = CellP.TD_DynDiffCoeff[i] * CellP.FilterWidth_bar[i] * CellP.FilterWidth_bar[i] * CellP.MagShear_bar[i] * smoothInv;
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
-            double prefactor_error = CellP[i].FilterWidth_bar * CellP[i].FilterWidth_bar * CellP[i].MagShear_bar * smoothInv;
+            double prefactor_error = CellP.FilterWidth_bar[i] * CellP.FilterWidth_bar[i] * CellP.MagShear_bar[i] * smoothInv;
 #endif
 
-            DynamicDiffDataPasser[i].Dynamic_numerator_hat = CellP[i].Dynamic_numerator * smoothInv;
-            DynamicDiffDataPasser[i].Dynamic_denominator_hat = CellP[i].Dynamic_denominator * smoothInv;
+            DynamicDiffDataPasser[i].Dynamic_numerator_hat = CellP.Dynamic_numerator[i] * smoothInv;
+            DynamicDiffDataPasser[i].Dynamic_denominator_hat = CellP.Dynamic_denominator[i] * smoothInv;
 
             for (j = 0; j < 3; j++) {
                 for (k = 0; k < 3; k++) {
-                    DynamicDiffDataPasser[i].dynamic_fac[j][k] = prefactor * CellP[i].VelShear_bar[j][k];
-                    DynamicDiffDataPasser[i].ProductVelocity_hat[j][k] = CellP[i].Velocity_bar[j] * CellP[i].Velocity_bar[k] * smoothInv;
+                    DynamicDiffDataPasser[i].dynamic_fac[j][k] = prefactor * CellP.VelShear_bar[i][j][k];
+                    DynamicDiffDataPasser[i].ProductVelocity_hat[j][k] = CellP.Velocity_bar[i][j] * CellP.Velocity_bar[i][k] * smoothInv;
 
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
-                    DynamicDiffDataPasser[i].dynamic_fac_const[j][k] = prefactor_error * CellP[i].VelShear_bar[j][k];
+                    DynamicDiffDataPasser[i].dynamic_fac_const[j][k] = prefactor_error * CellP.VelShear_bar[i][j][k];
 #endif
                 }
             }
@@ -493,36 +493,36 @@ void dynamic_diff_calc(void) {
         { 
             /* Now that we have finished preliminaries, need to do the coefficient calculation */
             for (int i : ActiveParticleList) {
-                if (P[i].Type == 0) {
+                if (P.Type[i] == 0) {
 #ifdef GALSF_SUBGRID_WINDS
-                    if (CellP[i].DelayTime > 0) continue; /* Leave C_s alone for wind particles */
+                    if (CellP.DelayTime[i] > 0) continue; /* Leave C_s alone for wind particles */
 #endif
                     double VelShear_hat[3][3];
 
                     shear_factor = 0;
                     dynamic_denominator = 0;
-                    CellP[i].Dynamic_numerator = 0;
-                    CellP[i].Dynamic_denominator = 0;
+                    CellP.Dynamic_numerator[i] = 0;
+                    CellP.Dynamic_denominator[i] = 0;
                     trace = trace_dynamic_fac = 0;
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
-                    CellP[i].TD_DynDiffCoeff_error = 0;
-                    CellP[i].TD_DynDiffCoeff_error_default = 0;
+                    CellP.TD_DynDiffCoeff_error[i] = 0;
+                    CellP.TD_DynDiffCoeff_error_default[i] = 0;
                     trace_dynamic_fac_const = 0;
 #endif
-                    hhat2 = All.TurbDynamicDiffFac * All.TurbDynamicDiffFac * P[i].KernelRadius * P[i].KernelRadius;
+                    hhat2 = All.TurbDynamicDiffFac * All.TurbDynamicDiffFac * P.KernelRadius[i] * P.KernelRadius[i];
           
                     /* We must construct grad(v_hat) before moving on */
                     if (dynamic_iteration == 0) {
                         double stol = 0.0;
 
-                        double h_lim = DMAX(P[i].KernelRadius, CellP[i].MaxDistance_for_grad);
+                        double h_lim = DMAX(P.KernelRadius[i], CellP.MaxDistance_for_grad[i]);
                         double a_limiter = 0.25;
-                        if (CellP[i].ConditionNumber > 100) {
-                            a_limiter = 2.0 * DMIN(0.5, 0.25 + 0.25 * (CellP[i].ConditionNumber - 100) / 100);
+                        if (CellP.ConditionNumber[i] > 100) {
+                            a_limiter = 2.0 * DMIN(0.5, 0.25 + 0.25 * (CellP.ConditionNumber[i] - 100) / 100);
                         }
   
 #if (SLOPE_LIMITER_TOLERANCE > 1)
-                        h_lim = P[i].KernelRadius;
+                        h_lim = P.KernelRadius[i];
                         a_limiter *= 0.5;
                         stol = 0.125;
 #endif
@@ -533,7 +533,7 @@ void dynamic_diff_calc(void) {
                         }
 
                         /* Slope-limit the VelShear_hat tensor */
-                        double shearfac_max = 0.5 * sqrt(CellP[i].Velocity_hat[0] * CellP[i].Velocity_hat[0] + CellP[i].Velocity_hat[1] * CellP[i].Velocity_hat[1]+CellP[i].Velocity_hat[2] * CellP[i].Velocity_hat[2]) / CellP[i].h_turb;
+                        double shearfac_max = 0.5 * sqrt(CellP.Velocity_hat[i][0] * CellP.Velocity_hat[i][0] + CellP.Velocity_hat[i][1] * CellP.Velocity_hat[i][1]+CellP.Velocity_hat[i][2] * CellP.Velocity_hat[i][2]) / CellP.h_turb[i];
 
                         for (k = 0; k < 3; k++) {
                             for (v = 0; v < 3; v++) {
@@ -566,7 +566,7 @@ void dynamic_diff_calc(void) {
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
                             dynamic_denominator += VelShear_hat[k][v] * VelShear_hat[k][v];
-                            leonardTensor[k][v] = All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].ProductVelocity_hat[k][v] - CellP[i].Velocity_hat[k] * CellP[i].Velocity_hat[v];
+                            leonardTensor[k][v] = All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].ProductVelocity_hat[k][v] - CellP.Velocity_hat[i][k] * CellP.Velocity_hat[i][v];
 
                             if (k == v) {
                                 trace += leonardTensor[k][k];
@@ -601,28 +601,28 @@ void dynamic_diff_calc(void) {
 
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
-                            CellP[i].Dynamic_numerator += (leonardTensor[k][v] - 2.0 * All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].dynamic_fac[k][v]) * VelShear_hat[k][v];
+                            CellP.Dynamic_numerator[i] += (leonardTensor[k][v] - 2.0 * All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].dynamic_fac[k][v]) * VelShear_hat[k][v];
                         }
                     }
 
-                    CellP[i].Dynamic_denominator = DynamicDiffDataPasser[i].FilterWidth_hat * DynamicDiffDataPasser[i].FilterWidth_hat * shear_factor * dynamic_denominator;
+                    CellP.Dynamic_denominator[i] = DynamicDiffDataPasser[i].FilterWidth_hat * DynamicDiffDataPasser[i].FilterWidth_hat * shear_factor * dynamic_denominator;
 
                     if (DynamicDiffDataPasser[i].Dynamic_denominator_hat != 0) {
                         /* There should be a factor of All.TurbDynamicDiffSmoothing in numerator and denominator, but it cancels out */
-                        CellP[i].TD_DynDiffCoeff = -0.5 * DynamicDiffDataPasser[i].Dynamic_numerator_hat / DynamicDiffDataPasser[i].Dynamic_denominator_hat;
+                        CellP.TD_DynDiffCoeff[i] = -0.5 * DynamicDiffDataPasser[i].Dynamic_numerator_hat / DynamicDiffDataPasser[i].Dynamic_denominator_hat;
                     }
                     else {
-                        CellP[i].TD_DynDiffCoeff = 0;
+                        CellP.TD_DynDiffCoeff[i] = 0;
                     }
 
-                    CellP[i].TD_DynDiffCoeff = DMIN(DMAX(0, CellP[i].TD_DynDiffCoeff), All.TurbDynamicDiffMax);
+                    CellP.TD_DynDiffCoeff[i] = DMIN(DMAX(0, CellP.TD_DynDiffCoeff[i]), All.TurbDynamicDiffMax);
 
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
                     double error[3][3], trace_error = 0, defaultError[3][3], trace_defaultError = 0, leonardTensorMag = 0;
 
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
-                            error[k][v] = leonardTensor[k][v] - (-2.0 * CellP[i].TD_DynDiffCoeff * DynamicDiffDataPasser[i].FilterWidth_hat * DynamicDiffDataPasser[i].FilterWidth_hat * shear_factor * VelShear_hat[k][v] + 2.0 * All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].dynamic_fac[k][v]);
+                            error[k][v] = leonardTensor[k][v] - (-2.0 * CellP.TD_DynDiffCoeff[i] * DynamicDiffDataPasser[i].FilterWidth_hat * DynamicDiffDataPasser[i].FilterWidth_hat * shear_factor * VelShear_hat[k][v] + 2.0 * All.TurbDynamicDiffSmoothing * DynamicDiffDataPasser[i].dynamic_fac[k][v]);
                             defaultError[k][v] = leonardTensor[k][v] - (-2.0 * 0.05 * DynamicDiffDataPasser[i].FilterWidth_hat * DynamicDiffDataPasser[i].FilterWidth_hat * shear_factor * VelShear_hat[k][v] + 2.0 * All.TurbDynamicDiffSmoothing * 0.05 * DynamicDiffDataPasser[i].dynamic_fac_const[k][v]);
                             leonardTensorMag += leonardTensor[k][v] * leonardTensor[k][v];
 
@@ -643,37 +643,37 @@ void dynamic_diff_calc(void) {
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
                             if (k != v) {
-                                CellP[i].TD_DynDiffCoeff_error += error[k][v] * error[k][v];
-                                CellP[i].TD_DynDiffCoeff_error_default += defaultError[k][v] * defaultError[k][v];
+                                CellP.TD_DynDiffCoeff_error[i] += error[k][v] * error[k][v];
+                                CellP.TD_DynDiffCoeff_error_default[i] += defaultError[k][v] * defaultError[k][v];
                             }
                         }
                     }
 
-                    CellP[i].TD_DynDiffCoeff_error = sqrt(CellP[i].TD_DynDiffCoeff_error / leonardTensorMag);
-                    CellP[i].TD_DynDiffCoeff_error_default = sqrt(CellP[i].TD_DynDiffCoeff_error_default / leonardTensorMag);
+                    CellP.TD_DynDiffCoeff_error[i] = sqrt(CellP.TD_DynDiffCoeff_error[i] / leonardTensorMag);
+                    CellP.TD_DynDiffCoeff_error_default[i] = sqrt(CellP.TD_DynDiffCoeff_error_default[i] / leonardTensorMag);
 #endif
 
                     /* Contains the actual eddy viscosity like estimate */
-                    CellP[i].TD_DiffCoeff = All.TurbDiffusion_Coefficient * CellP[i].TD_DynDiffCoeff * (CellP[i].h_turb * CellP[i].h_turb * All.cf_atime * All.cf_atime) * (CellP[i].MagShear * All.cf_a2inv); // Physical
+                    CellP.TD_DiffCoeff[i] = All.TurbDiffusion_Coefficient * CellP.TD_DynDiffCoeff[i] * (CellP.h_turb[i] * CellP.h_turb[i] * All.cf_atime * All.cf_atime) * (CellP.MagShear[i] * All.cf_a2inv); // Physical
                     /* Have to update the other coefficients as well with the new value */
 #ifdef TURB_DIFF_ENERGY
-                    CellP[i].Kappa_Conduction = All.ConductionCoeff * CellP[i].TD_DiffCoeff * CellP[i].Density * All.cf_a3inv;
+                    CellP.Kappa_Conduction[i] = All.ConductionCoeff * CellP.TD_DiffCoeff[i] * CellP.Density[i] * All.cf_a3inv;
 #endif
 #ifdef TURB_DIFF_VELOCITY
-                    CellP[i].Eta_ShearViscosity = All.ShearViscosityCoeff * CellP[i].TD_DiffCoeff * CellP[i].Density * All.cf_a3inv;
-                    CellP[i].Zeta_BulkViscosity = All.BulkViscosityCoeff * CellP[i].TD_DiffCoeff * CellP[i].Density * All.cf_a3inv;
+                    CellP.Eta_ShearViscosity[i] = All.ShearViscosityCoeff * CellP.TD_DiffCoeff[i] * CellP.Density[i] * All.cf_a3inv;
+                    CellP.Zeta_BulkViscosity[i] = All.BulkViscosityCoeff * CellP.TD_DiffCoeff[i] * CellP.Density[i] * All.cf_a3inv;
 #endif
 
-                    prefactor = CellP[i].TD_DynDiffCoeff * CellP[i].FilterWidth_bar * CellP[i].FilterWidth_bar * CellP[i].MagShear_bar * smoothInv;
+                    prefactor = CellP.TD_DynDiffCoeff[i] * CellP.FilterWidth_bar[i] * CellP.FilterWidth_bar[i] * CellP.MagShear_bar[i] * smoothInv;
 
                     /* Need to prepare this for the next iteration */
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
                             /* smoothInv is in prefactor */
-                            DynamicDiffDataPasser[i].dynamic_fac[k][v] = prefactor * CellP[i].VelShear_bar[k][v];
+                            DynamicDiffDataPasser[i].dynamic_fac[k][v] = prefactor * CellP.VelShear_bar[i][k][v];
                         }
                     }
-                } /* P[i].Type == 0 */
+                } /* P.Type[i] == 0 */
             } /* Active particle loop */
         } /* dynamic_iteration >= 0 */
         tstart = my_second();
@@ -778,21 +778,21 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
             for (n = 0; n < numngb; n++) {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
 #ifdef GALSF_SUBGRID_WINDS
-                if (local.DelayTime == 0 && CellP[j].DelayTime > 0) continue;
-                if (local.DelayTime > 0 && CellP[j].DelayTime == 0) continue;
+                if (local.DelayTime == 0 && CellP.DelayTime[j] > 0) continue;
+                if (local.DelayTime > 0 && CellP.DelayTime[j] == 0) continue;
 #endif
-                if (P[j].Mass <= 0) continue;
-                if (CellP[j].Density <= 0) continue;
+                if (P.Mass[j] <= 0) continue;
+                if (CellP.Density[j] <= 0) continue;
                 
-                kernel.dp[0] = local.Pos[0] - P[j].Pos[0];
-                kernel.dp[1] = local.Pos[1] - P[j].Pos[1];
-                kernel.dp[2] = local.Pos[2] - P[j].Pos[2];
+                kernel.dp[0] = local.Pos[0] - P.Pos[j][0];
+                kernel.dp[1] = local.Pos[1] - P.Pos[j][1];
+                kernel.dp[2] = local.Pos[2] - P.Pos[j][2];
                 nearest_xyz(kernel.dp);
                 r2 = kernel.dp[0] * kernel.dp[0] + kernel.dp[1] * kernel.dp[1] + kernel.dp[2] * kernel.dp[2];
-                double h_j = All.TurbDynamicDiffFac * P[j].KernelRadius;
+                double h_j = All.TurbDynamicDiffFac * P.KernelRadius[j];
                 double h_avg = 0.5 * (kernel.h_i + h_j);
-                double mean_weight = 0.5 * (CellP[j].Norm_hat + local.Norm_hat) / (local.Norm_hat * CellP[j].Norm_hat);
-                double V_j = P[j].Mass * mean_weight;
+                double mean_weight = 0.5 * (CellP.Norm_hat[j] + local.Norm_hat) / (local.Norm_hat * CellP.Norm_hat[j]);
+                double V_j = P.Mass[j] * mean_weight;
                 if (r2 <= 0) {continue;}
                 if ((r2 >= h2_i) && (r2 >= (h_j * h_j))) {continue;}
                 kernel.r = sqrt(r2);
@@ -806,8 +806,8 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 double weight_i = kernel.wk_i * V_j;
                 if (dynamic_iteration == 0) {
                     /* Need to calculate the filtered velocity gradient for the filtered shear */
-                    double dv_hat[3]; for (k=0;k<3;k++) {dv_hat[k] = CellP[j].Velocity_hat[k] - local.Velocity_hat[k];}
-                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dv_hat,-1); /* wrap velocities for shearing boxes if needed */
+                    double dv_hat[3]; for (k=0;k<3;k++) {dv_hat[k] = CellP.Velocity_hat[j][k] - local.Velocity_hat[k];}
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P.Pos[j],dv_hat,-1); /* wrap velocities for shearing boxes if needed */
                     for (k=0;k<3;k++) {MINMAX_CHECK(dv_hat[k], out.Minima.Velocity_hat[k], out.Maxima.Velocity_hat[k]);}
 
                     double hinv_forgrad, hinv3_forgrad, hinv4_forgrad, u_forgrad, wk_i_forgrad, dwk_i_forgrad;
@@ -816,7 +816,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                         u_forgrad = DMIN(kernel.r * hinv_forgrad, 1.0);
                         kernel_main(u_forgrad, hinv3_forgrad, hinv4_forgrad, &wk_i_forgrad, &dwk_i_forgrad, kernel_mode_i);
 
-                        if(sph_gradients_flag_i) {wk_i_forgrad = -dwk_i_forgrad * P[j].Mass / kernel.r;}
+                        if(sph_gradients_flag_i) {wk_i_forgrad = -dwk_i_forgrad * P.Mass[j] / kernel.r;}
 
                         for (k = 0; k < 3; k++) {
                             double grad_prefactor_i = -wk_i_forgrad * kernel.dp[k];
@@ -826,19 +826,19 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 } /* dynamic_iteration == 0 */
 
                 /* This is a bit of optimization to save 9 times calculating these for each particle */
-                double prefactor_j = CellP[j].FilterWidth_bar * CellP[j].FilterWidth_bar * CellP[j].TD_DynDiffCoeff * CellP[j].MagShear_bar;
+                double prefactor_j = CellP.FilterWidth_bar[j] * CellP.FilterWidth_bar[j] * CellP.TD_DynDiffCoeff[j] * CellP.MagShear_bar[j];
                 double dynamic_fac_diff[3][3], ProductVelocity_diff[3][3], Dynamic_numerator_diff, Dynamic_denominator_diff;
 
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
-                double prefactor_const_j = CellP[j].FilterWidth_bar * CellP[j].FilterWidth_bar * CellP[j].MagShear_bar;
+                double prefactor_const_j = CellP.FilterWidth_bar[j] * CellP.FilterWidth_bar[j] * CellP.MagShear_bar[j];
                 double dynamic_fac_const_diff[3][3];
 #endif
 
                 /* Do particle i */
                 if (kernel.r < h_avg) {
                     if (dynamic_iteration == 0) {
-                        Dynamic_numerator_diff = CellP[j].Dynamic_numerator - local.Dynamic_numerator;
-                        Dynamic_denominator_diff = CellP[j].Dynamic_denominator - local.Dynamic_denominator;
+                        Dynamic_numerator_diff = CellP.Dynamic_numerator[j] - local.Dynamic_numerator;
+                        Dynamic_denominator_diff = CellP.Dynamic_denominator[j] - local.Dynamic_denominator;
 
                         out.Dynamic_numerator_hat += Dynamic_numerator_diff * weight_i;
                         out.Dynamic_denominator_hat += Dynamic_denominator_diff * weight_i;
@@ -846,9 +846,9 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
 
                     for (k = 0; k < 3; k++) {
                         for (v = 0; v < 3; v++) {
-                            dynamic_fac_diff[k][v] = prefactor_j * CellP[j].VelShear_bar[k][v] - prefactor_i * local.VelShear_bar[k][v];
+                            dynamic_fac_diff[k][v] = prefactor_j * CellP.VelShear_bar[j][k][v] - prefactor_i * local.VelShear_bar[k][v];
 #ifdef OUTPUT_TURB_DIFF_DYNAMIC_ERROR
-                            dynamic_fac_const_diff[k][v] = prefactor_const_j * CellP[j].VelShear_bar[k][v] - prefactor_const_i * local.VelShear_bar[k][v];
+                            dynamic_fac_const_diff[k][v] = prefactor_const_j * CellP.VelShear_bar[j][k][v] - prefactor_const_i * local.VelShear_bar[k][v];
 #endif
 
                             out_iter.dynamic_fac[k][v] += dynamic_fac_diff[k][v] * weight_i;
@@ -857,7 +857,7 @@ int DynamicDiff_evaluate(int target, int mode, int *exportflag, int *exportnodec
 #endif
 
                             if (dynamic_iteration == 0) {
-                                ProductVelocity_diff[k][v] = CellP[j].Velocity_bar[k] * CellP[j].Velocity_bar[v] - local.Velocity_bar[k] * local.Velocity_bar[v];
+                                ProductVelocity_diff[k][v] = CellP.Velocity_bar[j][k] * CellP.Velocity_bar[j][v] - local.Velocity_bar[k] * local.Velocity_bar[v];
                                 out.ProductVelocity_hat[k][v] += ProductVelocity_diff[k][v] * weight_i;
                             }
                         }
@@ -930,7 +930,7 @@ void *DynamicDiff_evaluate_primary(void *p, int dynamic_iteration) {
         if(exitFlag) break;
         if(ProcessedFlag[i]) {continue;}
 
-        if(P[i].Type == 0) {
+        if(P.Type[i] == 0) {
 	    if(DynamicDiff_evaluate(i, 0, exportflag, exportnodecount, exportindex, ngblist, dynamic_iteration) < 0) break;		/* export buffer has filled up */
         }
 

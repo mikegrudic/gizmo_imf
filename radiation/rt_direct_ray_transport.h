@@ -11,9 +11,9 @@
 /* --------------------------------------------------------------------------------- */
 
 #if defined(RT_EVOLVE_INTENSITIES)
-if(local.Mass>0 && P[j].Mass>0 && dt_hydrostep>0 && Face_Area_Norm>0)
+if(local.Mass>0 && P.Mass[j]>0 && dt_hydrostep>0 && Face_Area_Norm>0)
 {
-    double c_light_eff=C_LIGHT_CODE_REDUCED(j), rsol_fac=c_light_eff/C_LIGHT_CODE, V_i_invphys=All.cf_a3inv/V_i, V_j_invphys=All.cf_a3inv/V_j, vfluid_minus_vface_dotA=0, cminusv_n_dotA[N_RT_INTENSITY_BINS]={0}, sigma_j=Particle_Size_j*(CellP[j].Density*All.cf_a3inv); int k_freq, k_angle;
+    double c_light_eff=C_LIGHT_CODE_REDUCED(j), rsol_fac=c_light_eff/C_LIGHT_CODE, V_i_invphys=All.cf_a3inv/V_i, V_j_invphys=All.cf_a3inv/V_j, vfluid_minus_vface_dotA=0, cminusv_n_dotA[N_RT_INTENSITY_BINS]={0}, sigma_j=Particle_Size_j*(CellP.Density[j]*All.cf_a3inv); int k_freq, k_angle;
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && (HYDRO_FIX_MESH_MOTION<5)
     vfluid_minus_vface_dotA = dot(0.5*((ParticleVel_j+local.ParticleVel)-(local.Vel+VelPred_j))/All.cf_atime, Face_Area_Vec); // frame velocity, not fluid velocity, is what appears here. physical units
 #endif
@@ -22,15 +22,15 @@ if(local.Mass>0 && P[j].Mass>0 && dt_hydrostep>0 && Face_Area_Norm>0)
     for(k_freq=0; k_freq<N_RT_FREQ_BINS; k_freq++)
     {
         // following Jiang et al. we reduce the advection speed here when the cell optical depth is large
-        double tau_c_j = CellP[j].Rad_Kappa[k_freq] * sigma_j; // = L_particle / (lambda_mean_free_path) = L*kappa*rho (physical) //
+        double tau_c_j = CellP.Rad_Kappa[j][k_freq] * sigma_j; // = L_particle / (lambda_mean_free_path) = L*kappa*rho (physical) //
         double q_tau = 10. * 0.5*(tau_c_i[k_freq]+tau_c_j), a_tau=1; if(q_tau>3.5) {a_tau=1./q_tau;} else {if(q_tau<0.1) {a_tau=1.-0.25*q_tau*q_tau;} else {a_tau=sqrt(1.-exp(-q_tau*q_tau))/q_tau;}}
 
         for(k_angle=0; k_angle<N_RT_INTENSITY_BINS; k_angle++)
         {
-            double scalar_ij = 0.5*(local.Rad_Intensity_Pred[k_freq][k_angle]*V_i_invphys + CellP[j].Rad_Intensity_Pred[k_freq][k_angle]*V_j_invphys); // physical
+            double scalar_ij = 0.5*(local.Rad_Intensity_Pred[k_freq][k_angle]*V_i_invphys + CellP.Rad_Intensity_Pred[j][k_freq][k_angle]*V_j_invphys); // physical
             double cmag = scalar_ij * (vfluid_minus_vface_dotA + a_tau*cminusv_n_dotA[k_angle]); // 0th-order flux
             out.Dt_Rad_Intensity[k_freq][k_angle] += FluxCorrectionFactor_to_i * cmag;
-            if(j_is_active_for_fluxes) {CellP[j].Dt_Rad_Intensity[k_freq][k_angle] -= FluxCorrectionFactor_to_j * cmag;}
+            if(j_is_active_for_fluxes) {CellP.Dt_Rad_Intensity[j][k_freq][k_angle] -= FluxCorrectionFactor_to_j * cmag;}
         }
     }
 }

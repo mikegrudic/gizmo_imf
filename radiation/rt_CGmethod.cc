@@ -68,11 +68,11 @@ void *rt_diffusion_cg_evaluate_secondary(void *p, double **matrixmult_in, double
 void particle2in_rt_cg(struct rt_cg_data_in *in, int i)
 {
     int k;
-    in->Pos = P[i].Pos;
-    for(k=0;k<N_RT_FREQ_BINS;k++) {in->ET[k] = CellP[i].ET[k];}
-    in->KernelRadius = P[i].KernelRadius;
-    in->Mass = P[i].Mass;
-    in->Density = CellP[i].Density;
+    in->Pos = P.Pos[i];
+    for(k=0;k<N_RT_FREQ_BINS;k++) {in->ET[k] = CellP.ET[i][k];}
+    in->KernelRadius = P.KernelRadius[i];
+    in->Mass = P.Mass[i];
+    in->Density = CellP.Density[i];
     for(k=0; k<N_RT_FREQ_BINS; k++) in->RT_DiffusionCoeff[k] = rt_diffusion_coefficient(i,k);
 }
 
@@ -81,7 +81,7 @@ double rt_diffusion_cg_vector_multiply(double *a, double *b)
 {
     int i; double sum, sumall;
     for(i = 0, sum = 0; i < N_gas; i++)
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
             sum += a[i] * b[i];
     MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     return sumall;
@@ -93,7 +93,7 @@ double rt_diffusion_cg_vector_sum(double *a)
 {
     int i; double sum, sumall;
     for(i = 0, sum = 0; i < N_gas; i++)
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
             sum += fabs(a[i]);
     MPI_Allreduce(&sum, &sumall, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     return sumall;
@@ -117,11 +117,11 @@ void rt_diffusion_cg_solve(void)
     /* initialization for the CG method */
     MALLOC_CG(ZVec); MALLOC_CG(XVec); MALLOC_CG(QVec); MALLOC_CG(DVec); MALLOC_CG(Residue); MALLOC_CG(Diag); MALLOC_CG(Diag2); // allocate and zero all the arrays
     for(j = 0; j < N_gas; j++)
-        if(P[j].Type == 0)
+        if(P.Type[j] == 0)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
             {
-                XVec[k][j] = CellP[j].Rad_E_gamma[k] * CellP[j].Density / (1.e-37+P[j].Mass); /* define the coefficients: note we need energy densities for this operation */
-                CellP[j].Rad_E_gamma[k] += dt * CellP[j].Rad_Je[k]; /* -then- add the source terms */
+                XVec[k][j] = CellP.Rad_E_gamma[j][k] * CellP.Density[j] / (1.e-37+P.Mass[j]); /* define the coefficients: note we need energy densities for this operation */
+                CellP.Rad_E_gamma[j][k] += dt * CellP.Rad_Je[j][k]; /* -then- add the source terms */
             }
  
     /* do a first pass of our 'workhorse' routine, which lets us pre-condition to improve convergence */
@@ -131,9 +131,9 @@ void rt_diffusion_cg_solve(void)
     for(k = 0; k < N_RT_FREQ_BINS; k++)
     {
         for(j = 0; j < N_gas; j++)
-            if(P[j].Type == 0)
+            if(P.Type[j] == 0)
             {                
-                Residue[k][j] = CellP[j].Rad_E_gamma[k] * CellP[j].Density / (1.e-37+P[j].Mass) - Residue[k][j]; // note: source terms have been added here to Rad_E_gamma //
+                Residue[k][j] = CellP.Rad_E_gamma[j][k] * CellP.Density[j] / (1.e-37+P.Mass[j]) - Residue[k][j]; // note: source terms have been added here to Rad_E_gamma //
                 /* note: in principle we would have to substract the w_ii term, but this is zero by definition */
                 ZVec[k][j] = Residue[k][j] / Diag[k][j];
                 DVec[k][j] = ZVec[k][j];
@@ -186,9 +186,9 @@ void rt_diffusion_cg_solve(void)
     PRINT_STATUS("%d iterations performed\n", iter);
     /* update the intensity */
     for(j = 0; j < N_gas; j++)
-        if(P[j].Type == 0)
+        if(P.Type[j] == 0)
             for(k = 0; k < N_RT_FREQ_BINS; k++)
-                CellP[j].Rad_E_gamma[k] = DMAX(XVec[k][j],0) * P[j].Mass / CellP[j].Density; // convert back to an absolute energy, instead of a density //
+                CellP.Rad_E_gamma[j][k] = DMAX(XVec[k][j],0) * P.Mass[j] / CellP.Density[j]; // convert back to an absolute energy, instead of a density //
     
     /* free memory */
     free(Diag2);
@@ -396,7 +396,7 @@ void rt_diffusion_cg_matrix_multiply(double **matrixmult_in, double **matrixmult
     /* do final operations on results */
     {double dt = (All.Radiation_Ti_endstep - All.Radiation_Ti_begstep) * UNIT_INTEGERTIME_IN_PHYSICAL(-1); int i;
     for(i = 0; i < N_gas; i++)
-        if(P[i].Type == 0) {
+        if(P.Type[i] == 0) {
             for(k = 0; k < N_RT_FREQ_BINS; k++) {
                 double fac_i = dt * rt_absorption_rate(i,k); 
                 if((1 + fac_i + matrixmult_sum[k][i]) < 0) {printf("1 + matrixmult_sum + rate= %g   matrixmult_sum=%g rate=%g i =%d\n", 1 + fac_i + matrixmult_sum[k][i], matrixmult_sum[k][i], fac_i, i); endrun(11111111);}
@@ -435,32 +435,32 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
             for(n = 0; n < numngb_inbox; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Type != 0) continue; // require a gas particle //
-                if(P[j].Mass <= 0) continue; // require the particle has mass //
-                Vec3<double> dp = local.Pos - P[j].Pos;
+                if(P.Type[j] != 0) continue; // require a gas particle //
+                if(P.Mass[j] <= 0) continue; // require the particle has mass //
+                Vec3<double> dp = local.Pos - P.Pos[j];
                 nearest_xyz(dp); /* find the closest image in the given box size */
                 double r2 = dp.norm_sq();
                 if(r2<=0) continue; // same particle //
-                if((r2>h2)||(r2>P[j].KernelRadius*P[j].KernelRadius)) continue; // outside kernel //
+                if((r2>h2)||(r2>P.KernelRadius[j]*P.KernelRadius[j])) continue; // outside kernel //
                 // calculate kernel quantities //
                 double r = sqrt(r2), wk, dwk_i=0, dwk_j=0;
                 if(r<local.KernelRadius)
                 {
                     kernel_main(r*hinv, hinv3, hinv4, &wk, &dwk_i, 1);
                 }
-                if(r<P[j].KernelRadius)
+                if(r<P.KernelRadius[j])
                 {
-                    double hinv_j,hinv3_j,hinv4_j; kernel_hinv(P[j].KernelRadius, &hinv_j, &hinv3_j, &hinv4_j);
+                    double hinv_j,hinv3_j,hinv4_j; kernel_hinv(P.KernelRadius[j], &hinv_j, &hinv3_j, &hinv4_j);
                     kernel_main(r*hinv_j, hinv3_j, hinv4_j, &wk, &dwk_j, 1);
                 }
                 
-                double tensor_norm = -dt * (dwk_i*local.Mass/local.Density + dwk_j*P[j].Mass/CellP[j].Density) / r;
+                double tensor_norm = -dt * (dwk_i*local.Mass/local.Density + dwk_j*P.Mass[j]/CellP.Density[j]) / r;
                 if(tensor_norm > 0)
                 {
                     for(k=0;k<N_RT_FREQ_BINS;k++)
                     {
                 
-                        SymmetricTensor2<double> ET_ij; for(int kk=0;kk<6;kk++) {ET_ij.data[kk] = 0.5 * (local.ET[k].data[kk] + CellP[j].ET[k].data[kk]);}
+                        SymmetricTensor2<double> ET_ij; for(int kk=0;kk<6;kk++) {ET_ij.data[kk] = 0.5 * (local.ET[k].data[kk] + CellP.ET[j][k].data[kk]);}
                         double tensor = dot(dp, ET_ij.matvec(dp)) / r2;
                         double kappa_ij = 0.5*(local.RT_DiffusionCoeff[k] + rt_diffusion_coefficient(j,k));
                         double fac = tensor_norm * tensor * kappa_ij;
@@ -499,7 +499,7 @@ int rt_diffusion_cg_evaluate(int target, int mode, double **matrixmult_in, doubl
 /* routine for initial loop of particles on local processor (and determination of which need passing) */
 void *rt_diffusion_cg_evaluate_primary(void *p, double **matrixmult_in, double **matrixmult_out, double **matrixmult_sum)
 {
-#define CONDITION_FOR_EVALUATION if((P[i].Type==0)&&(P[i].NumNgb>0)&&(P[i].KernelRadius>0)&&(P[i].Mass>0))
+#define CONDITION_FOR_EVALUATION if((P.Type[i]==0)&&(P.NumNgb[i]>0)&&(P.KernelRadius[i]>0)&&(P.Mass[i]>0))
 #define EVALUATION_CALL rt_diffusion_cg_evaluate(i,0,matrixmult_in,matrixmult_out,matrixmult_sum,exportflag,exportnodecount,exportindex,ngblist)
 #include "../system/code_block_primary_loop_evaluation.h"
 #undef CONDITION_FOR_EVALUATION

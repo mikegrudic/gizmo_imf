@@ -14,7 +14,7 @@
 /* return photon number density in physical code units */
 double rt_return_photon_number_density(int i, int k)
 {
-    return CellP[i].Rad_E_gamma[k] * (CellP[i].Density*All.cf_a3inv/P[i].Mass) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
+    return CellP.Rad_E_gamma[i][k] * (CellP.Density[i]*All.cf_a3inv/P.Mass[i]) / (rt_nu_eff_eV[k]*ELECTRONVOLT_IN_ERGS/UNIT_ENERGY_IN_CGS);
 }
 
 double rt_photoion_chem_return_temperature(int i, double internal_energy)
@@ -22,7 +22,7 @@ double rt_photoion_chem_return_temperature(int i, double internal_energy)
 #ifdef RT_ILIEV_TEST1
     return 1e4; // use a fixed temp if this special flag for numerical testing is enabled
 #endif
-    double mol_wt = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * CellP[i].Ne);
+    double mol_wt = 4 / (1 + 3 * HYDROGEN_MASSFRAC + 4 * HYDROGEN_MASSFRAC * CellP.Ne[i]);
     return mol_wt * (GAMMA(i)-1) * internal_energy * U_TO_TEMP_UNITS;
 }
 
@@ -156,12 +156,12 @@ void rt_update_chemistry(void)
     c_light_codeunits = C_LIGHT_CODE;
     
     for (int i : ActiveParticleList)
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
             dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-            rho = CellP[i].Density * All.cf_a3inv;
+            rho = CellP.Density[i] * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS * UNIT_MASS_IN_CGS;
-            temp = rt_photoion_chem_return_temperature(i,CellP[i].InternalEnergyPred);
+            temp = rt_photoion_chem_return_temperature(i,CellP.InternalEnergyPred[i]);
             /* collisional ionization rate */
             gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
             /* alpha_B recombination coefficient */
@@ -171,25 +171,25 @@ void rt_update_chemistry(void)
             if(n_photons_vol < 0 || isnan(n_photons_vol))
             {
                 printf("NEGATIVE n_photons_per_volume: %g %d %d \n", n_photons_vol, i, ThisTask);
-                printf("Rad_E_gamma %g mass %g All.cf_a3inv %g \n", CellP[i].Rad_E_gamma[0], P[i].Mass, All.cf_a3inv);
+                printf("Rad_E_gamma %g mass %g All.cf_a3inv %g \n", CellP.Rad_E_gamma[i][0], P.Mass[i], All.cf_a3inv);
                 fflush(stdout); endrun(111);
             }
             
-            A = dtime * gamma_HI * nH * CellP[i].Ne;
+            A = dtime * gamma_HI * nH * CellP.Ne[i];
             B = dtime * c_light_codeunits * n_photons_vol * rt_ion_sigma_HI[RT_FREQ_BIN_H0];
-            CC = dtime * alpha_HII * nH * CellP[i].Ne;
+            CC = dtime * alpha_HII * nH * CellP.Ne[i];
             
             /* semi-implicit scheme for ionization */
-            nHII = CellP[i].HII + B + A;
+            nHII = CellP.HII[i] + B + A;
             nHII /= 1.0 + B + CC + A;
             if(nHII < 0 || nHII > 1 || isnan(nHII))
             {
                 printf("ERROR nHII %g \n", nHII);
                 fflush(stdout); endrun(333);
             }
-            CellP[i].Ne = nHII;
-            CellP[i].HII = nHII;
-            CellP[i].HI = 1.0 - nHII;
+            CellP.Ne[i] = nHII;
+            CellP.HII[i] = nHII;
+            CellP.HI[i] = 1.0 - nHII;
             
 #ifdef RT_CHEM_PHOTOION_HE
             /* collisional ionization rate */
@@ -198,17 +198,17 @@ void rt_update_chemistry(void)
             /* alpha_B recombination coefficient */
             alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
             alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
-            CellP[i].Ne += CellP[i].HeII + 2.0 * CellP[i].HeIII;
-            D = dtime * gamma_HeII * nH * CellP[i].Ne;
-            E = dtime * alpha_HeIII * nH * CellP[i].Ne;
-            F = dtime * gamma_HeI * nH * CellP[i].Ne;
-            J = dtime * alpha_HeII * nH * CellP[i].Ne;
+            CellP.Ne[i] += CellP.HeII[i] + 2.0 * CellP.HeIII[i];
+            D = dtime * gamma_HeII * nH * CellP.Ne[i];
+            E = dtime * alpha_HeIII * nH * CellP.Ne[i];
+            F = dtime * gamma_HeI * nH * CellP.Ne[i];
+            J = dtime * alpha_HeII * nH * CellP.Ne[i];
             G = 0.0;
             L = 0.0;
             y_fac = (1.0-HYDROGEN_MASSFRAC)/4.0/HYDROGEN_MASSFRAC;
             
-            nHeII = CellP[i].HeII / y_fac;
-            nHeIII = CellP[i].HeIII / y_fac;
+            nHeII = CellP.HeII[i] / y_fac;
+            nHeIII = CellP.HeIII[i] / y_fac;
             nHeII = nHeII + G + F - ((G + F - E) / (1.0 + E)) * nHeIII;
             nHeII /= 1.0 + G + F + D + J + ((G + F - E) / (1.0 + E)) * (D + L);
             if(nHeII < 0 || nHeII > 1 || isnan(nHeII))
@@ -223,15 +223,15 @@ void rt_update_chemistry(void)
                 printf("ERROR nHeIII %g \n", nHeIII); fflush(stdout);
                 endrun(333);
             }
-            CellP[i].Ne = CellP[i].HII + nHeII + 2.0 * nHeIII;
+            CellP.Ne[i] = CellP.HII[i] + nHeII + 2.0 * nHeIII;
             nHeII *= y_fac;
             nHeIII *= y_fac;
-            CellP[i].Ne = CellP[i].HII + nHeII + 2.0 * nHeIII;
-            CellP[i].HeII = nHeII;
-            CellP[i].HeIII = nHeIII;
-            CellP[i].HeI = y_fac - CellP[i].HeII - CellP[i].HeIII;
-            if(CellP[i].HeI < 0) {CellP[i].HeI = 0.0;}
-            if(CellP[i].HeI > y_fac) {CellP[i].HeI = y_fac;}
+            CellP.Ne[i] = CellP.HII[i] + nHeII + 2.0 * nHeIII;
+            CellP.HeII[i] = nHeII;
+            CellP.HeIII[i] = nHeIII;
+            CellP.HeI[i] = y_fac - CellP.HeII[i] - CellP.HeIII[i];
+            if(CellP.HeI[i] < 0) {CellP.HeI[i] = 0.0;}
+            if(CellP.HeI[i] > y_fac) {CellP.HeI[i] = y_fac;}
 #endif
         }
 }
@@ -253,7 +253,7 @@ void rt_update_chemistry(void)
     c_light_codeunits = C_LIGHT_CODE;
     
     for (int i : ActiveParticleList)
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
             /* get the photo-ionization rates*/
             k_HI = 0.0;
@@ -271,38 +271,38 @@ void rt_update_chemistry(void)
             }
             
             dtime = GET_PARTICLE_TIMESTEP_IN_PHYSICAL(i);
-            rho = CellP[i].Density * All.cf_a3inv;
+            rho = CellP.Density[i] * All.cf_a3inv;
             nH = HYDROGEN_MASSFRAC * rho / PROTONMASS_CGS * UNIT_MASS_IN_CGS;
-            temp = rt_photoion_chem_return_temperature(i,CellP[i].InternalEnergyPred);
+            temp = rt_photoion_chem_return_temperature(i,CellP.InternalEnergyPred[i]);
             /* collisional ionization rate */
             gamma_HI = 5.85e-11 * sqrt(temp) * exp(-157809.1 / temp) / (1.0 + sqrt(temp / 1e5)) * fac;
             /* alpha_B recombination coefficient */
             alpha_HII = 2.59e-13 * pow(temp / 1e4, -0.7) * fac;
             
-            A = dtime * gamma_HI * nH * CellP[i].Ne;
+            A = dtime * gamma_HI * nH * CellP.Ne[i];
             B = dtime * k_HI;
-            CC = dtime * alpha_HII * nH * CellP[i].Ne;
+            CC = dtime * alpha_HII * nH * CellP.Ne[i];
             
             /* semi-implicit scheme for ionization */
-            nHII = CellP[i].HII + B + A;
+            nHII = CellP.HII[i] + B + A;
             nHII /= 1.0 + B + CC + A;
             if(nHII < 0 || nHII > 1 || isnan(nHII))
             {
                 printf("ERROR nHII %g \n", nHII);
-                printf("HII %g \n", CellP[i].HII);
+                printf("HII %g \n", CellP.HII[i]);
                 printf("B %g CC %g A %g \n",B,CC,A);
                 printf("alpha HII %g \n",alpha_HII);
                 printf("nH %g \n",nH);
                 printf("fac %g \n",fac);
                 printf("temp %g \n",temp);
-                printf("pressure %g \n",CellP[i].Pressure);
+                printf("pressure %g \n",CellP.Pressure[i]);
                 printf("kHI %g \n",k_HI);
-                printf("Rad_E_gamma %g \n",CellP[i].Rad_E_gamma[0]);
+                printf("Rad_E_gamma %g \n",CellP.Rad_E_gamma[i][0]);
                 fflush(stdout); endrun(333);
             }
-            CellP[i].Ne = nHII;
-            CellP[i].HII = nHII;
-            CellP[i].HI = 1.0 - nHII;
+            CellP.Ne[i] = nHII;
+            CellP.HII[i] = nHII;
+            CellP.HI[i] = 1.0 - nHII;
             
 #ifdef RT_CHEM_PHOTOION_HE
             /* collisional ionization rate */
@@ -311,18 +311,18 @@ void rt_update_chemistry(void)
             /* alpha_B recombination coefficient */
             alpha_HeII = 1.5e-10 * pow(temp, -0.6353) * fac;
             alpha_HeIII = 3.36e-10 / sqrt(temp) * pow(temp / 1e3, -0.2) / (1.0 + pow(temp / 1e6, 0.7)) * fac;
-            CellP[i].Ne += CellP[i].HeII +  2.0 * CellP[i].HeIII;
+            CellP.Ne[i] += CellP.HeII[i] +  2.0 * CellP.HeIII[i];
             
-            D = dtime * gamma_HeII * nH * CellP[i].Ne;
-            E = dtime * alpha_HeIII * nH * CellP[i].Ne;
-            F = dtime * gamma_HeI * nH * CellP[i].Ne;
-            J = dtime * alpha_HeII * nH * CellP[i].Ne;
+            D = dtime * gamma_HeII * nH * CellP.Ne[i];
+            E = dtime * alpha_HeIII * nH * CellP.Ne[i];
+            F = dtime * gamma_HeI * nH * CellP.Ne[i];
+            J = dtime * alpha_HeII * nH * CellP.Ne[i];
             G = dtime * k_HeI;
             L = dtime * k_HeII;
             
             y_fac = (1.0-HYDROGEN_MASSFRAC)/4.0/HYDROGEN_MASSFRAC;
-            nHeII = CellP[i].HeII / y_fac;
-            nHeIII = CellP[i].HeIII / y_fac;
+            nHeII = CellP.HeII[i] / y_fac;
+            nHeIII = CellP.HeIII[i] / y_fac;
             nHeII = nHeII + G + F - ((G + F - E) / (1.0 + E)) * nHeIII;
             nHeII /= 1.0 + G + F + D + J + ((G + F - E) / (1.0 + E)) * (D + L);
             if(nHeII < 0 || nHeII > 1 || isnan(nHeII))
@@ -339,12 +339,12 @@ void rt_update_chemistry(void)
             }
             nHeII *= y_fac;
             nHeIII *= y_fac;
-            CellP[i].Ne = CellP[i].HII + nHeII + 2.0 * nHeIII;
-            CellP[i].HeII = nHeII;
-            CellP[i].HeIII = nHeIII;
-            CellP[i].HeI = y_fac - CellP[i].HeII - CellP[i].HeIII;
-            if(CellP[i].HeI < 0) {CellP[i].HeI = 0.0;}
-            if(CellP[i].HeI > y_fac) {CellP[i].HeI = y_fac;}
+            CellP.Ne[i] = CellP.HII[i] + nHeII + 2.0 * nHeIII;
+            CellP.HeII[i] = nHeII;
+            CellP.HeIII[i] = nHeIII;
+            CellP.HeI[i] = y_fac - CellP.HeII[i] - CellP.HeIII[i];
+            if(CellP.HeI[i] < 0) {CellP.HeI[i] = 0.0;}
+            if(CellP.HeI[i] > y_fac) {CellP.HeI[i] = y_fac;}
 #endif
         }
 }
@@ -368,19 +368,19 @@ void rt_write_chemistry_stats(void)
 #endif
     
     for(i = 0; i < NumPart; i++)
-        if(P[i].Type == 0)
+        if(P.Type[i] == 0)
         {
-            rho = CellP[i].Density * All.cf_a3inv;
+            rho = CellP.Density[i] * All.cf_a3inv;
 #ifndef RT_PHOTOION_MULTIFREQUENCY
             n_photons_vol = rt_return_photon_number_density(i,RT_FREQ_BIN_H0);
-            total_ng += n_photons_vol / 1e53 * P[i].Mass / rho;
+            total_ng += n_photons_vol / 1e53 * P.Mass[i] / rho;
 #endif
 #ifdef RT_CHEM_PHOTOION_HE
-            total_nHeI += CellP[i].HeI * P[i].Mass / rho;
-            total_nHeII += CellP[i].HeII * P[i].Mass / rho;
+            total_nHeI += CellP.HeI[i] * P.Mass[i] / rho;
+            total_nHeII += CellP.HeII[i] * P.Mass[i] / rho;
 #endif
-            total_nHI += CellP[i].HI * P[i].Mass / rho;
-            total_V += P[i].Mass / rho;
+            total_nHI += CellP.HI[i] * P.Mass[i] / rho;
+            total_V += P.Mass[i] / rho;
         }
     MPI_Allreduce(&total_nHI, &total_nHI_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&total_V, &total_V_all, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

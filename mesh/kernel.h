@@ -373,8 +373,69 @@ static inline void kernel_main(double u, double hinv3, double hinv4, double *wk,
     
   if(mode >= 0) {*dwk *= KERNEL_NORM * hinv4;}
   if(mode <= 0) {*wk *= KERNEL_NORM * hinv3;}
-    
+
   return;
+}
+
+
+/* Branchless kernel evaluation for SIMD-friendly batch processing.
+   Evaluates both wk and dwk without branches (uses conditional arithmetic).
+   The compiler can auto-vectorize calls in a tight loop since there are no branches. */
+static inline void kernel_main_branchless(double u, double hinv3, double hinv4, double *wk, double *dwk)
+{
+    double wk_val = 0, dwk_val = 0;
+    /* clamp u to [0,1) — outside handled by caller or masked */
+    double u_clamped = (u < 1.0) ? u : 0.999999; /* avoid branch by clamping */
+    double valid = (u < 1.0) ? 1.0 : 0.0; /* mask: 0 if outside kernel */
+
+#if (KERNEL_FUNCTION == 3) /* cubic spline — branchless */
+    double t1 = 1.0 - u_clamped;
+    double t2 = t1 * t1;
+    double wk_lo = 1.0 + 6.0 * (u_clamped - 1.0) * u_clamped * u_clamped;
+    double wk_hi = 2.0 * t2 * t1;
+    double dwk_lo = u_clamped * (18.0 * u_clamped - 12.0);
+    double dwk_hi = -6.0 * t2;
+    /* branchless select: compiler emits cmov/fcsel */
+    wk_val = (u_clamped < 0.5) ? wk_lo : wk_hi;
+    dwk_val = (u_clamped < 0.5) ? dwk_lo : dwk_hi;
+#elif (KERNEL_FUNCTION == 6) /* Wendland C2 — already branchless */
+    double t1 = 1.0 - u_clamped;
+    double t3 = t1*t1*t1;
+#if (NUMDIMS == 1)
+    dwk_val = -12.0 * u_clamped * t1*t1;
+    wk_val = t3 * (1.0 + 3.0*u_clamped);
+#else
+    dwk_val = -20.0 * u_clamped * t3;
+    wk_val = t3 * t1 * (1.0 + 4.0*u_clamped);
+#endif
+#elif (KERNEL_FUNCTION == 7) /* Wendland C4 — already branchless */
+    double t1 = 1.0 - u_clamped;
+    double t5 = t1*t1; t5 *= t5*t1;
+#if (NUMDIMS == 1)
+    dwk_val = -14.0 * (t5/t1) * u_clamped * (1.0 + 4.0*u_clamped);
+    wk_val = t5 * (1.0 + 5.0*u_clamped + 8.0*u_clamped*u_clamped);
+#else
+    dwk_val = -(56.0/3.0) * t5 * u_clamped * (1.0 + 5.0*u_clamped);
+    wk_val = t5 * t1 * (1.0 + 6.0*u_clamped + (35.0/3.0)*u_clamped*u_clamped);
+#endif
+#else /* fallback for other kernels: use standard kernel_main */
+    kernel_main(u, hinv3, hinv4, &wk_val, &dwk_val, 0);
+    *wk = wk_val; *dwk = dwk_val;
+    return;
+#endif
+    *dwk = valid * dwk_val * KERNEL_NORM * hinv4;
+    *wk = valid * wk_val * KERNEL_NORM * hinv3;
+}
+
+
+/* Batch-4 kernel evaluation: process 4 u-values simultaneously.
+   This is designed so the compiler can auto-vectorize the loop. */
+static inline void kernel_main_batch4(const double u[4], double hinv3, double hinv4,
+                                       double wk_out[4], double dwk_out[4])
+{
+    for(int b = 0; b < 4; b++) {
+        kernel_main_branchless(u[b], hinv3, hinv4, &wk_out[b], &dwk_out[b]);
+    }
 }
 
 

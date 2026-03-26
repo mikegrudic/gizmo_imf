@@ -297,19 +297,11 @@ struct global_data_all_processes All;
 
 
 
-/*! This structure holds all the information that is
- * stored for each particle of the simulation.
- */
-struct particle_data *P,	/*!< holds particle data on local processor */
- *DomainPartBuf;		/*!< buffer for particle data used in domain decomposition */
+/*! SoA storage for particle data. */
+struct particle_soa P, DomainPartBuf;
 
-
-
-/* the following struture holds data that is stored for each gas cell in addition to the collisionless
- * variables.
- */
-struct gas_cell_data *CellP,	/*!< holds gas cell data on local processor */
- *DomainGasBuf;			/*!< buffer for gas cell data in domain decomposition */
+/*! SoA storage for gas cell data. */
+struct cell_soa CellP, DomainGasBuf;
 
 peanokey *DomainKeyBuf;
 

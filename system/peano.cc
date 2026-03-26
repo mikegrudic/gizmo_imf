@@ -95,20 +95,21 @@ int peano_compare_key(const void *a, const void *b)
 void reorder_gas(void)
 {
   int i;
-  struct particle_data Psave, Psource;
-  struct gas_cell_data GasPsave, GasPsource;
   int idsource, idsave, dest;
-#ifdef CHIMES 
+  /* Use scratch indices at the end of the allocated arrays for SoA swap space */
+  int scratch_P = All.MaxPart - 1;       /* scratch slot for P */
+  int scratch_CellP = All.MaxPartGas - 1; /* scratch slot for CellP */
+#ifdef CHIMES
   struct gasVariables gasVarsSave, gasVarsSource;
-#endif 
+#endif
 
   for(i = 0; i < N_gas; i++)
     {
       if(Id[i] != i)
 	{
-	  Psource = P[i];
-	  GasPsource = CellP[i];
-#ifdef CHIMES 
+	  copy_particle_P(P, scratch_P, i);        /* Psource = P[i] */
+	  copy_particle_CellP(CellP, scratch_CellP, i); /* GasPsource = CellP[i] */
+#ifdef CHIMES
 	  gasVarsSource = ChimesGasVars[i];
 #endif
 	  idsource = Id[i];
@@ -116,28 +117,31 @@ void reorder_gas(void)
 
 	  do
 	    {
-	      Psave = P[dest];
-	      GasPsave = CellP[dest];
-#ifdef CHIMES 
+	      /* We need a second scratch for 'save'. Use scratch_P-1 / scratch_CellP-1 */
+	      int save_P = scratch_P - 1;
+	      int save_CellP = scratch_CellP - 1;
+	      copy_particle_P(P, save_P, dest);         /* Psave = P[dest] */
+	      copy_particle_CellP(CellP, save_CellP, dest); /* GasPsave = CellP[dest] */
+#ifdef CHIMES
 	      gasVarsSave = ChimesGasVars[dest];
-#endif 
+#endif
 	      idsave = Id[dest];
 
-	      P[dest] = Psource;
-	      CellP[dest] = GasPsource;
-#ifdef CHIMES 
+	      copy_particle_P(P, dest, scratch_P);       /* P[dest] = Psource */
+	      copy_particle_CellP(CellP, dest, scratch_CellP); /* CellP[dest] = GasPsource */
+#ifdef CHIMES
 	      ChimesGasVars[dest] = gasVarsSource;
-#endif 
+#endif
 	      Id[dest] = idsource;
 
 	      if(dest == i)
 		break;
 
-	      Psource = Psave;
-	      GasPsource = GasPsave;
-#ifdef CHIMES 
-	      gasVarsSource = gasVarsSave; 
-#endif 
+	      copy_particle_P(P, scratch_P, save_P);       /* Psource = Psave */
+	      copy_particle_CellP(CellP, scratch_CellP, save_CellP); /* GasPsource = GasPsave */
+#ifdef CHIMES
+	      gasVarsSource = gasVarsSave;
+#endif
 	      idsource = idsave;
 	      dest = idsource;
 	    }
@@ -150,28 +154,30 @@ void reorder_gas(void)
 void reorder_particles(void)
 {
   int i;
-  struct particle_data Psave, Psource;
   int idsource, idsave, dest;
+  /* Use scratch indices at the end of the allocated array for SoA swap space */
+  int scratch_P = All.MaxPart - 1;
 
   for(i = N_gas; i < NumPart; i++)
     {
       if(Id[i] != i)
 	{
-	  Psource = P[i];
+	  copy_particle_P(P, scratch_P, i);  /* Psource = P[i] */
 	  idsource = Id[i];
 
 	  dest = Id[i];
 
 	  do
 	    {
-	      Psave = P[dest];
+	      int save_P = scratch_P - 1;
+	      copy_particle_P(P, save_P, dest);    /* Psave = P[dest] */
 	      idsave = Id[dest];
-	      P[dest] = Psource;
+	      copy_particle_P(P, dest, scratch_P); /* P[dest] = Psource */
 	      Id[dest] = idsource;
 	      if(dest == i)
 		break;
 
-	      Psource = Psave;
+	      copy_particle_P(P, scratch_P, save_P); /* Psource = Psave */
 	      idsource = idsave;
 	      dest = idsource;
 	    }

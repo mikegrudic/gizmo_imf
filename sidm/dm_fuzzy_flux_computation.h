@@ -4,7 +4,7 @@
 #define DM_FUZZY_USE_SIMPLER_HLL_SOLVER 0    /* determines which solver will be used for DM_FUZZY=0; =1 is the newer, simpler, but more diffusive solver */
 
 
-if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 1 (can easily change if desired)
+if((local.Type==1) && (P.Type[j]==1)) // only acts between DM particles of type 1 (can easily change if desired)
 {
     /* since this isn't a super-expensive calculation, and we need to walk the gravity tree for both 'sides' anyways, we will effectively do this twice each timestep */
     double V_i=local.V_i, V_j=get_particle_volume_ags(j), wt_i=V_i, wt_j=V_j, Face_Area_Vec[3], Face_Area_Norm=0, vface_i_minus_j=0, dv[3]; // calculate densities (in physical units)
@@ -13,7 +13,7 @@ if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 
     for(k=0;k<3;k++)
     {
         Face_Area_Vec[k] = (kernel.wk_i*wt_i * (local.NV_T[k][0]*kernel.dp[0] + local.NV_T[k][1]*kernel.dp[1] + local.NV_T[k][2]*kernel.dp[2]) +
-                            kernel.wk_j*wt_j * (P[j].NV_T[k][0]*kernel.dp[0] + P[j].NV_T[k][1]*kernel.dp[1] + P[j].NV_T[k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
+                            kernel.wk_j*wt_j * (P.NV_T[j][k][0]*kernel.dp[0] + P.NV_T[j][k][1]*kernel.dp[1] + P.NV_T[j][k][2]*kernel.dp[2])) * All.cf_atime*All.cf_atime; // physical units
         Face_Area_Norm += Face_Area_Vec[k]*Face_Area_Vec[k]; // physical units
         dv[k] = kernel.dv[k] / All.cf_atime; // physical units: dp and dv = local - j = R - L, always //
         vface_i_minus_j += dv[k] * Face_Area_Vec[k]; // physical units
@@ -25,23 +25,23 @@ if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 
     {
         dp[k] = kernel.dp[k] * All.cf_atime;
         igrad[k] = fac_g * local.AGS_Gradients_Density[k];
-        jgrad[k] = fac_g * P[j].AGS_Gradients_Density[k];
+        jgrad[k] = fac_g * P.AGS_Gradients_Density[j][k];
         for(m=0;m<3;m++)
         {
             i2grad[k][m] = fac_g2 * local.AGS_Gradients2_Density[k][m];
-            j2grad[k][m] = fac_g2 * P[j].AGS_Gradients2_Density[k][m];
+            j2grad[k][m] = fac_g2 * P.AGS_Gradients2_Density[j][k][m];
         }
     }
     
 #if (DM_FUZZY == 0)
-    double prev_acc = All.G*All.cf_a2inv * P[j].Mass * P[j].OldAcc, flux[3]={0}, dt_egy_Numerical_QuantumPotential=0, m_mean = 0.5*(local.Mass+P[j].Mass), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P[j].Mass/V_j*All.cf_a3inv, dt = local.dtime, AGS_Numerical_QuantumPotential = 0.5*(local.AGS_Numerical_QuantumPotential/V_i + P[j].AGS_Numerical_QuantumPotential/V_j)*All.cf_a3inv;
+    double prev_acc = All.G*All.cf_a2inv * P.Mass[j] * P.OldAcc[j], flux[3]={0}, dt_egy_Numerical_QuantumPotential=0, m_mean = 0.5*(local.Mass+P.Mass[j]), rho_i=local.Mass/V_i*All.cf_a3inv, rho_j=P.Mass[j]/V_j*All.cf_a3inv, dt = local.dtime, AGS_Numerical_QuantumPotential = 0.5*(local.AGS_Numerical_QuantumPotential/V_i + P.AGS_Numerical_QuantumPotential[j]/V_j)*All.cf_a3inv;
     double HLLwt = (0.5*(kernel.wk_i/kernel.hinv3_i + kernel.wk_j/kernel.hinv3_j)) * (0.5*(kernel.h_i+kernel.h_j)/kernel.r); HLLwt = 10.*HLLwt*HLLwt; // strong dissipation terms allowed for very-close particles, where second-derivative diverges, otherwise weak (no diffusion) //
     // actually compute the fluxes now, this is the key routine, below //
 
 #if (DM_FUZZY_USE_SIMPLER_HLL_SOLVER == 0)
     do_dm_fuzzy_flux_computation_old(HLLwt, dt, m_mean, prev_acc, dp, dv, jgrad, igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, AGS_Numerical_QuantumPotential, &dt_egy_Numerical_QuantumPotential);
 #else
-    do_dm_fuzzy_flux_computation(HLLwt, dt, prev_acc, dv, jgrad, igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, P[j].AGS_Numerical_QuantumPotential/V_j*All.cf_a3inv, local.AGS_Numerical_QuantumPotential/V_i*All.cf_a3inv, &dt_egy_Numerical_QuantumPotential);
+    do_dm_fuzzy_flux_computation(HLLwt, dt, prev_acc, dv, jgrad, igrad, j2grad, i2grad, rho_j, rho_i, vface_i_minus_j, Face_Area_Vec, flux, P.AGS_Numerical_QuantumPotential[j]/V_j*All.cf_a3inv, local.AGS_Numerical_QuantumPotential/V_i*All.cf_a3inv, &dt_egy_Numerical_QuantumPotential);
 #endif
     out.AGS_Dt_Numerical_QuantumPotential += dt_egy_Numerical_QuantumPotential; for(k=0;k<3;k++) {out.acc[k] += flux[k] / (local.Mass * All.cf_a2inv);} // assign back to particles
 
@@ -51,17 +51,17 @@ if((local.Type==1) && (P[j].Type==1)) // only acts between DM particles of type 
     double Psi_Re_R, Psi_Re_L, d_Psi_Re_R[3], d_Psi_Re_L[3], v_face[3],
            Psi_Im_R, Psi_Im_L, d_Psi_Im_R[3], d_Psi_Im_L[3], Flux_Re=0, Flux_Im=0, Flux_M=0;
     
-    for(k=0;k<3;k++) {v_face[k] = 0.5*(local.Vel[k]+P[j].Vel[k]) / All.cf_atime;}
+    for(k=0;k<3;k++) {v_face[k] = 0.5*(local.Vel[k]+P.Vel[j][k]) / All.cf_atime;}
     
     dm_fuzzy_reconstruct_and_slopelimit(&Psi_Re_R, d_Psi_Re_R, &Psi_Re_L, d_Psi_Re_L,
                                         local.AGS_Psi_Re, local.AGS_Gradients_Psi_Re, local.AGS_Gradients2_Psi_Re,
-                                        P[j].AGS_Psi_Re_Pred * P[j].AGS_Density / P[j].Mass,
-                                        P[j].AGS_Gradients_Psi_Re, P[j].AGS_Gradients2_Psi_Re, dp);
+                                        P.AGS_Psi_Re_Pred[j] * P.AGS_Density[j] / P.Mass[j],
+                                        P.AGS_Gradients_Psi_Re[j], P.AGS_Gradients2_Psi_Re[j], dp);
 
     dm_fuzzy_reconstruct_and_slopelimit(&Psi_Im_R, d_Psi_Im_R, &Psi_Im_L, d_Psi_Im_L,
                                         local.AGS_Psi_Im, local.AGS_Gradients_Psi_Im, local.AGS_Gradients2_Psi_Im,
-                                        P[j].AGS_Psi_Im_Pred * P[j].AGS_Density / P[j].Mass,
-                                        P[j].AGS_Gradients_Psi_Im, P[j].AGS_Gradients2_Psi_Im, dp);
+                                        P.AGS_Psi_Im_Pred[j] * P.AGS_Density[j] / P.Mass[j],
+                                        P.AGS_Gradients_Psi_Im[j], P.AGS_Gradients2_Psi_Im[j], dp);
 
     double psi2_L = Psi_Re_L*Psi_Re_L + Psi_Im_L*Psi_Im_L, psi2_R = Psi_Re_R*Psi_Re_R + Psi_Im_R*Psi_Im_R;
     /*

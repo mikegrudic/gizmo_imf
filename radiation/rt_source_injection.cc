@@ -25,7 +25,7 @@
 
 
 #define CORE_FUNCTION_NAME rt_sourceinjection_evaluate /*! name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(rt_sourceinjection_active_check(i)) /*! function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(rt_sourceinjection_active_check(i)) /*! function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /*! pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -45,10 +45,10 @@ static struct INPUT_STRUCT_NAME
 void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
     int k;
-    in->Pos = P[i].Pos;
-    in->KernelRadius = P[i].KernelRadius;
-    //if(P[i].Type==0) {in->KernelSum_Around_RT_Source = CellP[i].Density;} else {in->KernelSum_Around_RT_Source = P[i].DensityAroundParticle;}
-    in->KernelSum_Around_RT_Source = P[i].KernelSum_Around_RT_Source;
+    in->Pos = P.Pos[i];
+    in->KernelRadius = P.KernelRadius[i];
+    //if(P.Type[i]==0) {in->KernelSum_Around_RT_Source = CellP.Density[i];} else {in->KernelSum_Around_RT_Source = P.DensityAroundParticle[i];}
+    in->KernelSum_Around_RT_Source = P.KernelSum_Around_RT_Source[i];
     /* luminosity is set to zero here for gas particles because their self-illumination is handled trivially in a single loop, earlier */
     double lum[N_RT_FREQ_BINS];
     int active_check = rt_get_source_luminosity(i,0,lum);
@@ -56,19 +56,19 @@ void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
     dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-    if(P[i].Type == 5) {dt = P[i].dt_since_last_gas_search;}
+    if(P.Type[i] == 5) {dt = P.dt_since_last_gas_search[i];}
 #endif
 #if defined(RT_EVOLVE_FLUX)
-    {int k; for(k=0; k<3; k++) {if(P[i].Type==0) {in->Vel[k] = CellP[i].VelPred[k];} else {in->Vel[k] = P[i].Vel[k];}}}
+    {int k; for(k=0; k<3; k++) {if(P.Type[i]==0) {in->Vel[k] = CellP.VelPred[i][k];} else {in->Vel[k] = P.Vel[i][k];}}}
 #endif
 #endif
-    for(k=0; k<N_RT_FREQ_BINS; k++) {if(P[i].Type==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
+    for(k=0; k<N_RT_FREQ_BINS; k++) {if(P.Type[i]==0 || active_check==0) {in->Luminosity[k]=0;} else {in->Luminosity[k] = lum[k] * dt;}}
 #ifdef RT_REINJECT_ACCRETED_PHOTONS // if this is enabled, we track how many photons the sink has accreted from gas cells and reinject them here, resetting the photon count
-    if(P[i].Type==5 && active_check) {in->Luminosity[N_RT_FREQ_BINS-1] += P[i].Sink_accreted_photon_energy; P[i].Sink_accreted_photon_energy = 0;} // nominally inject into the last, lowest-energy bin, intended for problems where optically-thick IR is getting advected into the sink
+    if(P.Type[i]==5 && active_check) {in->Luminosity[N_RT_FREQ_BINS-1] += P.Sink_accreted_photon_energy[i]; P.Sink_accreted_photon_energy[i] = 0;} // nominally inject into the last, lowest-energy bin, intended for problems where optically-thick IR is getting advected into the sink
 #endif
 #if defined(RT_REPROCESS_INJECTED_PHOTONS) && defined(RT_CHEM_PHOTOION)
     in->Dt = dt;
-    if(P[i].Type>0) {in->Density = P[i].DensityAroundParticle;} else {in->Density = CellP[i].Density;}
+    if(P.Type[i]>0) {in->Density = P.DensityAroundParticle[i];} else {in->Density = CellP.Density[i];}
 #endif
 }
 
@@ -83,7 +83,7 @@ struct OUTPUT_STRUCT_NAME
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {  /* "i" is the particle to which data from structure "out" will be assigned. mode=0 for local communication,
     =1 for data sent back from other processors. you must account for this. */
-    /* example: ASSIGN_ADD(P[i].X,out->X,mode); which is short for: if(mode==0) {P[i].X=out->X;} else {P[i].X+=out->X;} */
+    /* example: ASSIGN_ADD(P.X[i],out->X,mode); which is short for: if(mode==0) {P.X[i]=out->X;} else {P.X[i]+=out->X;} */
 }
 
 
@@ -92,12 +92,12 @@ static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, in
 int rt_sourceinjection_active_check(int i);
 int rt_sourceinjection_active_check(int i)
 {
-    if(P[i].NumNgb <= 0) return 0;
-    if(P[i].KernelRadius <= 0) return 0;
-    if(P[i].Mass <= 0) return 0;
-    if(P[i].KernelSum_Around_RT_Source <= 0) return 0;
+    if(P.NumNgb[i] <= 0) return 0;
+    if(P.KernelRadius[i] <= 0) return 0;
+    if(P.Mass[i] <= 0) return 0;
+    if(P.KernelSum_Around_RT_Source[i] <= 0) return 0;
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-    if(P[i].Type == 5 && !P[i].do_gas_search_this_timestep) return 0;
+    if(P.Type[i] == 5 && !P.do_gas_search_this_timestep[i]) return 0;
 #endif
     double lum[N_RT_FREQ_BINS];
     return rt_get_source_luminosity(i,-1,lum);
@@ -114,12 +114,12 @@ void rt_source_injection_initial_operations_preloop(void)
 
     int j;
     for(j=0;j<NumPart;j++) {
-        if(P[j].Type==0) {
+        if(P.Type[j]==0) {
             double lum[N_RT_FREQ_BINS]; int k;
-            for(k=0;k<N_RT_FREQ_BINS;k++) {CellP[j].Rad_Je[k]=0;} // need to zero -before- calling injection //
+            for(k=0;k<N_RT_FREQ_BINS;k++) {CellP.Rad_Je[j][k]=0;} // need to zero -before- calling injection //
             int active_check = rt_get_source_luminosity(j,0,lum);
             /* here is where we would need to code some source luminosity for the gas */
-            for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {CellP[j].Rad_Je[k]=lum[k];}
+            for(k=0;k<N_RT_FREQ_BINS;k++) if(active_check) {CellP.Rad_Je[j][k]=lum[k];}
         }
     }
 }
@@ -157,19 +157,19 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
             {
                 /* figure out if the neighbor is eligible to receive photons, calculate some useful quantities ahead of time */
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Type != 0) {continue;} // require a gas particle //
-                if(P[j].Mass <= 0) {continue;} // require the particle has mass //
-                Vec3<double> dp = local.Pos - P[j].Pos;
+                if(P.Type[j] != 0) {continue;} // require a gas particle //
+                if(P.Mass[j] <= 0) {continue;} // require the particle has mass //
+                Vec3<double> dp = local.Pos - P.Pos[j];
                 nearest_xyz(dp); /* find the closest image in the given box size  */
                 double r2 = dp.norm_sq(), r, wk;
                 if(r2<=0) {continue;} // same particle //
 #ifdef RT_SINK_ANGLEWEIGHT_PHOTON_INJECTION
-                if((All.TimeStep > 0) && (r2>=h2) && (r2 >= P[j].KernelRadius*P[j].KernelRadius)) {continue;} // outside kernel //
+                if((All.TimeStep > 0) && (r2>=h2) && (r2 >= P.KernelRadius[j]*P.KernelRadius[j])) {continue;} // outside kernel //
 #else
                 if(r2>=h2) {continue;} // outside kernel //
 #endif
 #ifdef SINK_WIND_SPAWN
-                if(P[j].StellarAge==All.Time) {continue;} // This is a wind cell that was just spawned, and is not yet part of the volume partition, so don't inject // 
+                if(P.StellarAge[j]==All.Time) {continue;} // This is a wind cell that was just spawned, and is not yet part of the volume partition, so don't inject // 
 #endif
                 r = sqrt(r2); // useful variables for below
                 
@@ -199,25 +199,25 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 
 #if !defined(RT_INJECT_PHOTONS_DISCRETELY)
                     #pragma omp atomic
-                    CellP[j].Rad_Je[k] += dE; // inject photons as a source term, terms like fluxes, intensities, etc, will all be calculated later
+                    CellP.Rad_Je[j][k] += dE; // inject photons as a source term, terms like fluxes, intensities, etc, will all be calculated later
 #endif
                     
 
 #if defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION) || defined(RT_REPROCESS_INJECTED_PHOTONS)
                     // add discrete photon momentum from un-resolved absorption //
-                    double x_abs = 2. * CellP[j].Rad_Kappa[k] * (CellP[j].Density*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.KernelRadius, r))) * All.cf_atime; // effective optical depth through particle
+                    double x_abs = 2. * CellP.Rad_Kappa[j][k] * (CellP.Density[j]*All.cf_a3inv) * (DMAX(2.*Get_Particle_Size(j), DMAX(local.KernelRadius, r))) * All.cf_atime; // effective optical depth through particle
                     double slabfac_x = x_abs * slab_averaging_function(x_abs); // 1-exp(-x)
                     if(isnan(slabfac_x)||(slabfac_x<=0)) {slabfac_x=0;} else if(slabfac_x>1) {slabfac_x=1;}
 #if !defined(RT_DISABLE_RAD_PRESSURE) && defined(RT_INJECT_PHOTONS_DISCRETELY_ADD_MOMENTUM_FOR_LOCAL_EXTINCTION)
-                    double dv = -slabfac_x * dE / (C_LIGHT_CODE_REDUCED(j) * P[j].Mass); // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
+                    double dv = -slabfac_x * dE / (C_LIGHT_CODE_REDUCED(j) * P.Mass[j]); // total absorbed momentum (needs multiplication by dp[kv]/r for directionality)
                     for(kv=0;kv<3;kv++) {
                         double dv_tmp = dv*(dp[kv]/r)*All.cf_atime;
                         #pragma omp atomic
-                        P[j].Vel[kv] += dv_tmp;
+                        P.Vel[j][kv] += dv_tmp;
                         #pragma omp atomic
-                        CellP[j].VelPred[kv] += dv_tmp;
+                        CellP.VelPred[j][kv] += dv_tmp;
                         #pragma omp atomic
-                        P[j].dp[kv] += dv_tmp * P[j].Mass;
+                        P.dp[j][kv] += dv_tmp * P.Mass[j];
                     } // applies direction and converts to code units
 #endif
 #endif
@@ -255,20 +255,20 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
 #if defined(RT_INJECT_PHOTONS_DISCRETELY)
                     /* now add the actual photon energies */
                     #pragma omp atomic
-                    CellP[j].Rad_E_gamma[k] += dE; // dump discretely (noisier, but works smoothly with large timebin hierarchy)
+                    CellP.Rad_E_gamma[j][k] += dE; // dump discretely (noisier, but works smoothly with large timebin hierarchy)
 #ifdef RT_EVOLVE_ENERGY
                     #pragma omp atomic
-                    CellP[j].Rad_E_gamma_Pred[k] += dE;
+                    CellP.Rad_E_gamma_Pred[j][k] += dE;
 #endif
 #ifdef RT_REPROCESS_INJECTED_PHOTONS
                     if(donation_bin > -1) {
                         #pragma omp atomic
-                        CellP[j].Rad_E_gamma[donation_bin] += dE_donation;
+                        CellP.Rad_E_gamma[j][donation_bin] += dE_donation;
                     } // dump energy to other bin if using sub-grid reprocessing model
 #ifdef RT_EVOLVE_ENERGY
 		            if(donation_bin > -1) {
                         #pragma omp atomic
-                        CellP[j].Rad_E_gamma_Pred[donation_bin] += dE_donation;
+                        CellP.Rad_E_gamma_Pred[j][donation_bin] += dE_donation;
                     }
 #endif
 #endif
@@ -277,38 +277,38 @@ int rt_sourceinjection_evaluate(int target, int mode, int *exportflag, int *expo
                     for(kv=0;kv<N_RT_INTENSITY_BINS;kv++) {
                         double dI_temp = dflux * angle_wt_Inu[N_RT_INTENSITY_BINS];
                         #pragma omp atomic
-                        CellP[j].Rad_Intensity[k][kv] += dI_temp;
+                        CellP.Rad_Intensity[j][k][kv] += dI_temp;
                         #pragma omp atomic
-                        CellP[j].Rad_Intensity_Pred[k][kv] += dI_temp;
+                        CellP.Rad_Intensity_Pred[j][k][kv] += dI_temp;
                     }
 #endif
 
 #if defined(RT_EVOLVE_FLUX) // add relativistic corrections here, which should be there in general. however we will ignore [here] the 'back-reaction' term, since we're assuming the source is a star or something like that, where this would be negligible. gas self gain/loss is handled separately.
                     {int kv; for(kv=0;kv<3;kv++) {dfluxes[kv] += dE * (RSOL_CORRECTION_FACTOR_FOR_VELOCITY_TERMS(j)*local.Vel[kv]/All.cf_atime);}}
 #ifdef GRAIN_RDI_TESTPROBLEM_LIVE_RADIATION_INJECTION
-                    double qtau=(0.75*All.Grain_Q_at_MaxGrainSize)/((All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS)*(All.Grain_Size_Max/UNIT_LENGTH_IN_CGS)), e0=(P[j].Mass/CellP[j].Density)*All.Vertical_Grain_Accel/qtau,tau_tot=All.Dust_to_Gas_Mass_Ratio*qtau,flux_egy_0=C_LIGHT_CODE_REDUCED(j)*DMAX(CellP[j].Rad_E_gamma[k],CellP[j].Rad_E_gamma_Pred[k])/(1.+3.*tau_tot),f0=DMAX(flux_egy_0,DMAX(C_LIGHT_CODE_REDUCED(j)*e0,DMAX(CellP[j].Rad_Flux[k][2],CellP[j].Rad_Flux_Pred[k][2])));
+                    double qtau=(0.75*All.Grain_Q_at_MaxGrainSize)/((All.Grain_Internal_Density/UNIT_DENSITY_IN_CGS)*(All.Grain_Size_Max/UNIT_LENGTH_IN_CGS)), e0=(P.Mass[j]/CellP.Density[j])*All.Vertical_Grain_Accel/qtau,tau_tot=All.Dust_to_Gas_Mass_Ratio*qtau,flux_egy_0=C_LIGHT_CODE_REDUCED(j)*DMAX(CellP.Rad_E_gamma[j][k],CellP.Rad_E_gamma_Pred[j][k])/(1.+3.*tau_tot),f0=DMAX(flux_egy_0,DMAX(C_LIGHT_CODE_REDUCED(j)*e0,DMAX(CellP.Rad_Flux[j][k][2],CellP.Rad_Flux_Pred[j][k][2])));
                     dfluxes[0]=0; dfluxes[1]=0; dfluxes[2]=f0; /* for now, for this special problem setup, we have everything hard-coded here to ensure it obeys the desired flux boundary condition */
                     {
                         #pragma omp atomic
-                        CellP[j].Rad_Flux[k][0]=0;
+                        CellP.Rad_Flux[j][k][0]=0;
                         #pragma omp atomic
-                        CellP[j].Rad_Flux[k][1]=0;
+                        CellP.Rad_Flux[j][k][1]=0;
                         #pragma omp atomic
-                        CellP[j].Rad_Flux[k][2]=0;
+                        CellP.Rad_Flux[j][k][2]=0;
                         #pragma omp atomic
-                        CellP[j].Rad_Flux_Pred[k][0]=0;
+                        CellP.Rad_Flux_Pred[j][k][0]=0;
                         #pragma omp atomic
-                        CellP[j].Rad_Flux_Pred[k][1]=0;
+                        CellP.Rad_Flux_Pred[j][k][1]=0;
                         #pragma omp atomic
-                        CellP[j].Rad_Flux_Pred[k][2]=0;
+                        CellP.Rad_Flux_Pred[j][k][2]=0;
                     }
                     //{double dflux=dE*C_LIGHT_CODE_REDUCED(j); dfluxes[2] += dflux;}
 #endif
                     {int kv; for(kv=0;kv<3;kv++) {
                         #pragma omp atomic
-                        CellP[j].Rad_Flux[k][kv] += dfluxes[kv]; // actually apply the variable update
+                        CellP.Rad_Flux[j][k][kv] += dfluxes[kv]; // actually apply the variable update
                         #pragma omp atomic
-                        CellP[j].Rad_Flux_Pred[k][kv] += dfluxes[kv]; // actually apply the variable update
+                        CellP.Rad_Flux_Pred[j][k][kv] += dfluxes[kv]; // actually apply the variable update
                     }}
 
 #endif

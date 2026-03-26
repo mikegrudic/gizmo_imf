@@ -371,47 +371,47 @@ void Initialize_ISMDustChem_Variables(int i)
 
     /* only initialize these on a new run */
     if(RestartFlag == 0) {
-        CellP[i].ISMDustChem_DelayTimeSNeSputtering = CellP[i].ISMDustChem_C_in_CO = CellP[i].ISMDustChem_MassFractionInDenseMolecular = 0.;
+        CellP.ISMDustChem_DelayTimeSNeSputtering[i] = CellP.ISMDustChem_C_in_CO[i] = CellP.ISMDustChem_MassFractionInDenseMolecular[i] = 0.;
         if(All.Initial_ISMDustChem_Depletion > 0)
         {
-            for(j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP[i].ISMDustChem_Dust_Metal[j] = 0.;}
+            for(j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP.ISMDustChem_Dust_Metal[i][j] = 0.;}
             if(GALSF_ISMDUSTCHEM_MODEL & 1) {
-                CellP[i].ISMDustChem_Dust_Metal[4] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[4]; // Silicate dust O
-                CellP[i].ISMDustChem_Dust_Metal[6] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[6]; // Silicate dust Mg
-                CellP[i].ISMDustChem_Dust_Metal[7] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[7]; // Silicate dust Si
-                CellP[i].ISMDustChem_Dust_Metal[10] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[10]; // Silicate dust Fe
-                CellP[i].ISMDustChem_Dust_Metal[2] = DMIN(P[i].Metallicity[2],CellP[i].ISMDustChem_Dust_Metal[4]+CellP[i].ISMDustChem_Dust_Metal[6]+CellP[i].ISMDustChem_Dust_Metal[7]+CellP[i].ISMDustChem_Dust_Metal[10]/All.Initial_ISMDustChem_SiliconToCarbonRatio); // Carbonaceous dust
+                CellP.ISMDustChem_Dust_Metal[i][4] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][4]; // Silicate dust O
+                CellP.ISMDustChem_Dust_Metal[i][6] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][6]; // Silicate dust Mg
+                CellP.ISMDustChem_Dust_Metal[i][7] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][7]; // Silicate dust Si
+                CellP.ISMDustChem_Dust_Metal[i][10] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][10]; // Silicate dust Fe
+                CellP.ISMDustChem_Dust_Metal[i][2] = DMIN(P.Metallicity[i][2],CellP.ISMDustChem_Dust_Metal[i][4]+CellP.ISMDustChem_Dust_Metal[i][6]+CellP.ISMDustChem_Dust_Metal[i][7]+CellP.ISMDustChem_Dust_Metal[i][10]/All.Initial_ISMDustChem_SiliconToCarbonRatio); // Carbonaceous dust
             }
             if(GALSF_ISMDUSTCHEM_MODEL & 2) {
                 // Silicate dust
-                double sil_mass_frac=0.; CellP[i].ISMDustChem_Dust_Metal[7] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[7]; // Set Si depletion
-                sil_mass_frac+=CellP[i].ISMDustChem_Dust_Metal[7];
+                double sil_mass_frac=0.; CellP.ISMDustChem_Dust_Metal[i][7] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][7]; // Set Si depletion
+                sil_mass_frac+=CellP.ISMDustChem_Dust_Metal[i][7];
                 for(j=0;j<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;j++) // Set element depletions for all other elements in silicates given initial Si depletion
                 {
                     if(j != 2)
                     {
-                        CellP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]] += CellP[i].ISMDustChem_Dust_Metal[7] / (All.ISMDustChem_SilicateNumberOfAtomsTable[2] * All.ISMDustChem_AtomicMassTable[7]) * (All.ISMDustChem_SilicateNumberOfAtomsTable[j] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]]);
-                        sil_mass_frac += CellP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]];
+                        CellP.ISMDustChem_Dust_Metal[i][All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]] += CellP.ISMDustChem_Dust_Metal[i][7] / (All.ISMDustChem_SilicateNumberOfAtomsTable[2] * All.ISMDustChem_AtomicMassTable[7]) * (All.ISMDustChem_SilicateNumberOfAtomsTable[j] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]]);
+                        sil_mass_frac += CellP.ISMDustChem_Dust_Metal[i][All.ISMDustChem_SilicateMetallicityFieldIndexTable[j]];
                     }
                 }
-                CellP[i].ISMDustChem_Dust_Species[0] = sil_mass_frac;
+                CellP.ISMDustChem_Dust_Species[i][0] = sil_mass_frac;
                 // Carbonaceous dust
-                CellP[i].ISMDustChem_Dust_Metal[2] = DMIN(P[i].Metallicity[2],sil_mass_frac/All.Initial_ISMDustChem_SiliconToCarbonRatio); CellP[i].ISMDustChem_Dust_Species[1] = CellP[i].ISMDustChem_Dust_Metal[2];
+                CellP.ISMDustChem_Dust_Metal[i][2] = DMIN(P.Metallicity[i][2],sil_mass_frac/All.Initial_ISMDustChem_SiliconToCarbonRatio); CellP.ISMDustChem_Dust_Species[i][1] = CellP.ISMDustChem_Dust_Metal[i][2];
                 if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Metallic Iron Nanoparticles
-                    CellP[i].ISMDustChem_Dust_Metal[10] = All.Initial_ISMDustChem_Depletion*P[i].Metallicity[10];
-                    CellP[i].ISMDustChem_Dust_Species[3] = (1.-GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC)*CellP[i].ISMDustChem_Dust_Metal[10];
-                    CellP[i].ISMDustChem_Dust_Species[5] = GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*CellP[i].ISMDustChem_Dust_Metal[10];
+                    CellP.ISMDustChem_Dust_Metal[i][10] = All.Initial_ISMDustChem_Depletion*P.Metallicity[i][10];
+                    CellP.ISMDustChem_Dust_Species[i][3] = (1.-GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC)*CellP.ISMDustChem_Dust_Metal[i][10];
+                    CellP.ISMDustChem_Dust_Species[i][5] = GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*CellP.ISMDustChem_Dust_Metal[i][10];
                 }
             }
-            for (j=1;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP[i].ISMDustChem_Dust_Metal[0] += CellP[i].ISMDustChem_Dust_Metal[j];}
-            for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {CellP[i].ISMDustChem_Dust_Source[j] = 0.;}
-            CellP[i].ISMDustChem_Dust_Source[2] = CellP[i].ISMDustChem_Dust_Metal[0];  // Assume initial dust population is from SNe II
+            for (j=1;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP.ISMDustChem_Dust_Metal[i][0] += CellP.ISMDustChem_Dust_Metal[i][j];}
+            for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {CellP.ISMDustChem_Dust_Source[i][j] = 0.;}
+            CellP.ISMDustChem_Dust_Source[i][2] = CellP.ISMDustChem_Dust_Metal[i][0];  // Assume initial dust population is from SNe II
         }
         else
         {
-            for (j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP[i].ISMDustChem_Dust_Metal[j] = 0.;}
-            for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {CellP[i].ISMDustChem_Dust_Source[j] = 0.;}
-            for (j=0;j<NUM_ISMDUSTCHEM_SPECIES;j++) {CellP[i].ISMDustChem_Dust_Species[j] = 0.;}
+            for (j=0;j<NUM_ISMDUSTCHEM_ELEMENTS;j++) {CellP.ISMDustChem_Dust_Metal[i][j] = 0.;}
+            for (j=0;j<NUM_ISMDUSTCHEM_SOURCES;j++) {CellP.ISMDustChem_Dust_Source[i][j] = 0.;}
+            for (j=0;j<NUM_ISMDUSTCHEM_SPECIES;j++) {CellP.ISMDustChem_Dust_Species[i][j] = 0.;}
         }
     }
 }
@@ -421,11 +421,11 @@ void Initialize_ISMDustChem_Variables(int i)
 double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, int k)
 {
     k -= NUM_METAL_SPECIES;
-    if(k<NUM_ISMDUSTCHEM_ELEMENTS) {return CellP[i].ISMDustChem_Dust_Metal[k];}
+    if(k<NUM_ISMDUSTCHEM_ELEMENTS) {return CellP.ISMDustChem_Dust_Metal[i][k];}
     k -= NUM_ISMDUSTCHEM_ELEMENTS;
-    if(k<NUM_ISMDUSTCHEM_SOURCES) {return CellP[i].ISMDustChem_Dust_Source[k];}
+    if(k<NUM_ISMDUSTCHEM_SOURCES) {return CellP.ISMDustChem_Dust_Source[i][k];}
     k -= NUM_ISMDUSTCHEM_SOURCES;
-    if(k<NUM_ISMDUSTCHEM_SPECIES) {return CellP[i].ISMDustChem_Dust_Species[k];}
+    if(k<NUM_ISMDUSTCHEM_SPECIES) {return CellP.ISMDustChem_Dust_Species[i][k];}
     return 0;
 }
 
@@ -434,12 +434,12 @@ double return_ismdustchem_species_of_interest_for_diffusion_and_yields(int i, in
 double Lambda_Dust_HighTemperature_Gas_ISM(int target, double T, double n_elec)
 {
     if(target<0 || T<1.e5) {return 0;}
-    if(CellP[target].ISMDustChem_Dust_Metal[0] <= 0) {return 0;}
+    if(CellP.ISMDustChem_Dust_Metal[target][0] <= 0) {return 0;}
     double rho_c=3., a3=2.21e-18, DG, Havg; // rho_c=gm cm^-3 grain solid density (intermediate between silicate and carbonaceous), a3=cm^3 average grain volume for MRN grain size distribution
     if (T>=7.17E7) {Havg=1.43E-11;} else if (T>=2.4E7) {Havg=-2.07E-12+1.23E-16*pow(T,0.745)+2.10E-17*pow(T,0.75)-1.07E-17*pow(T,0.88);}
     else if (T>=4.55E6) {Havg=-2.07E-12+1.70E-17*pow(T,0.745)+3.96E-17*pow(T,0.75)-5.44E-23*pow(T,1.5);}
     else if (T>=1.52E6) {Havg=-1.06E-16*pow(T,0.745)+1.86E-17*pow(T,0.75)+1.56E-17*pow(T,0.88)-5.44E-23*pow(T,1.5);} else {Havg=3.76E-22*pow(T,1.5);}
-    double coolrate = (3./(4.*M_PI)*(PROTONMASS_CGS/HYDROGEN_MASSFRAC))*(CellP[target].ISMDustChem_Dust_Metal[0]/rho_c*n_elec*(Havg/a3));
+    double coolrate = (3./(4.*M_PI)*(PROTONMASS_CGS/HYDROGEN_MASSFRAC))*(CellP.ISMDustChem_Dust_Metal[target][0]/rho_c*n_elec*(Havg/a3));
     if(!isfinite(coolrate)) {coolrate=0;}
     return coolrate;
 }
@@ -460,55 +460,55 @@ void update_ISMDustChem_after_mechanical_injection(int j, double massfrac_destro
 {
     // If SNe events happened need to first destroy the appropriate amount of dust if there is any dust
     int k;
-    if((massfrac_destroyed > 0) && (CellP[j].ISMDustChem_Dust_Metal[0] > 0))
+    if((massfrac_destroyed > 0) && (CellP.ISMDustChem_Dust_Metal[j][0] > 0))
     {
-        CellP[j].ISMDustChem_DelayTimeSNeSputtering = All.ISMDustChem_SNeSputteringShutOffTime; // update thermal sputtering delay time due to SNe
+        CellP.ISMDustChem_DelayTimeSNeSputtering[j] = All.ISMDustChem_SNeSputteringShutOffTime; // update thermal sputtering delay time due to SNe
         if (massfrac_destroyed >= 1.) // destroy all dust
         {
-            for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[j].ISMDustChem_Dust_Metal[k]=0.;}
-            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++)  {CellP[j].ISMDustChem_Dust_Source[k]=0.;}
-            for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++)  {CellP[j].ISMDustChem_Dust_Species[k]=0.;}
+            for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[j][k]=0.;}
+            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++)  {CellP.ISMDustChem_Dust_Source[j][k]=0.;}
+            for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++)  {CellP.ISMDustChem_Dust_Species[j][k]=0.;}
         }
         else
         {
             double protected_frac = 0.; // Fraction of dust protected from destruction (only iron inclusions are currently considered)
             if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Take out the iron inclusions protected in silicate dust and then add it back in later
-                protected_frac = CellP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1]/CellP[j].ISMDustChem_Dust_Metal[0];
-                CellP[j].ISMDustChem_Dust_Metal[10] -= CellP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1]; // Assume all dust species are destroyed evenly but leave out iron inclusions
+                protected_frac = CellP.ISMDustChem_Dust_Species[j][NUM_ISMDUSTCHEM_SPECIES-1]/CellP.ISMDustChem_Dust_Metal[j][0];
+                CellP.ISMDustChem_Dust_Metal[j][10] -= CellP.ISMDustChem_Dust_Species[j][NUM_ISMDUSTCHEM_SPECIES-1]; // Assume all dust species are destroyed evenly but leave out iron inclusions
             }
-            for(k=0;k<NUM_ISMDUSTCHEM_SPECIES-1;k++) {CellP[j].ISMDustChem_Dust_Species[k] *= 1.-massfrac_destroyed;} // Assume all dust species are destroyed evenly
+            for(k=0;k<NUM_ISMDUSTCHEM_SPECIES-1;k++) {CellP.ISMDustChem_Dust_Species[j][k] *= 1.-massfrac_destroyed;} // Assume all dust species are destroyed evenly
             // Assume all dust sources are destroyed evenly and take into account protected dust
-            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP[j].ISMDustChem_Dust_Source[k] *= (1.-(1.-protected_frac)*massfrac_destroyed);}
-            CellP[j].ISMDustChem_Dust_Metal[0] = 0.0;
+            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP.ISMDustChem_Dust_Source[j][k] *= (1.-(1.-protected_frac)*massfrac_destroyed);}
+            CellP.ISMDustChem_Dust_Metal[j][0] = 0.0;
             for(k=1;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)
             {
-                CellP[j].ISMDustChem_Dust_Metal[k] *= 1.-massfrac_destroyed;
-                CellP[j].ISMDustChem_Dust_Metal[0] += CellP[j].ISMDustChem_Dust_Metal[k];
+                CellP.ISMDustChem_Dust_Metal[j][k] *= 1.-massfrac_destroyed;
+                CellP.ISMDustChem_Dust_Metal[j][0] += CellP.ISMDustChem_Dust_Metal[j][k];
             }
             if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Add the protected iron dust back in
-                CellP[j].ISMDustChem_Dust_Metal[10] += CellP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1];
-                CellP[j].ISMDustChem_Dust_Metal[0] += CellP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1];
+                CellP.ISMDustChem_Dust_Metal[j][10] += CellP.ISMDustChem_Dust_Species[j][NUM_ISMDUSTCHEM_SPECIES-1];
+                CellP.ISMDustChem_Dust_Metal[j][0] += CellP.ISMDustChem_Dust_Species[j][NUM_ISMDUSTCHEM_SPECIES-1];
                 // Update amount of free-flying iron and iron inclusions since some of the inclusions are released from silicate. Assume this leads to constant fraction of iron inclusions that scales with amount of silicate dust
                 int key_elem = 0; double key_mass, key_num_atoms, frac_of_max_sil, incl_frac, sil_elem_abunds[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES];
                 for(k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
                 {
                     int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k];
-                    sil_elem_abunds[k] = P[j].Metallicity[index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
+                    sil_elem_abunds[k] = P.Metallicity[j][index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
                     if (sil_elem_abunds[key_elem] / All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem] > sil_elem_abunds[k] / All.ISMDustChem_SilicateNumberOfAtomsTable[k]) key_elem = k;
                 }
                 key_mass = All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]];
                 key_num_atoms = All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem];
                 key_elem = All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem];
-                frac_of_max_sil = CellP[j].ISMDustChem_Dust_Species[0] / (P[j].Metallicity[key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
+                frac_of_max_sil = CellP.ISMDustChem_Dust_Species[j][0] / (P.Metallicity[j][key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
                 incl_frac = DMAX(DMIN(GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*frac_of_max_sil,GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC),0.);
-                CellP[j].ISMDustChem_Dust_Species[3] = (1.-incl_frac) * CellP[j].ISMDustChem_Dust_Metal[10];
-                CellP[j].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP[j].ISMDustChem_Dust_Metal[10];
+                CellP.ISMDustChem_Dust_Species[j][3] = (1.-incl_frac) * CellP.ISMDustChem_Dust_Metal[j][10];
+                CellP.ISMDustChem_Dust_Species[j][NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP.ISMDustChem_Dust_Metal[j][10];
             }
         }
     }
-    for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[j].ISMDustChem_Dust_Metal[k]   = (m0/mf)*CellP[j].ISMDustChem_Dust_Metal[k]   + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES]);}
-    for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++)  {CellP[j].ISMDustChem_Dust_Source[k]  = (m0/mf)*CellP[j].ISMDustChem_Dust_Source[k]  + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS]);}
-    for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++)  {CellP[j].ISMDustChem_Dust_Species[k] = (m0/mf)*CellP[j].ISMDustChem_Dust_Species[k] + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]);}
+    for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[j][k]   = (m0/mf)*CellP.ISMDustChem_Dust_Metal[j][k]   + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES]);}
+    for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++)  {CellP.ISMDustChem_Dust_Source[j][k]  = (m0/mf)*CellP.ISMDustChem_Dust_Source[j][k]  + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS]);}
+    for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++)  {CellP.ISMDustChem_Dust_Species[j][k] = (m0/mf)*CellP.ISMDustChem_Dust_Species[j][k] + (1./mf)*DMAX(0.,Z_injected[k+NUM_METAL_SPECIES+NUM_ISMDUSTCHEM_ELEMENTS+NUM_ISMDUSTCHEM_SOURCES]);}
 }
 
 
@@ -516,7 +516,7 @@ void update_ISMDustChem_after_mechanical_injection(int j, double massfrac_destro
 /* subroutine to update dust masses from growth via gas-dust accretion and destruction via thermal sputtering */
 void update_dust_acc_and_sput(int i, double dtime_gyr)
 {
-    int k; double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temp, mu_meanwt=1, rho=CellP[i].Density*All.cf_a3inv, u0=CellP[i].InternalEnergyPred;
+    int k; double ne=1, nh0=0, nHe0, nHepp, nhp, nHeII, temp, mu_meanwt=1, rho=CellP.Density[i]*All.cf_a3inv, u0=CellP.InternalEnergyPred[i];
     temp = ThermalProperties(u0, rho, i, &mu_meanwt, &ne, &nh0, &nhp, &nHe0, &nHeII, &nHepp);
     rho*=UNIT_DENSITY_IN_CGS;
     
@@ -528,7 +528,7 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     double fH2=0., new_ISMDustChem_MassFractionInDenseMolecular=0.; // mass fraction of gas that is H2 and gas in dense MC phase
     double NH2 = 1.5E21; // cm^-2 Column density of H2 needed to be in dense MC phase
     double l_depth, x_dens; // depth into cloud to reach NH2 and radial fraction of cloud in dense MC phase
-    double surface_density = evaluate_NH_from_GradRho(P[i].GradRho,P[i].KernelRadius,CellP[i].Density,P[i].NumNgb,1,i) * UNIT_SURFDEN_IN_CGS; // converts to cgs
+    double surface_density = evaluate_NH_from_GradRho(P.GradRho[i],P.KernelRadius[i],CellP.Density[i],P.NumNgb[i],1,i) * UNIT_SURFDEN_IN_CGS; // converts to cgs
     // shielding length giving effective radius of gas particle
     double l_shield = surface_density / rho;
     fH2 = Get_Gas_Molecular_Mass_Fraction(i, temp, nh0, ne, 0.);
@@ -542,26 +542,26 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         new_ISMDustChem_MassFractionInDenseMolecular = DMIN(new_ISMDustChem_MassFractionInDenseMolecular,fH2); // Maximum dense molecular fraction set by total molecular fraction
     }
     // Only need to update CO if there is C present
-    if (P[i].Metallicity[2]>0)
+    if (P.Metallicity[i][2]>0)
     {
         // If dense MC has shrunk, reduce the C in CO by the fraction it has shrunk
-        if (new_ISMDustChem_MassFractionInDenseMolecular < CellP[i].ISMDustChem_MassFractionInDenseMolecular) {CellP[i].ISMDustChem_C_in_CO *= new_ISMDustChem_MassFractionInDenseMolecular/CellP[i].ISMDustChem_MassFractionInDenseMolecular;}
+        if (new_ISMDustChem_MassFractionInDenseMolecular < CellP.ISMDustChem_MassFractionInDenseMolecular[i]) {CellP.ISMDustChem_C_in_CO[i] *= new_ISMDustChem_MassFractionInDenseMolecular/CellP.ISMDustChem_MassFractionInDenseMolecular[i];}
         // If dense MC has grown, increase the C in CO by the newly add volume of remaining gas-phase C if any is left
         else
         {
-            if (P[i].Metallicity[2]-CellP[i].ISMDustChem_Dust_Metal[2]-CellP[i].ISMDustChem_C_in_CO > 0.)
+            if (P.Metallicity[i][2]-CellP.ISMDustChem_Dust_Metal[i][2]-CellP.ISMDustChem_C_in_CO[i] > 0.)
             {
-                CellP[i].ISMDustChem_C_in_CO += (new_ISMDustChem_MassFractionInDenseMolecular-CellP[i].ISMDustChem_MassFractionInDenseMolecular) * ((P[i].Metallicity[2]-CellP[i].ISMDustChem_Dust_Metal[2])-CellP[i].ISMDustChem_C_in_CO) / (1.-CellP[i].ISMDustChem_MassFractionInDenseMolecular);
+                CellP.ISMDustChem_C_in_CO[i] += (new_ISMDustChem_MassFractionInDenseMolecular-CellP.ISMDustChem_MassFractionInDenseMolecular[i]) * ((P.Metallicity[i][2]-CellP.ISMDustChem_Dust_Metal[i][2])-CellP.ISMDustChem_C_in_CO[i]) / (1.-CellP.ISMDustChem_MassFractionInDenseMolecular[i]);
             }
         }
     }
     else
     {
-        CellP[i].ISMDustChem_C_in_CO = 0.;
+        CellP.ISMDustChem_C_in_CO[i] = 0.;
     }
-    CellP[i].ISMDustChem_MassFractionInDenseMolecular = new_ISMDustChem_MassFractionInDenseMolecular;
+    CellP.ISMDustChem_MassFractionInDenseMolecular[i] = new_ISMDustChem_MassFractionInDenseMolecular;
     
-    if (CellP[i].ISMDustChem_Dust_Metal[0] <= 0) {return;} // No dust so nothing more to do
+    if (CellP.ISMDustChem_Dust_Metal[i][0] <= 0) {return;} // No dust so nothing more to do
     
     double dF; // change in fraction of element condensed into dust
     double growth_timescale, sputter_timescale, t_ref, T_ref, avg_grain_radius;
@@ -570,10 +570,10 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     
     // now accrete and sputter dust //
 #if (GALSF_ISMDUSTCHEM_MODEL & 1)
-    CellP[i].ISMDustChem_Dust_Metal[0] = 0.; // First renorm dust due to building numerical error that can arise from stellar feedback. This may no longer be necessary.
-    for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[i].ISMDustChem_Dust_Metal[0] += CellP[i].ISMDustChem_Dust_Metal[k];}
-    double total = CellP[i].ISMDustChem_Dust_Source[0]+CellP[i].ISMDustChem_Dust_Source[1]+CellP[i].ISMDustChem_Dust_Source[2]+CellP[i].ISMDustChem_Dust_Source[3];
-    for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP[i].ISMDustChem_Dust_Source[k] = DMAX(0,CellP[i].ISMDustChem_Dust_Metal[0]/total*CellP[i].ISMDustChem_Dust_Source[k]);
+    CellP.ISMDustChem_Dust_Metal[i][0] = 0.; // First renorm dust due to building numerical error that can arise from stellar feedback. This may no longer be necessary.
+    for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[i][0] += CellP.ISMDustChem_Dust_Metal[i][k];}
+    double total = CellP.ISMDustChem_Dust_Source[i][0]+CellP.ISMDustChem_Dust_Source[i][1]+CellP.ISMDustChem_Dust_Source[i][2]+CellP.ISMDustChem_Dust_Source[i][3];
+    for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP.ISMDustChem_Dust_Source[i][k] = DMAX(0,CellP.ISMDustChem_Dust_Metal[i][0]/total*CellP.ISMDustChem_Dust_Source[i][k]);
     
     
     /* First the newly created dust mass due to accretion is added with the creation source updated, then the dust destroyed
@@ -586,16 +586,16 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)
     {
         double in_mol_frac; // fraction of element in molecular form and unable to accrete onto dust (CO is the only molecule considered)
-        if (k==2) {in_mol_frac = CellP[i].ISMDustChem_C_in_CO;}
-        else if (k==4) {in_mol_frac = CellP[i].ISMDustChem_C_in_CO * All.ISMDustChem_AtomicMassTable[4] / All.ISMDustChem_AtomicMassTable[2];}
+        if (k==2) {in_mol_frac = CellP.ISMDustChem_C_in_CO[i];}
+        else if (k==4) {in_mol_frac = CellP.ISMDustChem_C_in_CO[i] * All.ISMDustChem_AtomicMassTable[4] / All.ISMDustChem_AtomicMassTable[2];}
         else {in_mol_frac = 0.;}
         // If no dust, metals, or all metals in dust then no accretion
-        if (P[i].Metallicity[k] == 0. || CellP[i].ISMDustChem_Dust_Metal[k] == 0. || (P[i].Metallicity[k] - CellP[i].ISMDustChem_Dust_Metal[k]) <= 0) {dF = 0.;}
+        if (P.Metallicity[i][k] == 0. || CellP.ISMDustChem_Dust_Metal[i][k] == 0. || (P.Metallicity[i][k] - CellP.ISMDustChem_Dust_Metal[i][k]) <= 0) {dF = 0.;}
         else
         {
-            dF = dtime_gyr * (1. - CellP[i].ISMDustChem_Dust_Metal[k] / (P[i].Metallicity[k] - in_mol_frac)) * (CellP[i].ISMDustChem_Dust_Metal[k] / growth_timescale);
+            dF = dtime_gyr * (1. - CellP.ISMDustChem_Dust_Metal[i][k] / (P.Metallicity[i][k] - in_mol_frac)) * (CellP.ISMDustChem_Dust_Metal[i][k] / growth_timescale);
             // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
-            dF = DMIN(P[i].Metallicity[k] - CellP[i].ISMDustChem_Dust_Metal[k] - in_mol_frac,DMAX(0.,dF));
+            dF = DMIN(P.Metallicity[i][k] - CellP.ISMDustChem_Dust_Metal[i][k] - in_mol_frac,DMAX(0.,dF));
             dust_yields[k] = dF;
             dust_yields[0] += dust_yields[k];
         }
@@ -603,12 +603,12 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     // Update dust yields and creation source
     if (dust_yields[0] != 0.)
     {
-        CellP[i].ISMDustChem_Dust_Source[source] += dust_yields[0];
-        for (k=0;k< NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[i].ISMDustChem_Dust_Metal[k] += dust_yields[k];}
+        CellP.ISMDustChem_Dust_Source[i][source] += dust_yields[0];
+        for (k=0;k< NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[i][k] += dust_yields[k];}
     }
     
     // Check if sputtering is delayed due to recent SNe
-    if(CellP[i].ISMDustChem_DelayTimeSNeSputtering > 0) {CellP[i].ISMDustChem_DelayTimeSNeSputtering = DMAX(0,CellP[i].ISMDustChem_DelayTimeSNeSputtering-dtime_gyr);} // count off clock since last SNe
+    if(CellP.ISMDustChem_DelayTimeSNeSputtering[i] > 0) {CellP.ISMDustChem_DelayTimeSNeSputtering[i] = DMAX(0,CellP.ISMDustChem_DelayTimeSNeSputtering[i]-dtime_gyr);} // count off clock since last SNe
     else // Now determine amount of dust destroyed by thermal sputtering
     {
         T_ref = 2E6; avg_grain_radius = 0.032; /* um */ t_ref = 0.17; /* Gyr */
@@ -617,10 +617,10 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         // Calculate the fraction of mass of a certain element to be destroyed due to thermal sputtering
         for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)
         {
-            if (CellP[i].ISMDustChem_Dust_Metal[k] <= 0.) {dF = 0.;}
-            else {dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Metal[k] / (sputter_timescale / 3.));}
+            if (CellP.ISMDustChem_Dust_Metal[i][k] <= 0.) {dF = 0.;}
+            else {dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Metal[i][k] / (sputter_timescale / 3.));}
             // can't destroy more dust then there is available and deal with unphysical values
-            dF = DMAX(-CellP[i].ISMDustChem_Dust_Metal[k],DMIN(0,dF));
+            dF = DMAX(-CellP.ISMDustChem_Dust_Metal[i][k],DMIN(0,dF));
             dust_yields[k] = dF;
             dust_yields[0] += dF;
         }
@@ -629,42 +629,42 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         if (dust_yields[0] != 0.)
         {
             // Assume all dust sources are destroyed evenly
-            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP[i].ISMDustChem_Dust_Source[k] *= (1.+dust_yields[0]/CellP[i].ISMDustChem_Dust_Metal[0]);}
+            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP.ISMDustChem_Dust_Source[i][k] *= (1.+dust_yields[0]/CellP.ISMDustChem_Dust_Metal[i][0]);}
             for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++)
             {
-                CellP[i].ISMDustChem_Dust_Metal[k] += dust_yields[k];
+                CellP.ISMDustChem_Dust_Metal[i][k] += dust_yields[k];
             }
             // Deal with rounding error causing total dust to not equal zero
             int no_dust = 1;
-            for (k=2; k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {if (CellP[i].ISMDustChem_Dust_Metal[k] > 0.) {no_dust = 0; break;}}
+            for (k=2; k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {if (CellP.ISMDustChem_Dust_Metal[i][k] > 0.) {no_dust = 0; break;}}
             if (no_dust)
             {
-                CellP[i].ISMDustChem_Dust_Metal[0] = 0.;
+                CellP.ISMDustChem_Dust_Metal[i][0] = 0.;
                 // if all dust is destroyed need to zero creation sources
-                for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP[i].ISMDustChem_Dust_Source[k] = 0.;}
+                for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP.ISMDustChem_Dust_Source[i][k] = 0.;}
             }
         }
     }
 #endif // model == 1, elemental model
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
     // First renorm dust due to building numerical error that can arise from stellar feedback. This may no longer be necessary.
-    for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[i].ISMDustChem_Dust_Metal[k]=0.;}
+    for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[i][k]=0.;}
     // silicate
     for (k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
     {
-        CellP[i].ISMDustChem_Dust_Metal[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] += CellP[i].ISMDustChem_Dust_Species[0] * All.ISMDustChem_SilicateNumberOfAtomsTable[k] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] / All.ISMDustChem_EffectiveSilicateDustAtomicWeight;
+        CellP.ISMDustChem_Dust_Metal[i][All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] += CellP.ISMDustChem_Dust_Species[i][0] * All.ISMDustChem_SilicateNumberOfAtomsTable[k] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] / All.ISMDustChem_EffectiveSilicateDustAtomicWeight;
     }
     // carbonaceous
-    CellP[i].ISMDustChem_Dust_Metal[2] += CellP[i].ISMDustChem_Dust_Species[1];
+    CellP.ISMDustChem_Dust_Metal[i][2] += CellP.ISMDustChem_Dust_Species[i][1];
     // SiC
-    CellP[i].ISMDustChem_Dust_Metal[2] += CellP[i].ISMDustChem_Dust_Species[2] * All.ISMDustChem_AtomicMassTable[2] / (All.ISMDustChem_AtomicMassTable[2] + All.ISMDustChem_AtomicMassTable[7]);
-    CellP[i].ISMDustChem_Dust_Metal[7] += CellP[i].ISMDustChem_Dust_Species[2] * All.ISMDustChem_AtomicMassTable[7] / (All.ISMDustChem_AtomicMassTable[2] + All.ISMDustChem_AtomicMassTable[7]);
-    if(GALSF_ISMDUSTCHEM_MODEL & 4) {CellP[i].ISMDustChem_Dust_Metal[10] += CellP[i].ISMDustChem_Dust_Species[3]+CellP[i].ISMDustChem_Dust_Species[5];} else {CellP[i].ISMDustChem_Dust_Metal[10] += CellP[i].ISMDustChem_Dust_Species[3];} // metallic iron
-    if(GALSF_ISMDUSTCHEM_MODEL & 8) {CellP[i].ISMDustChem_Dust_Metal[4] += CellP[i].ISMDustChem_Dust_Species[4];} // oxygen reservoir
-    for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[i].ISMDustChem_Dust_Metal[0] += CellP[i].ISMDustChem_Dust_Metal[k];}
-    double total = CellP[i].ISMDustChem_Dust_Source[0]+CellP[i].ISMDustChem_Dust_Source[1]+CellP[i].ISMDustChem_Dust_Source[2]+CellP[i].ISMDustChem_Dust_Source[3];
-    if (total<=0.) {for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP[i].ISMDustChem_Dust_Source[k] = 0.;}
-    else {for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP[i].ISMDustChem_Dust_Source[k] = DMAX(0,CellP[i].ISMDustChem_Dust_Metal[0]/total*CellP[i].ISMDustChem_Dust_Source[k]);}
+    CellP.ISMDustChem_Dust_Metal[i][2] += CellP.ISMDustChem_Dust_Species[i][2] * All.ISMDustChem_AtomicMassTable[2] / (All.ISMDustChem_AtomicMassTable[2] + All.ISMDustChem_AtomicMassTable[7]);
+    CellP.ISMDustChem_Dust_Metal[i][7] += CellP.ISMDustChem_Dust_Species[i][2] * All.ISMDustChem_AtomicMassTable[7] / (All.ISMDustChem_AtomicMassTable[2] + All.ISMDustChem_AtomicMassTable[7]);
+    if(GALSF_ISMDUSTCHEM_MODEL & 4) {CellP.ISMDustChem_Dust_Metal[i][10] += CellP.ISMDustChem_Dust_Species[i][3]+CellP.ISMDustChem_Dust_Species[i][5];} else {CellP.ISMDustChem_Dust_Metal[i][10] += CellP.ISMDustChem_Dust_Species[i][3];} // metallic iron
+    if(GALSF_ISMDUSTCHEM_MODEL & 8) {CellP.ISMDustChem_Dust_Metal[i][4] += CellP.ISMDustChem_Dust_Species[i][4];} // oxygen reservoir
+    for (k=2;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[i][0] += CellP.ISMDustChem_Dust_Metal[i][k];}
+    double total = CellP.ISMDustChem_Dust_Source[i][0]+CellP.ISMDustChem_Dust_Source[i][1]+CellP.ISMDustChem_Dust_Source[i][2]+CellP.ISMDustChem_Dust_Source[i][3];
+    if (total<=0.) {for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP.ISMDustChem_Dust_Source[i][k] = 0.;}
+    else {for (k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) CellP.ISMDustChem_Dust_Source[i][k] = DMAX(0,CellP.ISMDustChem_Dust_Metal[i][0]/total*CellP.ISMDustChem_Dust_Source[i][k]);}
     
     /* Restrict accretion only to MC environments by assuming sticking efficiency of 1 for
      * T <= 300K and 0 otherwise. Check the three main dust species that can form through
@@ -684,14 +684,14 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
     if (temp <= 300)
     {
         // Determine number density of each element in the gas phase, use this to determine the key element for each dust species
-        num_dens[0] = rho * (1. - P[i].Metallicity[0] - P[i].Metallicity[1]) / (All.ISMDustChem_AtomicMassTable[0] * PROTONMASS_CGS);
-        for (k=1;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) num_dens[k] = rho * (P[i].Metallicity[k] - CellP[i].ISMDustChem_Dust_Metal[k])/ (All.ISMDustChem_AtomicMassTable[k] * PROTONMASS_CGS);
+        num_dens[0] = rho * (1. - P.Metallicity[i][0] - P.Metallicity[i][1]) / (All.ISMDustChem_AtomicMassTable[0] * PROTONMASS_CGS);
+        for (k=1;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) num_dens[k] = rho * (P.Metallicity[i][k] - CellP.ISMDustChem_Dust_Metal[i][k])/ (All.ISMDustChem_AtomicMassTable[k] * PROTONMASS_CGS);
         
         /******** SILICATE ********/
         t_ref_CNM = 0.252E-3;   // Gyr
         t_ref_MC = 1.38E-3;     // Gyr
         // Calculate effective timescale assuming produced dust is redistributed throughout the gas
-        t_ref = (t_ref_CNM * t_ref_MC) / (CellP[i].ISMDustChem_MassFractionInDenseMolecular * t_ref_CNM + (1.-CellP[i].ISMDustChem_MassFractionInDenseMolecular) * t_ref_MC);
+        t_ref = (t_ref_CNM * t_ref_MC) / (CellP.ISMDustChem_MassFractionInDenseMolecular[i] * t_ref_CNM + (1.-CellP.ISMDustChem_MassFractionInDenseMolecular[i]) * t_ref_MC);
         // check that all the elements required to make silicates are available
         missing_element = 0;
         for(k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++) {if(num_dens[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] <= 0.) {missing_element = 1;}}
@@ -706,13 +706,13 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
             key_mass = All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]];
             key_num_atoms = All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem];
             key_elem = All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem];
-            max_num_dens = rho * P[i].Metallicity[key_elem] / (key_mass * PROTONMASS_CGS);
+            max_num_dens = rho * P.Metallicity[i][key_elem] / (key_mass * PROTONMASS_CGS);
             
             growth_timescale = t_ref * (key_num_atoms * sqrt(key_mass) / dust_formula_mass) * bulk_dens / max_num_dens / sqrt(temp);
             // change in dust condensation for key element
-            dF = dtime_gyr * (1. - CellP[i].ISMDustChem_Dust_Metal[key_elem] / P[i].Metallicity[key_elem]) * CellP[i].ISMDustChem_Dust_Metal[key_elem] / growth_timescale;
+            dF = dtime_gyr * (1. - CellP.ISMDustChem_Dust_Metal[i][key_elem] / P.Metallicity[i][key_elem]) * CellP.ISMDustChem_Dust_Metal[i][key_elem] / growth_timescale;
             // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
-            dF = DMAX(0.,DMIN(P[i].Metallicity[key_elem]-CellP[i].ISMDustChem_Dust_Metal[key_elem],dF));
+            dF = DMAX(0.,DMIN(P.Metallicity[i][key_elem]-CellP.ISMDustChem_Dust_Metal[i][key_elem],dF));
             
             // change in dust condensation for all elements in silicates
             for (k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
@@ -725,18 +725,18 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         /******** CARBONACEOUS ********/
         // Since the transition between C+ -> C -> CO is quick, assume C+ -> CO so carbon dust only grows in CNM environments
         // Also need to take into account C in CO reduces the maximum amount of carbon dust which can be formed
-        if (CellP[i].ISMDustChem_MassFractionInDenseMolecular < 1.)
+        if (CellP.ISMDustChem_MassFractionInDenseMolecular[i] < 1.)
         {
             t_ref_CNM = 1.54E-3; // Gyr
-            t_ref = t_ref_CNM / (1.-CellP[i].ISMDustChem_MassFractionInDenseMolecular);
+            t_ref = t_ref_CNM / (1.-CellP.ISMDustChem_MassFractionInDenseMolecular[i]);
             key_elem = 2; key_mass = All.ISMDustChem_AtomicMassTable[key_elem]; key_num_atoms = 1.; bulk_dens = 2.25; dust_formula_mass = key_mass;
             if (num_dens[key_elem] > 0)
             {
-                max_num_dens = rho * P[i].Metallicity[key_elem]/ (key_mass * PROTONMASS_CGS);
+                max_num_dens = rho * P.Metallicity[i][key_elem]/ (key_mass * PROTONMASS_CGS);
                 growth_timescale = t_ref * sqrt(key_mass) / dust_formula_mass * bulk_dens / max_num_dens / sqrt(temp);
-                dF = dtime_gyr * (1. - CellP[i].ISMDustChem_Dust_Metal[key_elem] / (P[i].Metallicity[key_elem] - CellP[i].ISMDustChem_C_in_CO)) * CellP[i].ISMDustChem_Dust_Metal[key_elem] / growth_timescale;
+                dF = dtime_gyr * (1. - CellP.ISMDustChem_Dust_Metal[i][key_elem] / (P.Metallicity[i][key_elem] - CellP.ISMDustChem_C_in_CO[i])) * CellP.ISMDustChem_Dust_Metal[i][key_elem] / growth_timescale;
                 // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
-                dF = DMAX(0,DMIN(P[i].Metallicity[key_elem]-CellP[i].ISMDustChem_C_in_CO-CellP[i].ISMDustChem_Dust_Metal[key_elem],dF));
+                dF = DMAX(0,DMIN(P.Metallicity[i][key_elem]-CellP.ISMDustChem_C_in_CO[i]-CellP.ISMDustChem_Dust_Metal[i][key_elem],dF));
                 dust_yields[key_elem] += dF;
                 species_yields[1] = dF;
             }
@@ -745,15 +745,15 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         /******** METALLIC IRON ********/
         if(GALSF_ISMDUSTCHEM_MODEL & 4) {t_ref_CNM = 1.66E-6; t_ref_MC = 0.139E-3;} else {t_ref_CNM = 0.252E-3; t_ref_MC = 1.38E-3;} // Gyr
         // Calculate effective timescale assuming produced dust is redistributed throughout the gas
-        t_ref = (t_ref_CNM * t_ref_MC) / (CellP[i].ISMDustChem_MassFractionInDenseMolecular * t_ref_CNM + (1.-CellP[i].ISMDustChem_MassFractionInDenseMolecular) * t_ref_MC);
+        t_ref = (t_ref_CNM * t_ref_MC) / (CellP.ISMDustChem_MassFractionInDenseMolecular[i] * t_ref_CNM + (1.-CellP.ISMDustChem_MassFractionInDenseMolecular[i]) * t_ref_MC);
         key_elem = 10; key_mass = All.ISMDustChem_AtomicMassTable[key_elem]; key_num_atoms = 1.; bulk_dens = 7.86; dust_formula_mass = All.ISMDustChem_AtomicMassTable[key_elem];
         if (num_dens[key_elem] > 0)
         {
-            max_num_dens = rho * P[i].Metallicity[key_elem]/(key_mass * PROTONMASS_CGS);
+            max_num_dens = rho * P.Metallicity[i][key_elem]/(key_mass * PROTONMASS_CGS);
             growth_timescale = t_ref * sqrt(key_mass) / dust_formula_mass * bulk_dens / max_num_dens / sqrt(temp);
-            dF = dtime_gyr * (1. - CellP[i].ISMDustChem_Dust_Metal[key_elem] / P[i].Metallicity[key_elem]) * CellP[i].ISMDustChem_Dust_Species[3] / growth_timescale;
+            dF = dtime_gyr * (1. - CellP.ISMDustChem_Dust_Metal[i][key_elem] / P.Metallicity[i][key_elem]) * CellP.ISMDustChem_Dust_Species[i][3] / growth_timescale;
             // Check in case we use up the rest of the remaining metal in the gas phase and deal with unphysical values
-            dF = DMAX(0.,DMIN(P[i].Metallicity[key_elem]-CellP[i].ISMDustChem_Dust_Metal[key_elem],dF));
+            dF = DMAX(0.,DMIN(P.Metallicity[i][key_elem]-CellP.ISMDustChem_Dust_Metal[i][key_elem],dF));
             dust_yields[key_elem] += dF;
             species_yields[3] = dF;
         }
@@ -765,24 +765,24 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         if (dust_yields[0] != 0.)
         {
             // update dust source
-            CellP[i].ISMDustChem_Dust_Source[source] += dust_yields[0];
-            for (k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) CellP[i].ISMDustChem_Dust_Species[k] += species_yields[k];
+            CellP.ISMDustChem_Dust_Source[i][source] += dust_yields[0];
+            for (k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) CellP.ISMDustChem_Dust_Species[i][k] += species_yields[k];
             // update new dust mass
-            for (k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {CellP[i].ISMDustChem_Dust_Metal[k] += dust_yields[k];}
+            for (k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {CellP.ISMDustChem_Dust_Metal[i][k] += dust_yields[k];}
             if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Update amount of free-flying iron and iron inclusions since some of the free-flying particles become inclusions in silicates. Scales with local amount of silicates
                 int key_elem = 0; double key_mass, key_num_atoms, frac_of_max_sil, incl_frac, sil_elem_abunds[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES];
                 for(k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
                 {
-                    int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]; sil_elem_abunds[k] = P[i].Metallicity[index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
+                    int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]; sil_elem_abunds[k] = P.Metallicity[i][index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
                     if (sil_elem_abunds[key_elem] / All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem] > sil_elem_abunds[k] / All.ISMDustChem_SilicateNumberOfAtomsTable[k]) {key_elem = k;}
                 }
                 key_mass = All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]];
                 key_num_atoms = All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem];
                 key_elem = All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem];
-                frac_of_max_sil = CellP[i].ISMDustChem_Dust_Species[0] / (P[i].Metallicity[key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
+                frac_of_max_sil = CellP.ISMDustChem_Dust_Species[i][0] / (P.Metallicity[i][key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
                 incl_frac = DMAX(DMIN(GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*frac_of_max_sil,GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC),0.);
-                CellP[i].ISMDustChem_Dust_Species[3] = (1.-incl_frac) * CellP[i].ISMDustChem_Dust_Metal[10];
-                CellP[i].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP[i].ISMDustChem_Dust_Metal[10];
+                CellP.ISMDustChem_Dust_Species[i][3] = (1.-incl_frac) * CellP.ISMDustChem_Dust_Metal[i][10];
+                CellP.ISMDustChem_Dust_Species[i][NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP.ISMDustChem_Dust_Metal[i][10];
             }
         }
     } // if (temp <= 300)
@@ -803,7 +803,7 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         double extra_O;                                         /* extra O that needs to be depleted to match observations */
         double frac_of_sil;                                     /* fraction of maximum amount of silicate present in gas */
         double O_in_CO;                                         /* mass fraction of O in CO, sets max for D_O */
-        O_in_CO = CellP[i].ISMDustChem_C_in_CO * All.ISMDustChem_AtomicMassTable[4] / All.ISMDustChem_AtomicMassTable[2] / P[i].Metallicity[4];
+        O_in_CO = CellP.ISMDustChem_C_in_CO[i] * All.ISMDustChem_AtomicMassTable[4] / All.ISMDustChem_AtomicMassTable[2] / P.Metallicity[i][4];
         D_O = DMAX(0.,DMIN(D_O, 1.-O_in_CO)); // set depletion upper limit to O in CO
         
         // Now determine maximum possible silicate dust based on the least abundant element
@@ -812,29 +812,29 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         for(k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
         {
             int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k];
-            num_dens[index] = rho * P[i].Metallicity[index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
+            num_dens[index] = rho * P.Metallicity[i][index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
             if (num_dens[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]] / All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem] > num_dens[index] / All.ISMDustChem_SilicateNumberOfAtomsTable[k]) key_elem = k;
         }
         key_mass = All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]];
         key_num_atoms = All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem];
         key_elem = All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem];
-        frac_of_sil = CellP[i].ISMDustChem_Dust_Species[0] / (P[i].Metallicity[key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
-        max_O_in_sil = P[i].Metallicity[key_elem] * ((All.ISMDustChem_SilicateNumberOfAtomsTable[0] * All.ISMDustChem_AtomicMassTable[4])/(key_num_atoms * key_mass));
-        extra_O = frac_of_sil * D_O * P[i].Metallicity[4] - max_O_in_sil - CellP[i].ISMDustChem_Dust_Species[4];
+        frac_of_sil = CellP.ISMDustChem_Dust_Species[i][0] / (P.Metallicity[i][key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
+        max_O_in_sil = P.Metallicity[i][key_elem] * ((All.ISMDustChem_SilicateNumberOfAtomsTable[0] * All.ISMDustChem_AtomicMassTable[4])/(key_num_atoms * key_mass));
+        extra_O = frac_of_sil * D_O * P.Metallicity[i][4] - max_O_in_sil - CellP.ISMDustChem_Dust_Species[i][4];
         // If needed O depletion can't be attributed to silicate dust and what's already in the oxygen reservoir throw more oxygen into the reservoir
         if (extra_O > 0)
         {
             // Update creation source
-            CellP[i].ISMDustChem_Dust_Source[source] += extra_O;
+            CellP.ISMDustChem_Dust_Source[i][source] += extra_O;
             // Now add the dust
-            CellP[i].ISMDustChem_Dust_Metal[0] += extra_O;
-            CellP[i].ISMDustChem_Dust_Metal[4] += extra_O;
-            CellP[i].ISMDustChem_Dust_Species[4] += extra_O;
+            CellP.ISMDustChem_Dust_Metal[i][0] += extra_O;
+            CellP.ISMDustChem_Dust_Metal[i][4] += extra_O;
+            CellP.ISMDustChem_Dust_Species[i][4] += extra_O;
         }
     } // if using o reservoir and (temp <= 300)
     
     // Check if sputtering is delayed due to recent SNe
-    if(CellP[i].ISMDustChem_DelayTimeSNeSputtering > 0) {CellP[i].ISMDustChem_DelayTimeSNeSputtering = DMAX(0,CellP[i].ISMDustChem_DelayTimeSNeSputtering-dtime_gyr);} // count off clock since last SNe
+    if(CellP.ISMDustChem_DelayTimeSNeSputtering[i] > 0) {CellP.ISMDustChem_DelayTimeSNeSputtering[i] = DMAX(0,CellP.ISMDustChem_DelayTimeSNeSputtering[i]-dtime_gyr);} // count off clock since last SNe
     else // Now determine amount of dust destroyed by thermal sputtering
     {
         T_ref = 2E6; avg_grain_radius = 0.032; /* um */ t_ref = 0.17; /* Gyr */
@@ -845,36 +845,36 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         
         /******** SILICATE ********/
         dust_formula_mass = All.ISMDustChem_EffectiveSilicateDustAtomicWeight;
-        dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Species[0] / (sputter_timescale / 3.));
-        dF = DMAX(-CellP[i].ISMDustChem_Dust_Species[0],DMIN(0,dF)); // can't destroy more dust then there is available
+        dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Species[i][0] / (sputter_timescale / 3.));
+        dF = DMAX(-CellP.ISMDustChem_Dust_Species[i][0],DMIN(0,dF)); // can't destroy more dust then there is available
         species_yields[0] += dF;
         for (k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
         {
             dust_yields[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]] += dF * (All.ISMDustChem_SilicateNumberOfAtomsTable[k] * All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]]) / dust_formula_mass;
         }
         /******** CARBONACEOUS ********/
-        dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Species[1] / (sputter_timescale / 3.));
-        dF = DMAX(-CellP[i].ISMDustChem_Dust_Species[1],DMIN(0,dF)); // can't destroy more dust then there is available
+        dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Species[i][1] / (sputter_timescale / 3.));
+        dF = DMAX(-CellP.ISMDustChem_Dust_Species[i][1],DMIN(0,dF)); // can't destroy more dust then there is available
         species_yields[1] += dF;
         dust_yields[2] += dF;
         /******** SILICONE CARBIDE ********/
         dust_formula_mass = All.ISMDustChem_AtomicMassTable[2] + All.ISMDustChem_AtomicMassTable[7];
-        dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Species[2] / (sputter_timescale / 3.));
-        dF = DMAX(-CellP[i].ISMDustChem_Dust_Species[2],DMIN(0,dF)); // can't destroy more dust then there is available
+        dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Species[i][2] / (sputter_timescale / 3.));
+        dF = DMAX(-CellP.ISMDustChem_Dust_Species[i][2],DMIN(0,dF)); // can't destroy more dust then there is available
         species_yields[2] += dF;
         dust_yields[2] += dF * All.ISMDustChem_AtomicMassTable[2] / dust_formula_mass;
         dust_yields[7] += dF * All.ISMDustChem_AtomicMassTable[7] / dust_formula_mass;
         /******** O RESERVOIR ********/
         if(GALSF_ISMDUSTCHEM_MODEL & 8) {
-            dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Species[4] / (sputter_timescale / 3.));
-            dF = DMAX(-CellP[i].ISMDustChem_Dust_Species[4],DMIN(0,dF)); // can't destroy more dust then there is available
+            dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Species[i][4] / (sputter_timescale / 3.));
+            dF = DMAX(-CellP.ISMDustChem_Dust_Species[i][4],DMIN(0,dF)); // can't destroy more dust then there is available
             species_yields[4] += dF;
             dust_yields[4] += dF;
         }
         /******** METALLIC IRON ********/
         if(GALSF_ISMDUSTCHEM_MODEL & 4) {avg_grain_radius = 0.0032; sputter_timescale = t_ref * (avg_grain_radius / 0.1) / (rho*1E27) * (pow((T_ref/ temp), 2.5) + 1.);} /* radius in um */
-        dF = - dtime_gyr * (CellP[i].ISMDustChem_Dust_Species[3] / (sputter_timescale / 3.));
-        dF = DMAX(-CellP[i].ISMDustChem_Dust_Species[3],DMIN(0,dF)); // can't destroy more dust then there is available
+        dF = - dtime_gyr * (CellP.ISMDustChem_Dust_Species[i][3] / (sputter_timescale / 3.));
+        dF = DMAX(-CellP.ISMDustChem_Dust_Species[i][3],DMIN(0,dF)); // can't destroy more dust then there is available
         species_yields[3] += dF;
         dust_yields[10] += dF;
         
@@ -884,33 +884,33 @@ void update_dust_acc_and_sput(int i, double dtime_gyr)
         if (dust_yields[0] != 0.)
         {
             // Assume all dust sources are destroyed evenly
-            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP[i].ISMDustChem_Dust_Source[k] *= (1.+dust_yields[0]/CellP[i].ISMDustChem_Dust_Metal[0]);}
+            for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP.ISMDustChem_Dust_Source[i][k] *= (1.+dust_yields[0]/CellP.ISMDustChem_Dust_Metal[i][0]);}
             // Update new dust mass
-            for (k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) CellP[i].ISMDustChem_Dust_Species[k] += species_yields[k];
+            for (k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) CellP.ISMDustChem_Dust_Species[i][k] += species_yields[k];
             // If all dust (silicates, carbonaceous, SiC, and free-flying iron) is destroyed zero everything to avoid rounding error
             int all_dest = 1;
-            for (k=0;k<4;k++) {if(CellP[i].ISMDustChem_Dust_Species[k]>0) {all_dest = 0; break;}}
+            for (k=0;k<4;k++) {if(CellP.ISMDustChem_Dust_Species[i][k]>0) {all_dest = 0; break;}}
             if (all_dest)
             {
-                for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) dust_yields[k] = -CellP[i].ISMDustChem_Dust_Metal[k];
-                for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP[i].ISMDustChem_Dust_Source[k] = 0.;}
-                for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {CellP[i].ISMDustChem_Dust_Species[k] = 0.;}
+                for(k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) dust_yields[k] = -CellP.ISMDustChem_Dust_Metal[i][k];
+                for(k=0;k<NUM_ISMDUSTCHEM_SOURCES;k++) {CellP.ISMDustChem_Dust_Source[i][k] = 0.;}
+                for(k=0;k<NUM_ISMDUSTCHEM_SPECIES;k++) {CellP.ISMDustChem_Dust_Species[i][k] = 0.;}
             }
-            for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP[i].ISMDustChem_Dust_Metal[k] = DMAX(0,CellP[i].ISMDustChem_Dust_Metal[k]+dust_yields[k]);}
+            for (k=0;k<NUM_ISMDUSTCHEM_ELEMENTS;k++) {CellP.ISMDustChem_Dust_Metal[i][k] = DMAX(0,CellP.ISMDustChem_Dust_Metal[i][k]+dust_yields[k]);}
             if(GALSF_ISMDUSTCHEM_MODEL & 4) { // Update amount of free-flying iron and iron inclusions since some of the inclusions are released as silicates are sputtered. This scales with local amount of silicates. Note if all free-flying dust is destroyed then we assume all iron inclusions are also destroyed
                 int key_elem = 0; double key_mass, key_num_atoms, frac_of_max_sil, incl_frac, sil_elem_abunds[GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES];
                 for(k=0;k<GALSF_ISMDUSTCHEM_VAR_ELEM_IN_SILICATES;k++)
                 {
-                    int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]; sil_elem_abunds[k] = P[i].Metallicity[index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
+                    int index = All.ISMDustChem_SilicateMetallicityFieldIndexTable[k]; sil_elem_abunds[k] = P.Metallicity[i][index] / (All.ISMDustChem_AtomicMassTable[index] * PROTONMASS_CGS);
                     if (sil_elem_abunds[key_elem] / All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem] > sil_elem_abunds[k] / All.ISMDustChem_SilicateNumberOfAtomsTable[k]) {key_elem = k;}
                 }
                 key_mass = All.ISMDustChem_AtomicMassTable[All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem]];
                 key_num_atoms = All.ISMDustChem_SilicateNumberOfAtomsTable[key_elem];
                 key_elem = All.ISMDustChem_SilicateMetallicityFieldIndexTable[key_elem];
-                frac_of_max_sil = CellP[i].ISMDustChem_Dust_Species[0] / (P[i].Metallicity[key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
+                frac_of_max_sil = CellP.ISMDustChem_Dust_Species[i][0] / (P.Metallicity[i][key_elem] * All.ISMDustChem_EffectiveSilicateDustAtomicWeight/(key_num_atoms * key_mass));
                 incl_frac = DMAX(DMIN(GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC*frac_of_max_sil,GALSF_ISMDUSTCHEM_VAR_IRON_INCL_FRAC),0.);
-                CellP[i].ISMDustChem_Dust_Species[3] = (1.-incl_frac) * CellP[i].ISMDustChem_Dust_Metal[10];
-                CellP[i].ISMDustChem_Dust_Species[NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP[i].ISMDustChem_Dust_Metal[10];
+                CellP.ISMDustChem_Dust_Species[i][3] = (1.-incl_frac) * CellP.ISMDustChem_Dust_Metal[i][10];
+                CellP.ISMDustChem_Dust_Species[i][NUM_ISMDUSTCHEM_SPECIES-1] = incl_frac * CellP.ISMDustChem_Dust_Metal[i][10];
             }
         }
     }

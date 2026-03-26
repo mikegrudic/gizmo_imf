@@ -101,6 +101,21 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat rkern, int t
 			  int *exportflag, int *exportnodecount, int *exportindex, int *ngblist);
 inline int ngb_treefind_variable_threads(const Vec3<MyDouble>& searchcenter, MyFloat rkern, int target, int *startnode, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist) { return ngb_treefind_variable_threads(const_cast<MyDouble*>(searchcenter.data), rkern, target, startnode, mode, exportflag, exportnodecount, exportindex, ngblist); }
 
+void ngb_set_prefound_list(int *list, int count);
+void ngb_clear_prefound_list(void);
+int ngb_treefind_optimized(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
+                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                           int *ngblist, int search_both_ways);
+inline int ngb_treefind_optimized(const Vec3<MyDouble>& searchcenter, MyFloat rkern, int target, int *startnode, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int search_both_ways) { return ngb_treefind_optimized(const_cast<MyDouble*>(searchcenter.data), rkern, target, startnode, mode, exportflag, exportnodecount, exportindex, ngblist, search_both_ways); }
+
+/* NgbCache not needed with SoA — individual P.field arrays are already cache-friendly */
+
+#define NGB_BATCH_SIZE 4
+int ngb_treefind_pairs_threads_batched(
+    int batch_size, MyDouble searchcenters[][3], MyFloat rkerns[],
+    int targets[], int *exportflag, int *exportnodecount, int *exportindex,
+    int *ngblists[], int numngb_out[], int search_both_ways);
+
 #endif
 
 

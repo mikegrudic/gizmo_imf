@@ -53,13 +53,13 @@ void tillotson_eos_init(void)
 /* routine to calculate the pressure and sound speed from the Tillotson equation-of-state for solids */
 double calculate_eos_tillotson(int i)
 {
-    int type = CellP[i].CompositionType; /* determine material, which determines relevant coefficients */
+    int type = CellP.CompositionType[i]; /* determine material, which determines relevant coefficients */
     double a=All.Tillotson_EOS_params[type][0], b=All.Tillotson_EOS_params[type][1],
     u0=All.Tillotson_EOS_params[type][2], rho0=All.Tillotson_EOS_params[type][3],
     A0=All.Tillotson_EOS_params[type][4], B0=All.Tillotson_EOS_params[type][5],
     u_s=All.Tillotson_EOS_params[type][6], u_s_prime=All.Tillotson_EOS_params[type][7],
     alpha=All.Tillotson_EOS_params[type][8], beta=All.Tillotson_EOS_params[type][9]; /* load all the Tillotson EOS parameters for this composition */
-    double rho=CellP[i].Density, u=CellP[i].InternalEnergyPred; /* define gas quantities */
+    double rho=CellP.Density[i], u=CellP.InternalEnergyPred[i]; /* define gas quantities */
     double eta=rho/rho0, mu=eta-1, u_u0eta2=1+u/(u0*eta*eta), p0=u*rho, z=1/eta-1, press=0, cs=0, press_min=1.e-10*u0*rho0; /* useful variables below */
     double Pc = (a + b/u_u0eta2)*p0 + A0*mu + B0*mu*mu; /* pressure in region I,II (fully-condensed states) */
     double c2c_rho = (1+a+b/u_u0eta2)*Pc + A0+B0*(eta*eta-1) + b*(u_u0eta2-1)*(2*p0-Pc)/(u_u0eta2*u_u0eta2); /* sound speed squared (times density) in this region */
@@ -71,11 +71,11 @@ double calculate_eos_tillotson(int i)
     if(u <= u_s) {press=Pc; cs=c2c_rho;} else {if(u >= u_s_prime) {press=Pe; cs=c2e_rho;} else {press=Px; cs=c2x_rho;}} /* check which regime we are in */
     //if(press < press_min) {press=cs=press_min;} /* enforce minimum pressure */
     if(cs <= 0) {cs=press_min;} /* enforce non-zero sound speed */
-    CellP[i].SoundSpeed = cs/rho; /* save sound speed for later use */
+    CellP.SoundSpeed[i] = cs/rho; /* save sound speed for later use */
 #ifdef EOS_ELASTIC
-    CellP[i].SoundSpeed += All.Tillotson_EOS_params[CellP[i].CompositionType][10] / rho; /* add elastic component to soundspeed */
+    CellP.SoundSpeed[i] += All.Tillotson_EOS_params[CellP.CompositionType[i]][10] / rho; /* add elastic component to soundspeed */
 #endif
-    CellP[i].SoundSpeed = sqrt(CellP[i].SoundSpeed);
+    CellP.SoundSpeed[i] = sqrt(CellP.SoundSpeed[i]);
     return press; /* return pressure */
 }
 
@@ -90,7 +90,7 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
     int j,k,l,NDim=NUMDIMS;
     double dv0[3][3], R[3][3], S[3][3], S_new[3][3], dS=0, mu, Y0, J2=0, I1=0;
 #ifdef EOS_TILLOTSON
-    mu = All.Tillotson_EOS_params[CellP[i].CompositionType][10]; Y0 = All.Tillotson_EOS_params[CellP[i].CompositionType][11]; // set for composition
+    mu = All.Tillotson_EOS_params[CellP.CompositionType[i]][10]; Y0 = All.Tillotson_EOS_params[CellP.CompositionType[i]][11]; // set for composition
 #else
     mu = All.Tillotson_EOS_params[0][10]; Y0 = All.Tillotson_EOS_params[0][11];  // set to universal constants
 #endif
@@ -100,8 +100,8 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
         for(j=0;j<NDim;j++) {
             for(k=0;k<NDim;k++) {
                 // determine which variable we are updating (mode=0/1 is kick/drift)
-                if(mode==0) {S_new[j][k]=CellP[i].Elastic_Stress_Tensor[j][k];} else {S_new[j][k]=CellP[i].Elastic_Stress_Tensor_Pred[j][k];}
-                S_new[j][k] += dt_entr * CellP[i].Dt_Elastic_Stress_Tensor[j][k]; // apply time evolution
+                if(mode==0) {S_new[j][k]=CellP.Elastic_Stress_Tensor[i][j][k];} else {S_new[j][k]=CellP.Elastic_Stress_Tensor_Pred[i][j][k];}
+                S_new[j][k] += dt_entr * CellP.Dt_Elastic_Stress_Tensor[i][j][k]; // apply time evolution
                 if(k==j) {I1 += S_new[j][k];} // first invariant of the tensor
                 J2 += 0.5 * S_new[j][k]*S_new[j][k]; // second invariant of the tensor
             }}
@@ -114,14 +114,14 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
         // write out to variable //
         for(j=0;j<NDim;j++) {
             for(k=0;k<NDim;k++) {
-                if(mode==0) {CellP[i].Elastic_Stress_Tensor[j][k]=S_new[j][k];} else {CellP[i].Elastic_Stress_Tensor_Pred[j][k]=S_new[j][k];}
+                if(mode==0) {CellP.Elastic_Stress_Tensor[i][j][k]=S_new[j][k];} else {CellP.Elastic_Stress_Tensor_Pred[i][j][k]=S_new[j][k];}
             }}
 
     } else {
 
         // ok all below is for mode = 2, which is the actual calculation of the time derivative of the stress tensor
-        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {dv0[j][k] = CellP[i].Gradients.Velocity[j][k];}}
-        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {S[j][k] = CellP[i].Elastic_Stress_Tensor_Pred[j][k];}}
+        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {dv0[j][k] = CellP.Gradients.Velocity[i][j][k];}}
+        for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {S[j][k] = CellP.Elastic_Stress_Tensor_Pred[i][j][k];}}
         for(j=0;j<NDim;j++) {for(k=0;k<NDim;k++) {R[j][k] = 0.5*(dv0[j][k] - dv0[k][j]);}}
         double trace_vel=0; for(j=0;j<NDim;j++) {trace_vel += dv0[j][j];}
         for(j=0;j<NDim;j++) // velocity index
@@ -131,7 +131,7 @@ void elastic_body_update_driftkick(int i, double dt_entr, int mode)
                 dS = mu * (dv0[j][k] + dv0[k][j]); // symmetric strain component
                 if(k==j) {dS -= 2.*mu*trace_vel/NDim;} // trace component
                 for(l=0;l<NDim;l++) {dS += S[j][l]*R[l][k] - R[j][l]*S[l][k];} // rotation components
-                CellP[i].Dt_Elastic_Stress_Tensor[j][k] = dS; // save it to variable
+                CellP.Dt_Elastic_Stress_Tensor[i][j][k] = dS; // save it to variable
             }
         }
 

@@ -33,7 +33,7 @@ void subfind_potential_compute(int num, struct unbind_data *d, int phase, double
         /* do local particles and prepare export list */
         for(nexport = 0; i < num; i++)
         {
-            if(phase == 1) {if(P[d[i].index].v.DM_BindingEnergy <= weakly_bound_limit) {continue;}}
+            if(phase == 1) {if(P.v.DM_BindingEnergy[d[i].index] <= weakly_bound_limit) {continue;}}
             if(subfind_force_treeevaluate_potential(d[i].index, 0, &nexport, Send_count) < 0) {break;}
         }
         qsort(DataIndexTable, nexport, sizeof(struct data_index), data_index_compare);
@@ -54,7 +54,7 @@ void subfind_potential_compute(int num, struct unbind_data *d, int phase, double
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-            for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P[place].Pos[k];}
+            for(k = 0; k < 3; k++) {GravDataIn[j].Pos[k] = P.Pos[place][k];}
             for(k = 0; k < NODELISTLENGTH; k++) {GravDataIn[j].NodeList[k] = DataNodeList[DataIndexTable[j].IndexGet].NodeList[k];}
         }
         /* exchange particle data */
@@ -96,7 +96,7 @@ void subfind_potential_compute(int num, struct unbind_data *d, int phase, double
         for(j = 0; j < nexport; j++)
         {
             place = DataIndexTable[j].Index;
-            P[place].u.DM_Potential += PotDataOut[j].Potential;
+            P.u.DM_Potential[place] += PotDataOut[j].Potential;
         }
         myfree(PotDataOut);
         myfree(PotDataResult);
@@ -106,11 +106,11 @@ void subfind_potential_compute(int num, struct unbind_data *d, int phase, double
     
     for(i = 0; i < num; i++)
     {
-        if(phase == 1) {if(P[d[i].index].v.DM_BindingEnergy <= weakly_bound_limit) {continue;}}
+        if(phase == 1) {if(P.v.DM_BindingEnergy[d[i].index] <= weakly_bound_limit) {continue;}}
         int p = d[i].index; double h_grav = ForceSoftening_KernelRadius(p);
-        P[p].u.DM_Potential -= P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution here
-        P[p].u.DM_Potential *= All.G / All.cf_atime;
-        if(All.TotN_gas > 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P[p].u.DM_Potential *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
+        P.u.DM_Potential[p] -= P.Mass[p] / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution here
+        P.u.DM_Potential[p] *= All.G / All.cf_atime;
+        if(All.TotN_gas > 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P.u.DM_Potential[p] *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
     }
     myfree(DataNodeList);
     myfree(DataIndexTable);

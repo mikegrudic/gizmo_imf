@@ -32,6 +32,9 @@ void ngb_treebuild(void)
     if(ThisTask == 0) {printf("Begin Ngb-tree construction.\n");}
     CPU_Step[CPU_MISC] += measure_time();
     force_treebuild(NumPart, NULL);
+    /* Note: NgbCache (from tree_optimization) is NOT needed with SoA layout.
+       Individual fields like P.Type[p], P.Mass[p], P.Pos[p] are already in
+       contiguous arrays — no cache pollution from loading unrelated fields. */
     CPU_Step[CPU_TREEBUILD] += measure_time();
     if(ThisTask == 0) {printf("Ngb-Tree contruction finished \n");}
 }
@@ -47,8 +50,8 @@ int ngb_treefind_pairs_threads(MyDouble searchcenter[3], MyFloat rkern, int targ
                                int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "../system/ngb_codeblock_before_condition.h"
-    if(P[p].Type > 0) continue; // skip particles with non-gas types
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(P.Type[p] > 0) continue; // skip particles with non-gas types
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define NGB_ONLY_OPEN_NODES_CONTAINING_GAS // only want gas
 #define SEARCHBOTHWAYS 1 // need neighbors that can -mutually- see one another, not just single-directional searching here
 #include "../system/ngb_codeblock_after_condition_threaded.h"
@@ -64,14 +67,51 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat rkern, int t
 				  int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist)
 {
 #include "../system/ngb_codeblock_before_condition.h"
-    if(P[p].Type > 0) continue; // skip particles with non-gas types
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(P.Type[p] > 0) continue; // skip particles with non-gas types
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define NGB_ONLY_OPEN_NODES_CONTAINING_GAS // only want gas
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "../system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
 #undef NGB_ONLY_OPEN_NODES_CONTAINING_GAS
 }
+
+
+/*! Thread-local pre-found neighbor list for batched evaluation.
+ *  When set, ngb_treefind_optimized returns this list instead of doing a tree walk. */
+static int *_prefound_ngblist = NULL;
+static int  _prefound_numngb = -1;
+#ifdef _OPENMP
+#pragma omp threadprivate(_prefound_ngblist, _prefound_numngb)
+#endif
+
+void ngb_set_prefound_list(int *list, int count) { _prefound_ngblist = list; _prefound_numngb = count; }
+void ngb_clear_prefound_list(void) { _prefound_ngblist = NULL; _prefound_numngb = -1; }
+
+
+/*! Optimized single-query neighbor search with prefound-list fast path.
+ *  If a pre-found neighbor list has been set, returns it immediately without tree walk.
+ *  Otherwise does a full tree walk reading P[] directly (not NgbCache). */
+int ngb_treefind_optimized(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode,
+                           int mode, int *exportflag, int *exportnodecount, int *exportindex,
+                           int *ngblist, int search_both_ways)
+{
+    /* fast path: return pre-found neighbor list from batched tree walk */
+    if(_prefound_numngb >= 0) {
+        int n = _prefound_numngb;
+        if(_prefound_ngblist != ngblist) {for(int i = 0; i < n; i++) ngblist[i] = _prefound_ngblist[i];}
+        _prefound_numngb = -1;
+        *startnode = -1;
+        return n;
+    }
+    /* fall through to regular tree walk */
+    if(search_both_ways) {
+        return ngb_treefind_pairs_threads(searchcenter, rkern, target, startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+    } else {
+        return ngb_treefind_variable_threads(searchcenter, rkern, target, startnode, mode, exportflag, exportnodecount, exportindex, ngblist);
+    }
+}
+
 
 /* this is the same as above, but the simpler un-threaded version, useful for historical reasons and because some sub-routines use 
     this model without threading because there is no real performance gain. note the slightly different construction of the subroutine below.
@@ -82,8 +122,8 @@ int ngb_treefind_variable_targeted(MyDouble searchcenter[3], MyFloat rkern, int 
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "../system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
-    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(!((1 << P.Type[p]) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "../system/ngb_codeblock_after_condition_unthreaded.h" // call the main loop block as above, but this time the -unthreaded- version
 #undef SEARCHBOTHWAYS
@@ -93,8 +133,8 @@ int ngb_treefind_pairs_targeted(MyDouble searchcenter[3], MyFloat rkern, int tar
 {
     long nexport_save = *nexport; /* this line must be here in the un-threaded versions */
 #include "../system/ngb_codeblock_before_condition.h" // call the same variable/initialization block
-    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(!((1 << P.Type[p]) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define SEARCHBOTHWAYS 1 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "../system/ngb_codeblock_after_condition_unthreaded.h" // call the main loop block as above, but this time the -unthreaded- version
 #undef SEARCHBOTHWAYS
@@ -110,8 +150,8 @@ int ngb_treefind_variable_threads_targeted(MyDouble searchcenter[3], MyFloat rke
                                            int *ngblist, int TARGET_BITMASK)
 {
 #include "../system/ngb_codeblock_before_condition.h"
-    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(!((1 << P.Type[p]) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define SEARCHBOTHWAYS 0 // only need neighbors inside of search radius, not particles 'looking at' primary
 #include "../system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
@@ -122,8 +162,8 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat rkern,
                                            int *ngblist, int TARGET_BITMASK)
 {
 #include "../system/ngb_codeblock_before_condition.h"
-    if(!((1 << P[p].Type) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
-    if(P[p].Mass <= 0) continue; // skip zero-mass particles
+    if(!((1 << P.Type[p]) & (TARGET_BITMASK))) continue; // skip anything not of the desired type
+    if(P.Mass[p] <= 0) continue; // skip zero-mass particles
 #define SEARCHBOTHWAYS 1 // also want particles 'looking at' primary
 #include "../system/ngb_codeblock_after_condition_threaded.h"
 #undef SEARCHBOTHWAYS
@@ -135,10 +175,170 @@ int ngb_treefind_pairs_threads_targeted(MyDouble searchcenter[3], MyFloat rkern,
 
 
 
-/* 
+/*! Batched neighbor search: walks the tree ONCE for up to NGB_BATCH_SIZE nearby queries simultaneously.
+ *  For each candidate particle, checks all B queries — this inner loop auto-vectorizes.
+ *  Supports MPI export via per-query export tracking. Returns 0 on success, -1 on buffer overflow.
+ */
+int ngb_treefind_pairs_threads_batched(
+    int batch_size,
+    MyDouble searchcenters[][3],
+    MyFloat rkerns[],
+    int targets[],
+    int *exportflag,
+    int *exportnodecount,
+    int *exportindex,
+    int *ngblists[],
+    int numngb_out[],
+    int search_both_ways)
+{
+    MyDouble xtmp; xtmp=0; /* needed by NGB_PERIODIC_BOX_LONG macros */
+    int maxPart = All.MaxPart;
+    int maxNodes = MaxNodes;
+    integertime ti_Current = All.Ti_Current;
+    int b;
+
+    int numngb[NGB_BATCH_SIZE];
+    for(b = 0; b < batch_size; b++) {numngb[b] = 0;}
+
+    int no = maxPart; /* root node */
+
+    while(no >= 0)
+    {
+        if(no < maxPart) /* single particle */
+        {
+            int p = no;
+            no = Nextnode[no];
+
+            if(P.Type[p] > 0) continue;
+            if(P.Mass[p] <= 0) continue;
+
+            if(__builtin_expect(P.Ti_current[p] != ti_Current, 0))
+            {
+#ifdef _OPENMP
+#pragma omp critical(_partdriftngb_)
+#endif
+                {drift_particle(p, ti_Current);}
+            }
+
+            MyDouble cp0 = P.Pos[p][0], cp1 = P.Pos[p][1], cp2 = P.Pos[p][2];
+            MyFloat cp_hr = P.KernelRadius[p];
+
+            if(search_both_ways) {
+                for(b = 0; b < batch_size; b++)
+                {
+                    MyFloat dist_b = (cp_hr > rkerns[b]) ? cp_hr : rkerns[b];
+                    MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddx > dist_b) continue;
+                    MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddy > dist_b) continue;
+                    MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddz > dist_b) continue;
+                    if(ddx*ddx + ddy*ddy + ddz*ddz > dist_b*dist_b) continue;
+                    ngblists[b][numngb[b]++] = p;
+                }
+            } else {
+                for(b = 0; b < batch_size; b++) {
+                    MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddx > rkerns[b]) continue;
+                    MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddy > rkerns[b]) continue;
+                    MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
+                    if(ddz > rkerns[b]) continue;
+                    if(ddx*ddx + ddy*ddy + ddz*ddz > rkerns[b]*rkerns[b]) continue;
+                    ngblists[b][numngb[b]++] = p;
+                }
+            }
+        }
+        else if(no >= maxPart + maxNodes) /* pseudo particle */
+        {
+            int task = DomainTask[no - (maxPart + maxNodes)];
+            for(b = 0; b < batch_size; b++)
+            {
+                int tgt = targets[b];
+                if(tgt < 0) continue;
+                if(exportflag[task] != tgt)
+                {
+                    exportflag[task] = tgt;
+                    exportnodecount[task] = NODELISTLENGTH;
+                }
+                if(exportnodecount[task] == NODELISTLENGTH)
+                {
+                    int exitFlag = 0, nexp;
+#ifdef _OPENMP
+#pragma omp critical(_nexportngb_)
+#endif
+                    {
+                        if(Nexport >= All.BunchSize) {BufferFullFlag = 1; exitFlag = 1;}
+                        else {nexp = Nexport; Nexport++;}
+                    }
+                    if(exitFlag) {for(int bb=0;bb<batch_size;bb++) numngb_out[bb]=numngb[bb]; return -1;}
+                    exportnodecount[task] = 0;
+                    exportindex[task] = nexp;
+                    DataIndexTable[nexp].Task = task;
+                    DataIndexTable[nexp].Index = tgt;
+                    DataIndexTable[nexp].IndexGet = nexp;
+                }
+                DataNodeList[exportindex[task]].NodeList[exportnodecount[task]++] = DomainNodeIndex[no - (maxPart + maxNodes)];
+                if(exportnodecount[task] < NODELISTLENGTH)
+                    DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
+            }
+            no = Nextnode[no - maxNodes];
+            continue;
+        }
+        else /* internal node */
+        {
+            struct NODE *current = &Nodes[no];
+
+            if(__builtin_expect(current->Ti_current != ti_Current, 0))
+            {
+#ifdef _OPENMP
+#pragma omp critical(_nodedriftngb_)
+#endif
+                {force_drift_node(no, ti_Current);}
+            }
+
+            if(__builtin_expect(current->N_part <= 1, 0))
+            {
+                if(current->u.d.mass) {no = current->u.d.nextnode; continue;}
+            }
+
+            double node_hmax = Extnodes[no].hmax;
+            if(All.Time > All.TimeBegin) {if(node_hmax <= 0) {no = current->u.d.sibling; continue;}}
+
+            MyFloat nc0 = current->center[0], nc1 = current->center[1], nc2 = current->center[2];
+            MyFloat half_len = 0.5 * current->len;
+            MyFloat sphere_extra = CUBE_EDGEFACTOR_1 * current->len;
+
+            int open_node = 0;
+            for(b = 0; b < batch_size; b++)
+            {
+                MyFloat dist_b = (search_both_ways ? ((node_hmax > rkerns[b]) ? node_hmax : rkerns[b]) : rkerns[b]) + half_len;
+                MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
+                if(ddx > dist_b) continue;
+                MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
+                if(ddy > dist_b) continue;
+                MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
+                if(ddz > dist_b) continue;
+                MyFloat dist_sph = dist_b + sphere_extra;
+                if(ddx*ddx + ddy*ddy + ddz*ddz > dist_sph*dist_sph) continue;
+                open_node = 1;
+                break;
+            }
+
+            if(open_node) {no = current->u.d.nextnode;} else {no = current->u.d.sibling;}
+            continue;
+        }
+    }
+
+    for(b = 0; b < batch_size; b++) {numngb_out[b] = numngb[b];}
+    return 0;
+}
+
+
+/*
     custom code for FOF finder -- needs to be able to deal with complications like pure node-linkages and hard-codes a
-    local requirement, so we can't use our simple routines above. this is a customized version of the "ngb_treefind_variable" routine above. 
-    as a result, updates to the core neighbor search routine will not alter this subroutine 
+    local requirement, so we can't use our simple routines above. this is a customized version of the "ngb_treefind_variable" routine above.
+    as a result, updates to the core neighbor search routine will not alter this subroutine
  */
 int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat rkern, int target, int *startnode, int mode, int *nexport, int *nsend_local, int MyFOF_PRIMARY_LINK_TYPES)
 {
@@ -163,18 +363,18 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat rkern, int target
             p = no;
             no = Nextnode[no];
             
-            if(!((1 << P[p].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+            if(!((1 << P.Type[p]) & (MyFOF_PRIMARY_LINK_TYPES)))
                 continue;
             
             if(mode == 0)
                 continue;
             
             dist = rkern;
-            dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+            dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
             if(dx > dist) continue;
-            dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+            dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
             if(dy > dist) continue;
-            dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+            dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
             if(dz > dist) continue;
             if(dx * dx + dy * dy + dz * dz > dist * dist) continue;
 
@@ -280,11 +480,11 @@ int ngb_treefind_fof_primary(MyDouble searchcenter[3], MyFloat rkern, int target
                             {
                                 if(p < maxPart)
                                 {
-                                    if(((1 << P[p].Type) & (MyFOF_PRIMARY_LINK_TYPES)))
+                                    if(((1 << P.Type[p]) & (MyFOF_PRIMARY_LINK_TYPES)))
                                     {
-                                        dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
-                                        dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
-                                        dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+                                        dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+                                        dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+                                        dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
                                         if(dx * dx + dy * dy + dz * dz > rkern * rkern) break;
 
                                         Ngblist[numngb++] = p;

@@ -101,7 +101,7 @@ void read_ic(char *fname)
     if(header.flag_ic_info != FLAG_SECOND_ORDER_ICS)
     {
         /* this makes sure that masses are initialized in the case that the mass-block is empty for this particle type */
-        for(i = 0; i < NumPart; i++) {if(All.MassTable[P[i].Type] != 0) {P[i].Mass = All.MassTable[P[i].Type];}}
+        for(i = 0; i < NumPart; i++) {if(All.MassTable[P.Type[i]] != 0) {P.Mass[i] = All.MassTable[P.Type[i]];}}
     }
 
     /* zero this out, since various operations in the code will want to change particle
@@ -153,16 +153,16 @@ void read_ic(char *fname)
         {
             for(i = 0; i < N_gas; i++)
             {
-                if(ThisTask == 0 && i == 0) // && CellP[i].InternalEnergy == 0)
-                    {printf("Initializing u from InitGasTemp : InitGasTemp=%g InitGasU=%g MinEgySpec=%g CellP[0].InternalEnergy=%g\n",
-                           All.InitGasTemp,All.InitGasU,All.MinEgySpec,CellP[i].InternalEnergy);}
+                if(ThisTask == 0 && i == 0) // && CellP.InternalEnergy[i] == 0)
+                    {printf("Initializing u from InitGasTemp : InitGasTemp=%g InitGasU=%g MinEgySpec=%g CellP.InternalEnergy[0]=%g\n",
+                           All.InitGasTemp,All.InitGasU,All.MinEgySpec,CellP.InternalEnergy[i]);}
 
-                CellP[i].InternalEnergy = All.InitGasU;
+                CellP.InternalEnergy[i] = All.InitGasU;
             }
         }
     }
 
-    for(i = 0; i < N_gas; i++) {CellP[i].InternalEnergyPred = CellP[i].InternalEnergy = DMAX(All.MinEgySpec, CellP[i].InternalEnergy);}
+    for(i = 0; i < N_gas; i++) {CellP.InternalEnergyPred[i] = CellP.InternalEnergy[i] = DMAX(All.MinEgySpec, CellP.InternalEnergy[i]);}
     MPI_Barrier(MPI_COMM_WORLD);
     if(ThisTask == 0) {printf("Reading done. Total number of particles :  %d%09d\n\n", (int) (All.TotNumPart / 1000000000), (int) (All.TotNumPart % 1000000000)); fflush(stdout);}
 
@@ -187,75 +187,75 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++)
                 for(k = 0; k < 3; k++)
                 {
-                    P[offset + n].Pos[k] = *fp_pos++;
-                    // P[offset + n].Pos[k] += 0.5*All.BoxSize; /* manually turn on for some ICs */
+                    P.Pos[offset + n][k] = *fp_pos++;
+                    // P.Pos[offset + n][k] += 0.5*All.BoxSize; /* manually turn on for some ICs */
                 }
 
-            for(n = 0; n < pc; n++) {P[offset + n].Type = type;}	/* initialize type here as well */
+            for(n = 0; n < pc; n++) {P.Type[offset + n] = type;}	/* initialize type here as well */
             break;
 
         case IO_VEL:		/* velocities */
-            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P[offset + n].Vel[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P.Vel[offset + n][k] = *fp++;}}
             break;
 
         case IO_ID:		/* particle ID */
-            for(n = 0; n < pc; n++) {P[offset + n].ID = (MyIDType) (*ip++);}
+            for(n = 0; n < pc; n++) {P.ID[offset + n] = (MyIDType) (*ip++);}
             break;
 
         case IO_CHILD_ID:		// particle child ID //
-            if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P[offset + n].ID_child_number = *ip++;}}
+            if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P.ID_child_number[offset + n] = *ip++;}}
             break;
 
         case IO_GENERATION_ID:		// particle generation ID //
-            if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P[offset + n].ID_generation = *ip++;}}
+            if(RestartFlag == 2) {for(n = 0; n < pc; n++) {P.ID_generation[offset + n] = *ip++;}}
             break;
 
         case IO_MASS:		/* particle mass */
-            for(n = 0; n < pc; n++) {P[offset + n].Mass = *fp++;}
+            for(n = 0; n < pc; n++) {P.Mass[offset + n] = *fp++;}
             break;
 
         case IO_U:			/* temperature */
-            for(n = 0; n < pc; n++) {CellP[offset + n].InternalEnergy = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.InternalEnergy[offset + n] = *fp++;}
             break;
 
         case IO_RHO:		/* density */
-            for(n = 0; n < pc; n++) {CellP[offset + n].Density = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Density[offset + n] = *fp++;}
             break;
 
         case IO_NE:		/* electron abundance */
 #if defined(COOLING) || defined(RT_CHEM_PHOTOION)
 #ifndef CHIMES
-            for(n = 0; n < pc; n++) {CellP[offset + n].Ne = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Ne[offset + n] = *fp++;}
 #endif
 #endif
             break;
 
 
         case IO_KERNELRADIUS:		/* gas kernel length */
-            for(n = 0; n < pc; n++) {P[offset + n].KernelRadius = *fp++;}
+            for(n = 0; n < pc; n++) {P.KernelRadius[offset + n] = *fp++;}
             break;
 
         case IO_DELAYTIME:
 #ifdef GALSF_SUBGRID_WINDS
-            for(n = 0; n < pc; n++) {CellP[offset + n].DelayTime = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.DelayTime[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_AGE:		/* Age of stars */
 #ifdef GALSF
-            for(n = 0; n < pc; n++) {P[offset + n].StellarAge = *fp++;}
+            for(n = 0; n < pc; n++) {P.StellarAge[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_GRAINSIZE:
 #ifdef GRAIN_FLUID
-            for(n = 0; n < pc; n++) {P[offset + n].Grain_Size = *fp++;}
+            for(n = 0; n < pc; n++) {P.Grain_Size[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_GRAINTYPE:
 #if defined(PIC_MHD)
-            for(n = 0; n < pc; n++) {P[offset + n].MHD_PIC_SubType = *ip_int++;}
+            for(n = 0; n < pc; n++) {P.MHD_PIC_SubType[offset + n] = *ip_int++;}
 #endif
             break;
 
@@ -264,8 +264,8 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             for(n = 0; n < pc; n++) {
                 int nmax=NUM_METAL_SPECIES;
                 if(RestartFlag==2 && All.ICFormat==3 && header.flag_metals<NUM_METAL_SPECIES && header.flag_metals>0) {nmax=header.flag_metals;} // special clause to catch cases where read-in snapshot did not use all the metals fields we want to read now
-                for(k=0;k<nmax;k++) {P[offset + n].Metallicity[k] = *fp++;} // normal read-in
-                if(nmax<NUM_METAL_SPECIES) {for(k=nmax;k<NUM_METAL_SPECIES;k++) {P[offset + n].Metallicity[k]=0;}} // any extra fields zero'd
+                for(k=0;k<nmax;k++) {P.Metallicity[offset + n][k] = *fp++;} // normal read-in
+                if(nmax<NUM_METAL_SPECIES) {for(k=nmax;k<NUM_METAL_SPECIES;k++) {P.Metallicity[offset + n][k]=0;}} // any extra fields zero'd
             }
 #endif
             break;
@@ -273,21 +273,21 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
        case IO_DUSTCHEMZMET:
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
             for(n = 0; n < pc; n++) {
-                for(k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {CellP[offset + n].ISMDustChem_Dust_Metal[k] = *fp++;} // Get dust fractions
-                for(k = 0; k < NUM_ISMDUSTCHEM_SOURCES; k++) {CellP[offset + n].ISMDustChem_Dust_Source[k] = *fp++;} // Then get the sources of dust
+                for(k = 0; k < NUM_ISMDUSTCHEM_ELEMENTS; k++) {CellP.ISMDustChem_Dust_Metal[offset + n][k] = *fp++;} // Get dust fractions
+                for(k = 0; k < NUM_ISMDUSTCHEM_SOURCES; k++) {CellP.ISMDustChem_Dust_Source[offset + n][k] = *fp++;} // Then get the sources of dust
             }
 #endif
             break;
 
         case IO_DUSTCHEMSPECIESMET:
 #if (GALSF_ISMDUSTCHEM_MODEL & 2)
-            for(n = 0; n < pc; n++) {for(k = 0; k < NUM_ISMDUSTCHEM_SPECIES; k++) {CellP[offset + n].ISMDustChem_Dust_Species[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < NUM_ISMDUSTCHEM_SPECIES; k++) {CellP.ISMDustChem_Dust_Species[offset + n][k] = *fp++;}}
 #endif
             break;
 
         case IO_ISMDUSTCHEMMOL:    /* gas dust species following Species routines */
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
-            for(n = 0; n < pc; n++) {CellP[offset + n].ISMDustChem_MassFractionInDenseMolecular = *fp++; CellP[offset + n].ISMDustChem_C_in_CO = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.ISMDustChem_MassFractionInDenseMolecular[offset + n] = *fp++; CellP.ISMDustChem_C_in_CO[offset + n] = *fp++;}
 #endif
             break;
 
@@ -295,11 +295,11 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef MAGNETIC
             for(n = 0; n < pc; n++)
             {
-                for(k = 0; k < 3; k++) {CellP[offset + n].BPred[k] = *fp++;}
-                CellP[offset + n].divB = 0;
+                for(k = 0; k < 3; k++) {CellP.BPred[offset + n][k] = *fp++;}
+                CellP.divB[offset + n] = 0;
 #ifdef DIVBCLEANING_DEDNER
-                CellP[offset + n].Phi = 0;
-                CellP[offset + n].PhiPred = 0;
+                CellP.Phi[offset + n] = 0;
+                CellP.PhiPred[offset + n] = 0;
 #endif
             }
 #endif
@@ -307,13 +307,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_SINKMASS:
 #ifdef SINK_PARTICLES
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mass = *fp++;}
+            for(n = 0; n < pc; n++) {P.Sink_Mass[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_SINKDUSTMASSACC:
 #if defined(SINK_PARTICLES) && defined(GRAIN_FLUID)
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_Dust_Mass = *fp++;}
+            for(n = 0; n < pc; n++) {P.Sink_Dust_Mass[offset + n] = *fp++;}
 #endif
             break;
 
@@ -322,122 +322,122 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_SINK_ANGMOM:
 #ifdef SINK_FOLLOW_ACCRETED_ANGMOM
-            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P[offset + n].Sink_Specific_AngMom[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {P.Sink_Specific_AngMom[offset + n][k] = *fp++;}}
 #endif
             break;
 
         case IO_SINKMASSALPHA:
 #ifdef SINK_ALPHADISK_ACCRETION
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mass_Reservoir = *fp++;}
+            for(n = 0; n < pc; n++) {P.Sink_Mass_Reservoir[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_SINKMDOT:
 #ifdef SINK_PARTICLES
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_Mdot = *fp++;}
+            for(n = 0; n < pc; n++) {P.Sink_Mdot[offset + n] = *fp++;}
 #endif
         case IO_R_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarRadius_inSolar = *fp++;}
+            for(n = 0; n < pc; n++) {P.ProtoStellarRadius_inSolar[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_MASS_D_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].Mass_D = *fp++;}
+            for(n = 0; n < pc; n++) {P.Mass_D[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_ZAMS_MASS:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].ZAMS_Mass = *fp++;}
+            for(n = 0; n < pc; n++) {P.ZAMS_Mass[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_STAGE_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarStage = *ip_int++;}
+            for(n = 0; n < pc; n++) {P.ProtoStellarStage[offset + n] = *ip_int++;}
 #endif
             break;
             
         case IO_AGE_PROTOSTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].ProtoStellarAge = *fp++;}
+            for(n = 0; n < pc; n++) {P.ProtoStellarAge[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_LUM_SINGLESTAR:
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION
-            for(n = 0; n < pc; n++) {P[offset + n].StarLuminosity_Solar = *fp++;}
+            for(n = 0; n < pc; n++) {P.StarLuminosity_Solar[offset + n] = *fp++;}
 
 #endif
             break;
 
         case IO_SINKPROGS:
 #ifdef SINK_COUNTPROGS
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_CountProgs = *ip_int++;}
+            for(n = 0; n < pc; n++) {P.Sink_CountProgs[offset + n] = *ip_int++;}
 #endif
             break;
 
         case IO_EOSTEMP:
 #ifdef EOS_CARRIES_TEMPERATURE
-            for(n = 0; n < pc; n++) {CellP[offset + n].Temperature = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Temperature[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_EOSABAR:
 #ifdef EOS_CARRIES_ABAR
-            for(n = 0; n < pc; n++) {CellP[offset + n].Abar = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Abar[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_EOSCOMP:
 #ifdef EOS_TILLOTSON
-            for(n = 0; n < pc; n++) {CellP[offset + n].CompositionType = *ip_int++;}
+            for(n = 0; n < pc; n++) {CellP.CompositionType[offset + n] = *ip_int++;}
 #endif
             break;
 
         case IO_EOSYE:
 #ifdef EOS_CARRIES_YE
-            for(n = 0; n < pc; n++) {CellP[offset + n].Ye = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Ye[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_PARTVEL:
 #if defined(HYDRO_MESHLESS_FINITE_VOLUME) && ((HYDRO_FIX_MESH_MOTION==1)||(HYDRO_FIX_MESH_MOTION==2)||(HYDRO_FIX_MESH_MOTION==3))
-            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {CellP[offset + n].ParticleVel[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < 3; k++) {CellP.ParticleVel[offset + n][k] = *fp++;}}
 #endif
             break;
 
 
         case IO_RADGAMMA:
 #ifdef RADTRANSFER
-            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {CellP[offset + n].Rad_E_gamma[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {CellP.Rad_E_gamma[offset + n][k] = *fp++;}}
 #endif
             break;
 
         case IO_RAD_OPACITY:
 #if defined(RADTRANSFER) && defined(OUTPUT_RT_RAD_OPACITY)
-            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {CellP[offset + n].Rad_Kappa[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k = 0; k < N_RT_FREQ_BINS; k++) {CellP.Rad_Kappa[offset + n][k] = *fp++;}}
 #endif
             break;
 
         case IO_RAD_TEMP:
 #if defined(RADTRANSFER) && defined(RT_INFRARED)
-            for(n = 0; n < pc; n++) {CellP[offset + n].Radiation_Temperature = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Radiation_Temperature[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_DUST_TEMP:
 #if defined(RADTRANSFER) && defined(RT_INFRARED)
-            for(n = 0; n < pc; n++) {CellP[offset + n].Dust_Temperature = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.Dust_Temperature[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_RAD_FLUX:
 #if defined(RADTRANSFER) && defined(OUTPUT_RT_RAD_FLUX) && defined(RT_EVOLVE_FLUX)
             for(n = 0; n < pc; n++) {
-                for(k=0;k<3;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP[offset + n].Rad_Flux_Pred[kf][k] = fp[N_RT_FREQ_BINS*k + kf];}} // will be corrected back into proper 'conserved variable' code units in rt_set_simple_inits subroutine later
+                for(k=0;k<3;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP.Rad_Flux_Pred[offset + n][kf][k] = fp[N_RT_FREQ_BINS*k + kf];}} // will be corrected back into proper 'conserved variable' code units in rt_set_simple_inits subroutine later
                 fp += 3*N_RT_FREQ_BINS;
             }
 #endif
@@ -446,7 +446,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_EDDINGTON_TENSOR:
 #if defined(RADTRANSFER) && defined(OUTPUT_EDDINGTON_TENSOR)
             for(n = 0; n < pc; n++) {
-                for(k=0;k<6;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP[offset + n].ET[kf].data[k] = fp[N_RT_FREQ_BINS*k + kf];}}
+                for(k=0;k<6;k++) {int kf; for(kf=0;kf<N_RT_FREQ_BINS;kf++) {CellP.ET[offset + n][kf].data[k] = fp[N_RT_FREQ_BINS*k + kf];}}
                 fp += 6*N_RT_FREQ_BINS;
             }
 #endif
@@ -457,13 +457,13 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
             /* adaptive softening parameters */
         case IO_AGS_HKERN:
 #if defined(AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE)
-            for(n = 0; n < pc; n++) {P[offset + n].AGS_KernelRadius = *fp++;}
+            for(n = 0; n < pc; n++) {P.AGS_KernelRadius[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_AGS_ZETA:
 #if defined (AGS_KERNELRADIUS_CALCULATION_IS_ACTIVE) && defined(AGS_OUTPUTZETA)
-            for(n = 0; n < pc; n++) {P[offset + n].AGS_zeta = *fp++;}
+            for(n = 0; n < pc; n++) {P.AGS_zeta[offset + n] = *fp++;}
 #endif
             break;
 
@@ -483,9 +483,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_COSMICRAY_ENERGY:
 #ifdef COSMIC_RAY_FLUID
 #ifdef CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART
-            for(n = 0; n < pc; n++) {CellP[offset + n].CosmicRayEnergy[0] = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.CosmicRayEnergy[offset + n][0] = *fp++;}
 #else
-            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {CellP[offset + n].CosmicRayEnergy[k] = *fp++;}}
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {CellP.CosmicRayEnergy[offset + n][k] = *fp++;}}
 #endif
 #endif
             break;
@@ -493,7 +493,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
         case IO_COSMICRAY_SLOPES:
 #if defined(COSMIC_RAY_FLUID) && defined(CRFLUID_EVOLVE_SPECTRUM)
 #if !defined(CRFLUID_ALT_SPECTRUM_SPECIALSNAPRESTART) /* normal behavior - read the same list in that we would use */
-            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {CellP[offset + n].CosmicRay_Number_in_Bin[k] = *fp++;}} // NOTE this still contains the SLOPE information; in init.c we convert back to number, our evolved variable!
+            for(n = 0; n < pc; n++) {for(k=0; k<N_CR_PARTICLE_BINS; k++) {CellP.CosmicRay_Number_in_Bin[offset + n][k] = *fp++;}} // NOTE this still contains the SLOPE information; in init.c we convert back to number, our evolved variable!
 #endif
 #endif
             break;
@@ -502,7 +502,7 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
             for(n = 0; n < pc; n++) {
                 int k2; for(k=0;k<2;k++) {for(k2=0;k2<N_CR_PARTICLE_BINS;k2++) {
-                        CellP[offset + n].CosmicRayAlfvenEnergy[k2][k] = fp[N_CR_PARTICLE_BINS*k + k2];}}
+                        CellP.CosmicRayAlfvenEnergy[offset + n][k2][k] = fp[N_CR_PARTICLE_BINS*k + k2];}}
                 fp += 2*N_CR_PARTICLE_BINS;
             }
 #endif
@@ -510,67 +510,67 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
 
         case IO_OSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING
-             for(n = 0; n < pc; n++) {P[offset + n].IMF_NumMassiveStars = *fp++;}
+             for(n = 0; n < pc; n++) {P.IMF_NumMassiveStars[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_DTOSTAR:
 #ifdef GALSF_SFR_IMF_SAMPLING_DISTRIBUTE_SF
-            for(n = 0; n < pc; n++) {P[offset + n].TimeDistribOfStarFormation = *fp++;}
+            for(n = 0; n < pc; n++) {P.TimeDistribOfStarFormation[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_UNSPMASS:
 #if defined(SINK_WIND_SPAWN) && defined(OUTPUT_UNSPAWNED_SINKMASS)
-             for(n = 0; n < pc; n++) {P[offset + n].unspawned_wind_mass = *fp++;}
+             for(n = 0; n < pc; n++) {P.unspawned_wind_mass[offset + n] = *fp++;}
 #endif
             break; 
             
         case IO_TURB_DYNAMIC_COEFF:
 #ifdef TURB_DIFF_DYNAMIC
-            for (n = 0; n < pc; n++) {CellP[offset + n].TD_DynDiffCoeff = *fp++;}
+            for (n = 0; n < pc; n++) {CellP.TD_DynDiffCoeff[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_SINKRAD:
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
-            for(n = 0; n < pc; n++) {P[offset + n].SinkRadius = *fp++;}
+            for(n = 0; n < pc; n++) {P.SinkRadius[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_SINK_FORM_MASS:
 #ifdef SINK_PARTICLES
-            for(n = 0; n < pc; n++) {P[offset + n].Sink_Formation_Mass = *fp++;}
+            for(n = 0; n < pc; n++) {P.Sink_Formation_Mass[offset + n] = *fp++;}
 #endif
             break;	    
             
         case IO_MOLECULARFRACTION:
 #if defined(COOL_MOLECFRAC_NONEQM) & !defined(IO_MOLECFRAC_NOT_IN_ICFILE)
-            for (n = 0; n < pc; n++) {CellP[offset + n].MolecularMassFraction_perNeutralH = *fp++;}
+            for (n = 0; n < pc; n++) {CellP.MolecularMassFraction_perNeutralH[offset + n] = *fp++;}
 #endif
             break;
 
         case IO_NH:        /* neutral hydrogen fraction */
 #if defined(RT_CHEM_PHOTOION)
-            for(n = 0; n < pc; n++) {CellP[offset + n].HI = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.HI[offset + n] = *fp++;}
 #endif
             break;
             
         case IO_HII:        /* ionized hydrogen abundance */
 #if defined(RT_CHEM_PHOTOION)
-            for(n = 0; n < pc; n++) {CellP[offset + n].HII = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.HII[offset + n] = *fp++;}
 #endif
             break;
             
         case IO_HeI:        /* neutral Helium */
 #if defined(RT_CHEM_PHOTOION_HE)
-            for(n = 0; n < pc; n++) {CellP[offset + n].HeI = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.HeI[offset + n] = *fp++;}
 #endif
             break;
             
         case IO_HeII:        /* ionized Helium */
 #if defined(RT_CHEM_PHOTOION_HE)
-            for(n = 0; n < pc; n++) {CellP[offset + n].HeII = *fp++;}
+            for(n = 0; n < pc; n++) {CellP.HeII[offset + n] = *fp++;}
 #endif
             break;
 
@@ -854,7 +854,7 @@ void read_file(char *fname, int readTask, int lastTask)
         endrun(173);
     }
 
-    memmove(&P[N_gas + nall], &P[N_gas], (NumPart - N_gas) * sizeof(struct particle_data));
+    move_particles_P(P, N_gas + nall, N_gas, NumPart - N_gas);
     nstart = N_gas;
 
 

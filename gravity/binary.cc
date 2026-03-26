@@ -41,23 +41,23 @@ mode 1 - Actually update the binary separation and relative velocity. This shoul
 */
 
 void kepler_timestep(int i, double dt, Vec3<double>& kick_dv, Vec3<double>& drift_dx, int mode){
-    double dr = P[i].comp_dx.norm();
-    double dv = P[i].comp_dv.norm();
+    double dr = P.comp_dx[i].norm();
+    double dv = P.comp_dv[i].norm();
 
-    Vec3<double> dx_normalized = P[i].comp_dx / dr;
+    Vec3<double> dx_normalized = P.comp_dx[i] / dr;
     Vec3<double> dx_new, dv_new;
     double norm, true_anomaly, mean_anomaly, ecc_anomaly, cos_true_anomaly,sin_true_anomaly;
     double x = 0, y =0, vx =0, vy = 0; // Coordinates in the frame aligned with the binary
-    double Mtot = P[i].Mass + P[i].comp_Mass;
+    double Mtot = P.Mass[i] + P.comp_Mass[i];
 
     double specific_energy = .5*dv*dv - All.G * Mtot / dr;
     double semimajor_axis = -All.G * Mtot / (2*specific_energy);
 
-    Vec3<double> h = cross(P[i].comp_dx, P[i].comp_dv); // specific angular momentum vector
+    Vec3<double> h = cross(P.comp_dx[i], P.comp_dv[i]); // specific angular momentum vector
 
     double h2 = h.norm_sq();
     double ecc = sqrt(1 + 2 * specific_energy * h2 / (All.G*All.G*Mtot*Mtot));
-    Vec3<double> n_x = cross(P[i].comp_dv, h) - All.G * Mtot * dx_normalized; // LRL vector: dv x h - GM dx/r
+    Vec3<double> n_x = cross(P.comp_dv[i], h) - All.G * Mtot * dx_normalized; // LRL vector: dv x h - GM dx/r
 
     norm = n_x.norm();
     n_x /= norm; // direction should be so that x points from periapsis to apoapsis
@@ -65,16 +65,16 @@ void kepler_timestep(int i, double dt, Vec3<double>& kick_dv, Vec3<double>& drif
     Vec3<double> n_y = cross(n_x, h) / sqrt(h2); // cross product of n_x with angular momentum to get a vector along the minor axis
 
     // Transform to coordinates in the plane of the ellipse
-    x = dot(P[i].comp_dx, n_x);
-    y = dot(P[i].comp_dx, n_y);
+    x = dot(P.comp_dx[i], n_x);
+    y = dot(P.comp_dx[i], n_y);
     //printf("Kepler transform stuff x %g y %g nx %g %g %g ny %g %g %g h %g %g %g\n", x,y,n_x[0],n_x[1],n_x[2],n_y[0],n_y[1],n_y[2],h[0],h[1],h[2]);
 
     true_anomaly = wrap_angle(atan2(y,x));
     ecc_anomaly = wrap_angle(atan2(sqrt(1 - ecc*ecc) * sin(true_anomaly), ecc + cos(true_anomaly)));
     mean_anomaly = wrap_angle(ecc_anomaly - ecc * sin(ecc_anomaly));
-    //printf("Kepler x %g y %g dr orig %g dv orig %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, dr, dv, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P[i].Min_Sink_OrbitalTime * 2 * M_PI),P[i].ID);
+    //printf("Kepler x %g y %g dr orig %g dv orig %g ecc_anomaly %g mean_anomaly %g true anomaly %g change in mean anomaly %g ID %d \n", x, y, dr, dv, ecc_anomaly, mean_anomaly, true_anomaly, (dt/P.Min_Sink_OrbitalTime[i] * 2 * M_PI),P.ID[i]);
     //Changes mean anomaly as time passes
-    mean_anomaly -= dt/P[i].Min_Sink_OrbitalTime * 2 * M_PI;
+    mean_anomaly -= dt/P.Min_Sink_OrbitalTime[i] * 2 * M_PI;
     mean_anomaly = wrap_angle(mean_anomaly);
     //Get eccentric anomaly for new position
     ecc_anomaly = eccentric_anomaly(mean_anomaly, ecc);
@@ -97,15 +97,15 @@ void kepler_timestep(int i, double dt, Vec3<double>& kick_dv, Vec3<double>& drif
     vy = v_phi * (x/dr) + v_r * y/dr;
 
     // transform back to global coordinates
-    double two_body_factor=-P[i].comp_Mass/Mtot;
-    //printf("Kepler comp_dx %g %g %g  comp_dv %g %g %g ID %d \n", P[i].comp_dx[0],P[i].comp_dx[1],P[i].comp_dx[2],P[i].comp_dv[0],P[i].comp_dv[1], P[i].comp_dv[2], P[i].ID);
+    double two_body_factor=-P.comp_Mass[i]/Mtot;
+    //printf("Kepler comp_dx %g %g %g  comp_dv %g %g %g ID %d \n", P.comp_dx[i][0],P.comp_dx[i][1],P.comp_dx[i][2],P.comp_dv[i][0],P.comp_dv[i][1], P.comp_dv[i][2], P.ID[i]);
     dx_new = x * n_x + y * n_y;
     dv_new = vx * n_x + vy * n_y;
-    drift_dx = (dx_new - P[i].comp_dx) * two_body_factor;
-    kick_dv = (dv_new - P[i].comp_dv) * two_body_factor;
+    drift_dx = (dx_new - P.comp_dx[i]) * two_body_factor;
+    kick_dv = (dv_new - P.comp_dv[i]) * two_body_factor;
     if(mode==1){ // if we want to do the actual self-consistent binary update
-        P[i].comp_dx = dx_new;
-        P[i].comp_dv = dv_new;
+        P.comp_dx[i] = dx_new;
+        P.comp_dv[i] = dv_new;
     }
 }
 
@@ -167,9 +167,9 @@ mode 1 - Actually update the binary separation and relative velocity. This shoul
 */
 void odeint_super_timestep(int i, double dt_super, Vec3<double>& kick_dv, Vec3<double>& drift_dx, int mode)
 {
-    double t = 0, total_mass = P[i].comp_Mass + P[i].Mass, dt;
-    Vec3<double> dx_old = P[i].comp_dx, dv_old = P[i].comp_dv;
-    Vec3<double> dx = -P[i].comp_dx, dv = -P[i].comp_dv; // note sign change from comp_dx to the effective 1-body problem
+    double t = 0, total_mass = P.comp_Mass[i] + P.Mass[i], dt;
+    Vec3<double> dx_old = P.comp_dx[i], dv_old = P.comp_dv[i];
+    Vec3<double> dx = -P.comp_dx[i], dv = -P.comp_dv[i]; // note sign change from comp_dx to the effective 1-body problem
 
     while(t < dt_super){
 	// Determine timestep adaptively; tuned here to give 1% energy error over 10^5 orbits for a 0.9 eccentricty binary
@@ -183,13 +183,13 @@ void odeint_super_timestep(int i, double dt_super, Vec3<double>& kick_dv, Vec3<d
 	t += dt;
     }
 
-    double two_body_factor=-P[i].comp_Mass/total_mass;
+    double two_body_factor=-P.comp_Mass[i]/total_mass;
 
-    drift_dx = (-dx - P[i].comp_dx) * two_body_factor;
-    kick_dv = (-dv - P[i].comp_dv) * two_body_factor;
+    drift_dx = (-dx - P.comp_dx[i]) * two_body_factor;
+    kick_dv = (-dv - P.comp_dv[i]) * two_body_factor;
     if(mode==1){ // if we want to do the actual self-consistent binary update
-        P[i].comp_dx = -dx;
-        P[i].comp_dv = -dv;
+        P.comp_dx[i] = -dx;
+        P.comp_dv[i] = -dv;
     }
 
 }

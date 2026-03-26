@@ -49,7 +49,7 @@ int subfind_process_group_serial(int gr, int Offs)
   MyIDType SubMostBoundID;
   static struct unbind_data *ud;
 
-  while(P[Offs].GrNr != Group[gr].GrNr)
+  while(P.GrNr[Offs] != Group[gr].GrNr)
     {
       Offs++;
       if(Offs >= NumPart)
@@ -64,11 +64,11 @@ int subfind_process_group_serial(int gr, int Offs)
 
   for(i = 0; i < N; i++)
     {
-      if(P[Offs + i].GrNr != Group[gr].GrNr)
+      if(P.GrNr[Offs + i] != Group[gr].GrNr)
 	{
 	  printf
 	    ("task=%d, gr=%d: don't have the number of particles for GrNr=%d group-len=%d found=%d before=%d\n",
-	     ThisTask, gr, Group[gr].GrNr, N, P[Offs + i].GrNr, P[Offs - 1].GrNr);
+	     ThisTask, gr, Group[gr].GrNr, N, P.GrNr[Offs + i], P.GrNr[Offs - 1]);
 	  endrun(312);
 	}
     }
@@ -105,7 +105,7 @@ int subfind_process_group_serial(int gr, int Offs)
     {
       part_index = Offs + i;
 
-      subfind_locngb_treefind(P[part_index].Pos, All.DesLinkNgb, P[part_index].DM_KernelRadius);
+      subfind_locngb_treefind(P.Pos[part_index], All.DesLinkNgb, P.DM_KernelRadius[part_index]);
 
       /* note: returned neighbours are already sorted by distance */
 
@@ -116,7 +116,7 @@ int subfind_process_group_serial(int gr, int Offs)
 	  if(ngb_index != part_index)	/* to exclude the particle itself */
 	    {
 	      /* we only look at neighbours that are denser */
-	      if(P[ngb_index].u.DM_Density > P[part_index].u.DM_Density)
+	      if(P.u.DM_Density[ngb_index] > P.u.DM_Density[part_index])
 		{
 		  ngbs++;
 
@@ -133,10 +133,10 @@ int subfind_process_group_serial(int gr, int Offs)
 		    {
 		      printf("this may not occur.\n");
 		      printf
-			("ThisTask=%d gr=%d k=%d i=%d part_index=%d ngb_index = %d  head[ngb_index]=%d P[part_index].DM_Density=%g %g GrNrs= %d %d \n",
+			("ThisTask=%d gr=%d k=%d i=%d part_index=%d ngb_index = %d  head[ngb_index]=%d P.DM_Density[part_index]=%g %g GrNrs= %d %d \n",
 			 ThisTask, gr, k, i, part_index, ngb_index, Head[ngb_index],
-			 P[part_index].u.DM_Density, P[ngb_index].u.DM_Density, P[part_index].GrNr,
-			 P[ngb_index].GrNr);
+			 P.u.DM_Density[part_index], P.u.DM_Density[ngb_index], P.GrNr[part_index],
+			 P.GrNr[ngb_index]);
 		      endrun(2);
 		    }
 		}
@@ -381,7 +381,7 @@ int subfind_process_group_serial(int gr, int Offs)
       /* Let's now assign the subgroup number */
 
       for(i = 0; i < len; i++)
-	P[ud[i].index].SubNr = subnr;
+	P.SubNr[ud[i].index] = subnr;
 
       subnr++;
     }
@@ -443,19 +443,19 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
             pot = subfind_loctree_treeevaluate_potential(p);
             /* note: add self-energy */
             double h_grav = ForceSoftening_KernelRadius(p);
-            P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtracts self-contribution
-            P[p].u.DM_Potential *= All.G / atime;
+            P.u.DM_Potential[p] = pot - P.Mass[p] / h_grav * kernel_gravity(0,1,1,-1); // subtracts self-contribution
+            P.u.DM_Potential[p] *= All.G / atime;
 
-            if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P[p].u.DM_Potential *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
+            if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P.u.DM_Potential[p] *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
 
-            if(P[p].u.DM_Potential < minpot || minindex == -1)
+            if(P.u.DM_Potential[p] < minpot || minindex == -1)
             {
-                minpot = P[p].u.DM_Potential;
+                minpot = P.u.DM_Potential[p];
                 minindex = p;
             }
 	    }
 
-	  for(j = 0; j < 3; j++) {pos[j] = P[minindex].Pos[j];}	/* position of minimum potential */
+	  for(j = 0; j < 3; j++) {pos[j] = P.Pos[minindex][j];}	/* position of minimum potential */
 	}
       else
 	{
@@ -464,16 +464,16 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 	    {
 	      p = ud[i].index;
 
-	      if(P[p].v.DM_BindingEnergy >= weakly_bound_limit)
+	      if(P.v.DM_BindingEnergy[p] >= weakly_bound_limit)
 		{
             pot = subfind_loctree_treeevaluate_potential(p);
             /* note: add self-energy */
             double h_grav = ForceSoftening_KernelRadius(p);
-            P[p].u.DM_Potential = pot - P[p].Mass / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution
-            P[p].u.DM_Potential = pot + P[p].Mass / h_grav;
-            P[p].u.DM_Potential *= All.G / atime;
+            P.u.DM_Potential[p] = pot - P.Mass[p] / h_grav * kernel_gravity(0,1,1,-1); // subtract self-contribution
+            P.u.DM_Potential[p] = pot + P.Mass[p] / h_grav;
+            P.u.DM_Potential[p] *= All.G / atime;
 
-            if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P[p].u.DM_Potential *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
+            if(All.TotN_gas > 0 && (FOF_PRIMARY_LINK_TYPES & 1) == 0 && (FOF_SECONDARY_LINK_TYPES & 1) == 0 && All.OmegaBaryon > 0) {P.u.DM_Potential[p] *= All.OmegaMatter / (All.OmegaMatter - All.OmegaBaryon);}
 		}
 	    }
 	}
@@ -487,14 +487,14 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 	{
 	  p = ud[i].index;
 
-        double dp[3]; for(j=0;j<3;j++) {dp[j]=P[p].Pos[j]-pos[j];}
+        double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[p][j]-pos[j];}
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
       for(j = 0; j < 3; j++)
         {
-          s[j] += P[p].Mass * dp[j];
-	      v[j] += P[p].Mass * P[p].Vel[j];
+          s[j] += P.Mass[p] * dp[j];
+	      v[j] += P.Mass[p] * P.Vel[p][j];
 	    }
-	  TotMass += P[p].Mass;
+	  TotMass += P.Mass[p];
 	}
 
       for(j = 0; j < 3; j++)
@@ -515,23 +515,23 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 	  p = ud[i].index;
 
         
-          double dp[3]; for(j=0;j<3;j++) {dp[j]=P[p].Pos[j]-s[j];}
+          double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[p][j]-s[j];}
           NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
 
         for(j = 0; j < 3; j++)
           {
-            dv[j] = vel_to_phys * (P[p].Vel[j] - v[j]);
+            dv[j] = vel_to_phys * (P.Vel[p][j] - v[j]);
               dx[j] = dp[j] * atime;
             dv[j] += H_of_a * dx[j];
           }
 
 
-	  P[p].v.DM_BindingEnergy = P[p].u.DM_Potential + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+	  P.v.DM_BindingEnergy[p] = P.u.DM_Potential[p] + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(P[p].Type == 0) {P[p].v.DM_BindingEnergy += P[p].w.int_energy;}
+	  if(P.Type[p] == 0) {P.v.DM_BindingEnergy[p] += P.w.int_energy[p];}
 #endif
-	  bnd_energy[i] = P[p].v.DM_BindingEnergy;
+	  bnd_energy[i] = P.v.DM_BindingEnergy[p];
 	}
 
       qsort(bnd_energy, len, sizeof(double), subfind_compare_binding_energy);	/* largest comes first! */
@@ -554,14 +554,14 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
       for(i = 0, unbound = 0, *len_non_gas = 0; i < len; i++)
 	{
 	  p = ud[i].index;
-	  if(P[p].v.DM_BindingEnergy > 0 && P[p].v.DM_BindingEnergy > energy_limit)
+	  if(P.v.DM_BindingEnergy[p] > 0 && P.v.DM_BindingEnergy[p] > energy_limit)
 	    {
 	      unbound++;
 	      ud[i] = ud[len - 1];
 	      i--;
 	      len--;
 	    }
-	  else if(P[p].Type != 0)
+	  else if(P.Type[p] != 0)
 	    (*len_non_gas)++;
 	}
 
@@ -633,12 +633,12 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
   for(i = 0, minindex = -1, minpot = 1.0e30; i < num; i++)
     {
       p = d[i].index;
-      if(P[p].u.DM_Potential < minpot || minindex == -1)
+      if(P.u.DM_Potential[p] < minpot || minindex == -1)
 	{
-	  minpot = P[p].u.DM_Potential;
+	  minpot = P.u.DM_Potential[p];
 	  minindex = p;
 	}
-      switch (P[p].Type)
+      switch (P.Type[p])
 	{
 	case 0:
 	  ngas++;
@@ -661,7 +661,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
     endrun(875412);
 
   for(j = 0; j < 3; j++)
-    pos[j] = P[minindex].Pos[j];
+    pos[j] = P.Pos[minindex][j];
 
 
   /* pos[] now holds the position of minimum potential */
@@ -672,11 +672,11 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
     {
       p = d[i].index;
 #ifdef SUBFIND_REMOVE_GAS_STRUCTURES
-      if(P[p].Type > 0)
+      if(P.Type[p] > 0)
 #endif
-	if(P[p].v.DM_BindingEnergy < minpot || minindex == -1)
+	if(P.v.DM_BindingEnergy[p] < minpot || minindex == -1)
 	  {
-	    minpot = P[p].v.DM_BindingEnergy;
+	    minpot = P.v.DM_BindingEnergy[p];
 	    minindex = p;
 	  }
     }
@@ -684,7 +684,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
   if(minindex == -1)
     endrun(875413);
 
-  *mostboundid = P[minindex].ID;
+  *mostboundid = P.ID[minindex];
 
 
   /* let's get bulk velocity and the center-of-mass */
@@ -699,16 +699,16 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
   for(i = 0, mass = 0; i < num; i++)
     {
       p = d[i].index;
-          double dp[3]; for(j=0;j<3;j++) {dp[j]=P[p].Pos[j]-pos[j];}
+          double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[p][j]-pos[j];}
           NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
         for(j = 0; j < 3; j++)
           {
-            s[j] += P[p].Mass * dp[j];
-	  v[j] += P[p].Mass * P[p].Vel[j];
+            s[j] += P.Mass[p] * dp[j];
+	  v[j] += P.Mass[p] * P.Vel[p][j];
 	}
-      mass += P[p].Mass;
+      mass += P.Mass[p];
 
-      mass_tab[P[p].Type] += P[p].Mass;
+      mass_tab[P.Type[p]] += P.Mass[p];
     }
 
   *totmass = mass;
@@ -750,16 +750,16 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
     {
       p = d[i].index;
 
-          double dp_s[3], dp_p[3]; for(j=0;j<3;j++) {dp_s[j]=P[p].Pos[j]-s[j]; dp_p[j]=P[p].Pos[j]-pos[j];}
+          double dp_s[3], dp_p[3]; for(j=0;j<3;j++) {dp_s[j]=P.Pos[p][j]-s[j]; dp_p[j]=P.Pos[p][j]-pos[j];}
           NEAREST_XYZ(dp_s[0],dp_s[1],dp_s[2],-1); NEAREST_XYZ(dp_p[0],dp_p[1],dp_p[2],-1);
 
       for(j = 0, rr_tmp = 0, disp_tmp = 0; j < 3; j++)
 	{
 	  dx[j] = atime * dp_s[j];
-	  dv[j] = vel_to_phys * (P[p].Vel[j] - v[j]);
+	  dv[j] = vel_to_phys * (P.Vel[p][j] - v[j]);
 	  dv[j] += H_of_a * dx[j];
 
-	  disp_tmp += P[p].Mass * dv[j] * dv[j];
+	  disp_tmp += P.Mass[p] * dv[j] * dv[j];
 	  /* for rotation curve computation, take minimum of potential as center */
 	  ddxx = atime * dp_p[j];
 	  rr_tmp += ddxx * ddxx;
@@ -767,16 +767,16 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, doubl
 
       rr_tmp = sqrt(rr_tmp);
 #ifdef FOF_DENSITY_SPLIT_TYPES
-      if(P[p].Type >= 1 && P[p].Type <= 3)  /*-- only for dm part --*/
+      if(P.Type[p] >= 1 && P.Type[p] <= 3)  /*-- only for dm part --*/
 #endif
       {
-	  rr_list[i_use].mass = P[p].Mass;
+	  rr_list[i_use].mass = P.Mass[p];
 	  rr_list[i_use].r = rr_tmp;
 	  disp += disp_tmp;
-	  mass += P[p].Mass;
-	  lx += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
-	  ly += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
-	  lz += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+	  mass += P.Mass[p];
+	  lx += P.Mass[p] * (dx[1] * dv[2] - dx[2] * dv[1]);
+	  ly += P.Mass[p] * (dx[2] * dv[0] - dx[0] * dv[2]);
+	  lz += P.Mass[p] * (dx[0] * dv[1] - dx[1] * dv[0]);
 
 	  i_use++;
 	}
@@ -860,12 +860,12 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
 
   for(i = 0, minindex = -1, minpot = 1.0e30; i < num; i++)
     {
-      if(P[d[i].index].u.DM_Potential < minpot || minindex == -1)
+      if(P.u.DM_Potential[d[i].index] < minpot || minindex == -1)
 	{
-	  minpot = P[d[i].index].u.DM_Potential;
+	  minpot = P.u.DM_Potential[d[i].index];
 	  minindex = d[i].index;
 	}
-      switch (P[d[i].index].Type)
+      switch (P.Type[d[i].index])
 	{
 	case 0:
 	  ngasloc++;
@@ -906,7 +906,7 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
   if(ThisTask == mincpu)
     {
       for(j = 0; j < 3; j++)
-	s[j] = P[minindex].Pos[j];
+	s[j] = P.Pos[minindex][j];
     }
 
   MPI_Bcast(&s[0], 3, MPI_DOUBLE, mincpu, MPI_COMM_WORLD);
@@ -921,11 +921,11 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
   for(i = 0, minindex = -1, minpot = 1.0e30; i < num; i++)
     {
 #ifdef SUBFIND_REMOVE_GAS_STRUCTURES
-      if(P[d[i].index].Type > 0)
+      if(P.Type[d[i].index] > 0)
 #endif
-	if(P[d[i].index].v.DM_BindingEnergy < minpot || minindex == -1)
+	if(P.v.DM_BindingEnergy[d[i].index] < minpot || minindex == -1)
 	  {
-	    minpot = P[d[i].index].v.DM_BindingEnergy;
+	    minpot = P.v.DM_BindingEnergy[d[i].index];
 	    minindex = d[i].index;
 	  }
     }
@@ -943,7 +943,7 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
     {
       if(minindex == -1)	/* This is to cover the quasi impossible case that one cpu have had only gas */
 	endrun(875417);		/* particles and the potential in the simulation was larger than 1e30 !      */
-      mbid = P[minindex].ID;
+      mbid = P.ID[minindex];
     }
 
   MPI_Bcast(&mbid, sizeof(mbid), MPI_BYTE, mincpu, MPI_COMM_WORLD);
@@ -964,16 +964,16 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
     {
       part_index = d[i].index;
 
-        double dp[3]; for(j=0;j<3;j++) {dp[j]=P[part_index].Pos[j]-pos[j];}
+        double dp[3]; for(j=0;j<3;j++) {dp[j]=P.Pos[part_index][j]-pos[j];}
         NEAREST_XYZ(dp[0],dp[1],dp[2],-1);
       for(j = 0; j < 3; j++)
         {
-          sloc[j] += P[part_index].Mass * dp[j];
-	  vloc[j] += P[part_index].Mass * P[part_index].Vel[j];
+          sloc[j] += P.Mass[part_index] * dp[j];
+	  vloc[j] += P.Mass[part_index] * P.Vel[part_index][j];
 	}
-      massloc += P[part_index].Mass;
+      massloc += P.Mass[part_index];
 
-      mass_tab_loc[P[part_index].Type] += P[part_index].Mass;
+      mass_tab_loc[P.Type[part_index]] += P.Mass[part_index];
     }
 
   MPI_Allreduce(sloc, s, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1017,16 +1017,16 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
     {
       part_index = d[i].index;
 
-        double dp_s[3], dp_p[3]; for(j=0;j<3;j++) {dp_s[j]=P[part_index].Pos[j]-s[j]; dp_p[j]=P[part_index].Pos[j]-pos[j];}
+        double dp_s[3], dp_p[3]; for(j=0;j<3;j++) {dp_s[j]=P.Pos[part_index][j]-s[j]; dp_p[j]=P.Pos[part_index][j]-pos[j];}
         NEAREST_XYZ(dp_s[0],dp_s[1],dp_s[2],-1); NEAREST_XYZ(dp_p[0],dp_p[1],dp_p[2],-1);
 
       for(j = 0, rr_tmp = 0, disp_tmp = 0; j < 3; j++)
 	{
 	  dx[j] = atime * dp_s[j];
-	  dv[j] = vel_to_phys * (P[part_index].Vel[j] - v[j]);
+	  dv[j] = vel_to_phys * (P.Vel[part_index][j] - v[j]);
 	  dv[j] += H_of_a * dx[j];
 
-	  disp_tmp += P[part_index].Mass * dv[j] * dv[j];
+	  disp_tmp += P.Mass[part_index] * dv[j] * dv[j];
 	  /* for rotation curve computation, take minimum of potential as center */
 	  ddxx = atime * dp_p[j];
 	  rr_tmp += ddxx * ddxx;
@@ -1035,17 +1035,17 @@ void subfind_col_determine_sub_halo_properties(struct unbind_data *d, int num, d
       rr_tmp = sqrt(rr_tmp);
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-      if(P[part_index].Type >= 1 && P[part_index].Type <= 3)  /*-- only for dm part --*/
+      if(P.Type[part_index] >= 1 && P.Type[part_index] <= 3)  /*-- only for dm part --*/
 #endif
       {
 	  locdisp += disp_tmp;
-	  massloc += P[part_index].Mass;
+	  massloc += P.Mass[part_index];
 
-	  loclx += P[part_index].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
-	  locly += P[part_index].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
-	  loclz += P[part_index].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+	  loclx += P.Mass[part_index] * (dx[1] * dv[2] - dx[2] * dv[1]);
+	  locly += P.Mass[part_index] * (dx[2] * dv[0] - dx[0] * dv[2]);
+	  loclz += P.Mass[part_index] * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-	  loc_rr_list[i_use].mass = P[part_index].Mass;
+	  loc_rr_list[i_use].mass = P.Mass[part_index];
 	  loc_rr_list[i_use].r = rr_tmp;
 
 	  i_use++;

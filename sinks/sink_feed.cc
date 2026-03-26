@@ -16,7 +16,7 @@
 
 
 #define CORE_FUNCTION_NAME sink_feed_evaluate /* name of the 'core' function doing the actual inter-neighbor operations. this MUST be defined somewhere as "int CORE_FUNCTION_NAME(int target, int mode, int *exportflag, int *exportnodecount, int *exportindex, int *ngblist, int loop_iteration)" */
-#define CONDITIONFUNCTION_FOR_EVALUATION if(sink_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P[i].Mass>0)' */
+#define CONDITIONFUNCTION_FOR_EVALUATION if(sink_isactive(i)) /* function for which elements will be 'active' and allowed to undergo operations. can be a function call, e.g. 'density_is_active(i)', or a direct function call like 'if(P.Mass[i]>0)' */
 #include "../system/code_block_xchange_initialize.h" /* pre-define all the ALL_CAPS variables we will use below, so their naming conventions are consistent and they compile together, as well as defining some of the function calls needed */
 
 
@@ -51,25 +51,25 @@ struct INPUT_STRUCT_NAME
 /* this subroutine assigns the values to the variables that need to be sent -from- the 'searching' element */
 static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int loop_iteration)
 {
-    int k, j_tempinfo; j_tempinfo=P[i].IndexMapToTempStruc; /* link to the location in the shared structure where this is stored */
-    in->Pos=P[i].Pos; in->Vel=P[i].Vel; /* good example - always needed */
-    in->KernelRadius = P[i].KernelRadius; in->Mass = P[i].Mass; in->Sink_Mass = P[i].Sink_Mass; in->ID = P[i].ID; in->Density = P[i].DensityAroundParticle; in->Mdot = P[i].Sink_Mdot;
+    int k, j_tempinfo; j_tempinfo=P.IndexMapToTempStruc[i]; /* link to the location in the shared structure where this is stored */
+    in->Pos=P.Pos[i]; in->Vel=P.Vel[i]; /* good example - always needed */
+    in->KernelRadius = P.KernelRadius[i]; in->Mass = P.Mass[i]; in->Sink_Mass = P.Sink_Mass[i]; in->ID = P.ID[i]; in->Density = P.DensityAroundParticle[i]; in->Mdot = P.Sink_Mdot[i];
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
-    in->SinkRadius = P[i].SinkRadius;
+    in->SinkRadius = P.SinkRadius[i];
 #endif
 #if (ADAPTIVE_GRAVSOFT_FORALL & 32)
     in->AGS_KernelRadius = ForceSoftening_KernelRadius(i);
 #endif
 #ifdef SINK_ALPHADISK_ACCRETION
-    in->Sink_Mass_Reservoir = P[i].Sink_Mass_Reservoir;
+    in->Sink_Mass_Reservoir = P.Sink_Mass_Reservoir[i];
 #endif
     in->Dt = GET_PARTICLE_FEEDBACK_TIMESTEP_IN_PHYSICAL(i);
 #ifdef SINK_INTERACT_ON_GAS_TIMESTEP
-    in->Dt = P[i].dt_since_last_gas_search;
+    in->Dt = P.dt_since_last_gas_search[i];
 #endif
 #if defined(SINK_CALC_LOCAL_ANGLEWEIGHTS)
 #if defined(SINK_FOLLOW_ACCRETED_ANGMOM)
-    in->Jgas_in_Kernel = P[i].Sink_Specific_AngMom;
+    in->Jgas_in_Kernel = P.Sink_Specific_AngMom[i];
 #else
     for(k=0;k<3;k++) {in->Jgas_in_Kernel[k] = SinkTempInfo[j_tempinfo].Jgas_in_Kernel[k];}
 #endif
@@ -78,7 +78,7 @@ static inline void INPUTFUNCTION_NAME(struct INPUT_STRUCT_NAME *in, int i, int l
     in->mass_to_swallow_edd = SinkTempInfo[j_tempinfo].mass_to_swallow_edd;
 #endif
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS)
-    in->Sink_AccretionDeficit = P[i].Sink_AccretionDeficit;
+    in->Sink_AccretionDeficit = P.Sink_AccretionDeficit[i];
 #endif
 #ifdef SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES
     in->Sink_eligible_for_binary_merge_away = is_star_eligible_for_binary_merge_away(i);
@@ -102,13 +102,13 @@ struct OUTPUT_STRUCT_NAME
 /* this subroutine assigns the values to the variables that need to be sent -back to- the 'searching' element */
 static inline void OUTPUTFUNCTION_NAME(struct OUTPUT_STRUCT_NAME *out, int i, int mode, int loop_iteration)
 {
-    int k, target; k=0; target = P[i].IndexMapToTempStruc;
+    int k, target; k=0; target = P.IndexMapToTempStruc[i];
 #if defined(SINK_CALC_LOCAL_ANGLEWEIGHTS)
     ASSIGN_ADD_PRESET(SinkTempInfo[target].Sink_angle_weighted_kernel_sum, out->Sink_angle_weighted_kernel_sum, mode);
 #endif
 #ifdef SINK_REPOSITION_ON_POTMIN
-    if(mode==0) {P[i].Sink_PotentialMinimumOfNeighbors=out->Sink_PotentialMinimumOfNeighbors; for(k=0;k<3;k++) {P[i].Sink_PotentialMinimumOfNeighborsPos[k]=out->Sink_PotentialMinimumOfNeighborsPos[k];}
-        } else {if(out->Sink_PotentialMinimumOfNeighbors < P[i].Sink_PotentialMinimumOfNeighbors) {P[i].Sink_PotentialMinimumOfNeighbors=out->Sink_PotentialMinimumOfNeighbors; for(k=0;k<3;k++) {P[i].Sink_PotentialMinimumOfNeighborsPos[k]=out->Sink_PotentialMinimumOfNeighborsPos[k];}}}
+    if(mode==0) {P.Sink_PotentialMinimumOfNeighbors[i]=out->Sink_PotentialMinimumOfNeighbors; for(k=0;k<3;k++) {P.Sink_PotentialMinimumOfNeighborsPos[i][k]=out->Sink_PotentialMinimumOfNeighborsPos[k];}
+        } else {if(out->Sink_PotentialMinimumOfNeighbors < P.Sink_PotentialMinimumOfNeighbors[i]) {P.Sink_PotentialMinimumOfNeighbors[i]=out->Sink_PotentialMinimumOfNeighbors; for(k=0;k<3;k++) {P.Sink_PotentialMinimumOfNeighborsPos[i][k]=out->Sink_PotentialMinimumOfNeighborsPos[k];}}}
 #endif
 }
 
@@ -162,18 +162,18 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
             for(n = 0; n < numngb; n++)
             {
                 j = ngblist[n]; /* since we use the -threaded- version above of ngb-finding, its super-important this is the lower-case ngblist here! */
-                if(P[j].Mass > 0)
+                if(P.Mass[j] > 0)
                 {
-                    dpos = P[j].Pos - local.Pos; dvel = P[j].Vel - local.Vel;
+                    dpos = P.Pos[j] - local.Pos; dvel = P.Vel[j] - local.Vel;
                     nearest_xyz(dpos,-1); r2=dpos.norm_sq();
-                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P[j].Pos,dvel,-1); /* wrap velocities for shearing boxes if needed */
-                    double heff_j = DMAX( P[j].KernelRadius , ForceSoftening_KernelRadius(j) );
+                    NGB_SHEARBOX_BOUNDARY_VELCORR_(local.Pos,P.Pos[j],dvel,-1); /* wrap velocities for shearing boxes if needed */
+                    double heff_j = DMAX( P.KernelRadius[j] , ForceSoftening_KernelRadius(j) );
                     if(r2 < h_i2 || r2 < heff_j*heff_j)
                     {
                         vrel=dvel.norm_sq();
                         r=sqrt(r2); vrel=sqrt(vrel)/All.cf_atime;  /* relative velocity in physical units. do this once and use below */
 #if defined(MAGNETIC) && defined(GRAIN_LORENTZFORCE) /* need to project grain velocities, shouldn't include gyro motion */
-                        if((1<<P[j].Type) & GRAIN_PTYPES) {vrel=0; double bmag2=0; for(k=0;k<3;k++) {vrel+=dvel[k]*P[j].Gas_B[k]; bmag2+=P[j].Gas_B[k]*P[j].Gas_B[k];}
+                        if((1<<P.Type[j]) & GRAIN_PTYPES) {vrel=0; double bmag2=0; for(k=0;k<3;k++) {vrel+=dvel[k]*P.Gas_B[j][k]; bmag2+=P.Gas_B[j][k]*P.Gas_B[j][k];}
                             vrel = (fabs(vrel)/sqrt(bmag2)) / All.cf_atime;}
 #endif
                         vesc=sink_vesc(j, local.Mass, r, ags_h_i);
@@ -181,11 +181,11 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                         /* note that SwallowID is both read and potentially re-written below: we need to make sure this is done in a thread-safe manner */
                         MyIDType SwallowID_j;
                         #pragma omp atomic read
-                        SwallowID_j = P[j].SwallowID; // ok got a clean read. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
+                        SwallowID_j = P.SwallowID[j]; // ok got a clean read. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
                         
 #ifdef SINK_REPOSITION_ON_POTMIN
                         /* check if we've found a new potential minimum which is not moving too fast to 'jump' to */
-                        double boundedness_function, potential_function; boundedness_function = P[j].Potential + 0.5 * vrel*vrel * All.cf_atime; potential_function = P[j].Potential;
+                        double boundedness_function, potential_function; boundedness_function = P.Potential[j] + 0.5 * vrel*vrel * All.cf_atime; potential_function = P.Potential[j];
                         if( boundedness_function < 0 )
                         {
                             double wt_rsoft = r / (3.*SinkParticle_GravityKernelRadius); // normalization arbitrary here, just using for convenience for function below
@@ -193,53 +193,53 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                         }
                         potential_function = boundedness_function; // jumps based on -most bound- particle, not just deepest potential (down-weights fast-movers)
                         if(potential_function < out.Sink_PotentialMinimumOfNeighbors)
-                        if( (P[j].Type != 0) && (P[j].Type != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
+                        if( (P.Type[j] != 0) && (P.Type[j] != 5) )   // allow stars or dark matter but exclude gas, it's too messy! also exclude BHs, since we don't want to over-merge them
                         {
-                            out.Sink_PotentialMinimumOfNeighbors=potential_function; for(k=0;k<3;k++) {out.Sink_PotentialMinimumOfNeighborsPos[k] = P[j].Pos[k];}
+                            out.Sink_PotentialMinimumOfNeighbors=potential_function; for(k=0;k<3;k++) {out.Sink_PotentialMinimumOfNeighborsPos[k] = P.Pos[j][k];}
                         }
 #endif
 			
                         
                         
-                        if(P[j].Type == 5)  /* we may have a sink particle merger -- check below if allowed */
+                        if(P.Type[j] == 5)  /* we may have a sink particle merger -- check below if allowed */
                         {
-                            if(((local.ID != P[j].ID) || (r2>0)) && (SwallowID_j == 0) && (P[j].Sink_Mass < local.Sink_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
+                            if(((local.ID != P.ID[j]) || (r2>0)) && (SwallowID_j == 0) && (P.Sink_Mass[j] < local.Sink_Mass)) /* we'll assume most massive BH swallows the other - simplifies analysis and ensures unique results */
                             {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                                 int allow_sink_merger = 1; /* flag here b/c we have different options */
-                                if(r >= 1.0001*P[j].Min_Distance_to_Sink) {allow_sink_merger = 0;} // not the closest sink!
-                                if(r >= heff_j) {allow_sink_merger = 0;} // beyond MAX[search/kernel/softening] radius: heff_j = DMAX( P[j].KernelRadius , ForceSoftening_KernelRadius(j) )
-                                if(P[j].Mass > local.Mass) {allow_sink_merger = 0;} // always merge from more massive eating lower
-                                if((P[j].Mass == local.Mass) && (P[j].ID > local.ID)) {allow_sink_merger = 0;} // randomly pick for equal masses which way the merger goes
+                                if(r >= 1.0001*P.Min_Distance_to_Sink[j]) {allow_sink_merger = 0;} // not the closest sink!
+                                if(r >= heff_j) {allow_sink_merger = 0;} // beyond MAX[search/kernel/softening] radius: heff_j = DMAX( P.KernelRadius[j] , ForceSoftening_KernelRadius(j) )
+                                if(P.Mass[j] > local.Mass) {allow_sink_merger = 0;} // always merge from more massive eating lower
+                                if((P.Mass[j] == local.Mass) && (P.ID[j] > local.ID)) {allow_sink_merger = 0;} // randomly pick for equal masses which way the merger goes
                                 double max_rmerge = 1.0*sink_radius; // default STARFORGE behavior: only merge away stuff that is within the softening radius; sink_radius=SinkParticle_GravityKernelRadius
-                                double max_mmerge = 10.*P[j].Sink_Formation_Mass; // default STARFORGE behavior: only merge away stuff no more massive than a few gas cells
+                                double max_mmerge = 10.*P.Sink_Formation_Mass[j]; // default STARFORGE behavior: only merge away stuff no more massive than a few gas cells
 #ifdef SINGLE_STAR_MERGE_AWAY_CLOSE_BINARIES
                                 if(local.Sink_eligible_for_binary_merge_away == 0) {allow_sink_merger = 0;}
                                 if(is_star_eligible_for_binary_merge_away(j) == 0) {allow_sink_merger = 0;}
-                                max_mmerge = 10.*P[j].Mass; // makes it so there is no mass limit - even extremely massive stars can be merged
+                                max_mmerge = 10.*P.Mass[j]; // makes it so there is no mass limit - even extremely massive stars can be merged
                                 max_rmerge = DMAX(max_rmerge, ForceSoftening_KernelRadius(j));
-                                max_rmerge = DMAX(max_rmerge, DMIN(local.KernelRadius, P[j].KernelRadius));
+                                max_rmerge = DMAX(max_rmerge, DMIN(local.KernelRadius, P.KernelRadius[j]));
                                 max_rmerge = DMIN(max_rmerge, 10.*sink_radius);
                                 double dt_min_orbit_yr = 100.; // 'target' minimum orbital time of the binary in yr
-                                double rmax_dt = 0.000485/(All.cf_atime*UNIT_LENGTH_IN_PC) * pow(((P[j].Mass+local.Mass)*UNIT_MASS_IN_SOLAR/100.) * (dt_min_orbit_yr*dt_min_orbit_yr/(100.*100.)),1./3.); // ensures the binary period satisfies this
+                                double rmax_dt = 0.000485/(All.cf_atime*UNIT_LENGTH_IN_PC) * pow(((P.Mass[j]+local.Mass)*UNIT_MASS_IN_SOLAR/100.) * (dt_min_orbit_yr*dt_min_orbit_yr/(100.*100.)),1./3.); // ensures the binary period satisfies this
                                 max_rmerge = DMAX( max_rmerge , rmax_dt);
 #else
                                 if(sink_check_boundedness(j,vrel,vesc,r,sink_radius) != 1) {allow_sink_merger = 0;} // stricter criterion
 #endif
                                 if(r >= max_rmerge) {allow_sink_merger = 0;} // beyond max radius (default sink)
-                                if(P[j].Mass > max_mmerge) {allow_sink_merger = 0;} // beyond max mass (default few cells)
+                                if(P.Mass[j] > max_mmerge) {allow_sink_merger = 0;} // beyond max mass (default few cells)
                                 if(allow_sink_merger == 1) /* ok only if meet all the criteria above are we allowed to consider a BH-BH merger */
 #endif
                                 {
                                     if(vrel < vesc)
                                     {
-                                        printf(" ..Sink-Sink Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+                                        printf(" ..Sink-Sink Merger: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P.ID[j], (unsigned long long) local.ID);
                                         SwallowID_j = local.ID;
                                     } else {
 #if defined(SINK_OUTPUT_MOREINFO)     // DAA: BH merger info will be saved in a separate output file
-                                        printf(" ..ThisTask=%d, time=%g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, vrel, vesc);
+                                        printf(" ..ThisTask=%d, time=%g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P.ID[j], vrel, vesc);
 #elif defined(OUTPUT_ADDITIONAL_RUNINFO)
-                                        fprintf(FdSinksDetails, "Sink-Sink Merger Not Allowed: ThisTask=%d, time=%.16g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P[j].ID, vrel, vesc); fflush(FdSinksDetails);
+                                        fprintf(FdSinksDetails, "Sink-Sink Merger Not Allowed: ThisTask=%d, time=%.16g: id=%llu would like to swallow %llu, but vrel=%g vesc=%g\n", ThisTask, All.Time, (unsigned long long)local.ID, (unsigned long long)P.ID[j], vrel, vesc); fflush(FdSinksDetails);
 #endif
                                     }
                                 } // if eligible for bh-bh mergers //
@@ -250,11 +250,11 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                         /* This is a similar loop to what we already did in sink_environment, but here we stochastically
                          reduce GRAVCAPT events in order to (statistically) obey the eddington limit */
 #if defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_GRAVCAPTURE_NONGAS)
-                        if((P[j].Type != 5) && (SwallowID_j < local.ID)) // we have a particle not already marked to swallow
+                        if((P.Type[j] != 5) && (SwallowID_j < local.ID)) // we have a particle not already marked to swallow
                         {
 #ifdef SINGLE_STAR_SINK_DYNAMICS
                             double eps = DMAX( r , DMAX(heff_j , ags_h_i) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER); // plummer-equivalent
-			                if(eps*eps*eps /(P[j].Mass + local.Mass) <= P[j].SwallowTime)
+			                if(eps*eps*eps /(P.Mass[j] + local.Mass) <= P.SwallowTime[j])
 #endif
 #if defined(SINK_ALPHADISK_ACCRETION)
                             if(local.Sink_Mass_Reservoir < SINK_ALPHADISK_ACCRETION*local.Sink_Mass)
@@ -264,43 +264,43 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINK_GRAVCAPTURE_FIXEDSINKRADIUS
                                 double spec_mom=dot(dvel,dpos); // delta_x.delta_v
                                 spec_mom = (r2*vrel*vrel - spec_mom*spec_mom*All.cf_a2inv); // specific angular momentum^2 = r^2(delta_v)^2 - (delta_v.delta_x)^2;
-				                if(spec_mom < All.G * (local.Mass + P[j].Mass) * sink_radius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
+				                if(spec_mom < All.G * (local.Mass + P.Mass[j]) * sink_radius)  // check Bate 1995 angular momentum criterion (in addition to bounded-ness)
 #endif
                                 if( sink_check_boundedness(j,vrel,vesc,r,sink_radius)==1 ) /* bound and apocenter within target distance */
                                 {
 #ifdef SINK_GRAVCAPTURE_NONGAS        /* simply swallow non-gas particle if SINK_GRAVCAPTURE_NONGAS enabled */
-                                    if(P[j].Type != 0) {SwallowID_j = local.ID;}
+                                    if(P.Type[j] != 0) {SwallowID_j = local.ID;}
 #endif
 #if defined(SINK_GRAVCAPTURE_GAS)     /* now deal with gas */
-                                    if(P[j].Type == 0)
+                                    if(P.Type[j] == 0)
                                     {
 #if defined(SINK_ENFORCE_EDDINGTON_LIMIT) && !defined(SINK_ALPHADISK_ACCRETION) /* if Eddington-limited and NO alpha-disk, do this stochastically */
                                         p = 1. / eddington_factor;
 #if defined(SINK_WIND_KICK)
                                         p /= All.Sink_accreted_fraction; // we need to accrete more, then remove the mass in winds
 #endif
-                                        w = get_random_number(P[j].ID);
+                                        w = get_random_number(P.ID[j]);
                                         if(w < p)
                                         {
 #ifdef SINK_OUTPUT_MOREINFO
-                                            printf(" ..Sink-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P[j].ID, (unsigned long long) local.ID);
+                                            printf(" ..Sink-Food Marked: P[j.]ID=%llu to be swallowed by id=%llu \n", (unsigned long long) P.ID[j], (unsigned long long) local.ID);
 #endif
                                             SwallowID_j = local.ID;
                                         }
 #else //if defined(SINK_ENFORCE_EDDINGTON_LIMIT) && !defined(SINK_ALPHADISK_ACCRETION)
                                         SwallowID_j = local.ID; /* in other cases, just swallow the particle */
 #endif //else defined(SINK_ENFORCE_EDDINGTON_LIMIT) && !defined(SINK_ALPHADISK_ACCRETION)
-                                    } //if (P[j].Type == 0)
+                                    } //if (P.Type[j] == 0)
 #endif //ifdef SINK_GRAVCAPTURE_GAS
                                 } // if( apocenter in tolerance range )
                             } // if(vrel < vesc)
-                        } //if(P[j].Type != 5)
+                        } //if(P.Type[j] != 5)
 #endif // defined(SINK_GRAVCAPTURE_GAS) || defined(SINK_GRAVCAPTURE_NONGAS)
                         
                         
                         
                         /* now is the more standard accretion only of gas, according to the mdot calculated before */
-                        if(P[j].Type == 0) /* here we have a gas particle */
+                        if(P.Type[j] == 0) /* here we have a gas particle */
                         {
                             u=r*hinv; if(u<1) {kernel_main(u,hinv3,hinv*hinv3,&wk,&dwk,-1);} else {wk=dwk=0;}
 #if defined(SINK_SWALLOWGAS) && !defined(SINK_GRAVCAPTURE_GAS) /* compute accretion probability, this below is only meaningful if !defined(SINK_GRAVCAPTURE_GAS)... */
@@ -312,19 +312,19 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
 #ifdef SINK_WIND_KICK /* DAA: for stochastic winds (SINK_WIND_KICK) we remove a fraction of mass from gas particles prior to kicking --> need to increase the probability here to balance sink particle growth */
                                 if(f_accreted>0) {p /= f_accreted; if((sink_mass_withdisk - local.Mass) < 0) {p = ( (1-f_accreted)/f_accreted ) * local.Mdot * local.Dt * wk / local.Density;}} /* DAA: compute outflow probability when "sink_mass_withdisk < mass" - we don't need to enforce mass conservation in this case, relevant only in low-res sims where the BH seed mass is much lower than the gas particle mass */
 #endif
-                                w = get_random_number(P[j].ID);
+                                w = get_random_number(P.ID[j]);
                                 if(w < p)
                                 {
 #ifdef SINK_OUTPUT_MOREINFO
                                     printf(" ..Sink-Food Marked: j %d w %g p %g TO_BE_SWALLOWED \n",j,w,p);
 #endif
                                     SwallowID_j = local.ID;
-                                    mass_markedswallow += P[j].Mass*f_accreted;
+                                    mass_markedswallow += P.Mass[j]*f_accreted;
                                 } // if(w < p)
                             } // swallowID < localID
 #endif // SINK_SWALLOWGAS
 #if defined(SINK_CALC_LOCAL_ANGLEWEIGHTS) /* calculate the angle-weighting for the photon momentum */
-                            if((local.Dt>0)&&(r>0)&&(SwallowID_j==0)&&(P[j].Mass>0)&&(P[j].Type==0))
+                            if((local.Dt>0)&&(r>0)&&(SwallowID_j==0)&&(P.Mass[j]>0)&&(P.Type[j]==0))
                             { /* cos_theta with respect to disk of BH is given by dot product of r and Jgas */
                                 norm=0; for(k=0;k<3;k++) {norm+=(dpos[k]/r)*J_dir[k];}
                                 out.Sink_angle_weighted_kernel_sum += sink_fb_angleweight_localcoupling(j,norm,r,h_i);
@@ -334,21 +334,21 @@ int sink_feed_evaluate(int target, int mode, int *exportflag, int *exportnodecou
                             double energy = sink_lum_bol(local.Mdot, local.Sink_Mass, -1) * local.Dt;
                             if(local.Density > 0) {
                                 #pragma omp atomic
-                                CellP[j].Injected_Sink_Energy += (wk/local.Density) * energy * P[j].Mass;
+                                CellP.Injected_Sink_Energy[j] += (wk/local.Density) * energy * P.Mass[j];
                             }
 #endif                            
-                        } // if(P[j].Type == 0)
+                        } // if(P.Type[j] == 0)
                         
                         
                         /* ok, before exiting this loop, need to mark whether or not we actually designated a particle for accretion! */
                         if(SwallowID_j > 0)
                         {
                             #pragma omp atomic write
-                            P[j].SwallowID = SwallowID_j;  // ok got a clean write. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
+                            P.SwallowID[j] = SwallowID_j;  // ok got a clean write. -not- gauranteed two threads won't see this at the same time and compete over it [both think they get it here]. but only one will -actually- get it, and that's ok.
                         }
                         
                     } // if(r2 < h_i2)
-                } // if(P[j].Mass > 0)
+                } // if(P.Mass[j] > 0)
             } // for(n = 0; n < numngb; n++)
         } // while(startnode >= 0)
         if(mode == 1) {listindex++; if(listindex < NODELISTLENGTH) {startnode = DATAGET_NAME[target].NodeList[listindex]; if(startnode >= 0) {startnode = Nodes[startnode].u.d.nextnode; /* open it */}}} /* continue to open leaves if needed */

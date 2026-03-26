@@ -11,7 +11,7 @@
     cnumcrit2 *= 1.0;
     double vdotr2_phys = kernel.vdotr2;
     if(All.ComovingIntegrationOn) {vdotr2_phys -= All.cf_hubble_a2 * r2;}
-    V_j = P[j].Mass / CellP[j].Density;
+    V_j = tile.mass[n] / tile.density[n];
 #ifdef COSMIC_RAY_FLUID
     for(k=0;k<N_CR_PARTICLE_BINS;k++)
     {
@@ -32,30 +32,30 @@
 
 #if defined(EOS_TILLOTSON) || defined(EOS_ELASTIC) /* need to include an effective stress for large negative pressures when elements are too close, to prevent tensile instability */
     if(local.Pressure < 0) {wt_corr_i = 1. - tensile_correction_factor;}
-    if(CellP[j].Pressure < 0) {wt_corr_j = 1. - tensile_correction_factor;}
+    if(tile.pressure[n] < 0) {wt_corr_j = 1. - tensile_correction_factor;}
 #endif
 
     
 #ifdef HYDRO_PRESSURE_SPH
     /* Pressure-Energy and/or Pressure-Entropy form of SPH (using 'constant mass in kernel' h-constraint */
     /* -- note that, using appropriate definitions, both forms have an identical EOM in appearance here -- */
-    double p_over_rho2_j = CellP[j].Pressure / (CellP[j].EgyWtDensity * CellP[j].EgyWtDensity);
-    hfc_i = kernel.p_over_rho2_i * (CellP[j].InternalEnergyPred/local.InternalEnergyPred) *
-        (1 + local.DrkernHydroSumFactor / (P[j].Mass * CellP[j].InternalEnergyPred));
-    hfc_j = p_over_rho2_j * (local.InternalEnergyPred/CellP[j].InternalEnergyPred) *
-        (1 + CellP[j].DrkernHydroSumFactor / (local.Mass * local.InternalEnergyPred));
+    double p_over_rho2_j = tile.pressure[n] / (tile.egy_wt_density[n] * tile.egy_wt_density[n]);
+    hfc_i = kernel.p_over_rho2_i * (tile.ie_pred[n]/local.InternalEnergyPred) *
+        (1 + local.DrkernHydroSumFactor / (tile.mass[n] * tile.ie_pred[n]));
+    hfc_j = p_over_rho2_j * (local.InternalEnergyPred/tile.ie_pred[n]) *
+        (1 + tile.drk_hydro_sum[n] / (local.Mass * local.InternalEnergyPred));
 #else
     /* Density-Entropy (or Density-Energy) formulation: x_tilde=1, x=mass */
-    double p_over_rho2_j = CellP[j].Pressure / (CellP[j].Density * CellP[j].Density);
-    hfc_i = kernel.p_over_rho2_i * (1 + local.DrkernHydroSumFactor / P[j].Mass);
-    hfc_j = p_over_rho2_j * (1 + CellP[j].DrkernHydroSumFactor / local.Mass);
+    double p_over_rho2_j = tile.pressure[n] / (tile.density[n] * tile.density[n]);
+    hfc_i = kernel.p_over_rho2_i * (1 + local.DrkernHydroSumFactor / tile.mass[n]);
+    hfc_j = p_over_rho2_j * (1 + tile.drk_hydro_sum[n] / local.Mass);
 #endif
     hfc_i *= wt_corr_i; hfc_j *= wt_corr_j; // apply tensile instability suppression //
 
     hfc_egy = hfc_i; /* needed to follow the internal energy explicitly; note this is the same for any of the formulations above */
         
     /* use the traditional 'kernel derivative' (dwk) to compute derivatives */
-    hfc_dwk_i = hfc_dwk_j = local.Mass * P[j].Mass / kernel.r;
+    hfc_dwk_i = hfc_dwk_j = local.Mass * tile.mass[n] / kernel.r;
     hfc_dwk_i *= kernel.dwk_i; /* grad-h terms have already been multiplied in here */
     hfc_dwk_j *= kernel.dwk_j;
     hfc = hfc_i*hfc_dwk_i + hfc_j*hfc_dwk_j;
@@ -66,7 +66,7 @@
         
     /* RSPH equation of motion */
     /* hfc_dwk_i = 0.5 * (hfc_dwk_i + hfc_dwk_j); */
-    /* hfc = (local.Pressure-CellP[j].Pressure)/(local.Density*CellP[j].Density) * hfc_dwk_i */
+    /* hfc = (local.Pressure-CellP.Pressure[j])/(local.Density*CellP.Density[j]) * hfc_dwk_i */
         
     Fluxes.v[0] += -hfc * kernel.dp[0]; /* momentum */
     Fluxes.v[1] += -hfc * kernel.dp[1];
@@ -80,12 +80,12 @@
     /* --------------------------------------------------------------------------------- */
 #ifdef MAGNETIC
     Fluxes.B[0] = Fluxes.B[1] = Fluxes.B[2] = 0;
-    double mj_r = P[j].Mass / kernel.r;
+    double mj_r = tile.mass[n] / kernel.r;
     double mf_i = kernel.mf_i * mj_r * kernel.dwk_i;
-    double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (CellP[j].Density * CellP[j].Density);
+    double mf_j = kernel.mf_j * mj_r * kernel.dwk_j / (tile.density[n] * tile.density[n]);
 #ifndef HYDRO_PRESSURE_SPH
-    mf_i *= (1 + local.DrkernHydroSumFactor / P[j].Mass);
-    mf_j *= (1 + CellP[j].DrkernHydroSumFactor / local.Mass);
+    mf_i *= (1 + local.DrkernHydroSumFactor / tile.mass[n]);
+    mf_j *= (1 + tile.drk_hydro_sum[n] / local.Mass);
 #endif
         
     /* ---------------------------------------------------------------------------------
@@ -157,7 +157,7 @@
         mean Alfven speed (vsb_1 = 0.5*(sqrt(kernel.alfven2_i)+sqrt(kernel.alfven2_j))
      */
     double vsigb = 0.5 * (sqrt(kernel.alfven2_i) + sqrt(kernel.alfven2_j));
-    double eta = 0.5 * (local.Balpha + CellP[j].Balpha) * vsigb * kernel.r;
+    double eta = 0.5 * (local.Balpha + CellP.Balpha[j]) * vsigb * kernel.r;
     mf_dissInd *= eta;
     /* units are Bcode * vcode * rcode*rcode = vcode * Bphys*rphys^2 = a * vphys*Bphys*rphys^2 */
     Fluxes.B += mf_dissInd / All.cf_atime * dB;
@@ -178,22 +178,22 @@
         c_ij = 0.5 * (magneticspeed_i + magneticspeed_j);
 #endif
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
-        double BulkVisc_ij = 0.5 * (local.alpha + CellP[j].alpha_limiter * CellP[j].alpha);
+        double BulkVisc_ij = 0.5 * (local.alpha + CellP.alpha_limiter[j] * CellP.alpha[j]);
         double mu_ij = fac_mu * kernel.vdotr2 / kernel.r;
         double visc = -BulkVisc_ij * mu_ij * (c_ij - mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=1 */
 #else
         double BulkVisc_ij = 0.5 * All.ArtBulkViscConst;
 #if !defined(EOS_ELASTIC)
-        BulkVisc_ij *= (local.alpha + CellP[j].alpha_limiter);
+        BulkVisc_ij *= (local.alpha + CellP.alpha_limiter[j]);
 #endif
         double h_ij = KERNEL_CORE_SIZE * 0.5 * (kernel.h_i + kernel.h_j);
         double mu_ij = fac_mu * h_ij * kernel.vdotr2 / (r2 + 0.0001 * h_ij * h_ij); /* note: this is negative! */
         double visc = -BulkVisc_ij * mu_ij * (c_ij - 2*mu_ij) * kernel.rho_ij_inv; /* this method should use beta/alpha=2 */
 #endif
 #ifndef NOVISCOSITYLIMITER
-        if(dt_hydrostep > 0 && kernel.dwk_ij < 0) {visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + P[j].Mass) * kernel.dwk_ij * kernel.r * (2.*dt_hydrostep)));}
+        if(dt_hydrostep > 0 && kernel.dwk_ij < 0) {visc = DMIN(visc, 0.5 * fac_vsic_fix * kernel.vdotr2 / ((local.Mass + tile.mass[n]) * kernel.dwk_ij * kernel.r * (2.*dt_hydrostep)));}
 #endif
-        hfc_visc = -local.Mass * P[j].Mass * visc * kernel.dwk_ij / kernel.r;
+        hfc_visc = -local.Mass * tile.mass[n] * visc * kernel.dwk_ij / kernel.r;
         Fluxes.v[0] += hfc_visc * kernel.dp[0]; /* this is momentum */
         Fluxes.v[1] += hfc_visc * kernel.dp[1];
         Fluxes.v[2] += hfc_visc * kernel.dp[2];
@@ -207,14 +207,14 @@
     /* --------------------------------------------------------------------------------- */
 #ifdef SPHAV_ARTIFICIAL_CONDUCTIVITY
     double vsigu = (kernel.sound_i + kernel.sound_j - 3 * fac_mu * kernel.vdotr2 / kernel.r) / fac_mu; // want in code velocity units
-    if((vsigu > 0) && (fabs(local.Pressure) + fabs(CellP[j].Pressure) > 0)) // implicitly sets vsig=0 if 3*w_ij > (c_i+c_j)
+    if((vsigu > 0) && (fabs(local.Pressure) + fabs(tile.pressure[n]) > 0)) // implicitly sets vsig=0 if 3*w_ij > (c_i+c_j)
     {
-        vsigu *= fabs(local.Pressure - CellP[j].Pressure)/(fabs(local.Pressure) + fabs(CellP[j].Pressure));
-        double du_ij = kernel.spec_egy_u_i - CellP[j].InternalEnergyPred;
+        vsigu *= fabs(local.Pressure - tile.pressure[n])/(fabs(local.Pressure) + fabs(tile.pressure[n]));
+        double du_ij = kernel.spec_egy_u_i - tile.ie_pred[n];
 #if defined(SPHAV_CD10_VISCOSITY_SWITCH)
-        du_ij *= 0.5 * (local.alpha + CellP[j].alpha_limiter * CellP[j].alpha); // in this case, All.ArtCondConstant is just a multiplier -relative- to art. visc.
+        du_ij *= 0.5 * (local.alpha + CellP.alpha_limiter[j] * CellP.alpha[j]); // in this case, All.ArtCondConstant is just a multiplier -relative- to art. visc.
 #endif
-        Fluxes.p += local.Mass * All.ArtCondConstant * P[j].Mass * kernel.rho_ij_inv * vsigu * du_ij * kernel.dwk_ij;
+        Fluxes.p += local.Mass * All.ArtCondConstant * tile.mass[n] * kernel.rho_ij_inv * vsigu * du_ij * kernel.dwk_ij;
     }
 #endif // SPHAV_ARTIFICIAL_CONDUCTIVITY
 

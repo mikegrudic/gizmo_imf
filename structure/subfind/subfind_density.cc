@@ -92,7 +92,7 @@ void subfind_density(int j_in)
   for(i = 0; i < NumPart; i++)
     {
       Left[i] = Right[i] = 0;
-      P[i].DM_NumNgb = 0;
+      P.DM_NumNgb[i] = 0;
       Todo[i] = 1;
     }
 
@@ -117,9 +117,9 @@ void subfind_density(int j_in)
 	    {
 	      if(Todo[i])
 #ifdef FOF_DENSITY_SPLIT_TYPES
-		if(P[i].Type == j_target)
+		if(P.Type[i] == j_target)
 #else
-        if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
+        if(((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
 		  {
 		    if(subfind_density_evaluate(i, 0, &nexport, Send_count, j_in) < 0)
@@ -152,8 +152,8 @@ void subfind_density(int j_in)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      DensDataIn[j].Pos = P[place].Pos;
-	      DensDataIn[j].KernelRadius = P[place].DM_KernelRadius;
+	      DensDataIn[j].Pos = P.Pos[place];
+	      DensDataIn[j].KernelRadius = P.DM_KernelRadius[place];
 
 	      memcpy(DensDataIn[j].NodeList,
 		     DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -221,11 +221,11 @@ void subfind_density(int j_in)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      P[place].DM_NumNgb += DensDataOut[j].Ngb;
-	      P[place].u.DM_Density += DensDataOut[j].Rho;
+	      P.DM_NumNgb[place] += DensDataOut[j].Ngb;
+	      P.u.DM_Density[place] += DensDataOut[j].Rho;
 
             if(j_in >= 0)	/* sum up VelDisp only for own species */
-                P[place].v.DM_VelDisp += DensDataOut[j].VelDisp;
+                P.v.DM_VelDisp[place] += DensDataOut[j].VelDisp;
             
 	      DM_Vx[place] += DensDataOut[j].Vx;
 	      DM_Vy[place] += DensDataOut[j].Vy;
@@ -246,53 +246,53 @@ void subfind_density(int j_in)
 	  /* now check whether we had enough neighbours */
 #ifdef FOF_DENSITY_SPLIT_TYPES
 	  if(j_in < 0) {Todo[i] = 0;}
-	  if((P[i].Type != j_target) || (j_in < 0)) continue;
+	  if((P.Type[i] != j_target) || (j_in < 0)) continue;
 #else
-	  if(!((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES))) continue;
+	  if(!((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES))) continue;
 #endif
 
 	  if(Todo[i])
 	    {
-	      if(P[i].DM_NumNgb != All.DesLinkNgb &&
+	      if(P.DM_NumNgb[i] != All.DesLinkNgb &&
 		 ((Right[i] - Left[i]) > 1.0e-4 * Left[i] || Left[i] == 0 || Right[i] == 0))
 		{
 		  /* need to redo this particle */
 		  npleft++;
 
-		  if(P[i].DM_NumNgb < All.DesLinkNgb)
-		    Left[i] = DMAX(P[i].DM_KernelRadius, Left[i]);
+		  if(P.DM_NumNgb[i] < All.DesLinkNgb)
+		    Left[i] = DMAX(P.DM_KernelRadius[i], Left[i]);
 		  else
 		    {
 		      if(Right[i] != 0)
 			{
-			  if(P[i].DM_KernelRadius < Right[i])
-			    Right[i] = P[i].DM_KernelRadius;
+			  if(P.DM_KernelRadius[i] < Right[i])
+			    Right[i] = P.DM_KernelRadius[i];
 			}
 		      else
-			Right[i] = P[i].DM_KernelRadius;
+			Right[i] = P.DM_KernelRadius[i];
 		    }
 
 		  if(iter >= MAXITER - 10)
 		    {
 		      printf
 			("i=%d task=%d ID=%llu KernelRadius=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-			 i, ThisTask, (unsigned long long) P[i].ID, P[i].DM_KernelRadius, Left[i], Right[i],
-			 (double) P[i].DM_NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 i, ThisTask, (unsigned long long) P.ID[i], P.DM_KernelRadius[i], Left[i], Right[i],
+			 (double) P.DM_NumNgb[i], Right[i] - Left[i], P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 
 		  if(Right[i] > 0 && Left[i] > 0)
-		    P[i].DM_KernelRadius = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
+		    P.DM_KernelRadius[i] = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
 		  else
 		    {
 		      if(Right[i] == 0 && Left[i] == 0)
 			endrun(8187);	/* can't occur */
 
 		      if(Right[i] == 0 && Left[i] > 0)
-			P[i].DM_KernelRadius *= 1.26;
+			P.DM_KernelRadius[i] *= 1.26;
 
 		      if(Right[i] > 0 && Left[i] == 0)
-			P[i].DM_KernelRadius /= 1.26;
+			P.DM_KernelRadius[i] /= 1.26;
 		    }
 		}
 	      else
@@ -336,18 +336,18 @@ void subfind_density(int j_in)
 
   for(i = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
-    if(P[i].Type == j_target && j_in >= 0)
+    if(P.Type[i] == j_target && j_in >= 0)
 #else
-    if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
+    if(((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
       {
-	if(P[i].DM_NumNgb > 0)
+	if(P.DM_NumNgb[i] > 0)
     {
-	DM_Vx[i] /= P[i].DM_NumNgb;
-	DM_Vy[i] /= P[i].DM_NumNgb;
-	DM_Vz[i] /= P[i].DM_NumNgb;
-	P[i].v.DM_VelDisp /= P[i].DM_NumNgb;
-	P[i].v.DM_VelDisp = vel_to_phys * sqrt(P[i].v.DM_VelDisp - DM_Vx[i] * DM_Vx[i] - DM_Vy[i] * DM_Vy[i] - DM_Vz[i] * DM_Vz[i]);
+	DM_Vx[i] /= P.DM_NumNgb[i];
+	DM_Vy[i] /= P.DM_NumNgb[i];
+	DM_Vz[i] /= P.DM_NumNgb[i];
+	P.v.DM_VelDisp[i] /= P.DM_NumNgb[i];
+	P.v.DM_VelDisp[i] = vel_to_phys * sqrt(P.v.DM_VelDisp[i] - DM_Vx[i] * DM_Vx[i] - DM_Vy[i] * DM_Vy[i] - DM_Vz[i] * DM_Vz[i]);
     }
       }
 
@@ -388,8 +388,8 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 
   if(mode == 0)
     {
-      pos = P[target].Pos.data_ptr();
-      h = P[target].DM_KernelRadius;
+      pos = P.Pos[target].data_ptr();
+      h = P.DM_KernelRadius[target];
     }
   else
     {
@@ -428,7 +428,7 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	  if(tp >= 0)
 	    if(mode == 0 && hmax > 0)
 	      {
-              P[target].DM_KernelRadius = hmax;
+              P.DM_KernelRadius[target] = hmax;
               h = hmax;
               if(ngb != All.DesLinkNgb) {endrun(121);}
 	      }
@@ -441,7 +441,7 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	      r2 = Dist2list[n];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	      if(tp < 0) {h = P[j].DM_KernelRadius;}
+	      if(tp < 0) {h = P.DM_KernelRadius[j];}
 #endif
 
 	      h2 = h * h;
@@ -451,15 +451,15 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 		  kernel_hinv(h, &hinv, &hinv3, &hinv4);
 		  u = r * hinv;
 		  kernel_main(u, hinv3, hinv4, &wk, &dwk, -1);
-		  mass_j = P[j].Mass;
+		  mass_j = P.Mass[j];
 		  rho += (mass_j * wk);
 		}
 
-	      vx += P[j].Vel[0];
-	      vy += P[j].Vel[1];
-	      vz += P[j].Vel[2];
+	      vx += P.Vel[j][0];
+	      vy += P.Vel[j][1];
+	      vz += P.Vel[j][2];
 
-	      v2 += P[j].Vel[0] * P[j].Vel[0] + P[j].Vel[1] * P[j].Vel[1] + P[j].Vel[2] * P[j].Vel[2];
+	      v2 += P.Vel[j][0] * P.Vel[j][0] + P.Vel[j][1] * P.Vel[j][1] + P.Vel[j][2] * P.Vel[j][2];
 	    }
 	}
 
@@ -477,9 +477,9 @@ int subfind_density_evaluate(int target, int mode, int *nexport, int *nsend_loca
 
   if(mode == 0)
     {
-      P[target].DM_NumNgb = numngb;
-      P[target].u.DM_Density = rho;
-      if(tp >= 0) {P[target].v.DM_VelDisp = v2;}		/* sum up VelDisp only for own species */
+      P.DM_NumNgb[target] = numngb;
+      P.u.DM_Density[target] = rho;
+      if(tp >= 0) {P.v.DM_VelDisp[target] = v2;}		/* sum up VelDisp only for own species */
           
       DM_Vx[target] = vx;
       DM_Vy[target] = vy;
@@ -506,15 +506,15 @@ void subfind_setup_smoothinglengths(int j)
   for(i = 0; i < NumPart; i++)
     {
 #ifdef FOF_DENSITY_SPLIT_TYPES
-      if(P[i].Type == j)
+      if(P.Type[i] == j)
 #else
-      if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)) || ((1 << P[i].Type) & (FOF_SECONDARY_LINK_TYPES)))
+      if(((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)) || ((1 << P.Type[i]) & (FOF_SECONDARY_LINK_TYPES)))
 #endif
 	{
 	  no = Father[i];
 
 	  /* Not a good guess for gas/stars component, need more thought ! */
-	  while(10 * All.DesLinkNgb * P[i].Mass > Nodes[no].u.d.mass)
+	  while(10 * All.DesLinkNgb * P.Mass[i] > Nodes[no].u.d.mass)
 	    {
 	      p = Nodes[no].u.d.father;
 
@@ -524,10 +524,10 @@ void subfind_setup_smoothinglengths(int j)
 	      no = p;
 	    }
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(P[i].Type == 0) {P[i].DM_KernelRadius = P[i].KernelRadius * pow( 1.*All.DesLinkNgb / All.DesNumNgb, 1./3.);}
-	  else {P[i].DM_KernelRadius = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;}
+	  if(P.Type[i] == 0) {P.DM_KernelRadius[i] = P.KernelRadius[i] * pow( 1.*All.DesLinkNgb / All.DesNumNgb, 1./3.);}
+	  else {P.DM_KernelRadius[i] = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P.Mass[i] / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;}
 #else
-	  P[i].DM_KernelRadius = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P[i].Mass / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;
+	  P.DM_KernelRadius[i] = pow(3.0 / (4 * M_PI) * All.DesLinkNgb * P.Mass[i] / Nodes[no].u.d.mass, 1.0 / 3) * Nodes[no].len;
 #endif
 
 	}
@@ -568,9 +568,9 @@ void subfind_save_densities(int num)
 
   for(i = 0, Nrkern = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
-    if(((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+    if(((1 << P.Type[i]) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
-    if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
+    if(((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
       Nrkern++;
 
@@ -584,15 +584,15 @@ void subfind_save_densities(int num)
 
   for(i = 0, Nrkern = 0; i < NumPart; i++)
 #ifdef FOF_DENSITY_SPLIT_TYPES
-    if(((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+    if(((1 << P.Type[i]) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
-    if(((1 << P[i].Type) & (FOF_PRIMARY_LINK_TYPES)))
+    if(((1 << P.Type[i]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
       {
-	KernelRadius_list[Nrkern].KernelRadius = P[i].DM_KernelRadius;
-	KernelRadius_list[Nrkern].Density = P[i].u.DM_Density;
-	KernelRadius_list[Nrkern].VelDisp = P[i].v.DM_VelDisp;
-	KernelRadius_list[Nrkern].ID = P[i].ID;
+	KernelRadius_list[Nrkern].KernelRadius = P.DM_KernelRadius[i];
+	KernelRadius_list[Nrkern].Density = P.u.DM_Density[i];
+	KernelRadius_list[Nrkern].VelDisp = P.v.DM_VelDisp[i];
+	KernelRadius_list[Nrkern].ID = P.ID[i];
 	Nrkern++;
       }
 

@@ -66,7 +66,7 @@ void twopoint(void)
     /* set inner and outer radius for the bins that are used for the correlation function estimate */
     R0 = All.ForceSoftening[1] / 3.; R1 = All.BoxSize / 2; /* we assume that type=1 is the primary type */
     scaled_frac = FRACTION_TP * 1.0e7 / All.TotNumPart; logR0 = log(R0); binfac = BINS_TP / (log(R1) - log(R0));
-    for(i = 0, mass = 0; i < NumPart; i++) {mass += P[i].Mass;}
+    for(i = 0, mass = 0; i < NumPart; i++) {mass += P.Mass[i];}
     MPI_Allreduce(&mass, &masstot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); PartMass = masstot / All.TotNumPart;
     for(i = 0; i < BINS_TP; i++) {Count[i] = 0; CountSpheres[i] = 0;}
     /* allocate buffers to arrange communication */
@@ -77,7 +77,7 @@ void twopoint(void)
     DataNodeList = (struct data_nodelist *) mymalloc("DataNodeList", All.BunchSize * sizeof(struct data_nodelist));
     state_buffer = mymalloc("state_buffer", gsl_rng_size(random_generator));
     memcpy(state_buffer, gsl_rng_state(random_generator), gsl_rng_size(random_generator));
-    gsl_rng_set(random_generator, P[0].ID + ThisTask);    /* seed things with first particle ID to make sure we are different on each CPU */
+    gsl_rng_set(random_generator, P.ID[0] + ThisTask);    /* seed things with first particle ID to make sure we are different on each CPU */
     i = 0;            /* begin with this index */
     do
     {
@@ -102,7 +102,7 @@ void twopoint(void)
         for(j = 0; j < nexport; j++)
         {
           place = DataIndexTable[j].Index;
-          TwoPointDataIn[j].Pos = P[place].Pos;
+          TwoPointDataIn[j].Pos = P.Pos[place];
           TwoPointDataIn[j].Rs = RsList[place];
           memcpy(TwoPointDataIn[j].NodeList, DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
         }
@@ -176,7 +176,7 @@ int twopoint_count_local(int target, int mode, int *nexport, int *nsend_local)
 
   if(mode == 0)
     {
-      pos = P[target].Pos.data_ptr();
+      pos = P.Pos[target].data_ptr();
       rs = RsList[target];
       memcpy(Count_bak, Count, sizeof(long long) * BINS_TP);
     }
@@ -253,9 +253,9 @@ int twopoint_ngb_treefind_variable(MyDouble searchcenter[3], MyFloat rsearch, in
 	  p = no;
 	  no = Nextnode[no];
 
-	  dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
-	  dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
-	  dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+	  dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+	  dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+	  dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
 
 	  r2 = dx * dx + dy * dy + dz * dz;
 

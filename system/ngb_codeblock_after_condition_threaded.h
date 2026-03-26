@@ -2,7 +2,7 @@
  this defines a code-block to be inserted in the neighbor search routines after the conditions for neighbor-validity are applied
  (valid particle types checked)
  */
-if(P[p].Ti_current != ti_Current)
+if(P.Ti_current[p] != ti_Current)
 {
 #ifdef _OPENMP
 #pragma omp critical(_partdriftngb_)
@@ -13,12 +13,12 @@ if(P[p].Ti_current != ti_Current)
 }
 
 #if (SEARCHBOTHWAYS==1)
-dist = DMAX(P[p].KernelRadius, rkern);
-dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+dist = DMAX(P.KernelRadius[p], rkern);
+dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
 if(dx > dist) continue;
-dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
 if(dy > dist) continue;
-dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2],-1);
+dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
 if(dz > dist) continue;
 if(dx * dx + dy * dy + dz * dz > dist * dist) continue;
 #endif
@@ -29,7 +29,7 @@ else
     if(no >= maxPart + maxNodes)	/* pseudo particle */
     {
         if(mode == 1) {endrun(123128);}
-        
+
         if(target >= 0)	/* if no target is given, export will not occur */
         {
             if(exportflag[task = DomainTask[no - (maxPart + maxNodes)]] != target)
@@ -37,7 +37,7 @@ else
                 exportflag[task] = target;
                 exportnodecount[task] = NODELISTLENGTH;
             }
-            
+
             if(exportnodecount[task] == NODELISTLENGTH)
             {
                 int exitFlag = 0, nexp;
@@ -58,7 +58,7 @@ else
                     }
                 }
                 if(exitFlag) {return -1;} /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
-                
+
                 exportnodecount[task] = 0;
                 exportindex[task] = nexp;
                 DataIndexTable[nexp].Task = task;
@@ -69,13 +69,13 @@ else
             if(exportnodecount[task] < NODELISTLENGTH)
                 DataNodeList[exportindex[task]].NodeList[exportnodecount[task]] = -1;
                 }
-        
+
         no = Nextnode[no - maxNodes];
         continue;
     }
-    
+
     current = &Nodes[no];
-    
+
     if(mode == 1)
     {
         if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
@@ -84,7 +84,7 @@ else
             return numngb;
         }
     }
-    
+
     if(current->Ti_current != ti_Current)
     {
 #ifdef _OPENMP
@@ -94,7 +94,7 @@ else
             force_drift_node(no, ti_Current);
         }
     }
-    
+
     if(current->N_part <= 1)
     {
         if(current->u.d.mass)	/* open cell */
@@ -103,7 +103,7 @@ else
             continue;
         }
     }
-    
+
     double hmax = Extnodes[no].hmax;
 #if (SEARCHBOTHWAYS==1)
     dist = DMAX(hmax, rkern) + 0.5 * current->len;

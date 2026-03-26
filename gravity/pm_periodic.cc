@@ -275,13 +275,13 @@ void pmforce_periodic(int mode, int *typelist)
 	  if(mode)
 	    {
 	      /* only power spectrum calculation */
-	      if(typelist[P[i].Type] == 0)
+	      if(typelist[P.Type[i]] == 0)
 		continue;
 	    }
 
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(phase == 1)
-	    if(P[i].Type == 0)	/* don't bin baryonic mass in this phase */
+	    if(P.Type[i] == 0)	/* don't bin baryonic mass in this phase */
 	      continue;
 #endif
 
@@ -291,13 +291,13 @@ void pmforce_periodic(int mode, int *typelist)
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
 		{
-		  pp[j] = P[i].Pos[j]; 
+		  pp[j] = P.Pos[i][j]; 
 		  pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
 	  else
-	    pos = P[i].Pos.data_ptr();
+	    pos = P.Pos[i].data_ptr();
 
 	  slab_x = (int) (to_slab_fac * pos[0]);
 	  slab_y = (int) (to_slab_fac * pos[1]);
@@ -405,7 +405,7 @@ void pmforce_periodic(int mode, int *typelist)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
         /* possible bugfix: Y.Feng:  (was if(mode)) */
 	  if(mode > -1)
@@ -413,13 +413,13 @@ void pmforce_periodic(int mode, int *typelist)
 	      /* make sure that particles are properly box-wrapped */
 	      for(j = 0; j < 3; j++)
 		{
-		  pp[j] = P[pindex].Pos[j];
+		  pp[j] = P.Pos[pindex][j];
             pp[j] = WRAP_POSITION_UNIFORM_BOX(pp[j]);
 		}
 	      pos = pp;
 	    }
 	  else
-	    pos = P[pindex].Pos.data_ptr();
+	    pos = P.Pos[pindex].data_ptr();
 
 	  slab_x = (int) (to_slab_fac * pos[0]);
 	  slab_y = (int) (to_slab_fac * pos[1]);
@@ -433,14 +433,14 @@ void pmforce_periodic(int mode, int *typelist)
 	  dy = to_slab_fac * pos[1] - slab_y;
 	  dz = to_slab_fac * pos[2] - slab_z;
 
-	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-	  localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	  localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+	  localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
 	}
 
       /* clear local FFT-mesh density field */
@@ -661,7 +661,7 @@ void pmforce_periodic(int mode, int *typelist)
             /* make sure that particles are properly box-wrapped */
             for(xx = 0; xx < 3; xx++)
             {
-                pp[xx] = P[i].Pos[xx];
+                pp[xx] = P.Pos[i][xx];
                 pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
@@ -681,7 +681,7 @@ void pmforce_periodic(int mode, int *typelist)
             + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
             + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
-	      P[i].PM_Potential += pot * fac * (2 * All.BoxSize / PMGRID);
+	      P.PM_Potential[i] += pot * fac * (2 * All.BoxSize / PMGRID);
 	      /* compensate the finite differencing factor */ ;
 	    }
 
@@ -830,7 +830,7 @@ void pmforce_periodic(int mode, int *typelist)
 		{
 #ifdef DM_SCALARFIELD_SCREENING
 		  if(phase == 1)
-		    if(P[i].Type == 0)	/* baryons don't get an extra scalar force */
+		    if(P.Type[i] == 0)	/* baryons don't get an extra scalar force */
 		      continue;
 #endif
             while(j < num_on_grid && (part[j].partindex >> 3) != i)
@@ -840,7 +840,7 @@ void pmforce_periodic(int mode, int *typelist)
             /* make sure that particles are properly box-wrapped */
             for(xx = 0; xx < 3; xx++)
             {
-                pp[xx] = P[i].Pos[xx];
+                pp[xx] = P.Pos[i][xx];
                 pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
             }
             slab_x = (int) (to_slab_fac * pp[0]);
@@ -860,7 +860,7 @@ void pmforce_periodic(int mode, int *typelist)
 		    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 		    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
             
-		  P[i].GravPM[dim] += acc_dim;
+		  P.GravPM[i][dim] += acc_dim;
 		}
 
 	    }			/* end of if(mode==0) block */
@@ -921,7 +921,7 @@ void pmpotential_periodic(void)
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[i].Pos[xx];
+            pp[xx] = P.Pos[i][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -1022,13 +1022,13 @@ void pmpotential_periodic(void)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[pindex].Pos[xx];
+            pp[xx] = P.Pos[pindex][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -1038,14 +1038,14 @@ void pmpotential_periodic(void)
         dy = to_slab_fac * pp[1] - slab_y;
         dz = to_slab_fac * pp[2] - slab_z;
 
-      localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-      localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+      localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+      localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
     }
 
   /* clear local FFT-mesh density field */
@@ -1251,7 +1251,7 @@ void pmpotential_periodic(void)
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[i].Pos[xx];
+            pp[xx] = P.Pos[i][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -1272,7 +1272,7 @@ void pmpotential_periodic(void)
         + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
-      P[i].Potential += pot;
+      P.Potential[i] += pot;
 #endif
     }
 
@@ -1545,7 +1545,7 @@ void pmtidaltensor_periodic_diff(void)
 	{
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(phase == 1)
-	    if(P[i].Type == 0)	/* don't bin baryonic mass in this phase */
+	    if(P.Type[i] == 0)	/* don't bin baryonic mass in this phase */
 	      continue;
 #endif
 
@@ -1553,7 +1553,7 @@ void pmtidaltensor_periodic_diff(void)
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[i].Pos[xx];
+            pp[xx] = P.Pos[i][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -1656,13 +1656,13 @@ void pmtidaltensor_periodic_diff(void)
       for(i = 0; i < num_on_grid; i += 8) 
 	{
 	  pindex = (part[i].partindex >> 3); 
-	  if(P[pindex].Mass<=0) continue; 
+	  if(P.Mass[pindex]<=0) continue; 
 	  
 	  /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */ 
 	  /* make sure that particles are properly box-wrapped */ 
 	  for(xx = 0; xx < 3; xx++) 
 	  { 
-	      pp[xx] = P[pindex].Pos[xx]; 
+	      pp[xx] = P.Pos[pindex][xx]; 
 	      pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
 	  } 
 	  slab_x = (int) (to_slab_fac * pp[0]); 
@@ -1672,14 +1672,14 @@ void pmtidaltensor_periodic_diff(void)
 	  dy = to_slab_fac * pp[1] - slab_y; 
 	  dz = to_slab_fac * pp[2] - slab_z;
 
-	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-	  localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	  localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+	  localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
 	} 
       
       /* clear local FFT-mesh density field */
@@ -1888,7 +1888,7 @@ void pmtidaltensor_periodic_diff(void)
 	  /* make sure that particles are properly box-wrapped */ 
 	  for(xx = 0; xx < 3; xx++) 
 	  { 
-	      pp[xx] = P[i].Pos[xx]; 
+	      pp[xx] = P.Pos[i][xx]; 
 	      pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
 	  } 
 	  slab_x = (int) (to_slab_fac * pp[0]); 
@@ -1907,7 +1907,7 @@ void pmtidaltensor_periodic_diff(void)
 	      + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz) 
 	      + localfield_data[part[j + 7].localindex] * (dx) * dy * dz; 
 	  
-	  P[i].PM_Potential += pot * fac * (2 * All.BoxSize / PMGRID);
+	  P.PM_Potential[i] += pot * fac * (2 * All.BoxSize / PMGRID);
 	  /* compensate the finite differencing factor */ ; 
 	}
 #endif
@@ -2138,7 +2138,7 @@ void pmtidaltensor_periodic_diff(void)
 	    {
 #ifdef DM_SCALARFIELD_SCREENING
 	      if(phase == 1)
-		if(P[i].Type == 0)	/* baryons don't get an extra scalar force */
+		if(P.Type[i] == 0)	/* baryons don't get an extra scalar force */
 		  continue;
 #endif
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
@@ -2148,7 +2148,7 @@ void pmtidaltensor_periodic_diff(void)
 	      /* make sure that particles are properly box-wrapped */ 
 	      for(xx = 0; xx < 3; xx++) 
 	      {
-		  pp[xx] = P[i].Pos[xx]; 
+		  pp[xx] = P.Pos[i][xx]; 
 		  pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]); 
 	      } 
 	      slab_x = (int) (to_slab_fac * pp[0]); 
@@ -2168,27 +2168,27 @@ void pmtidaltensor_periodic_diff(void)
 
 	      if(dim == 0)
 		{
-		  P[i].tidal_tensorpsPM[0][0] += tidal_dim;
+		  P.tidal_tensorpsPM[i][0][0] += tidal_dim;
 		}
 	      if(dim == 1)
 		{
-		  P[i].tidal_tensorpsPM[0][1] += tidal_dim;
+		  P.tidal_tensorpsPM[i][0][1] += tidal_dim;
 		}
 	      if(dim == 2)
 		{
-		  P[i].tidal_tensorpsPM[0][2] += tidal_dim;
+		  P.tidal_tensorpsPM[i][0][2] += tidal_dim;
 		}
 	      if(dim == 3)
 		{
-		  P[i].tidal_tensorpsPM[1][1] += tidal_dim;
+		  P.tidal_tensorpsPM[i][1][1] += tidal_dim;
 		}
 	      if(dim == 4)
 		{
-		  P[i].tidal_tensorpsPM[1][2] += tidal_dim;
+		  P.tidal_tensorpsPM[i][1][2] += tidal_dim;
 		}
 	      if(dim == 5)
 		{
-		  P[i].tidal_tensorpsPM[2][2] += tidal_dim;
+		  P.tidal_tensorpsPM[i][2][2] += tidal_dim;
 		}
 	    }
 	}
@@ -2257,7 +2257,7 @@ void pmtidaltensor_periodic_fourier(int component)
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[i].Pos[xx];
+            pp[xx] = P.Pos[i][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -2356,13 +2356,13 @@ void pmtidaltensor_periodic_fourier(int component)
   for(i = 0; i < num_on_grid; i += 8)
     { 
 	pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
         /* possible bugfix: Y.Feng:  (otherwise just pp[xx]=Pos[xx]) */
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[pindex].Pos[xx];
+            pp[xx] = P.Pos[pindex][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -2372,14 +2372,14 @@ void pmtidaltensor_periodic_fourier(int component)
         dy = to_slab_fac * pp[1] - slab_y;
         dz = to_slab_fac * pp[2] - slab_z;
 
-	localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-	localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-	localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-	localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-	localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-	localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-	localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-	localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+	localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+	localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+	localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+	localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+	localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+	localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
     }
 
   /* clear local FFT-mesh density field */
@@ -2620,7 +2620,7 @@ void pmtidaltensor_periodic_fourier(int component)
         /* make sure that particles are properly box-wrapped */
         for(xx = 0; xx < 3; xx++)
         {
-            pp[xx] = P[i].Pos[xx];
+            pp[xx] = P.Pos[i][xx];
             pp[xx] = WRAP_POSITION_UNIFORM_BOX(pp[xx]);
         }
         slab_x = (int) (to_slab_fac * pp[0]);
@@ -2644,27 +2644,27 @@ void pmtidaltensor_periodic_fourier(int component)
 
 	if(component == 0) 
 	{ 
-	    P[i].tidal_tensorpsPM[0][0] += tidal;
+	    P.tidal_tensorpsPM[i][0][0] += tidal;
 	} 
 	if(component == 1)
 	{
-	    P[i].tidal_tensorpsPM[0][1] += tidal;
+	    P.tidal_tensorpsPM[i][0][1] += tidal;
 	}
 	if(component == 2)
 	{
-	    P[i].tidal_tensorpsPM[0][2] += tidal;
+	    P.tidal_tensorpsPM[i][0][2] += tidal;
 	}
 	if(component == 3)
 	{
-	    P[i].tidal_tensorpsPM[1][1] += tidal;
+	    P.tidal_tensorpsPM[i][1][1] += tidal;
 	}
 	if(component == 4)
 	{
-	    P[i].tidal_tensorpsPM[1][2] += tidal;
+	    P.tidal_tensorpsPM[i][1][2] += tidal;
 	} 
 	if(component == 5) 
 	{ 
-	    P[i].tidal_tensorpsPM[2][2] += tidal;
+	    P.tidal_tensorpsPM[i][2][2] += tidal;
 	} 
     }
 
@@ -2716,8 +2716,8 @@ void powerspec(int flag, int *typeflag)
   tstart = my_second();
 
   for(i = 0, mass = 0; i < NumPart; i++)
-    if(typeflag[P[i].Type] && (P[i].Mass>0))
-      mass += P[i].Mass;
+    if(typeflag[P.Type[i]] && (P.Mass[i]>0))
+      mass += P.Mass[i];
 
   MPI_Allreduce(&mass, &power_spec_totmass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -3039,7 +3039,7 @@ void foldonitself(int *typelist)
 
       for(i = istart, nbuf = 0; i < NumPart; i++)
 	{
-	  if(typelist[P[i].Type] == 0)
+	  if(typelist[P.Type[i]] == 0)
 	    continue;
 
 	  if(nbuf + 1 >= buf_capacity)
@@ -3047,7 +3047,7 @@ void foldonitself(int *typelist)
 
 
 	  /* make sure that particles are properly box-wrapped */
-	  pp[0] = P[i].Pos[0]; 
+	  pp[0] = P.Pos[i][0]; 
 	  pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
@@ -3073,14 +3073,14 @@ void foldonitself(int *typelist)
 
       for(i = istart, nbuf = 0; i < NumPart; i++)
 	{
-	  if(typelist[P[i].Type] == 0) continue;
-        if(P[i].Mass <= 0) continue;
+	  if(typelist[P.Type[i]] == 0) continue;
+        if(P.Mass[i] <= 0) continue;
 
 	  if(nbuf + 1 >= buf_capacity)
 	    break;
 
 	  /* make sure that particles are properly box-wrapped */
-	  pp[0] = P[i].Pos[0]; 
+	  pp[0] = P.Pos[i][0]; 
 	  pp[0] = WRAP_POSITION_UNIFORM_BOX(pp[0]);
 
 	  slab_x = to_slab_fac_folded * pp[0];
@@ -3090,10 +3090,10 @@ void foldonitself(int *typelist)
 
 	  for(j = 0; j < 3; j++)
 	    pos_sendbuf[4 * (nsend_offset[slab_to_task[slab_x]] + nsend_local[slab_to_task[slab_x]]) + j] =
-	      P[i].Pos[j];
+	      P.Pos[i][j];
 
 	  pos_sendbuf[4 * (nsend_offset[slab_to_task[slab_x]] + nsend_local[slab_to_task[slab_x]]) + 3] =
-	    P[i].Mass;
+	    P.Mass[i];
 
 	  nsend_local[slab_to_task[slab_x]]++;
 	  nbuf++;
@@ -3102,10 +3102,10 @@ void foldonitself(int *typelist)
 	    {
 	      for(j = 0; j < 3; j++)
 		pos_sendbuf[4 * (nsend_offset[slab_to_task[slab_xx]] + nsend_local[slab_to_task[slab_xx]]) +
-			    j] = P[i].Pos[j];
+			    j] = P.Pos[i][j];
 
 	      pos_sendbuf[4 * (nsend_offset[slab_to_task[slab_xx]] + nsend_local[slab_to_task[slab_xx]]) +
-			  3] = P[i].Mass;
+			  3] = P.Mass[i];
 
 
 	      nsend_local[slab_to_task[slab_xx]]++;

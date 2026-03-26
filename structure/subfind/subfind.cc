@@ -74,7 +74,7 @@ void subfind(int num)
 
   /* let's count number of particles of selected species */
   for(i = 0; i < NumPart; i++)
-    count[P[i].Type]++;
+    count[P.Type[i]]++;
 
   MPI_Allreduce(count, countall, 6, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
@@ -92,7 +92,7 @@ void subfind(int num)
 	      /* build index list of particles of selected species */
 	      d = (struct unbind_data *) mymalloc("	      d", count[j] * sizeof(struct unbind_data));
 	      for(i = 0, n = 0; i < NumPart; i++)
-		if(P[i].Type == j)
+		if(P.Type[i] == j)
 		  d[n++].index = i;
 
 	      t0 = my_second();
@@ -137,8 +137,8 @@ void subfind(int num)
 
 	  /* let's save density contribution of own species */
 	  for(i = 0; i < NumPart; i++)
-	    if(P[i].Type == j)
-	      P[i].w.density_sum = P[i].u.DM_Density;
+	    if(P.Type[i] == j)
+	      P.w.density_sum[i] = P.u.DM_Density[i];
 
 	}
     }
@@ -153,7 +153,7 @@ void subfind(int num)
 	  /* build index list of particles of selectes species */
 	  d = (struct unbind_data *) mymalloc("	  d", count[j] * sizeof(struct unbind_data));
 	  for(i = 0, n = 0; i < NumPart; i++)
-	    if(P[i].Type == j)
+	    if(P.Type[i] == j)
 	      d[n++].index = i;
 
 	  t0 = my_second();
@@ -191,22 +191,22 @@ void subfind(int num)
 
 	  /* let's sum up density contribution */
 	  for(i = 0; i < NumPart; i++)
-	    if((1 << P[i].Type) & (FOF_DENSITY_SPLIT_TYPES))
-	      if(j != P[i].Type)
-		if(countall[P[i].Type] > All.DesLinkNgb)
-		  P[i].w.density_sum += P[i].u.DM_Density;
+	    if((1 << P.Type[i]) & (FOF_DENSITY_SPLIT_TYPES))
+	      if(j != P.Type[i])
+		if(countall[P.Type[i]] > All.DesLinkNgb)
+		  P.w.density_sum[i] += P.u.DM_Density[i];
 	}
     }
 
 
   for(i = 0; i < NumPart; i++)
     {
-      P[i].u.DM_Density = P[i].w.density_sum;
+      P.u.DM_Density[i] = P.w.density_sum[i];
 
-      if(P[i].Type == 0)
-          P[i].w.int_energy = CellP[i].InternalEnergy;
+      if(P.Type[i] == 0)
+          P.w.int_energy[i] = CellP.InternalEnergy[i];
       else
-	P[i].w.int_energy = 0;
+	P.w.int_energy[i] = 0;
 
     }
 #else
@@ -280,12 +280,12 @@ void subfind(int num)
 
   for(i = 0; i < NumPart; i++)
     {
-      P[i].origintask2 = ThisTask;
+      P.origintask2[i] = ThisTask;
 
-      if(P[i].GrNr > Ncollective && P[i].GrNr <= TotNgroups)	/* particle is in small group */
-	P[i].targettask = (P[i].GrNr - 1) % NTask;
+      if(P.GrNr[i] > Ncollective && P.GrNr[i] <= TotNgroups)	/* particle is in small group */
+	P.targettask[i] = (P.GrNr[i] - 1) % NTask;
       else
-	P[i].targettask = ThisTask;
+	P.targettask[i] = ThisTask;
     }
 
   subfind_exchange();		/* distributes gas particles as well if needed */
@@ -299,10 +299,10 @@ void subfind(int num)
   qsort(Group, Ngroups, sizeof(group_properties), fof_compare_Group_GrNr);
 
   for(i = 0; i < NumPart; i++)
-    if(P[i].GrNr > Ncollective && P[i].GrNr <= TotNgroups)
-      if(((P[i].GrNr - 1) % NTask) != ThisTask)
+    if(P.GrNr[i] > Ncollective && P.GrNr[i] <= TotNgroups)
+      if(((P.GrNr[i] - 1) % NTask) != ThisTask)
 	{
-	  printf("i=%d %d task=%d type=%d\n", i, P[i].GrNr, ThisTask, P[i].Type);
+	  printf("i=%d %d task=%d type=%d\n", i, P.GrNr[i], ThisTask, P.Type[i]);
 	  endrun(87);
 	}
 
@@ -316,7 +316,7 @@ void subfind(int num)
     (struct subgroup_properties *) mymalloc("SubGroup", MaxNsubgroups * sizeof(struct subgroup_properties));
 
   for(i = 0; i < NumPart; i++)
-    P[i].SubNr = (1 << 30);	/* default */
+    P.SubNr[i] = (1 << 30);	/* default */
 
   /* we begin by applying the collective version of subfind to distributed groups */
   t0 = my_second();
@@ -328,8 +328,8 @@ void subfind(int num)
 
   for(i = 0; i < NumPart; i++)
     {
-      P[i].origindex = i;
-      P[i].origintask = ThisTask;
+      P.origindex[i] = i;
+      P.origintask[i] = ThisTask;
     }
 
   t0 = my_second();
@@ -340,12 +340,12 @@ void subfind(int num)
 
 
   /* now we have the particles of groups consecutively, but fluid cells are
-     not aligned. They can however be accessed via CellP[P[i].originindex] */
+     not aligned. They can however be accessed via CellP[P.originindex[i]] */
 
 
   /* let's count how many local particles we have in small groups */
   for(i = 0, nlocid = 0; i < NumPart; i++)
-    if(P[i].GrNr > Ncollective && P[i].GrNr <= Ngroups)	/* particle is in small group */
+    if(P.GrNr[i] > Ncollective && P.GrNr[i] <= Ngroups)	/* particle is in small group */
       nlocid++;
 
   if(ThisTask == 0)
@@ -398,10 +398,10 @@ void subfind(int num)
 #ifdef FOF_DENSITY_SPLIT_TYPES
   for(i = 0; i < NumPart; i++)
     {
-      if(P[i].origintask != ThisTask)
-	printf("Task %d: Holding particle of task %d !\n", ThisTask, P[i].origintask);
-      if(P[i].origindex != i)
-	printf("Task %d: Particles is in wrong position (is=%d, was=%d) !\n", ThisTask, i, P[i].origindex);
+      if(P.origintask[i] != ThisTask)
+	printf("Task %d: Holding particle of task %d !\n", ThisTask, P.origintask[i]);
+      if(P.origindex[i] != i)
+	printf("Task %d: Particles is in wrong position (is=%d, was=%d) !\n", ThisTask, i, P.origindex[i]);
     }
 #endif
 
@@ -410,7 +410,7 @@ void subfind(int num)
   t0 = my_second();
 
   for(i = 0; i < NumPart; i++)
-    P[i].targettask = P[i].origintask2;
+    P.targettask[i] = P.origintask2[i];
 
   subfind_exchange();		/* distributes gas particles as well if needed */
 
@@ -496,20 +496,20 @@ void subfind_save_final(int num)
 
   for(i = 0, Nids = 0; i < NumPart; i++)
     {
-      if(P[i].GrNr <= TotNgroups)
+      if(P.GrNr[i] <= TotNgroups)
 	{
-	  ID_list[Nids].GrNr = P[i].GrNr;
-	  ID_list[Nids].SubNr = P[i].SubNr;
-	  ID_list[Nids].BindingEgy = P[i].v.DM_BindingEnergy;
-	  ID_list[Nids].ID = P[i].ID;
+	  ID_list[Nids].GrNr = P.GrNr[i];
+	  ID_list[Nids].SubNr = P.SubNr[i];
+	  ID_list[Nids].BindingEgy = P.v.DM_BindingEnergy[i];
+	  ID_list[Nids].ID = P.ID[i];
 #ifdef SUBFIND_SAVE_PARTICLEDATA
 	  for(j = 0; j < 3; j++)
 	    {
-	      ID_list[Nids].Pos[j] = P[i].Pos[j];
-	      ID_list[Nids].Vel[j] = P[i].Vel[j];
+	      ID_list[Nids].Pos[j] = P.Pos[i][j];
+	      ID_list[Nids].Vel[j] = P.Vel[i][j];
 	    }
-	  ID_list[Nids].Type = P[i].Type;
-	  ID_list[Nids].Mass = P[i].Mass;
+	  ID_list[Nids].Type = P.Type[i];
+	  ID_list[Nids].Mass = P.Mass[i];
 #endif
 	  Nids++;
 	}

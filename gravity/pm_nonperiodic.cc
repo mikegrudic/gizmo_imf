@@ -112,18 +112,18 @@ void pm_init_regionsize(void)
   for(i = 0; i < NumPart; i++)
     for(j = 0; j < 3; j++)
       {
-	if(P[i].Pos[j] > xmax[0][j])
-	  xmax[0][j] = P[i].Pos[j];
-	if(P[i].Pos[j] < xmin[0][j])
-	  xmin[0][j] = P[i].Pos[j];
+	if(P.Pos[i][j] > xmax[0][j])
+	  xmax[0][j] = P.Pos[i][j];
+	if(P.Pos[i][j] < xmin[0][j])
+	  xmin[0][j] = P.Pos[i][j];
 
 #ifdef PM_PLACEHIGHRESREGION
-	if(((1 << P[i].Type) & (PM_PLACEHIGHRESREGION)))
+	if(((1 << P.Type[i]) & (PM_PLACEHIGHRESREGION)))
 	  {
-	    if(P[i].Pos[j] > xmax[1][j])
-	      xmax[1][j] = P[i].Pos[j];
-	    if(P[i].Pos[j] < xmin[1][j])
-	      xmin[1][j] = P[i].Pos[j];
+	    if(P.Pos[i][j] > xmax[1][j])
+	      xmax[1][j] = P.Pos[i][j];
+	    if(P.Pos[i][j] < xmin[1][j])
+	      xmin[1][j] = P.Pos[i][j];
 	  }
 #endif
       }
@@ -664,18 +664,18 @@ int pmforce_nonperiodic(int grnr)
   for(i = 0, flag = 0; i < NumPart; i++)
     {
 #ifdef PM_PLACEHIGHRESREGION
-      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 #endif
 	{
 	  for(j = 0; j < 3; j++)
 	    {
-	      if(P[i].Pos[j] < All.Xmintot[grnr][j] || P[i].Pos[j] > All.Xmaxtot[grnr][j])
+	      if(P.Pos[i][j] < All.Xmintot[grnr][j] || P.Pos[i][j] > All.Xmaxtot[grnr][j])
 		{
 		  if(flag == 0)
 		    {
 		      printf
 			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 (unsigned long long) P.ID[i], ThisTask, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -709,19 +709,19 @@ int pmforce_nonperiodic(int grnr)
 	{
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(phase == 1)
-	    if(P[i].Type == 0)	/* don't bin baryonic mass in this phase */
+	    if(P.Type[i] == 0)	/* don't bin baryonic mass in this phase */
 	      continue;
 #endif
-	  if(P[i].Pos[0] < All.Corner[grnr][0] || P[i].Pos[0] >= All.UpperCorner[grnr][0])
+	  if(P.Pos[i][0] < All.Corner[grnr][0] || P.Pos[i][0] >= All.UpperCorner[grnr][0])
 	    continue;
-	  if(P[i].Pos[1] < All.Corner[grnr][1] || P[i].Pos[1] >= All.UpperCorner[grnr][1])
+	  if(P.Pos[i][1] < All.Corner[grnr][1] || P.Pos[i][1] >= All.UpperCorner[grnr][1])
 	    continue;
-	  if(P[i].Pos[2] < All.Corner[grnr][2] || P[i].Pos[2] >= All.UpperCorner[grnr][2])
+	  if(P.Pos[i][2] < All.Corner[grnr][2] || P.Pos[i][2] >= All.UpperCorner[grnr][2])
 	    continue;
 
-	  slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	  slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	  slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
+	  slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	  slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	  slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
 
 	  for(xx = 0; xx < 2; xx++)
 	    for(yy = 0; yy < 2; yy++)
@@ -811,24 +811,24 @@ int pmforce_nonperiodic(int grnr)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
-	  slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
-	  slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
-	  slab_z = (int) (to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]));
+	  slab_x = (int) (to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]));
+	  slab_y = (int) (to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]));
+	  slab_z = (int) (to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]));
 
-	  dx = to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]) - slab_x;
-	  dy = to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]) - slab_y;
-	  dz = to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	  dx = to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]) - slab_x;
+	  dy = to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]) - slab_y;
+	  dz = to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]) - slab_z;
 
-	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-	  localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	  localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+	  localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
 	}
 
 
@@ -1011,20 +1011,20 @@ int pmforce_nonperiodic(int grnr)
 	{
 #ifdef PM_PLACEHIGHRESREGION
 	  if(grnr == 1)
-	    if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+	    if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 	      continue;
 #endif
 	  while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	    j++;
 
-	  slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	  dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+	  slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	  dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-	  slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	  dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+	  slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	  dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-	  slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-	  dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	  slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+	  dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
 	  pot =
 	    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -1036,7 +1036,7 @@ int pmforce_nonperiodic(int grnr)
 	    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 	    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
-	  P[i].PM_Potential += pot * fac * (2 * All.TotalMeshSize[grnr] / GRID);	/* compensate the finite differencing factor * */
+	  P.PM_Potential[i] += pot * fac * (2 * All.TotalMeshSize[grnr] / GRID);	/* compensate the finite differencing factor * */
 	}
 #endif
 
@@ -1169,25 +1169,25 @@ int pmforce_nonperiodic(int grnr)
 	    {
 #ifdef DM_SCALARFIELD_SCREENING
 	      if(phase == 1)
-		if(P[i].Type == 0)	/* baryons don't get an extra scalar force */
+		if(P.Type[i] == 0)	/* baryons don't get an extra scalar force */
 		  continue;
 #endif
 #ifdef PM_PLACEHIGHRESREGION
 	      if(grnr == 1)
-		if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+		if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 		  continue;
 #endif
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
 		j++;
 
-	      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	      dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+	      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	      dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-	      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	      dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+	      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	      dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-	      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-	      dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+	      dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
 	      acc_dim =
 		+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -1199,7 +1199,7 @@ int pmforce_nonperiodic(int grnr)
 		+ localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 		+ localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
-	      P[i].GravPM[dim] += acc_dim;
+	      P.GravPM[i][dim] += acc_dim;
 	    }
 	}
 
@@ -1443,18 +1443,18 @@ int pmpotential_nonperiodic(int grnr)
   for(i = 0, flag = 0; i < NumPart; i++)
     {
 #ifdef PM_PLACEHIGHRESREGION
-      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 #endif
 	{
 	  for(j = 0; j < 3; j++)
 	    {
-	      if(P[i].Pos[j] < All.Xmintot[grnr][j] || P[i].Pos[j] > All.Xmaxtot[grnr][j])
+	      if(P.Pos[i][j] < All.Xmintot[grnr][j] || P.Pos[i][j] > All.Xmaxtot[grnr][j])
 		{
 		  if(flag == 0)
 		    {
 		      printf
 			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 (unsigned long long) P.ID[i], ThisTask, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -1480,16 +1480,16 @@ int pmpotential_nonperiodic(int grnr)
   /* determine the cells each particles accesses, and how many particles lie on the grid patch */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-      if(P[i].Pos[0] < All.Corner[grnr][0] || P[i].Pos[0] >= All.UpperCorner[grnr][0])
+      if(P.Pos[i][0] < All.Corner[grnr][0] || P.Pos[i][0] >= All.UpperCorner[grnr][0])
 	continue;
-      if(P[i].Pos[1] < All.Corner[grnr][1] || P[i].Pos[1] >= All.UpperCorner[grnr][1])
+      if(P.Pos[i][1] < All.Corner[grnr][1] || P.Pos[i][1] >= All.UpperCorner[grnr][1])
 	continue;
-      if(P[i].Pos[2] < All.Corner[grnr][2] || P[i].Pos[2] >= All.UpperCorner[grnr][2])
+      if(P.Pos[i][2] < All.Corner[grnr][2] || P.Pos[i][2] >= All.UpperCorner[grnr][2])
 	continue;
 
-      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
+      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
 
       for(xx = 0; xx < 2; xx++)
 	for(yy = 0; yy < 2; yy++)
@@ -1577,24 +1577,24 @@ int pmpotential_nonperiodic(int grnr)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
-      slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
-      slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
-      slab_z = (int) (to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]));
+      slab_x = (int) (to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]));
+      slab_y = (int) (to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]));
+      slab_z = (int) (to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]));
 
-      dx = to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]) - slab_x;
-      dy = to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]) - slab_y;
-      dz = to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]) - slab_z;
+      dx = to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]) - slab_x;
+      dy = to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]) - slab_y;
+      dz = to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]) - slab_z;
 
-      localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-      localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+      localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+      localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
     }
 
 
@@ -1758,20 +1758,20 @@ int pmpotential_nonperiodic(int grnr)
     {
 #ifdef PM_PLACEHIGHRESREGION
       if(grnr == 1)
-	if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+	if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 	  continue;
 #endif
       while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	j++;
 
-      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-      dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+      dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-      dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+      dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-      dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+      dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
       pot =
 	+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -1783,7 +1783,7 @@ int pmpotential_nonperiodic(int grnr)
 	+ localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 	+ localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY) || defined(OUTPUT_POTENTIAL)
-      P[i].Potential += fac * pot;
+      P.Potential[i] += fac * pot;
 #endif
     }
 
@@ -1912,18 +1912,18 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
   for(i = 0, flag = 0; i < NumPart; i++)
     {
 #ifdef PM_PLACEHIGHRESREGION
-      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 #endif
 	{
 	  for(j = 0; j < 3; j++)
 	    {
-	      if(P[i].Pos[j] < All.Xmintot[grnr][j] || P[i].Pos[j] > All.Xmaxtot[grnr][j])
+	      if(P.Pos[i][j] < All.Xmintot[grnr][j] || P.Pos[i][j] > All.Xmaxtot[grnr][j])
 		{
 		  if(flag == 0)
 		    {
 		      printf
 			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 (unsigned long long) P.ID[i], ThisTask, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -1957,19 +1957,19 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	{
 #ifdef DM_SCALARFIELD_SCREENING
 	  if(phase == 1)
-	    if(P[i].Type == 0)	/* don't bin baryonic mass in this phase */
+	    if(P.Type[i] == 0)	/* don't bin baryonic mass in this phase */
 	      continue;
 #endif
-	  if(P[i].Pos[0] < All.Corner[grnr][0] || P[i].Pos[0] >= All.UpperCorner[grnr][0])
+	  if(P.Pos[i][0] < All.Corner[grnr][0] || P.Pos[i][0] >= All.UpperCorner[grnr][0])
 	    continue;
-	  if(P[i].Pos[1] < All.Corner[grnr][1] || P[i].Pos[1] >= All.UpperCorner[grnr][1])
+	  if(P.Pos[i][1] < All.Corner[grnr][1] || P.Pos[i][1] >= All.UpperCorner[grnr][1])
 	    continue;
-	  if(P[i].Pos[2] < All.Corner[grnr][2] || P[i].Pos[2] >= All.UpperCorner[grnr][2])
+	  if(P.Pos[i][2] < All.Corner[grnr][2] || P.Pos[i][2] >= All.UpperCorner[grnr][2])
 	    continue;
 
-	  slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	  slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	  slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
+	  slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	  slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	  slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
 
 	  for(xx = 0; xx < 2; xx++)
 	    for(yy = 0; yy < 2; yy++)
@@ -2059,24 +2059,24 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
       for(i = 0; i < num_on_grid; i += 8)
 	{
 	  pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
-	  slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
-	  slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
-	  slab_z = (int) (to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]));
+	  slab_x = (int) (to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]));
+	  slab_y = (int) (to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]));
+	  slab_z = (int) (to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]));
 
-	  dx = to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]) - slab_x;
-	  dy = to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]) - slab_y;
-	  dz = to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	  dx = to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]) - slab_x;
+	  dy = to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]) - slab_y;
+	  dz = to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]) - slab_z;
 
-	  localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-	  localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-	  localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-	  localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-	  localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+	  localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+	  localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+	  localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+	  localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+	  localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
 	}
 
 
@@ -2262,20 +2262,20 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	{
 #ifdef PM_PLACEHIGHRESREGION
 	  if(grnr == 1)
-	    if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+	    if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 	      continue;
 #endif
 	  while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	    j++;
 
-	  slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	  dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+	  slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	  dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-	  slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	  dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+	  slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	  dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-	  slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-	  dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	  slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+	  dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
 	  pot =
 	    +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -2287,7 +2287,7 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	    + localfield_data[part[j + 6].localindex] * (dx) * dy * (1.0 - dz)
 	    + localfield_data[part[j + 7].localindex] * (dx) * dy * dz;
 
-	  P[i].PM_Potential += pot * fac * (2 * All.TotalMeshSize[grnr] / GRID);	/* compensate the finite differencing factor * */
+	  P.PM_Potential[i] += pot * fac * (2 * All.TotalMeshSize[grnr] / GRID);	/* compensate the finite differencing factor * */
 	}
 #endif
 
@@ -2493,25 +2493,25 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 	    {
 #ifdef DM_SCALARFIELD_SCREENING
 	      if(phase == 1)
-		if(P[i].Type == 0)	/* baryons don't get an extra scalar force */
+		if(P.Type[i] == 0)	/* baryons don't get an extra scalar force */
 		  continue;
 #endif
 #ifdef PM_PLACEHIGHRESREGION
 	      if(grnr == 1)
-		if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+		if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 		  continue;
 #endif
 	      while(j < num_on_grid && (part[j].partindex >> 3) != i)
 		j++;
 
-	      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-	      dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+	      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+	      dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-	      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-	      dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+	      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+	      dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-	      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-	      dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+	      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+	      dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
 	      acc_dim =
 		+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -2525,30 +2525,30 @@ int pmtidaltensor_nonperiodic_diff(int grnr)
 
 	      if(dim == 0)
 		{
-		  P[i].tidal_tensorpsPM[0][0] += acc_dim;
+		  P.tidal_tensorpsPM[i][0][0] += acc_dim;
 		}
 	      if(dim == 1)
 		{
-		  P[i].tidal_tensorpsPM[0][1] += acc_dim;
-		  P[i].tidal_tensorpsPM[1][0] += acc_dim;
+		  P.tidal_tensorpsPM[i][0][1] += acc_dim;
+		  P.tidal_tensorpsPM[i][1][0] += acc_dim;
 		}
 	      if(dim == 2)
 		{
-		  P[i].tidal_tensorpsPM[0][2] += acc_dim;
-		  P[i].tidal_tensorpsPM[2][0] += acc_dim;
+		  P.tidal_tensorpsPM[i][0][2] += acc_dim;
+		  P.tidal_tensorpsPM[i][2][0] += acc_dim;
 		}
 	      if(dim == 3)
 		{
-		  P[i].tidal_tensorpsPM[1][1] += acc_dim;
+		  P.tidal_tensorpsPM[i][1][1] += acc_dim;
 		}
 	      if(dim == 4)
 		{
-		  P[i].tidal_tensorpsPM[1][2] += acc_dim;
-		  P[i].tidal_tensorpsPM[2][1] += acc_dim;
+		  P.tidal_tensorpsPM[i][1][2] += acc_dim;
+		  P.tidal_tensorpsPM[i][2][1] += acc_dim;
 		}
 	      if(dim == 5)
 		{
-		  P[i].tidal_tensorpsPM[2][2] += acc_dim;
+		  P.tidal_tensorpsPM[i][2][2] += acc_dim;
 		}
 
 	    }
@@ -2611,18 +2611,18 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
   for(i = 0, flag = 0; i < NumPart; i++)
     {
 #ifdef PM_PLACEHIGHRESREGION
-      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+      if(grnr == 0 || (grnr == 1 && pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 #endif
 	{
 	  for(j = 0; j < 3; j++)
 	    {
-	      if(P[i].Pos[j] < All.Xmintot[grnr][j] || P[i].Pos[j] > All.Xmaxtot[grnr][j])
+	      if(P.Pos[i][j] < All.Xmintot[grnr][j] || P.Pos[i][j] > All.Xmaxtot[grnr][j])
 		{
 		  if(flag == 0)
 		    {
 		      printf
 			("Particle Id=%llu on task=%d with coordinates (%g|%g|%g) lies outside PM mesh.\nStopping\n",
-			 (unsigned long long) P[i].ID, ThisTask, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 (unsigned long long) P.ID[i], ThisTask, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 		  flag++;
@@ -2648,16 +2648,16 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
   /* determine the cells each particles accesses, and how many particles lie on the grid patch */
   for(i = 0, num_on_grid = 0; i < NumPart; i++)
     {
-      if(P[i].Pos[0] < All.Corner[grnr][0] || P[i].Pos[0] >= All.UpperCorner[grnr][0])
+      if(P.Pos[i][0] < All.Corner[grnr][0] || P.Pos[i][0] >= All.UpperCorner[grnr][0])
 	continue;
-      if(P[i].Pos[1] < All.Corner[grnr][1] || P[i].Pos[1] >= All.UpperCorner[grnr][1])
+      if(P.Pos[i][1] < All.Corner[grnr][1] || P.Pos[i][1] >= All.UpperCorner[grnr][1])
 	continue;
-      if(P[i].Pos[2] < All.Corner[grnr][2] || P[i].Pos[2] >= All.UpperCorner[grnr][2])
+      if(P.Pos[i][2] < All.Corner[grnr][2] || P.Pos[i][2] >= All.UpperCorner[grnr][2])
 	continue;
 
-      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
+      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
 
       for(xx = 0; xx < 2; xx++)
 	for(yy = 0; yy < 2; yy++)
@@ -2745,24 +2745,24 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
   for(i = 0; i < num_on_grid; i += 8)
     {
       pindex = (part[i].partindex >> 3);
-        if(P[pindex].Mass<=0) continue;
+        if(P.Mass[pindex]<=0) continue;
 
-      slab_x = (int) (to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]));
-      slab_y = (int) (to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]));
-      slab_z = (int) (to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]));
+      slab_x = (int) (to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]));
+      slab_y = (int) (to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]));
+      slab_z = (int) (to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]));
 
-      dx = to_slab_fac * (P[pindex].Pos[0] - All.Corner[grnr][0]) - slab_x;
-      dy = to_slab_fac * (P[pindex].Pos[1] - All.Corner[grnr][1]) - slab_y;
-      dz = to_slab_fac * (P[pindex].Pos[2] - All.Corner[grnr][2]) - slab_z;
+      dx = to_slab_fac * (P.Pos[pindex][0] - All.Corner[grnr][0]) - slab_x;
+      dy = to_slab_fac * (P.Pos[pindex][1] - All.Corner[grnr][1]) - slab_y;
+      dz = to_slab_fac * (P.Pos[pindex][2] - All.Corner[grnr][2]) - slab_z;
 
-      localfield_d_data[part[i + 0].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 1].localindex] += P[pindex].Mass * (1.0 - dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 2].localindex] += P[pindex].Mass * (1.0 - dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 3].localindex] += P[pindex].Mass * (1.0 - dx) * dy * dz;
-      localfield_d_data[part[i + 4].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * (1.0 - dz);
-      localfield_d_data[part[i + 5].localindex] += P[pindex].Mass * (dx) * (1.0 - dy) * dz;
-      localfield_d_data[part[i + 6].localindex] += P[pindex].Mass * (dx) * dy * (1.0 - dz);
-      localfield_d_data[part[i + 7].localindex] += P[pindex].Mass * (dx) * dy * dz;
+      localfield_d_data[part[i + 0].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 1].localindex] += P.Mass[pindex] * (1.0 - dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 2].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 3].localindex] += P.Mass[pindex] * (1.0 - dx) * dy * dz;
+      localfield_d_data[part[i + 4].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * (1.0 - dz);
+      localfield_d_data[part[i + 5].localindex] += P.Mass[pindex] * (dx) * (1.0 - dy) * dz;
+      localfield_d_data[part[i + 6].localindex] += P.Mass[pindex] * (dx) * dy * (1.0 - dz);
+      localfield_d_data[part[i + 7].localindex] += P.Mass[pindex] * (dx) * dy * dz;
     }
 
 
@@ -2990,20 +2990,20 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
     {
 #ifdef PM_PLACEHIGHRESREGION
       if(grnr == 1)
-	if(!(pmforce_is_particle_high_res(P[i].Type, P[i].Pos)))
+	if(!(pmforce_is_particle_high_res(P.Type[i], P.Pos[i])))
 	  continue;
 #endif
       while(j < num_on_grid && (part[j].partindex >> 3) != i)
 	j++;
 
-      slab_x = (int) (to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]));
-      dx = to_slab_fac * (P[i].Pos[0] - All.Corner[grnr][0]) - slab_x;
+      slab_x = (int) (to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]));
+      dx = to_slab_fac * (P.Pos[i][0] - All.Corner[grnr][0]) - slab_x;
 
-      slab_y = (int) (to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]));
-      dy = to_slab_fac * (P[i].Pos[1] - All.Corner[grnr][1]) - slab_y;
+      slab_y = (int) (to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]));
+      dy = to_slab_fac * (P.Pos[i][1] - All.Corner[grnr][1]) - slab_y;
 
-      slab_z = (int) (to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]));
-      dz = to_slab_fac * (P[i].Pos[2] - All.Corner[grnr][2]) - slab_z;
+      slab_z = (int) (to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]));
+      dz = to_slab_fac * (P.Pos[i][2] - All.Corner[grnr][2]) - slab_z;
 
       tidal =
 	+localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) * (1.0 - dz)
@@ -3018,30 +3018,30 @@ int pmtidaltensor_nonperiodic_fourier(int grnr, int component)
       tidal *= fac;
       if(component == 0)
 	{
-	  P[i].tidal_tensorpsPM[0][0] += tidal;
+	  P.tidal_tensorpsPM[i][0][0] += tidal;
 	}
       if(component == 1)
 	{
-	  P[i].tidal_tensorpsPM[0][1] += tidal;
-	  P[i].tidal_tensorpsPM[1][0] += tidal;
+	  P.tidal_tensorpsPM[i][0][1] += tidal;
+	  P.tidal_tensorpsPM[i][1][0] += tidal;
 	}
       if(component == 2)
 	{
-	  P[i].tidal_tensorpsPM[0][2] += tidal;
-	  P[i].tidal_tensorpsPM[2][0] += tidal;
+	  P.tidal_tensorpsPM[i][0][2] += tidal;
+	  P.tidal_tensorpsPM[i][2][0] += tidal;
 	}
       if(component == 3)
 	{
-	  P[i].tidal_tensorpsPM[1][1] += tidal;
+	  P.tidal_tensorpsPM[i][1][1] += tidal;
 	}
       if(component == 4)
 	{
-	  P[i].tidal_tensorpsPM[1][2] += tidal;
-	  P[i].tidal_tensorpsPM[2][1] += tidal;
+	  P.tidal_tensorpsPM[i][1][2] += tidal;
+	  P.tidal_tensorpsPM[i][2][1] += tidal;
 	}
       if(component == 5)
 	{
-	  P[i].tidal_tensorpsPM[2][2] += tidal;
+	  P.tidal_tensorpsPM[i][2][2] += tidal;
 	}
 
     }

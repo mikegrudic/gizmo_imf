@@ -68,8 +68,8 @@ void parallel_sort_special_P_GrNr_ID(void)
 
   for(i = 0; i < NumPart; i++)
     {
-      Aux[i].GrNr = P[i].GrNr;
-      Aux[i].ID = P[i].ID;
+      Aux[i].GrNr = P.GrNr[i];
+      Aux[i].ID = P.ID[i];
       Aux[i].OriginTask = ThisTask;
       Aux[i].OriginIndex = i;
     }

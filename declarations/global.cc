@@ -44,35 +44,35 @@ void compute_global_quantities_of_system(void)
 
   for(i = 0; i < NumPart; i++)
     {
-        sys.MassComp[P[i].Type] += P[i].Mass;
+        sys.MassComp[P.Type[i]] += P.Mass[i];
 #if defined(EVALPOTENTIAL) || defined(COMPUTE_POTENTIAL_ENERGY)
-        sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * P[i].Potential / a1;
+        sys.EnergyPotComp[P.Type[i]] += 0.5 * P.Mass[i] * P.Potential[i] / a1;
 #endif
         integertime dt_integerstep = GET_PARTICLE_INTEGERTIME(i);
-        dt_entr = dt_hydrokick = (All.Ti_Current - (P[i].Ti_begstep + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL(i);
-        dt_gravkick = get_gravkick_factor((P[i].Ti_begstep + dt_integerstep / 2), All.Ti_Current, i, 0);
+        dt_entr = dt_hydrokick = (All.Ti_Current - (P.Ti_begstep[i] + dt_integerstep / 2)) * UNIT_INTEGERTIME_IN_PHYSICAL(i);
+        dt_gravkick = get_gravkick_factor((P.Ti_begstep[i] + dt_integerstep / 2), All.Ti_Current, i, 0);
 
-        vel = P[i].Vel + P[i].GravAccel * dt_gravkick;
-        if(P[i].Type == 0) {vel += CellP[i].HydroAccel * (dt_hydrokick * All.cf_atime);} /* convert from physical to code vel */
-        if(P[i].Type == 0) {entr = DMAX(0.1*CellP[i].InternalEnergy, CellP[i].InternalEnergy + CellP[i].DtInternalEnergy * dt_entr);}
+        vel = P.Vel[i] + P.GravAccel[i] * dt_gravkick;
+        if(P.Type[i] == 0) {vel += CellP.HydroAccel[i] * (dt_hydrokick * All.cf_atime);} /* convert from physical to code vel */
+        if(P.Type[i] == 0) {entr = DMAX(0.1*CellP.InternalEnergy[i], CellP.InternalEnergy[i] + CellP.DtInternalEnergy[i] * dt_entr);}
 
 #ifdef PMGRID
         double dt_gravkick_pm = get_gravkick_factor((All.PM_Ti_begstep + All.PM_Ti_endstep) / 2, All.Ti_Current, -1, 0);
-        vel += P[i].GravPM * dt_gravkick_pm;
+        vel += P.GravPM[i] * dt_gravkick_pm;
 #endif
         
-        sys.EnergyKinComp[P[i].Type] += 0.5 * P[i].Mass * vel.norm_sq() / a2;
-        if(P[i].Type == 0) {egyspec = entr; sys.EnergyIntComp[0] += P[i].Mass * egyspec;}
+        sys.EnergyKinComp[P.Type[i]] += 0.5 * P.Mass[i] * vel.norm_sq() / a2;
+        if(P.Type[i] == 0) {egyspec = entr; sys.EnergyIntComp[0] += P.Mass[i] * egyspec;}
         
         for(j = 0; j < 3; j++)
         {
-            sys.MomentumComp[P[i].Type][j] += P[i].Mass * vel[j];
-            sys.CenterOfMassComp[P[i].Type][j] += P[i].Mass * P[i].Pos[j];
+            sys.MomentumComp[P.Type[i]][j] += P.Mass[i] * vel[j];
+            sys.CenterOfMassComp[P.Type[i]][j] += P.Mass[i] * P.Pos[i][j];
         }
         
-        sys.AngMomentumComp[P[i].Type][0] += P[i].Mass * (P[i].Pos[1] * vel[2] - P[i].Pos[2] * vel[1]);
-        sys.AngMomentumComp[P[i].Type][1] += P[i].Mass * (P[i].Pos[2] * vel[0] - P[i].Pos[0] * vel[2]);
-        sys.AngMomentumComp[P[i].Type][2] += P[i].Mass * (P[i].Pos[0] * vel[1] - P[i].Pos[1] * vel[0]);
+        sys.AngMomentumComp[P.Type[i]][0] += P.Mass[i] * (P.Pos[i][1] * vel[2] - P.Pos[i][2] * vel[1]);
+        sys.AngMomentumComp[P.Type[i]][1] += P.Mass[i] * (P.Pos[i][2] * vel[0] - P.Pos[i][0] * vel[2]);
+        sys.AngMomentumComp[P.Type[i]][2] += P.Mass[i] * (P.Pos[i][0] * vel[1] - P.Pos[i][1] * vel[0]);
     }
   
   /* some the stuff over all processors */
@@ -154,7 +154,7 @@ double sigmoid_sqrt(double x)
 /* Returns the Frobenius norm of the velocity gradient in physical units */
 double velocity_gradient_norm(int i)
 {
-    double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = CellP[i].Gradients.Velocity[j][k]*All.cf_a2inv; /* physical velocity gradient */
+    double dv2=0; int j,k; for(j=0;j<3;j++) {for(k=0;k<3;k++) {double vt = CellP.Gradients.Velocity[i][j][k]*All.cf_a2inv; /* physical velocity gradient */
         if(All.ComovingIntegrationOn) {if(j==k) {vt += All.cf_hubble_a;}} /* add hubble-flow correction */
         dv2 += vt*vt;}} // calculate magnitude of the velocity shear across cell from || grad -otimes- v ||^(1/2)
     return sqrt(dv2);
@@ -165,7 +165,7 @@ double velocity_gradient_norm(int i)
 int is_particle_a_special_zoom_target(int i)
 {
 #ifdef SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM
-    if(P[i].Type == 3) {return 1;}
+    if(P.Type[i] == 3) {return 1;}
 #endif
     return 0;
 }
@@ -185,9 +185,9 @@ double return_timestep_dilation_factor(int i, int mode)
 #ifdef DILATION_FOR_STELLAR_KINEMATICS_ONLY
     if(mode != 0) {return 1;}
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
-    if(P[i].Type != 4 && P[i].Type != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {return 1;} /* only do cosmological 'stars' type -and- the special smoothing-source-types */
+    if(P.Type[i] != 4 && P.Type[i] != SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {return 1;} /* only do cosmological 'stars' type -and- the special smoothing-source-types */
 #else
-    if(P[i].Type != 4) {return 1;} /* only do cosmological 'stars' type */
+    if(P.Type[i] != 4) {return 1;} /* only do cosmological 'stars' type */
 #endif
 #endif
     
@@ -195,8 +195,8 @@ double return_timestep_dilation_factor(int i, int mode)
     double a = 1;
     
 #ifdef SPECIAL_POINT_WEIGHTED_MOTION
-    double r = P[i].Min_Distance_to_Sink;
-    if(P[i].Type == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {r = 0;}
+    double r = P.Min_Distance_to_Sink[i];
+    if(P.Type[i] == SPECIAL_POINT_TYPE_FOR_NODE_DISTANCES) {r = 0;}
     double wt = weight_function_for_weighted_motion_smoothing(r, 0);
     if(wt > 0 && wt < 1) {a = 1. / wt;}
 #endif
@@ -216,14 +216,14 @@ double return_timestep_dilation_factor(int i, int mode)
     {
         double p0[3]={0}, dp[3]={0}, r2=0, pos_i[3];
         for(k=0;k<3;k++) {p0[k] = All.SpecialParticle_Position_ForRefinement[j][k];}
-        if(mode==0) {for(k=0;k<3;k++) {pos_i[k]=P[i].Pos[k];}} /* the reference index refers to a real particle */
+        if(mode==0) {for(k=0;k<3;k++) {pos_i[k]=P.Pos[i][k];}} /* the reference index refers to a real particle */
             else {for(k=0;k<3;k++) {pos_i[k]=Nodes[i].u.d.s[k];}} /* the reference index refers to a node or pseudo-particle */
         for(k=0;k<3;k++) {dp[k] = All.cf_atime*(pos_i[k] - p0[k]); r2 += dp[k]*dp[k];}
         r = sqrt(r2); if(r < rmin) {rmin = r;}
     }
     r = rmin;
 #if (SINGLE_STAR_AND_SSP_NUCLEAR_ZOOM_SPECIALBOUNDARIES >= 3)
-    if(mode==0) {r = sqrt(P[i].Pos[0]*P[i].Pos[0] + P[i].Pos[1]*P[i].Pos[1] + P[i].Pos[2]*P[i].Pos[2]);}
+    if(mode==0) {r = sqrt(P.Pos[i][0]*P.Pos[i][0] + P.Pos[i][1]*P.Pos[i][1] + P.Pos[i][2]*P.Pos[i][2]);}
 #endif
     if(r < 1.e-10 || isnan(r) || isfinite(r)==0) {r = 1.e-10;}
     a = 1. + 1. / (1./amax + pow(r / r_amax, index));

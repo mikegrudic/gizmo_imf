@@ -121,8 +121,8 @@ void subfind_find_linkngb(void)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      LinkngbDataIn[j].Pos = P[place].Pos;
-	      LinkngbDataIn[j].DM_KernelRadius = P[place].DM_KernelRadius;
+	      LinkngbDataIn[j].Pos = P.Pos[place];
+	      LinkngbDataIn[j].DM_KernelRadius = P.DM_KernelRadius[place];
 
 	      memcpy(LinkngbDataIn[j].NodeList,
 		     DataNodeList[DataIndexTable[j].IndexGet].NodeList, NODELISTLENGTH * sizeof(int));
@@ -192,7 +192,7 @@ void subfind_find_linkngb(void)
 	    {
 	      place = DataIndexTable[j].Index;
 
-	      P[place].DM_NumNgb += LinkngbDataOut[j].Ngb;
+	      P.DM_NumNgb[place] += LinkngbDataOut[j].Ngb;
 	    }
 
 
@@ -208,46 +208,46 @@ void subfind_find_linkngb(void)
 	  /* now check whether we had enough neighbours */
 	  if(Todo[i])
 	    {
-	      if(P[i].DM_NumNgb != All.DesLinkNgb &&
+	      if(P.DM_NumNgb[i] != All.DesLinkNgb &&
 		 ((Right[i] - Left[i]) > 1.0e-3 * Left[i] || Left[i] == 0 || Right[i] == 0))
 		{
 		  /* need to redo this particle */
 		  npleft++;
 
-		  if(P[i].DM_NumNgb < All.DesLinkNgb)
-		    Left[i] = DMAX(P[i].DM_KernelRadius, Left[i]);
+		  if(P.DM_NumNgb[i] < All.DesLinkNgb)
+		    Left[i] = DMAX(P.DM_KernelRadius[i], Left[i]);
 		  else
 		    {
 		      if(Right[i] != 0)
 			{
-			  if(P[i].DM_KernelRadius < Right[i])
-			    Right[i] = P[i].DM_KernelRadius;
+			  if(P.DM_KernelRadius[i] < Right[i])
+			    Right[i] = P.DM_KernelRadius[i];
 			}
 		      else
-			Right[i] = P[i].DM_KernelRadius;
+			Right[i] = P.DM_KernelRadius[i];
 		    }
 
 		  if(iter >= MAXITER - 10)
 		    {
 		      printf
 			("i=%d task=%d ID=%llu DM_KernelRadius=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-			 i, ThisTask, (unsigned long long) P[i].ID, P[i].DM_KernelRadius, Left[i], Right[i],
-			 (double) P[i].DM_NumNgb, Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+			 i, ThisTask, (unsigned long long) P.ID[i], P.DM_KernelRadius[i], Left[i], Right[i],
+			 (double) P.DM_NumNgb[i], Right[i] - Left[i], P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
 		      fflush(stdout);
 		    }
 
 		  if(Right[i] > 0 && Left[i] > 0)
-		    P[i].DM_KernelRadius = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
+		    P.DM_KernelRadius[i] = pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
 		  else
 		    {
 		      if(Right[i] == 0 && Left[i] == 0)
 			endrun(8189);	/* can't occur */
 
 		      if(Right[i] == 0 && Left[i] > 0)
-			P[i].DM_KernelRadius *= 1.26;
+			P.DM_KernelRadius[i] *= 1.26;
 
 		      if(Right[i] > 0 && Left[i] == 0)
-			P[i].DM_KernelRadius /= 1.26;
+			P.DM_KernelRadius[i] /= 1.26;
 		    }
 		}
 	      else
@@ -309,8 +309,8 @@ int subfind_linkngb_evaluate(int target, int mode, int *nexport, int *nsend_loca
 
   if(mode == 0)
     {
-      pos = P[target].Pos.data_ptr();
-      h = P[target].DM_KernelRadius;
+      pos = P.Pos[target].data_ptr();
+      h = P.DM_KernelRadius[target];
     }
   else
     {
@@ -338,7 +338,7 @@ int subfind_linkngb_evaluate(int target, int mode, int *nexport, int *nsend_loca
 	  ngbs = subfind_ngb_treefind_linkngb(pos, h, target, &startnode, mode, &hmax, nexport, nsend_local);
 	  if(ngbs < 0) {return -2;}
 
-	  if(mode == 0 && hmax > 0) {P[target].DM_KernelRadius = hmax;}
+	  if(mode == 0 && hmax > 0) {P.DM_KernelRadius[target] = hmax;}
 	  numngb += ngbs;
 	}
 
@@ -356,7 +356,7 @@ int subfind_linkngb_evaluate(int target, int mode, int *nexport, int *nsend_loca
 
   if(mode == 0)
     {
-      P[target].DM_NumNgb = numngb;
+      P.DM_NumNgb[target] = numngb;
     }
   else
     {
@@ -392,20 +392,20 @@ int subfind_ngb_treefind_linkngb(MyDouble searchcenter[3], double rkern, int tar
 	  no = Nextnode[no];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(!((1 << P[p].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
-	  if(!((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
 	    continue;
 
         dist = rkern; double xtmp; xtmp=0;
-      dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
-      dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dy > dist)
 	    continue;
-      dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dz > dist)
 	    continue;
 	  if((r2 = (dx * dx + dy * dy + dz * dz)) > dist * dist)
@@ -550,20 +550,20 @@ int subfind_ngb_treefind_linkpairs(MyDouble searchcenter[3], double rkern, int t
 	  no = Nextnode[no];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(!((1 << P[p].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_DENSITY_SPLIT_TYPES)))
 #else
-	  if(!((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_PRIMARY_LINK_TYPES)))
 #endif
 	    continue;
 
-        dist = DMAX(P[p].DM_KernelRadius, rkern); double xtmp; xtmp=0;
-      dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+        dist = DMAX(P.DM_KernelRadius[p], rkern); double xtmp; xtmp=0;
+      dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
-      dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dy > dist)
 	    continue;
-      dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dz > dist)
 	    continue;
 	  if((r2 = (dx * dx + dy * dy + dz * dz)) > dist * dist)

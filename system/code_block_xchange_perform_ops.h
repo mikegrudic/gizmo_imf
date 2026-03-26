@@ -54,7 +54,7 @@ be copy-pasted and can be generically optimized in a single place */
             {
                 int pindex_dbg = (NextParticle < (int)ActiveParticleList.size()) ? ActiveParticleList[NextParticle] : -1;
                 PRINT_WARNING("NextParticle == save_NextParticle condition (the buffer appears too small to hold a single particle): NextParticle=%d save_NextParticle=%d last_nextparticle=%d ProcessedFlag=%d NumPart=%d N_gas=%d NTaskTimesNumPart=%llu maxThreads=%d All.BunchSize=%ld All.BufferSize=%llu Nexport=%ld ndone=%d ndone_flag=%d NTask=%d",NextParticle,save_NextParticle,last_nextparticle,(pindex_dbg>=0 ? (int)ProcessedFlag[pindex_dbg] : -1),NumPart,N_gas,(unsigned long long)NTaskTimesNumPart,maxThreads,All.BunchSize,(unsigned long long)All.BufferSize,Nexport,ndone,ndone_flag,NTask);
-                if(pindex_dbg >= 0) {PRINT_WARNING("This is a live particle: pindex=%d ID=%llu Mass=%g Type=%d",pindex_dbg,(unsigned long long)P[pindex_dbg].ID,P[pindex_dbg].Mass,P[pindex_dbg].Type);}
+                if(pindex_dbg >= 0) {PRINT_WARNING("This is a live particle: pindex=%d ID=%llu Mass=%g Type=%d",pindex_dbg,(unsigned long long)P.ID[pindex_dbg],P.Mass[pindex_dbg],P.Type[pindex_dbg]);}
                 endrun(113312);
             } /* in this case, the buffer is too small to process even a single particle */
 

@@ -114,10 +114,10 @@ void subfind_find_nearesttwo(void)
 	{
 	  place = DataIndexTable[j].Index;
 
-	  NearestDataIn[j].Pos = P[place].Pos;
-	  NearestDataIn[j].KernelRadius = P[place].DM_KernelRadius;
-	  NearestDataIn[j].ID = P[place].ID;
-	  NearestDataIn[j].Density = P[place].u.DM_Density;
+	  NearestDataIn[j].Pos = P.Pos[place];
+	  NearestDataIn[j].KernelRadius = P.DM_KernelRadius[place];
+	  NearestDataIn[j].ID = P.ID[place];
+	  NearestDataIn[j].Density = P.u.DM_Density[place];
 	  NearestDataIn[j].Count = NgbLoc[place].count;
 	  for(k = 0; k < NgbLoc[place].count; k++)
 	    {
@@ -278,10 +278,10 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
 
   if(mode == 0)
     {
-      ID = P[target].ID;
-      density = P[target].u.DM_Density;
-      pos = P[target].Pos.data_ptr();
-      h = P[target].DM_KernelRadius;
+      ID = P.ID[target];
+      density = P.u.DM_Density[target];
+      pos = P.Pos[target].data_ptr();
+      h = P.DM_KernelRadius[target];
       count = NgbLoc[target].count;
       for(k = 0; k < count; k++)
 	{
@@ -336,9 +336,9 @@ int subfind_nearesttwo_evaluate(int target, int mode, int *nexport, int *nsend_l
 	      j = Ngblist[n];
 	      r2 = Dist2list[n];
 
-	      if(P[j].ID != ID)	/* exclude the self-particle */
+	      if(P.ID[j] != ID)	/* exclude the self-particle */
 		{
-		  if(P[j].u.DM_Density > density)	/* we only look at neighbours that are denser */
+		  if(P.u.DM_Density[j] > density)	/* we only look at neighbours that are denser */
 		    {
 		      if(count < 2)
 			{
@@ -450,21 +450,21 @@ int subfind_ngb_treefind_nearesttwo(MyDouble searchcenter[3], double rkern, int 
 	  no = Nextnode[no];
 
 #ifdef FOF_DENSITY_SPLIT_TYPES
-	  if(!((1 << P[p].Type) & (FOF_DENSITY_SPLIT_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_DENSITY_SPLIT_TYPES)))
 	    continue;
 #else
-	  if(!((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES)))
+	  if(!((1 << P.Type[p]) & (FOF_PRIMARY_LINK_TYPES)))
 	    continue;
 #endif
 
         dist = rkern; double xtmp; xtmp=0;
-      dx = NGB_PERIODIC_BOX_LONG_X(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dx > dist)
 	    continue;
-      dy = NGB_PERIODIC_BOX_LONG_Y(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dy > dist)
 	    continue;
-      dz = NGB_PERIODIC_BOX_LONG_Z(P[p].Pos[0] - searchcenter[0], P[p].Pos[1] - searchcenter[1], P[p].Pos[2] - searchcenter[2], -1);
+      dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2], -1);
 	  if(dz > dist)
 	    continue;
 	  if((r2 = (dx * dx + dy * dy + dz * dz)) > dist * dist)

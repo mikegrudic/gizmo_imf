@@ -8,19 +8,19 @@
  */
 /* --------------------------------------------------------------------------------- */
 {
-    if( ((local.Mass>0)&&(P[j].Mass>0)) )
+    if( ((local.Mass>0)&&(P.Mass[j]>0)) )
     {
         int k_v, j_v;
-        double FNormT=local.Mass * P[j].Mass * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * CellP[j].Density) * All.cf_atime*All.cf_atime;
+        double FNormT=local.Mass * P.Mass[j] * fabs(kernel.dwk_i+kernel.dwk_j) / (local.Density * CellP.Density[j]) * All.cf_atime*All.cf_atime;
         double FVec[3]={0}; for(k=0;k<3;k++) {FVec[k] = FNormT * kernel.dp[k]/kernel.r;} // use this particular face formulation for fluxes here to avoid tensile instability //
 
         double cmag[3]={0}, v_interface[3], wt_i=-0.5, wt_j=-0.5; // we need a minus sign at some point; its handy to just include it now in the weights //
         for(k=0;k<3;k++) {v_interface[k] = (wt_i*local.Vel[k] + wt_j*VelPred_j[k]) / All.cf_atime;} // physical units //
-        double rho_i = local.Density * All.cf_a3inv, rho_j = CellP[j].Density * All.cf_a3inv;
+        double rho_i = local.Density * All.cf_a3inv, rho_j = CellP.Density[j] * All.cf_a3inv;
 
         // terms for HLL fluxes
-        double wt_r = rho_i*local.SoundSpeed * rho_j*CellP[j].SoundSpeed / (rho_i*local.SoundSpeed + rho_j*CellP[j].SoundSpeed) * FNormT; // physical
-        double cT_i=sqrt(All.Tillotson_EOS_params[local.CompositionType][10]/rho_i), cT_j=sqrt(All.Tillotson_EOS_params[CellP[j].CompositionType][10]/rho_j); // physical
+        double wt_r = rho_i*local.SoundSpeed * rho_j*CellP.SoundSpeed[j] / (rho_i*local.SoundSpeed + rho_j*CellP.SoundSpeed[j]) * FNormT; // physical
+        double cT_i=sqrt(All.Tillotson_EOS_params[local.CompositionType][10]/rho_i), cT_j=sqrt(All.Tillotson_EOS_params[CellP.CompositionType[j]][10]/rho_j); // physical
         double wt_t = rho_i*cT_i * rho_j*cT_j / (rho_i*cT_i + rho_j*cT_j) * FNormT; // physical
         double wt_rt = (wt_r - wt_t) * kernel.vdotr2 * rinv*rinv*All.cf_atime*All.cf_atime;
         // evaluate force from deviatoric stress tensor //
@@ -28,7 +28,7 @@
         int ij_switch; for(ij_switch=0;ij_switch<2;ij_switch++) {
             double nvt[NUMDIMS*NUMDIMS]={0}, norm_m=0, wtfac=0; if(ij_switch==0) {wtfac=wt_i;} else {wtfac=wt_j;}
             for(k_v=0;k_v<NUMDIMS;k_v++) {for(j_v=0;j_v<NUMDIMS;j_v++) {
-            if(ij_switch==0) {nvt[NUMDIMS*k_v + j_v] = local.Elastic_Stress_Tensor[k_v][j_v];} else {nvt[NUMDIMS*k_v + j_v] = CellP[j].Elastic_Stress_Tensor_Pred[k_v][j_v];}
+            if(ij_switch==0) {nvt[NUMDIMS*k_v + j_v] = local.Elastic_Stress_Tensor[k_v][j_v];} else {nvt[NUMDIMS*k_v + j_v] = CellP.Elastic_Stress_Tensor_Pred[j][k_v][j_v];}
             norm_m += nvt[NUMDIMS*k_v + j_v]*nvt[NUMDIMS*k_v + j_v];}} // initialize auxiliary array to store for feeding to GSL eigen routine
             if(norm_m > MIN_REAL_NUMBER) {
                 gsl_matrix_view M = gsl_matrix_view_array(nvt,NUMDIMS,NUMDIMS); gsl_vector *eigvals = gsl_vector_alloc(NUMDIMS); gsl_matrix *eigvecs = gsl_matrix_alloc(NUMDIMS,NUMDIMS);
@@ -51,7 +51,7 @@
                 double cmag_dir[3]={0}, a_dot_r_alt=0; // check if the face area orientation is the difference
                 for(j_v=0;j_v<3;j_v++)
                 {
-                    for(k_v=0;k_v<3;k_v++) {cmag_dir[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*CellP[j].Elastic_Stress_Tensor[j_v][k_v]) * FNormT*kernel.dp[k_v]/kernel.r;}
+                    for(k_v=0;k_v<3;k_v++) {cmag_dir[j_v] += (wt_i*local.Elastic_Stress_Tensor[j_v][k_v] + wt_j*CellP.Elastic_Stress_Tensor[j][j_v][k_v]) * FNormT*kernel.dp[k_v]/kernel.r;}
                     a_dot_r_alt += kernel.dp[j_v]*cmag[j_v];
                 }
                 if((a_dot_r_alt >= 0)||(a_dot_r_alt+astress_dot_r>=0)) {for(k_v=0;k_v<3;k_v++) {cmag[k_v]=cmag_dir[k_v];}} else // if this solves it, use this, done!
@@ -70,7 +70,7 @@
         /*
         if(dt_hydrostep > 0)
         {
-            double cmag_lim = 0.25 * (local.Mass + P[j].Mass) * (v_interface[0]*v_interface[0]+v_interface[1]*v_interface[1]+v_interface[2]*v_interface[2]) / dt_hydrostep;
+            double cmag_lim = 0.25 * (local.Mass + P.Mass[j]) * (v_interface[0]*v_interface[0]+v_interface[1]*v_interface[1]+v_interface[2]*v_interface[2]) / dt_hydrostep;
             if(fabs(cmag_E) > cmag_lim)
             {
                 double corr_visc = cmag_lim / fabs(cmag_E);

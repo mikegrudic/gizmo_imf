@@ -67,12 +67,12 @@ void long_range_force(void)
 
     for(i = 0; i < NumPart; i++)
     {
-        P[i].GravPM = {};
+        P.GravPM[i] = {};
 #ifdef EVALPOTENTIAL
-        P[i].PM_Potential = 0;
+        P.PM_Potential[i] = 0;
 #endif
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {P[i].tidal_tensorpsPM[k1][k2]=0;}}}
+        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {P.tidal_tensorpsPM[i][k1][k2]=0;}}}
 #endif
     }
 
@@ -138,9 +138,9 @@ void long_range_force(void)
 
         /* try again */
 
-        for(i = 0; i < NumPart; i++) {P[i].GravPM = {};}
+        for(i = 0; i < NumPart; i++) {P.GravPM[i] = {};}
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
-        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {P[i].tidal_tensorpsPM[k1][k2]=0;}}}
+        {int k1,k2; for(k1=0;k1<3;k1++) {for(k2=0;k2<3;k2++) {P.tidal_tensorpsPM[i][k1][k2]=0;}}}
 #endif
         i = pmforce_nonperiodic(0) + pmforce_nonperiodic(1);
 #ifdef COMPUTE_TIDAL_TENSOR_IN_GRAVTREE
@@ -159,13 +159,13 @@ void long_range_force(void)
   if(All.ComovingIntegrationOn)
     {
       fac = 0.5 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits * All.OmegaMatter;
-      for(i = 0; i < NumPart; i++) {P[i].GravPM += fac * P[i].Pos;}
+      for(i = 0; i < NumPart; i++) {P.GravPM[i] += fac * P.Pos[i];}
     }
 
   if(All.ComovingIntegrationOn == 0) /* special factor as in gravtree for cases where we want to run a non-cosmological simulation but with dark energy terms */
     {
       fac = All.OmegaLambda * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits;
-      for(i = 0; i < NumPart; i++) {P[i].GravPM += fac * P[i].Pos;}
+      for(i = 0; i < NumPart; i++) {P.GravPM[i] += fac * P.Pos[i];}
     }
 #endif
 

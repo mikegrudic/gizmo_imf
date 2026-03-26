@@ -109,6 +109,6 @@ double geofactor_angle_integ(double u, void * params)
 }
 
 /*! This function simply initializes some variables to prevent memory errors */
-void init_self_interactions() {int i; for(i = 0; i < NumPart; i++) {P[i].dtime_sidm = 0; P[i].NInteractions = 0;}}
+void init_self_interactions() {int i; for(i = 0; i < NumPart; i++) {P.dtime_sidm[i] = 0; P.NInteractions[i] = 0;}}
 
 #endif

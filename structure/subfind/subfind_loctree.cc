@@ -43,11 +43,11 @@ void subfind_loctree_findExtent(int npart, struct unbind_data *mp)
 
       for(j = 0; j < 3; j++)
 	{
-	  if(xmin[j] > P[i].Pos[j])
-	    xmin[j] = P[i].Pos[j];
+	  if(xmin[j] > P.Pos[i][j])
+	    xmin[j] = P.Pos[i][j];
 
-	  if(xmax[j] < P[i].Pos[j])
-	    xmax[j] = P[i].Pos[j];
+	  if(xmax[j] < P.Pos[i][j])
+	    xmax[j] = P.Pos[i][j];
 	}
     }
 
@@ -105,9 +105,9 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
 	  if(th >= All.MaxPart)	/* we are dealing with an internal node */
       {
           subnode = 0;
-          if(P[i].Pos[0] > Nodes[th].center[0]) {subnode += 1;}
-          if(P[i].Pos[1] > Nodes[th].center[1]) {subnode += 2;}
-          if(P[i].Pos[2] > Nodes[th].center[2]) {subnode += 4;}
+          if(P.Pos[i][0] > Nodes[th].center[0]) {subnode += 1;}
+          if(P.Pos[i][1] > Nodes[th].center[1]) {subnode += 2;}
+          if(P.Pos[i][2] > Nodes[th].center[2]) {subnode += 4;}
           
           nn = Nodes[th].u.suns[subnode];
 
@@ -150,9 +150,9 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
 	      nfreep->u.suns[7] = -1;
 
 	      subnode = 0;
-	      if(P[th].Pos[0] > nfreep->center[0]) {subnode += 1;}
-	      if(P[th].Pos[1] > nfreep->center[1]) {subnode += 2;}
-	      if(P[th].Pos[2] > nfreep->center[2]) {subnode += 4;}
+	      if(P.Pos[th][0] > nfreep->center[0]) {subnode += 1;}
+	      if(P.Pos[th][1] > nfreep->center[1]) {subnode += 2;}
+	      if(P.Pos[th][2] > nfreep->center[2]) {subnode += 4;}
 
           if(nfreep->len < 3.e-4 * ForceSoftening_KernelRadius(th))
           {
@@ -170,7 +170,7 @@ int subfind_loctree_treebuild(int npart, struct unbind_data *mp)
           if((numnodes) >= MaxNodes)
           {
               printf("maximum number %d of tree-nodes reached.\n", MaxNodes);
-              printf("for particle %d  %g %g %g\n", i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+              printf("for particle %d  %g %g %g\n", i, P.Pos[i][0], P.Pos[i][1], P.Pos[i][2]);
               endrun(1);
           }
       }
@@ -232,10 +232,10 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
                 }
                 else        /* a particle */
                 {
-                    mass += P[p].Mass;
-                    s[0] += P[p].Mass * P[p].Pos[0];
-                    s[1] += P[p].Mass * P[p].Pos[1];
-                    s[2] += P[p].Mass * P[p].Pos[2];
+                    mass += P.Mass[p];
+                    s[0] += P.Mass[p] * P.Pos[p][0];
+                    s[1] += P.Mass[p] * P.Pos[p][1];
+                    s[2] += P.Mass[p] * P.Pos[p][2];
                 }
             }
         }
@@ -288,9 +288,9 @@ double subfind_loctree_treeevaluate_potential(int target)
     double h_p, h_p_inv, u_p, wp_p, h_max; h_p=0; h_p_inv=0; u_p=0; wp_p=0; h_max=0;
     int particle; particle=0;
 
-    pos_x = P[target].Pos[0];
-    pos_y = P[target].Pos[1];
-    pos_z = P[target].Pos[2];
+    pos_x = P.Pos[target][0];
+    pos_y = P.Pos[target][1];
+    pos_z = P.Pos[target][2];
     h = ForceSoftening_KernelRadius(target);
 
     h_inv = 1.0 / h;
@@ -301,10 +301,10 @@ double subfind_loctree_treeevaluate_potential(int target)
     {
       if(no < All.MaxPart)	/* single particle */
 	{
-	  dx = P[no].Pos[0] - pos_x;
-	  dy = P[no].Pos[1] - pos_y;
-	  dz = P[no].Pos[2] - pos_z;
-	  mass = P[no].Mass;
+	  dx = P.Pos[no][0] - pos_x;
+	  dy = P.Pos[no][1] - pos_y;
+	  dz = P.Pos[no][2] - pos_z;
+	  mass = P.Mass[no];
 	}
       else
 	{
@@ -385,7 +385,7 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
 
   if(hguess == 0)
     {
-      part_dens = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P[0].Mass;
+      part_dens = All.OmegaMatter * 3 * All.Hubble_H0_CodeUnits * All.Hubble_H0_CodeUnits / (8 * M_PI * All.G) / P.Mass[0];
       hguess = pow(3 * desngb / (4 * M_PI) / part_dens, 1.0 / 3);
     }
 
@@ -433,9 +433,9 @@ int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
 	  p = no;
 	  no = Nextnode[no];
 
-	  dx = P[p].Pos[0] - searchcenter[0];
-	  dy = P[p].Pos[1] - searchcenter[1];
-	  dz = P[p].Pos[2] - searchcenter[2];
+	  dx = P.Pos[p][0] - searchcenter[0];
+	  dy = P.Pos[p][1] - searchcenter[1];
+	  dz = P.Pos[p][2] - searchcenter[2];
         NEAREST_XYZ(dx,dy,dz,-1);
 
         if(dx < -hguess)
