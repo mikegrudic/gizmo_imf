@@ -240,29 +240,30 @@ int ngb_treefind_pairs_threads_batched(
             MyDouble cp0 = P.Pos[p][0], cp1 = P.Pos[p][1], cp2 = P.Pos[p][2];
             MyFloat cp_hr = P.KernelRadius[p];
 
-            if(search_both_ways) {
-                for(b = 0; b < batch_size; b++)
-                {
-                    MyFloat dist_b = (cp_hr > rkerns[b]) ? cp_hr : rkerns[b];
-                    MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddx > dist_b) continue;
-                    MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddy > dist_b) continue;
-                    MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddz > dist_b) continue;
-                    if(ddx*ddx + ddy*ddy + ddz*ddz > dist_b*dist_b) continue;
-                    ngblists[b][numngb[b]++] = p;
-                }
-            } else {
+            /* Branchless distance check for all batch queries — designed to auto-vectorize.
+               No shared xtmp, no continue, no conditional stores in the hot loop. */
+            {
+                double r2_batch[NGB_BATCH_SIZE];
+                double dist2_batch[NGB_BATCH_SIZE];
+
+                /* Phase 1: compute squared distances (SIMD-friendly, no branches, no shared state) */
                 for(b = 0; b < batch_size; b++) {
-                    MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddx > rkerns[b]) continue;
-                    MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddy > rkerns[b]) continue;
-                    MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(cp0 - searchcenters[b][0], cp1 - searchcenters[b][1], cp2 - searchcenters[b][2], -1);
-                    if(ddz > rkerns[b]) continue;
-                    if(ddx*ddx + ddy*ddy + ddz*ddz > rkerns[b]*rkerns[b]) continue;
-                    ngblists[b][numngb[b]++] = p;
+                    double dx = cp0 - searchcenters[b][0];
+                    double dy = cp1 - searchcenters[b][1];
+                    double dz = cp2 - searchcenters[b][2];
+                    /* branchless periodic wrap: no xtmp, no ternary */
+                    dx = boxHalf_X - fabs(fabs(dx) - boxHalf_X);
+                    dy = boxHalf_Y - fabs(fabs(dy) - boxHalf_Y);
+                    dz = boxHalf_Z - fabs(fabs(dz) - boxHalf_Z);
+                    r2_batch[b] = dx*dx + dy*dy + dz*dz;
+                    double dist = search_both_ways ? ((cp_hr > rkerns[b]) ? cp_hr : rkerns[b]) : rkerns[b];
+                    dist2_batch[b] = dist * dist;
+                }
+                /* Phase 2: scatter hits (serial — conditional store can't vectorize) */
+                for(b = 0; b < batch_size; b++) {
+                    if(r2_batch[b] <= dist2_batch[b]) {
+                        ngblists[b][numngb[b]++] = p;
+                    }
                 }
             }
         }
@@ -326,20 +327,26 @@ int ngb_treefind_pairs_threads_batched(
             MyFloat half_len = 0.5 * current->len;
             MyFloat sphere_extra = CUBE_EDGEFACTOR_1 * current->len;
 
+            /* Branchless node intersection check — designed to auto-vectorize */
             int open_node = 0;
-            for(b = 0; b < batch_size; b++)
             {
-                MyFloat dist_b = (search_both_ways ? ((node_hmax > rkerns[b]) ? node_hmax : rkerns[b]) : rkerns[b]) + half_len;
-                MyDouble ddx = NGB_PERIODIC_BOX_LONG_X(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
-                if(ddx > dist_b) continue;
-                MyDouble ddy = NGB_PERIODIC_BOX_LONG_Y(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
-                if(ddy > dist_b) continue;
-                MyDouble ddz = NGB_PERIODIC_BOX_LONG_Z(nc0 - searchcenters[b][0], nc1 - searchcenters[b][1], nc2 - searchcenters[b][2], -1);
-                if(ddz > dist_b) continue;
-                MyFloat dist_sph = dist_b + sphere_extra;
-                if(ddx*ddx + ddy*ddy + ddz*ddz > dist_sph*dist_sph) continue;
-                open_node = 1;
-                break;
+                double r2_node[NGB_BATCH_SIZE];
+                double dist2_node[NGB_BATCH_SIZE];
+                for(b = 0; b < batch_size; b++) {
+                    double dx = nc0 - searchcenters[b][0];
+                    double dy = nc1 - searchcenters[b][1];
+                    double dz = nc2 - searchcenters[b][2];
+                    dx = boxHalf_X - fabs(fabs(dx) - boxHalf_X);
+                    dy = boxHalf_Y - fabs(fabs(dy) - boxHalf_Y);
+                    dz = boxHalf_Z - fabs(fabs(dz) - boxHalf_Z);
+                    r2_node[b] = dx*dx + dy*dy + dz*dz;
+                    double dist = (search_both_ways ? ((node_hmax > rkerns[b]) ? node_hmax : rkerns[b]) : rkerns[b]) + half_len;
+                    double dist_sph = dist + sphere_extra;
+                    dist2_node[b] = dist_sph * dist_sph;
+                }
+                for(b = 0; b < batch_size; b++) {
+                    if(r2_node[b] <= dist2_node[b]) { open_node = 1; break; }
+                }
             }
 
             if(open_node) {no = current->u.d.nextnode;} else {no = current->u.d.sibling;}
