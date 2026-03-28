@@ -2488,12 +2488,10 @@ void deallocate_CellP(cell_soa& s)
     myfree(s.Interpolated_Opacity);
 #endif
 #ifdef RT_EVOLVE_ENERGY
-#else
     myfree(s.Dt_Rad_E_gamma);
     myfree(s.Rad_E_gamma_Pred);
 #endif
 #ifdef RT_EVOLVE_FLUX
-#else
     myfree(s.Dt_Rad_Flux);
     myfree(s.Rad_Flux_Pred);
     myfree(s.Rad_Flux);
