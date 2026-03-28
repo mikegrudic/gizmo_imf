@@ -14,15 +14,28 @@ if(P.Ti_current[p] != ti_Current)
 
 #if (SEARCHBOTHWAYS==1)
 dist = DMAX(P.KernelRadius[p], rkern);
-dx = NGB_PERIODIC_BOX_LONG_X(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+/* branchless periodic wrap where applicable — avoids shared xtmp variable */
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_X) || defined(BOX_OUTFLOW_X))
+dx = boxHalf_X - fabs(fabs(P.Pos[p][0] - searchcenter[0]) - boxHalf_X);
+#else
+dx = fabs(P.Pos[p][0] - searchcenter[0]);
+#endif
 if(dx > dist) continue;
-dy = NGB_PERIODIC_BOX_LONG_Y(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Y) || defined(BOX_OUTFLOW_Y))
+dy = boxHalf_Y - fabs(fabs(P.Pos[p][1] - searchcenter[1]) - boxHalf_Y);
+#else
+dy = fabs(P.Pos[p][1] - searchcenter[1]);
+#endif
 if(dy > dist) continue;
-dz = NGB_PERIODIC_BOX_LONG_Z(P.Pos[p][0] - searchcenter[0], P.Pos[p][1] - searchcenter[1], P.Pos[p][2] - searchcenter[2],-1);
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_Z))
+dz = boxHalf_Z - fabs(fabs(P.Pos[p][2] - searchcenter[2]) - boxHalf_Z);
+#else
+dz = fabs(P.Pos[p][2] - searchcenter[2]);
+#endif
 if(dz > dist) continue;
 if(dx * dx + dy * dy + dz * dz > dist * dist) continue;
 #endif
-ngblist[numngb++] = p;  /* Note: unlike in previous versions of the code, the buffer can hold up to all particles. note also the threaded-vs-unthreaded use of n vs N in ngblist */
+ngblist[numngb++] = p;
 }
 else
 {
@@ -30,7 +43,7 @@ else
     {
         if(mode == 1) {endrun(123128);}
 
-        if(target >= 0)	/* if no target is given, export will not occur */
+        if(target >= 0)
         {
             if(exportflag[task = DomainTask[no - (maxPart + maxNodes)]] != target)
             {
@@ -47,7 +60,6 @@ else
                 {
                     if(Nexport >= bunchSize)
                     {
-                        /* out of buffer space. Need to discard work for this particle and interrupt */
                         BufferFullFlag = 1;
                         exitFlag = 1;
                     }
@@ -57,7 +69,7 @@ else
                         Nexport++;
                     }
                 }
-                if(exitFlag) {return -1;} /* buffer has filled -- important that only this and other buffer-full conditions return the negative condition for the routine */
+                if(exitFlag) {return -1;}
 
                 exportnodecount[task] = 0;
                 exportindex[task] = nexp;
@@ -78,7 +90,7 @@ else
 
     if(mode == 1)
     {
-        if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))	/* we reached a top-level node again, which means that we are done with the branch */
+        if(current->u.d.bitflags & (1 << BITFLAG_TOPLEVEL))
         {
             *startnode = -1;
             return numngb;
@@ -97,7 +109,7 @@ else
 
     if(current->N_part <= 1)
     {
-        if(current->u.d.mass)	/* open cell */
+        if(current->u.d.mass)
         {
             no = current->u.d.nextnode;
             continue;
@@ -110,9 +122,9 @@ else
 #else
     dist = rkern + 0.5 * current->len;
 #endif
-    no = current->u.d.sibling;	/* in case the node can be discarded */
+    no = current->u.d.sibling;
 #include "ngb_codeblock_checknode.h"
-    no = current->u.d.nextnode;	// ok, we need to open the node //
+    no = current->u.d.nextnode;
 }
 }
 

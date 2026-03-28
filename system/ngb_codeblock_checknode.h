@@ -37,12 +37,23 @@
 #else
 /* this is the 'normal' operation mode */
 
-    // On older Intel and AMD processors it seems better to avoid the computations and branch early
-    dx = NGB_PERIODIC_BOX_LONG_X(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_X) || defined(BOX_OUTFLOW_X))
+    dx = boxHalf_X - fabs(fabs(current->center[0]-searchcenter[0]) - boxHalf_X);
+#else
+    dx = fabs(current->center[0]-searchcenter[0]);
+#endif
     if(dx > dist) continue;
-    dy = NGB_PERIODIC_BOX_LONG_Y(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Y) || defined(BOX_OUTFLOW_Y))
+    dy = boxHalf_Y - fabs(fabs(current->center[1]-searchcenter[1]) - boxHalf_Y);
+#else
+    dy = fabs(current->center[1]-searchcenter[1]);
+#endif
     if(dy > dist) continue;
-    dz = NGB_PERIODIC_BOX_LONG_Z(current->center[0]-searchcenter[0],current->center[1]-searchcenter[1],current->center[2]-searchcenter[2],-1);
+#if defined(BOX_PERIODIC) && !(defined(BOX_REFLECT_Z) || defined(BOX_OUTFLOW_Z))
+    dz = boxHalf_Z - fabs(fabs(current->center[2]-searchcenter[2]) - boxHalf_Z);
+#else
+    dz = fabs(current->center[2]-searchcenter[2]);
+#endif
     if(dz > dist) continue;
     // now test against the minimal sphere enclosing everything //
     dist += CUBE_EDGEFACTOR_1 * current->len;
