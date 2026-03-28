@@ -1508,6 +1508,7 @@ int GasGrad_evaluate(int target, int mode, int *exportflag, int *exportnodecount
 #if defined(MHD_CONSTRAINED_GRADIENT)
                 double V_j = (gtile.use_tile ? gtile.mass[n] : P.Mass[j]) / (gtile.use_tile ? gtile.density[n] : CellP.Density[j]), Face_Area_Norm, cnumcrit2 = ((double)CONDITION_NUMBER_DANGER)*((double)CONDITION_NUMBER_DANGER) - local.ConditionNumber*local.ConditionNumber; Vec3<double> Face_Area_Vec;
 
+auto& tile = gtile; /* alias so compute_finitevol_faces.h can use 'tile' */
 #include "compute_finitevol_faces.h" /* insert code block for computing Face_Area_Vec, Face_Area_Norm, n_unit, etc. */
                 
                 for(k=0;k<3;k++){

@@ -2818,11 +2818,11 @@ void copy_particle_between_P(particle_soa& d, int di, particle_soa& s, int si)
     d.StellarAge[di] = s.StellarAge[si];
 #endif
 #ifdef METALS
-    memcpy(&s.Metallicity[dest], &s.Metallicity[src], sizeof(MyFloat[NUM_METAL_SPECIES]));
+    memcpy(&d.Metallicity[di], &s.Metallicity[si], sizeof(MyFloat[NUM_METAL_SPECIES]));
 #endif
 #ifdef GALSF_SFR_IMF_VARIATION
     d.IMF_Mturnover[di] = s.IMF_Mturnover[si];
-    memcpy(&s.IMF_FormProps[dest], &s.IMF_FormProps[src], sizeof(MyFloat[N_IMF_FORMPROPS]));
+    memcpy(&d.IMF_FormProps[di], &s.IMF_FormProps[si], sizeof(MyFloat[N_IMF_FORMPROPS]));
 #endif
 #ifdef GALSF_SFR_IMF_SAMPLING
     d.IMF_NumMassiveStars[di] = s.IMF_NumMassiveStars[si];
@@ -2841,7 +2841,7 @@ void copy_particle_between_P(particle_soa& d, int di, particle_soa& s, int si)
     d.GradRho[di] = s.GradRho[si];
 #endif
 #ifdef RT_USE_TREECOL_FOR_NH
-    memcpy(&s.ColumnDensityBins[dest], &s.ColumnDensityBins[src], sizeof(MyFloat[RT_USE_TREECOL_FOR_NH]));
+    memcpy(&d.ColumnDensityBins[di], &s.ColumnDensityBins[si], sizeof(MyFloat[RT_USE_TREECOL_FOR_NH]));
     d.SigmaEff[di] = s.SigmaEff[si];
 #endif
 #if defined(RT_SOURCE_INJECTION)
@@ -2860,7 +2860,7 @@ void copy_particle_between_P(particle_soa& d, int di, particle_soa& s, int si)
 #endif
 #endif
 #ifdef GALSF_FB_MECHANICAL
-    memcpy(&s.Area_weighted_sum[dest], &s.Area_weighted_sum[src], sizeof(MyFloat[AREA_WEIGHTED_SUM_ELEMENTS]));
+    memcpy(&d.Area_weighted_sum[di], &s.Area_weighted_sum[si], sizeof(MyFloat[AREA_WEIGHTED_SUM_ELEMENTS]));
 #endif
 #ifdef GALSF_FB_FIRE_RT_LOCALRP
     d.NewStar_Momentum_For_JetFeedback[di] = s.NewStar_Momentum_For_JetFeedback[si];
@@ -2986,7 +2986,7 @@ void copy_particle_between_P(particle_soa& d, int di, particle_soa& s, int si)
     d.StarLuminosity_Solar[di] = s.StarLuminosity_Solar[si];
     d.ZAMS_Mass[di] = s.ZAMS_Mass[si];
 #ifdef SINGLE_STAR_FB_WINDS
-    memcpy(&s.Wind_direction[dest], &s.Wind_direction[src], sizeof(MyFloat[6]));
+    memcpy(&d.Wind_direction[di], &s.Wind_direction[si], sizeof(MyFloat[6]));
     d.wind_mode[di] = s.wind_mode[si];
 #endif
 #ifdef  SINGLE_STAR_FB_SNE
@@ -3063,8 +3063,8 @@ void copy_particle_between_P(particle_soa& d, int di, particle_soa& s, int si)
     d.NV_T[di] = s.NV_T[si];
 #endif
 #ifdef CBE_INTEGRATOR
-    memcpy(&s.CBE_basis_moments[dest], &s.CBE_basis_moments[src], sizeof(double[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]));
-    memcpy(&s.CBE_basis_moments_dt[dest], &s.CBE_basis_moments_dt[src], sizeof(double[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]));
+    memcpy(&d.CBE_basis_moments[di], &s.CBE_basis_moments[si], sizeof(double[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]));
+    memcpy(&d.CBE_basis_moments_dt[di], &s.CBE_basis_moments_dt[si], sizeof(double[CBE_INTEGRATOR_NBASIS][CBE_INTEGRATOR_NMOMENTS]));
 #ifdef CBE_INTEGRATOR_WITHGRADIENTS
 #endif
 #endif
@@ -3096,9 +3096,9 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
     d.Volume_1[di] = s.Volume_1[si];
 #endif
 #if defined(GALSF_ISMDUSTCHEM_MODEL)
-    memcpy(&s.ISMDustChem_Dust_Source[dest], &s.ISMDustChem_Dust_Source[src], sizeof(MyDouble[NUM_ISMDUSTCHEM_SOURCES]));
-    memcpy(&s.ISMDustChem_Dust_Metal[dest], &s.ISMDustChem_Dust_Metal[src], sizeof(MyDouble[NUM_ISMDUSTCHEM_ELEMENTS]));
-    memcpy(&s.ISMDustChem_Dust_Species[dest], &s.ISMDustChem_Dust_Species[src], sizeof(MyDouble[NUM_ISMDUSTCHEM_SPECIES]));
+    memcpy(&d.ISMDustChem_Dust_Source[di], &s.ISMDustChem_Dust_Source[si], sizeof(MyDouble[NUM_ISMDUSTCHEM_SOURCES]));
+    memcpy(&d.ISMDustChem_Dust_Metal[di], &s.ISMDustChem_Dust_Metal[si], sizeof(MyDouble[NUM_ISMDUSTCHEM_ELEMENTS]));
+    memcpy(&d.ISMDustChem_Dust_Species[di], &s.ISMDustChem_Dust_Species[si], sizeof(MyDouble[NUM_ISMDUSTCHEM_SPECIES]));
     d.ISMDustChem_DelayTimeSNeSputtering[di] = s.ISMDustChem_DelayTimeSNeSputtering[si];
     d.ISMDustChem_C_in_CO[di] = s.ISMDustChem_C_in_CO[si];
     d.ISMDustChem_MassFractionInDenseMolecular[di] = s.ISMDustChem_MassFractionInDenseMolecular[si];
@@ -3124,13 +3124,13 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
 #endif
 #endif
 #if defined(KERNEL_CRK_FACES)
-    memcpy(&s.Tensor_CRK_Face_Corrections[dest], &s.Tensor_CRK_Face_Corrections[src], sizeof(MyFloat[16]));
+    memcpy(&d.Tensor_CRK_Face_Corrections[di], &s.Tensor_CRK_Face_Corrections[si], sizeof(MyFloat[16]));
 #endif
 #ifdef COSMIC_RAY_FLUID
-    memcpy(&s.CosmicRayEnergy[dest], &s.CosmicRayEnergy[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
-    memcpy(&s.CosmicRayEnergyPred[dest], &s.CosmicRayEnergyPred[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
-    memcpy(&s.DtCosmicRayEnergy[dest], &s.DtCosmicRayEnergy[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
-    memcpy(&s.CosmicRayDiffusionCoeff[dest], &s.CosmicRayDiffusionCoeff[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRayEnergy[di], &s.CosmicRayEnergy[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRayEnergyPred[di], &s.CosmicRayEnergyPred[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.DtCosmicRayEnergy[di], &s.DtCosmicRayEnergy[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRayDiffusionCoeff[di], &s.CosmicRayDiffusionCoeff[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
     d.Face_DivVel_ForAdOps[di] = s.Face_DivVel_ForAdOps[si];
 #if defined(CRFLUID_INJECTION_AT_SHOCKS)
     d.DtCREgyNewInjectionFromShocks[di] = s.DtCREgyNewInjectionFromShocks[si];
@@ -3138,17 +3138,17 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
 #if defined(SINK_CR_INJECTION_AT_TERMINATION)
     d.Sink_CR_Energy_Available_For_Injection[di] = s.Sink_CR_Energy_Available_For_Injection[si];
 #endif
-    memcpy(&s.CosmicRayFlux[dest], &s.CosmicRayFlux[src], sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]));
-    memcpy(&s.CosmicRayFluxPred[dest], &s.CosmicRayFluxPred[src], sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRayFlux[di], &s.CosmicRayFlux[si], sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRayFluxPred[di], &s.CosmicRayFluxPred[si], sizeof(Vec3<MyFloat>[N_CR_PARTICLE_BINS]));
 #ifdef CRFLUID_EVOLVE_SCATTERINGWAVES
-    memcpy(&s.CosmicRayAlfvenEnergy[dest], &s.CosmicRayAlfvenEnergy[src], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
-    memcpy(&s.CosmicRayAlfvenEnergyPred[dest], &s.CosmicRayAlfvenEnergyPred[src], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
-    memcpy(&s.DtCosmicRayAlfvenEnergy[dest], &s.DtCosmicRayAlfvenEnergy[src], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
+    memcpy(&d.CosmicRayAlfvenEnergy[di], &s.CosmicRayAlfvenEnergy[si], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
+    memcpy(&d.CosmicRayAlfvenEnergyPred[di], &s.CosmicRayAlfvenEnergyPred[si], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
+    memcpy(&d.DtCosmicRayAlfvenEnergy[di], &s.DtCosmicRayAlfvenEnergy[si], sizeof(MyFloat[N_CR_PARTICLE_BINS][2]));
 #endif
 #if defined(CRFLUID_EVOLVE_SPECTRUM)
-    memcpy(&s.CosmicRay_Number_in_Bin[dest], &s.CosmicRay_Number_in_Bin[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
-    memcpy(&s.DtCosmicRay_Number_in_Bin[dest], &s.DtCosmicRay_Number_in_Bin[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
-    memcpy(&s.Flux_Number_to_Energy_Correction_Factor[dest], &s.Flux_Number_to_Energy_Correction_Factor[src], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.CosmicRay_Number_in_Bin[di], &s.CosmicRay_Number_in_Bin[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.DtCosmicRay_Number_in_Bin[di], &s.DtCosmicRay_Number_in_Bin[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
+    memcpy(&d.Flux_Number_to_Energy_Correction_Factor[di], &s.Flux_Number_to_Energy_Correction_Factor[si], sizeof(MyFloat[N_CR_PARTICLE_BINS]));
 #endif
 #endif
 #ifdef SUPER_TIMESTEP_DIFFUSION
@@ -3174,13 +3174,13 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
     d.Gradients.InternalEnergy[di] = s.Gradients.InternalEnergy[si];
 #endif
 #if defined(TURB_DIFF_METALS) && !defined(TURB_DIFF_METALS_LOWORDER)
-    memcpy(&s.Gradients.Metallicity[dest], &s.Gradients.Metallicity[src], sizeof(Vec3<MyDouble>[NUM_METAL_SPECIES]));
+    memcpy(&d.Gradients.Metallicity[di], &s.Gradients.Metallicity[si], sizeof(Vec3<MyDouble>[NUM_METAL_SPECIES]));
 #endif
 #ifdef COSMIC_RAY_FLUID
-    memcpy(&s.Gradients.CosmicRayPressure[dest], &s.Gradients.CosmicRayPressure[src], sizeof(Vec3<MyDouble>[N_CR_PARTICLE_BINS]));
+    memcpy(&d.Gradients.CosmicRayPressure[di], &s.Gradients.CosmicRayPressure[si], sizeof(Vec3<MyDouble>[N_CR_PARTICLE_BINS]));
 #endif
 #ifdef RT_COMPGRAD_EDDINGTON_TENSOR
-    memcpy(&s.Gradients.Rad_E_gamma_ET[dest], &s.Gradients.Rad_E_gamma_ET[src], sizeof(Vec3<MyDouble>[N_RT_FREQ_BINS]));
+    memcpy(&d.Gradients.Rad_E_gamma_ET[di], &s.Gradients.Rad_E_gamma_ET[si], sizeof(Vec3<MyDouble>[N_RT_FREQ_BINS]));
 #endif
     d.NV_T[di] = s.NV_T[si];
     d.NV_T_face_weights[di] = s.NV_T_face_weights[si];
@@ -3190,7 +3190,7 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
     d.MaxKineticEnergyNgb[di] = s.MaxKineticEnergyNgb[si];
 #endif
 #if defined(TURB_DIFF_METALS) || (defined(METALS) && defined(HYDRO_MESHLESS_FINITE_VOLUME))
-    memcpy(&s.Dyield[dest], &s.Dyield[src], sizeof(MyFloat[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]));
+    memcpy(&d.Dyield[di], &s.Dyield[si], sizeof(MyFloat[NUM_METAL_SPECIES+NUM_ADDITIONAL_PASSIVESCALAR_SPECIES_FOR_YIELDS_AND_DIFFUSION]));
 #endif
 #ifdef HYDRO_SPH
     d.DrkernHydroSumFactor[di] = s.DrkernHydroSumFactor[si];
@@ -3209,15 +3209,15 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
     d.IniB[di] = s.IniB[si];
 #endif
 #ifdef CHIMES_STELLAR_FLUXES
-    memcpy(&s.Chimes_G0[dest], &s.Chimes_G0[src], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
-    memcpy(&s.Chimes_fluxPhotIon[dest], &s.Chimes_fluxPhotIon[src], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
+    memcpy(&d.Chimes_G0[di], &s.Chimes_G0[si], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
+    memcpy(&d.Chimes_fluxPhotIon[di], &s.Chimes_fluxPhotIon[si], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
 #ifdef CHIMES_HII_REGIONS
-    memcpy(&s.Chimes_G0_HII[dest], &s.Chimes_G0_HII[src], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
-    memcpy(&s.Chimes_fluxPhotIon_HII[dest], &s.Chimes_fluxPhotIon_HII[src], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
+    memcpy(&d.Chimes_G0_HII[di], &s.Chimes_G0_HII[si], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
+    memcpy(&d.Chimes_fluxPhotIon_HII[di], &s.Chimes_fluxPhotIon_HII[si], sizeof(double[CHIMES_LOCAL_UV_NBINS]));
 #endif
 #endif
 #ifdef CHIMES_TURB_DIFF_IONS
-    memcpy(&s.ChimesNIons[dest], &s.ChimesNIons[src], sizeof(double[CHIMES_TOTSIZE]));
+    memcpy(&d.ChimesNIons[di], &s.ChimesNIons[si], sizeof(double[CHIMES_TOTSIZE]));
 #endif
 #ifdef SINK_COMPTON_HEATING
     d.Rad_Flux_AGN[di] = s.Rad_Flux_AGN[si];
@@ -3308,34 +3308,34 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
     d.Zeta_BulkViscosity[di] = s.Zeta_BulkViscosity[si];
 #endif
 #if defined(RADTRANSFER)
-    memcpy(&s.ET[dest], &s.ET[src], sizeof(SymmetricTensor2<MyFloat>[N_RT_FREQ_BINS]));
-    memcpy(&s.Rad_Je[dest], &s.Rad_Je[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
-    memcpy(&s.Rad_E_gamma[dest], &s.Rad_E_gamma[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
-    memcpy(&s.Rad_Kappa[dest], &s.Rad_Kappa[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.ET[di], &s.ET[si], sizeof(SymmetricTensor2<MyFloat>[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Je[di], &s.Rad_Je[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_E_gamma[di], &s.Rad_E_gamma[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Kappa[di], &s.Rad_Kappa[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
 #if defined(COOLING) || defined(RT_INFRARED)
-    memcpy(&s.Lambda_RadiativeCooling_toRHDBins[dest], &s.Lambda_RadiativeCooling_toRHDBins[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Lambda_RadiativeCooling_toRHDBins[di], &s.Lambda_RadiativeCooling_toRHDBins[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
 #endif
 #ifdef RT_FLUXLIMITER
-    memcpy(&s.Rad_Flux_Limiter[dest], &s.Rad_Flux_Limiter[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Flux_Limiter[di], &s.Rad_Flux_Limiter[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
 #endif
 #ifdef RT_EVOLVE_INTENSITIES
-    memcpy(&s.Rad_Intensity[dest], &s.Rad_Intensity[src], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
-    memcpy(&s.Rad_Intensity_Pred[dest], &s.Rad_Intensity_Pred[src], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
-    memcpy(&s.Dt_Rad_Intensity[dest], &s.Dt_Rad_Intensity[src], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
+    memcpy(&d.Rad_Intensity[di], &s.Rad_Intensity[si], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
+    memcpy(&d.Rad_Intensity_Pred[di], &s.Rad_Intensity_Pred[si], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
+    memcpy(&d.Dt_Rad_Intensity[di], &s.Dt_Rad_Intensity[si], sizeof(MyFloat[N_RT_FREQ_BINS][N_RT_INTENSITY_BINS]));
 #endif
 #ifdef RT_EVOLVE_FLUX
-    memcpy(&s.Rad_Flux[dest], &s.Rad_Flux[src], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
-    memcpy(&s.Rad_Flux_Pred[dest], &s.Rad_Flux_Pred[src], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
-    memcpy(&s.Dt_Rad_Flux[dest], &s.Dt_Rad_Flux[src], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Flux[di], &s.Rad_Flux[si], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Flux_Pred[di], &s.Rad_Flux_Pred[si], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
+    memcpy(&d.Dt_Rad_Flux[di], &s.Dt_Rad_Flux[si], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
 #else
 #endif
 #ifdef RT_EVOLVE_ENERGY
-    memcpy(&s.Rad_E_gamma_Pred[dest], &s.Rad_E_gamma_Pred[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
-    memcpy(&s.Dt_Rad_E_gamma[dest], &s.Dt_Rad_E_gamma[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_E_gamma_Pred[di], &s.Rad_E_gamma_Pred[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Dt_Rad_E_gamma[di], &s.Dt_Rad_E_gamma[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
 #else
 #endif
 #if defined(RT_OPACITY_FROM_EXPLICIT_GRAINS)
-    memcpy(&s.Interpolated_Opacity[dest], &s.Interpolated_Opacity[src], sizeof(MyDouble[N_RT_FREQ_BINS]));
+    memcpy(&d.Interpolated_Opacity[di], &s.Interpolated_Opacity[si], sizeof(MyDouble[N_RT_FREQ_BINS]));
     d.InterpolatedGeometricDustCrossSection[di] = s.InterpolatedGeometricDustCrossSection[si];
 #endif
 #ifdef RT_INFRARED
@@ -3360,10 +3360,10 @@ void copy_particle_between_CellP(cell_soa& d, int di, cell_soa& s, int si)
 #endif
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_ENERGY) && !defined(RADTRANSFER)
-    memcpy(&s.Rad_E_gamma[dest], &s.Rad_E_gamma[src], sizeof(MyFloat[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_E_gamma[di], &s.Rad_E_gamma[si], sizeof(MyFloat[N_RT_FREQ_BINS]));
 #endif
 #if defined(RT_USE_GRAVTREE_SAVE_RAD_FLUX) && !defined(RT_EVOLVE_FLUX)
-    memcpy(&s.Rad_Flux[dest], &s.Rad_Flux[src], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
+    memcpy(&d.Rad_Flux[di], &s.Rad_Flux[si], sizeof(Vec3<MyFloat>[N_RT_FREQ_BINS]));
 #endif
 #ifdef RT_RAD_PRESSURE_OUTPUT
     d.Rad_Accel[di] = s.Rad_Accel[si];

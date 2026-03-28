@@ -13,6 +13,7 @@ struct GradientsNeighborTile {
     Vec3<MyDouble> velpred[GRADIENTS_TILE_NGB_MAX];  // CellP.VelPred[j]
     MyDouble ie_pred[GRADIENTS_TILE_NGB_MAX];        // CellP.InternalEnergyPred[j]
     MyDouble condition_number[GRADIENTS_TILE_NGB_MAX]; // CellP.ConditionNumber[j]
+    SymmetricTensor2<MyDouble> nv_t[GRADIENTS_TILE_NGB_MAX]; // CellP.NV_T[j]
 #ifdef GALSF_SUBGRID_WINDS
     MyFloat delay_time[GRADIENTS_TILE_NGB_MAX];
 #endif
@@ -39,6 +40,7 @@ static inline void gradients_tile_gather(GradientsNeighborTile& tile, int* ngbli
         tile.velpred[nn] = CellP.VelPred[j];
         tile.ie_pred[nn] = CellP.InternalEnergyPred[j];
         tile.condition_number[nn] = CellP.ConditionNumber[j];
+        tile.nv_t[nn] = CellP.NV_T[j];
 #ifdef GALSF_SUBGRID_WINDS
         tile.delay_time[nn] = CellP.DelayTime[j];
 #endif

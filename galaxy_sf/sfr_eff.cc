@@ -535,7 +535,7 @@ void star_formation_parent_routine(void)
                             fflush(stdout);
                             endrun(8888);
                         }
-                        P[i_star] = P[i]; // copy the entire structure to the new particle, needed to initialize
+                        copy_particle_P(P, i_star, i); // copy the entire structure to the new particle, needed to initialize
                         ActiveParticleList.push_back(i_star);
                         NumForceUpdate++;
                         TimeBinCount[P.TimeBin[i_star]]++;
