@@ -228,10 +228,7 @@ endif
 #----------------------------
 # Should work on any Flatiron institute linux cluster environment: rusty, popeye and linux workstations
 ifeq ($(SYSTYPE),"RUSTY")
-CC       =   mpicc
-ifeq (SOFTDOUBLEDOUBLE,$(findstring SOFTDOUBLEDOUBLE,$(OPT)))
 CC       =   mpicxx
-endif
 FC      = mpifort
 OPTIMIZE =  -O3 -ffast-math -funroll-loops -march=native -g -Wall
 GSL_INCL = -I$(GSL_BASE)/include
