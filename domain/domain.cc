@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
+#include <algorithm>
 
 #include "../declarations/allvars.h"
 #include "../core/proto.h"
@@ -55,7 +55,14 @@ static int *list_loadgas;
 static double *list_work;
 static double *list_workgas;
 extern int old_MaxPart, new_MaxPart;
-#define N_DOMAINDECOMP_QUEUES 3
+#define N_DOMAINDECOMP_QUEUES 4
+
+/* Adaptive domain balance weights: these are updated after each decomposition based
+   on measured imbalance, following the GADGET-4 approach of dynamically adjusting
+   the relative importance of work vs memory balance. */
+static double domain_fac_work = 0.5;    /* weight for gravity work */
+static double domain_fac_workgas = 0.0; /* weight for hydro work (set >0 when gas is present) */
+static double domain_fac_load = 0.5;    /* weight for particle count (memory) */
 
 static struct local_topnode_data
 {
@@ -564,6 +571,57 @@ double domain_particle_costfactor(int i)
 
 
 
+/*! Update the adaptive domain balance weights based on measured imbalance from the
+ *  current decomposition. Weights are shifted toward the metric with the worst imbalance,
+ *  following the GADGET-4 approach. Uses exponential moving average with smoothing factor alpha. */
+void domain_update_adaptive_weights(void)
+{
+    double alpha = 0.3; /* smoothing factor: 0 = keep old weights, 1 = fully replace */
+    double imbal_work = 0, imbal_load = 0, imbal_workgas = 0;
+    double sumwork = 0, sumload = 0, sumworkgas = 0;
+    double maxwork = 0, maxloadd = 0, maxworkgas = 0;
+
+    for(int i = 0; i < NTask; i++) {
+        sumwork += list_work[i];
+        sumload += list_load[i];
+        sumworkgas += list_workgas[i];
+        if(list_work[i] > maxwork) maxwork = list_work[i];
+        if(list_load[i] > maxloadd) maxloadd = list_load[i];
+        if(list_workgas[i] > maxworkgas) maxworkgas = list_workgas[i];
+    }
+
+    /* imbalance = max/avg - 1: 0 = perfect, higher = worse */
+    if(sumwork > 0) imbal_work = maxwork / (sumwork / NTask) - 1.0;
+    if(sumload > 0) imbal_load = maxloadd / (sumload / NTask) - 1.0;
+    if(sumworkgas > 0) imbal_workgas = maxworkgas / (sumworkgas / NTask) - 1.0;
+
+    /* target weights proportional to measured imbalance (shift attention to worst-balanced metric) */
+    double eps = 0.05; /* minimum weight floor to prevent any metric from being totally ignored */
+    double target_work = DMAX(imbal_work, eps);
+    double target_load = DMAX(imbal_load, eps);
+    double target_workgas = (sumworkgas > 0) ? DMAX(imbal_workgas, eps) : 0.0;
+
+    double target_total = target_work + target_load + target_workgas;
+    target_work /= target_total;
+    target_load /= target_total;
+    target_workgas /= target_total;
+
+    /* exponential moving average update */
+    domain_fac_work = (1.0 - alpha) * domain_fac_work + alpha * target_work;
+    domain_fac_load = (1.0 - alpha) * domain_fac_load + alpha * target_load;
+    domain_fac_workgas = (1.0 - alpha) * domain_fac_workgas + alpha * target_workgas;
+
+    /* ensure minimum floor */
+    if(domain_fac_work < eps) domain_fac_work = eps;
+    if(domain_fac_load < eps) domain_fac_load = eps;
+
+    if(ThisTask == 0) {
+        printf("Domain adaptive weights: work=%.3f  load=%.3f  workgas=%.3f  (imbalance: work=%.3f load=%.3f gas=%.3f)\n",
+               domain_fac_work, domain_fac_load, domain_fac_workgas, imbal_work, imbal_load, imbal_workgas);
+    }
+}
+
+
 /*! This function carries out the actual domain decomposition for all
  *  particle types. It will try to balance the work-load for each domain,
  *  as estimated based on the P[i]-GravCost values.  The decomposition will
@@ -653,6 +711,12 @@ int domain_decompose(void)
         printf("Balance: gravity work-load balance=%g   memory-balance=%g   hydro work-load balance=%g\n",
 	     maxwork / (sumwork / NTask), maxload / (((double) sumload) / NTask), maxworkgas / ((sumworkgas + 1.0e-30) / NTask));
     }
+
+    /* update adaptive weights for next decomposition based on current imbalance */
+    if(ThisTask == 0) {domain_update_adaptive_weights();}
+    MPI_Bcast(&domain_fac_work, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&domain_fac_load, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&domain_fac_workgas, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* flag the particles that need to be exported */
 
@@ -1065,14 +1129,21 @@ void domain_findSplit_work_balanced(int ncpu, int ndomain)
       workgas += domainWorkGas[i];
     }
  
-      /* default to give equal weight to gravitational work-load, gas/fluid work load, and particle load */
-      double fac_work_0=0.67; int nworkterms = 1;
-      if(workgas > 0) {nworkterms+=1;} else {fac_work_0 = 0.5;} // equally-weight work and load here, if desired
-      fac_work_0 /= nworkterms; // divide the work weight equally among the different work terms here
-
-      fac_work = fac_work_0 / work;
-      fac_load = (1.-fac_work_0*nworkterms) / load;
-      if(workgas>0) {fac_workgas = fac_work_0 / workgas;} else {fac_workgas = 0.0;}
+      /* Use adaptive weights that are updated after each decomposition based on measured
+         imbalance (GADGET-4 approach). The static variables domain_fac_work/workgas/load
+         are adjusted in domain_update_adaptive_weights() after each decomposition. */
+      if(workgas <= 0) {
+          /* no gas work: redistribute gas weight to gravity and load */
+          double total = domain_fac_work + domain_fac_load + domain_fac_workgas;
+          fac_work = (domain_fac_work + 0.5 * domain_fac_workgas) / (total * work);
+          fac_load = (domain_fac_load + 0.5 * domain_fac_workgas) / (total * load);
+          fac_workgas = 0.0;
+      } else {
+          double total = domain_fac_work + domain_fac_load + domain_fac_workgas;
+          fac_work = domain_fac_work / (total * work);
+          fac_load = domain_fac_load / (total * load);
+          fac_workgas = domain_fac_workgas / (total * workgas);
+      }
 
   workavg = 1.0 / ncpu;
 
@@ -1111,6 +1182,7 @@ static struct domain_segments_data
   double work;
   double load;
   double load_activegas;
+  double load_gas;         /* gas particle count for memory constraint */
   double normalized_load;
 }
  *domainAssign;
@@ -1130,6 +1202,7 @@ struct tasklist_data
   double work;
   double load;
   double load_activegas;
+  double load_gas;         /* gas particle count for memory constraint */
   int count;
 }
  *tasklist;
@@ -1152,13 +1225,18 @@ int domain_sort_load(const void *a, const void *b)
 
 void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 {
-  double target_work_balance, target_load_balance, target_load_activegas_balance;
+  double target_work_balance, target_load_balance, target_load_activegas_balance, target_load_gas_balance;
   double value, target_max_balance, best_balance;
-  double tot_work, tot_load, tot_loadactivegas;
+  double tot_work, tot_load, tot_loadactivegas, tot_loadgas;
 
 
   int best_queue, target, next, prev;
   int i, n, q, ta;
+
+  /* memory limits: reject assignments that would push a rank above this fraction of max capacity */
+  double memory_safety_frac = 0.9;
+  double max_load_per_task = memory_safety_frac * maxLoad;
+  double max_gasload_per_task = memory_safety_frac * maxLoadgas;
 
   domainAssign = (struct domain_segments_data *) mymalloc("domainAssign",
 							  multipledomains * NTask *
@@ -1171,12 +1249,14 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
       tasklist[ta].work = 0;
       tasklist[ta].load = 0;
       tasklist[ta].load_activegas = 0;
+      tasklist[ta].load_gas = 0;
       tasklist[ta].count = 0;
     }
 
   tot_work = 0;
   tot_load = 0;
   tot_loadactivegas = 0;
+  tot_loadgas = 0;
 
   for(n = 0; n < multipledomains * NTask; n++)
     {
@@ -1185,17 +1265,20 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
       domainAssign[n].work = 0;
       domainAssign[n].load = 0;
       domainAssign[n].load_activegas = 0;
+      domainAssign[n].load_gas = 0;
 
       for(i = DomainStartList[n]; i <= DomainEndList[n]; i++)
 	{
 	  domainAssign[n].work += domainWork[i];
 	  domainAssign[n].load += domainCount[i];
 	  domainAssign[n].load_activegas += domainWorkGas[i];
+	  domainAssign[n].load_gas += domainCountGas[i];
 	}
 
       tot_work += domainAssign[n].work;
       tot_load += domainAssign[n].load;
       tot_loadactivegas += domainAssign[n].load_activegas;
+      tot_loadgas += domainAssign[n].load_gas;
     }
 
   for(n = 0; n < multipledomains * NTask; n++)
@@ -1209,7 +1292,7 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 
   qsort(domainAssign, multipledomains * NTask, sizeof(struct domain_segments_data), domain_sort_load);
 
-  /* initialize three queues */
+  /* initialize queues (4 queues: work, load, active gas, gas memory) */
   for(q = 0; q < N_DOMAINDECOMP_QUEUES; q++)
     {
       queues[q].next = (int *) mymalloc("queues[q].next", NTask * sizeof(int));
@@ -1230,21 +1313,43 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 
   for(n = 0; n < multipledomains * NTask; n++)
     {
-      /* need to decide, which of the tasks that has the lowest load in one of the three quantities is best */
+      /* need to decide, which of the tasks that has the lowest load in one of the queues is best */
       for(q = 0, best_balance = 1.0e30, best_queue = 0; q < N_DOMAINDECOMP_QUEUES; q++)
 	{
 	  target = queues[q].first;
 
 	  while(tasklist[target].count == multipledomains) {target = queues[q].next[target];}
 
+	  /* check memory hard constraint: skip targets that would exceed memory limits */
+	  if(mode == 1) {
+	      double candidate_load = tasklist[target].load + domainAssign[n].load;
+	      double candidate_gasload = tasklist[target].load_gas + domainAssign[n].load_gas;
+	      if(candidate_load > max_load_per_task || candidate_gasload > max_gasload_per_task) {
+	          /* try next targets in this queue until we find one that fits */
+	          int orig_target = target;
+	          target = queues[q].next[target];
+	          while(target >= 0) {
+	              if(tasklist[target].count < multipledomains) {
+	                  candidate_load = tasklist[target].load + domainAssign[n].load;
+	                  candidate_gasload = tasklist[target].load_gas + domainAssign[n].load_gas;
+	                  if(candidate_load <= max_load_per_task && candidate_gasload <= max_gasload_per_task) break;
+	              }
+	              target = queues[q].next[target];
+	          }
+	          if(target < 0) target = orig_target; /* fallback: accept overload rather than crash */
+	      }
+	  }
+
 	  target_work_balance = (domainAssign[n].work + tasklist[target].work) / (tot_work + 1.0e-30);
 	  target_load_balance = (domainAssign[n].load + tasklist[target].load) / (tot_load + 1.0e-30);
 	  target_load_activegas_balance = (domainAssign[n].load_activegas + tasklist[target].load_activegas) / (tot_loadactivegas + 1.0e-30);
-        
+	  target_load_gas_balance = (domainAssign[n].load_gas + tasklist[target].load_gas) / (tot_loadgas + 1.0e-30);
+
         if(mode==1) {
             target_max_balance = target_work_balance;
             if(target_max_balance < target_load_balance) {target_max_balance = target_load_balance;}
             if(target_max_balance < target_load_activegas_balance) {target_max_balance = target_load_activegas_balance;}
+            if(target_max_balance < target_load_gas_balance) {target_max_balance = target_load_gas_balance;}
         } else {
             target_max_balance = target_load_balance;
         }
@@ -1261,13 +1366,31 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 
       while(tasklist[target].count == multipledomains) {target = queues[best_queue].next[target];}
 
+      /* re-check memory constraint for the selected target */
+      if(mode == 1) {
+          double candidate_load = tasklist[target].load + domainAssign[n].load;
+          double candidate_gasload = tasklist[target].load_gas + domainAssign[n].load_gas;
+          if(candidate_load > max_load_per_task || candidate_gasload > max_gasload_per_task) {
+              int next_t = queues[best_queue].next[target];
+              while(next_t >= 0) {
+                  if(tasklist[next_t].count < multipledomains &&
+                     tasklist[next_t].load + domainAssign[n].load <= max_load_per_task &&
+                     tasklist[next_t].load_gas + domainAssign[n].load_gas <= max_gasload_per_task) {
+                      target = next_t; break;
+                  }
+                  next_t = queues[best_queue].next[next_t];
+              }
+          }
+      }
+
       domainAssign[n].task = target;
       tasklist[target].work += domainAssign[n].work;
       tasklist[target].load += domainAssign[n].load;
       tasklist[target].load_activegas += domainAssign[n].load_activegas;
+      tasklist[target].load_gas += domainAssign[n].load_gas;
       tasklist[target].count++;
 
-      /* now we need to remove the element 'target' from the N_DOMAINDECOMP_QUEUES queue's and reinsert it */
+      /* now we need to remove the element 'target' from the queues and reinsert it */
     for(q = 0; q < N_DOMAINDECOMP_QUEUES; q++)
     {
 	  switch (q)
@@ -1280,6 +1403,9 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 	      break;
 	    case 2:
 	      value = tasklist[target].load_activegas;
+	      break;
+	    case 3:
+	      value = tasklist[target].load_gas;
 	      break;
 	    default:
 	      value = 0;
@@ -1340,6 +1466,82 @@ void domain_assign_load_or_work_balanced(int mode, int multipledomains)
 	  queues[q].value[target] = value;
 	}
     }
+
+  /* Iterative refinement (GADGET-4 approach): try random swaps of domain segments
+     between tasks and keep swaps that reduce the maximum imbalance across all metrics.
+     This improves the greedy solution, especially for inhomogeneous particle distributions. */
+  if(mode == 1 && multipledomains * NTask > 1)
+  {
+      int nswaps_accepted = 0;
+      int n_segments = multipledomains * NTask;
+      int max_iterations = 200 * n_segments; /* scale attempts with problem size */
+      unsigned int seed = 42 + NTask; /* deterministic seed for reproducibility */
+
+      /* compute current max imbalance */
+      auto compute_max_imbalance = [&]() -> double {
+          double max_frac_work = 0, max_frac_load = 0, max_frac_gas = 0, max_frac_gasload = 0;
+          for(int t = 0; t < NTask; t++) {
+              double fw = tasklist[t].work / (tot_work + 1.0e-30);
+              double fl = tasklist[t].load / (tot_load + 1.0e-30);
+              double fg = tasklist[t].load_activegas / (tot_loadactivegas + 1.0e-30);
+              double fgl = tasklist[t].load_gas / (tot_loadgas + 1.0e-30);
+              if(fw > max_frac_work) max_frac_work = fw;
+              if(fl > max_frac_load) max_frac_load = fl;
+              if(fg > max_frac_gas) max_frac_gas = fg;
+              if(fgl > max_frac_gasload) max_frac_gasload = fgl;
+          }
+          double result = max_frac_work;
+          if(max_frac_load > result) result = max_frac_load;
+          if(max_frac_gas > result) result = max_frac_gas;
+          if(max_frac_gasload > result) result = max_frac_gasload;
+          return result;
+      };
+
+      double current_imbalance = compute_max_imbalance();
+
+      for(int iter = 0; iter < max_iterations; iter++)
+      {
+          /* pick two random segments assigned to different tasks */
+          seed = seed * 1103515245 + 12345; int s1 = (seed >> 16) % n_segments;
+          seed = seed * 1103515245 + 12345; int s2 = (seed >> 16) % n_segments;
+          if(s1 == s2) continue;
+          int t1 = domainAssign[s1].task, t2 = domainAssign[s2].task;
+          if(t1 == t2) continue;
+
+          /* trial swap: move s1 to t2 and s2 to t1 */
+          tasklist[t1].work += domainAssign[s2].work - domainAssign[s1].work;
+          tasklist[t1].load += domainAssign[s2].load - domainAssign[s1].load;
+          tasklist[t1].load_activegas += domainAssign[s2].load_activegas - domainAssign[s1].load_activegas;
+          tasklist[t1].load_gas += domainAssign[s2].load_gas - domainAssign[s1].load_gas;
+          tasklist[t2].work += domainAssign[s1].work - domainAssign[s2].work;
+          tasklist[t2].load += domainAssign[s1].load - domainAssign[s2].load;
+          tasklist[t2].load_activegas += domainAssign[s1].load_activegas - domainAssign[s2].load_activegas;
+          tasklist[t2].load_gas += domainAssign[s1].load_gas - domainAssign[s2].load_gas;
+
+          double new_imbalance = compute_max_imbalance();
+
+          if(new_imbalance < current_imbalance) {
+              /* accept swap */
+              domainAssign[s1].task = t2;
+              domainAssign[s2].task = t1;
+              current_imbalance = new_imbalance;
+              nswaps_accepted++;
+          } else {
+              /* revert */
+              tasklist[t1].work -= domainAssign[s2].work - domainAssign[s1].work;
+              tasklist[t1].load -= domainAssign[s2].load - domainAssign[s1].load;
+              tasklist[t1].load_activegas -= domainAssign[s2].load_activegas - domainAssign[s1].load_activegas;
+              tasklist[t1].load_gas -= domainAssign[s2].load_gas - domainAssign[s1].load_gas;
+              tasklist[t2].work -= domainAssign[s1].work - domainAssign[s2].work;
+              tasklist[t2].load -= domainAssign[s1].load - domainAssign[s2].load;
+              tasklist[t2].load_activegas -= domainAssign[s1].load_activegas - domainAssign[s2].load_activegas;
+              tasklist[t2].load_gas -= domainAssign[s1].load_gas - domainAssign[s2].load_gas;
+          }
+      }
+      if(ThisTask == 0 && nswaps_accepted > 0) {
+          PRINT_STATUS(" ..domain iterative refinement: %d swaps accepted out of %d attempts", nswaps_accepted, max_iterations);
+      }
+  }
 
   qsort(domainAssign, multipledomains * NTask, sizeof(struct domain_segments_data), domain_sort_task);
 
@@ -1892,28 +2094,41 @@ int domain_determineTopTree(void)
 
   mp = (struct peano_hilbert_data *) mymalloc("mp", sizeof(struct peano_hilbert_data) * NumPart);
 
+  /* Compute Peano-Hilbert keys for all particles */
+#ifdef SUBFIND
+  /* With SUBFIND, some particles may be skipped, so compute keys in parallel then compact */
+  #ifdef _OPENMP
+  #pragma omp parallel for schedule(static)
+  #endif
+  for(i = 0; i < NumPart; i++)
+    {
+      peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+      peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+      peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
+      Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
+    }
   for(i = 0, count = 0; i < NumPart; i++)
     {
-#ifdef SUBFIND
       if(GrNr >= 0 && P.GrNr[i] != GrNr) {continue;}
-#endif
-
-        /* new code */
-        peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
-        peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
-        peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
-        mp[count].key = Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
-        
-      /* old code
-      mp[count].key = Key[i] = peano_hilbert_key((int) ((P.Pos[i][0] - DomainCorner[0]) * DomainFac),
-						 (int) ((P.Pos[i][1] - DomainCorner[1]) * DomainFac),
-						 (int) ((P.Pos[i][2] - DomainCorner[2]) * DomainFac),
-						 BITS_PER_DIMENSION);
-       */
-
+      mp[count].key = Key[i];
       mp[count].index = i;
       count++;
     }
+#else
+  /* Without SUBFIND, count == i always, so the loop is embarrassingly parallel */
+  #ifdef _OPENMP
+  #pragma omp parallel for schedule(static)
+  #endif
+  for(i = 0; i < NumPart; i++)
+    {
+      peano1D xb = domain_double_to_int(((P.Pos[i][0] - DomainCorner[0]) / DomainLen) + 1.0);
+      peano1D yb = domain_double_to_int(((P.Pos[i][1] - DomainCorner[1]) / DomainLen) + 1.0);
+      peano1D zb = domain_double_to_int(((P.Pos[i][2] - DomainCorner[2]) / DomainLen) + 1.0);
+      mp[i].key = Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
+      mp[i].index = i;
+    }
+  count = NumPart;
+#endif
 
 #ifdef SUBFIND
   if(GrNr >= 0 && count != NumPartGroup)
@@ -2091,40 +2306,74 @@ void domain_sumCost(void)
 
     PRINT_STATUS(" ..NTopleaves= %d  NTopnodes=%d (space for %d)", NTopleaves, NTopnodes, MaxTopNodes);
 
+  /* Per-timebin cost normalization (GADGET-4 approach): weight each particle's work cost
+     by its activation frequency relative to the top-level timestep. A particle on timebin b
+     is active 2^(HighestBin - b) times per top-level step, so its contribution to the total
+     work is proportionally higher. This improves load balance for simulations with large
+     timestep dynamic range (star formation, sinks, etc.) without the spatial locality concerns
+     of the old DOMAIN_TIMESTEP_FREQUENCY_WEIGHTING sqrt-based approach. */
+#ifdef _OPENMP
+  #pragma omp parallel
+  {
+    float *my_domainWork = (float *) calloc(NTopleaves, sizeof(float));
+    float *my_domainWorkGas = (float *) calloc(NTopleaves, sizeof(float));
+    int *my_domainCount = (int *) calloc(NTopleaves, sizeof(int));
+    int *my_domainCountGas = (int *) calloc(NTopleaves, sizeof(int));
+
+    #pragma omp for schedule(static)
+    for(n = 0; n < NumPart; n++)
+      {
+#ifdef SUBFIND
+        if(GrNr >= 0 && P.GrNr[n] != GrNr) {continue;}
+#endif
+        no = domain_toptree_leaf(Key[n], topNodes);
+        float freq_weight = 1.0f;
+        if(All.HighestOccupiedTimeBin > P.TimeBin[n]) {
+            int dbin = All.HighestOccupiedTimeBin - P.TimeBin[n];
+            if(dbin > 20) {dbin = 20;} /* cap to avoid overflow: 2^20 ~ 10^6 */
+            freq_weight = (float)(1 << dbin);
+        }
+        my_domainWork[no] += particle_total_cost[n] * freq_weight;
+        my_domainCount[no] += 1;
+        if(P.Type[n] == 0) {
+            if(TimeBinActive[P.TimeBin[n]] || UseAllParticles) {my_domainWorkGas[no] += particle_costfactor[n] * freq_weight;}
+            my_domainCountGas[no] += 1;}
+      }
+
+    #pragma omp critical
+    {
+      for(i = 0; i < NTopleaves; i++) {
+        local_domainWork[i] += my_domainWork[i];
+        local_domainWorkGas[i] += my_domainWorkGas[i];
+        local_domainCount[i] += my_domainCount[i];
+        local_domainCountGas[i] += my_domainCountGas[i];
+      }
+    }
+    free(my_domainWork);
+    free(my_domainWorkGas);
+    free(my_domainCount);
+    free(my_domainCountGas);
+  }
+#else
   for(n = 0; n < NumPart; n++)
     {
 #ifdef SUBFIND
       if(GrNr >= 0 && P.GrNr[n] != GrNr) {continue;}
 #endif
-
       no = domain_toptree_leaf(Key[n], topNodes);
-
-#ifdef DOMAIN_TIMESTEP_FREQUENCY_WEIGHTING
-      /* EXPERIMENTAL: weight domain work by timestep activation frequency. Particles on shorter
-         timebins are active more often per top-level step; weighting by sqrt(2^dbin) biases the
-         domain split to spread short-timebin work across ranks. This can significantly improve
-         load balance on sub-steps for problems with large timestep dynamic range (e.g. 1.5x
-         speedup on noh), but may hurt spatial locality for self-gravitating problems where dense
-         cores need to stay on the same rank for efficient tree walks. Use with caution and benchmark. */
       float freq_weight = 1.0f;
       if(All.HighestOccupiedTimeBin > P.TimeBin[n]) {
           int dbin = All.HighestOccupiedTimeBin - P.TimeBin[n];
-          if(dbin > 30) {dbin = 30;}
-          freq_weight = (float)sqrt((double)(1 << dbin));
+          if(dbin > 20) {dbin = 20;}
+          freq_weight = (float)(1 << dbin);
       }
       local_domainWork[no] += particle_total_cost[n] * freq_weight;
       local_domainCount[no] += 1;
       if(P.Type[n] == 0) {
           if(TimeBinActive[P.TimeBin[n]] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n] * freq_weight;}
           local_domainCountGas[no] += 1;}
-#else
-      local_domainWork[no] += particle_total_cost[n];
-      local_domainCount[no] += 1;
-      if(P.Type[n] == 0) {
-          if(TimeBinActive[P.TimeBin[n]] || UseAllParticles) {local_domainWorkGas[no] += particle_costfactor[n];}
-          local_domainCountGas[no] += 1;}
-#endif
     }
+#endif
 
   MPI_Allreduce(local_domainWork, domainWork, NTopleaves, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(local_domainWorkGas, domainWorkGas, NTopleaves, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
@@ -2308,57 +2557,36 @@ void domain_insertnode(struct local_topnode_data *treeA, struct local_topnode_da
 
 
 
-static void msort_domain_with_tmp(struct peano_hilbert_data *b, size_t n, struct peano_hilbert_data *t)
+static void parallel_sort_phdata_domain(struct peano_hilbert_data *arr, size_t n)
 {
-  struct peano_hilbert_data *tmp;
-  struct peano_hilbert_data *b1, *b2;
-  size_t n1, n2;
-
-  if(n <= 1)
-    {return;}
-
-  n1 = n / 2;
-  n2 = n - n1;
-  b1 = b;
-  b2 = b + n1;
-
-  msort_domain_with_tmp(b1, n1, t);
-  msort_domain_with_tmp(b2, n2, t);
-
-  /* if the last element of the left half <= first element of right half, already sorted — skip merge */
-  if(b1[n1-1].key <= b2[0].key)
-    {return;}
-
-  tmp = t;
-
-  while(n1 > 0 && n2 > 0)
-    {
-      if(b1->key <= b2->key)
-	{
-	  --n1;
-	  *tmp++ = *b1++;
-	}
-      else
-	{
-	  --n2;
-	  *tmp++ = *b2++;
-	}
-    }
-
-  if(n1 > 0)
-    {memcpy(tmp, b1, n1 * sizeof(struct peano_hilbert_data));}
-
-  memcpy(b, t, (n - n2) * sizeof(struct peano_hilbert_data));
+  auto cmp = [](const peano_hilbert_data &a, const peano_hilbert_data &b) { return a.key < b.key; };
+  const size_t CUTOFF = 10000;
+  if(n <= CUTOFF) { std::sort(arr, arr + n, cmp); return; }
+  size_t mid = n / 2;
+#ifdef _OPENMP
+  #pragma omp task shared(arr) if(n > CUTOFF)
+#endif
+  parallel_sort_phdata_domain(arr, mid);
+#ifdef _OPENMP
+  #pragma omp task shared(arr) if(n > CUTOFF)
+#endif
+  parallel_sort_phdata_domain(arr + mid, n - mid);
+#ifdef _OPENMP
+  #pragma omp taskwait
+#endif
+  std::inplace_merge(arr, arr + mid, arr + n, cmp);
 }
 
 void mysort_domain(void *b, size_t n, size_t s)
 {
-  const size_t size = n * s;
-  struct peano_hilbert_data *tmp;
-
-  tmp = (struct peano_hilbert_data *) mymalloc("tmp", size);
-
-  msort_domain_with_tmp((struct peano_hilbert_data *) b, n, tmp);
-
-  myfree(tmp);
+  struct peano_hilbert_data *arr = (struct peano_hilbert_data *)b;
+#ifdef _OPENMP
+  #pragma omp parallel
+  {
+    #pragma omp single
+    parallel_sort_phdata_domain(arr, n);
+  }
+#else
+  parallel_sort_phdata_domain(arr, n);
+#endif
 }

@@ -7,7 +7,7 @@ import h5py
 import glob
 from os import path
 from meshoid import Meshoid
-from gizmo.test import build_and_run_test, flush_colorbar
+from gizmo.test import build_and_run_test, flush_colorbar, assert_final_time, get_final_snapshot, default_omp_threads
 
 
 def plot_shu1977_density_slice(coords, rho, boxsize, output_dir="."):
@@ -27,14 +27,14 @@ def plot_shu1977_density_slice(coords, rho, boxsize, output_dir="."):
     plt.close(fig)
 
 
-@pytest.mark.parametrize("num_mpi_ranks", (16,))
-def test_shu1977(num_mpi_ranks):
+@pytest.mark.parametrize("num_mpi_ranks", (8,))
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_shu1977(num_mpi_ranks, num_omp_threads):
     test_name = "shu1977"
-    build_and_run_test(test_name, num_mpi_ranks)
+    build_and_run_test(test_name, num_mpi_ranks, num_omp_threads)
 
-    final_snap = f"test/{test_name}/output/snapshot_001.hdf5"
-    if not path.isfile(final_snap):
-        raise RuntimeError("GIZMO did not run successfully.")
+    final_snap = get_final_snapshot(test_name)
+    assert_final_time(final_snap, test_name)
 
     with h5py.File(final_snap, "r") as f:
         num_sinks = f["Header"].attrs["NumPart_ThisFile"][5]

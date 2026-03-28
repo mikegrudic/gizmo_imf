@@ -520,7 +520,7 @@ int hydro_force_evaluate(int target, int mode, int *exportflag, int *exportnodec
                 {
                     if(kernel.vsig > WAKEUP*tile.max_signal_vel[n]) {
                         #pragma omp atomic write
-                        P.wakeup[j] = 1;
+                        P.wakeup[j] = (short int)(local.TimeBin + 1);
                         #pragma omp atomic write
                         NeedToWakeupParticles_local = 1;
                     }

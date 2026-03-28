@@ -13,30 +13,32 @@ import glob
 from os import path, chdir
 from urllib.request import urlretrieve
 from meshoid import Meshoid
-from gizmo.test import build_gizmo_for_test, download_test_files, run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar
+from gizmo.test import build_gizmo_for_test, download_test_files, run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar, assert_final_time, default_omp_threads
 
 
 WEBSITE = "http://www.tapir.caltech.edu/~phopkins/sims/"
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(),))
-def test_rt(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_rt(num_mpi_ranks, num_omp_threads):
     test_name = "rt"
     clean_test_outputs(test_name)
-    build_gizmo_for_test(test_name)
+    build_gizmo_for_test(test_name, num_omp_threads)
     chdir(f"test/{test_name}/")
 
     # Download ICs (non-standard name on site: rt_ics.hdf5, but params references rt_ics)
     if not path.isfile("rt_ics.hdf5"):
         urlretrieve(WEBSITE + "rt_ics.hdf5", "rt_ics.hdf5")
 
-    run_test(test_name, num_mpi_ranks)
+    run_test(test_name, num_mpi_ranks, num_omp_threads)
     chdir("../../")
 
     outputdir = f"test/{test_name}/output"
     snaps = sorted(glob.glob(outputdir + "/snapshot_*.hdf5"))
     if len(snaps) < 2:
         raise RuntimeError("GIZMO did not run successfully.")
+    assert_final_time(snaps[-1], test_name)
 
     # Load initial and final snapshots
     with h5py.File(snaps[0], "r") as F:

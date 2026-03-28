@@ -12,26 +12,28 @@ import h5py
 import glob
 from os import path, chdir
 from meshoid import Meshoid
-from gizmo.test import build_gizmo_for_test, download_test_files, run_test, default_mpi_ranks, clean_test_outputs, get_cooling_tables, flush_colorbar
+from gizmo.test import build_gizmo_for_test, download_test_files, run_test, default_mpi_ranks, clean_test_outputs, get_cooling_tables, flush_colorbar, assert_final_time, default_omp_threads
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(),))
-def test_isodisk(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_isodisk(num_mpi_ranks, num_omp_threads):
     test_name = "isodisk"
     clean_test_outputs(test_name)
-    build_gizmo_for_test(test_name)
+    build_gizmo_for_test(test_name, num_omp_threads)
     chdir(f"test/{test_name}/")
 
     download_test_files(test_name)
     get_cooling_tables()
 
-    run_test(test_name, num_mpi_ranks)
+    run_test(test_name, num_mpi_ranks, num_omp_threads)
     chdir("../../")
 
     outputdir = f"test/{test_name}/output"
     snaps = sorted(glob.glob(outputdir + "/snapshot_*.hdf5"))
     if len(snaps) < 2:
         raise RuntimeError("GIZMO did not run successfully.")
+    assert_final_time(snaps[-1], test_name)
 
     # Load initial and final snapshots
     with h5py.File(snaps[0], "r") as F:

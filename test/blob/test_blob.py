@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 import h5py
 import glob
-from gizmo.test import build_and_run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar
+from gizmo.test import build_and_run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar, assert_final_time, default_omp_threads
 from meshoid import Meshoid
 from matplotlib import pyplot as plt
 
@@ -37,15 +37,17 @@ def plot_blob_density(coordinates, density, log=True, output_dir="."):
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(),))
-def test_blob(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_blob(num_mpi_ranks, num_omp_threads):
     test_name = "blob"
     clean_test_outputs(test_name)
-    build_and_run_test(test_name, num_mpi_ranks)
+    build_and_run_test(test_name, num_mpi_ranks, num_omp_threads)
 
     outputdir = f"test/{test_name}/output"
     snaps = sorted(glob.glob(outputdir + "/snapshot_*.hdf5"))
     if len(snaps) < 2:
         raise RuntimeError("GIZMO did not run successfully.")
+    assert_final_time(snaps[-1], test_name)
 
     # Load initial and final snapshots
     with h5py.File(snaps[0], "r") as F:

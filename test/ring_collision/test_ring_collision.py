@@ -12,19 +12,21 @@ from matplotlib import pyplot as plt
 import h5py
 import glob
 from meshoid import Meshoid
-from gizmo.test import build_and_run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar
+from gizmo.test import build_and_run_test, default_mpi_ranks, clean_test_outputs, flush_colorbar, assert_final_time, default_omp_threads
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(),))
-def test_ring_collision(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_ring_collision(num_mpi_ranks, num_omp_threads):
     test_name = "ring_collision"
     clean_test_outputs(test_name)
-    build_and_run_test(test_name, num_mpi_ranks)
+    build_and_run_test(test_name, num_mpi_ranks, num_omp_threads)
 
     outputdir = f"test/{test_name}/output"
     snaps = sorted(glob.glob(outputdir + "/snapshot_*.hdf5"))
     if len(snaps) < 2:
         raise RuntimeError("GIZMO did not run successfully.")
+    assert_final_time(snaps[-1], test_name)
 
     # Plot each snapshot using Meshoid slice interpolation
     for snap in snaps:

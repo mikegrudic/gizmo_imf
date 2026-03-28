@@ -13,14 +13,15 @@ from scipy.stats import binned_statistic
 from matplotlib import pyplot as plt
 import h5py
 import glob
-from gizmo.test import build_and_run_test, default_mpi_ranks, clean_test_outputs
+from gizmo.test import build_and_run_test, clean_test_outputs, assert_final_time, default_mpi_ranks, default_omp_threads
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(),))
-def test_zeldovich(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_zeldovich(num_mpi_ranks, num_omp_threads):
     test_name = "zeldovich"
     clean_test_outputs(test_name)
-    build_and_run_test(test_name, num_mpi_ranks)
+    build_and_run_test(test_name, num_mpi_ranks, num_omp_threads)
 
     outputdir = f"test/{test_name}/output"
     # Find the last snapshot (cosmological runs use ScaleFac_Between_Snapshots)
@@ -28,6 +29,7 @@ def test_zeldovich(num_mpi_ranks):
     if not snaps:
         raise RuntimeError("GIZMO did not run successfully.")
     final_snap = snaps[-1]
+    assert_final_time(final_snap, test_name)
 
     # Load simulation data
     with h5py.File(final_snap, "r") as F:

@@ -9,33 +9,34 @@ import numpy as np
 from scipy.interpolate import interp1d
 from matplotlib import pyplot as plt
 import h5py
-from os import path, chdir
+from os import chdir
+from os.path import isfile
 from urllib.request import urlretrieve
-from gizmo.test import build_gizmo_for_test, run_test, download_test_files, default_mpi_ranks, clean_test_outputs
+from gizmo.test import build_gizmo_for_test, run_test, download_test_files, clean_test_outputs, assert_final_time, default_mpi_ranks, default_omp_threads, get_final_snapshot
 
 
 WEBSITE = "http://www.tapir.caltech.edu/~phopkins/sims/"
 
 
 @pytest.mark.parametrize("num_mpi_ranks", (default_mpi_ranks(max_ranks=4),))
-def test_shocktube(num_mpi_ranks):
+@pytest.mark.parametrize("num_omp_threads", (default_omp_threads(),))
+def test_shocktube(num_mpi_ranks, num_omp_threads):
     test_name = "shocktube"
     clean_test_outputs(test_name)
-    build_gizmo_for_test(test_name)
+    build_gizmo_for_test(test_name, num_omp_threads)
     chdir(f"test/{test_name}/")
 
     # Download ICs (non-standard name) and exact solution
     for f in ("shocktube_ics_emass.hdf5", "shocktube_exact.txt"):
-        if not path.isfile(f):
+        if not isfile(f):
             urlretrieve(WEBSITE + f, f)
 
-    run_test(test_name, num_mpi_ranks)
+    run_test(test_name, num_mpi_ranks, num_omp_threads)
     chdir("../../")
 
     outputdir = f"test/{test_name}/output"
-    final_snap = outputdir + "/snapshot_010.hdf5"
-    if not path.isfile(final_snap):
-        raise RuntimeError("GIZMO did not run successfully.")
+    final_snap = get_final_snapshot(test_name)
+    assert_final_time(final_snap, test_name)
 
     # Load simulation data
     with h5py.File(final_snap, "r") as F:

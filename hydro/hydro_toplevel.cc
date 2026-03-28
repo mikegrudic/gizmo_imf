@@ -291,6 +291,9 @@ struct INPUT_STRUCT_NAME
     MyFloat Elastic_Stress_Tensor[3][3];
 #endif
     
+#ifdef WAKEUP
+    int TimeBin;
+#endif
     int NodeList[NODELISTLENGTH];
 }
 *DATAIN_NAME, *DATAGET_NAME;
@@ -527,6 +530,10 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
     in->DelayTime = CellP.DelayTime[i];
 #endif
 
+#ifdef WAKEUP
+    in->TimeBin = P[i].TimeBin;
+#endif
+
 }
 
 
@@ -621,6 +628,9 @@ static inline void out2particle_hydra(struct OUTPUT_STRUCT_NAME *out, int i, int
 void hydro_final_operations_and_cleanup(void)
 {
     int i,k;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
     for (int i : ActiveParticleList)
     {
         if(P.Type[i] == 0 && P.Mass[i] > 0)
@@ -913,6 +923,9 @@ void hydro_force_initial_operations_preloop(void)
 
     /* need to zero out all numbers that can be set -EITHER- by an active particle in the domain, or by one of the neighbors we will get sent */
     int i, k;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
     for (int i : ActiveParticleList)
         if(P.Type[i]==0)
         {

@@ -103,7 +103,7 @@ FINCL =
 #----------------------------------------------------------------------------------------------
 ifeq ($(SYSTYPE),"Frontera")
 CC       =  mpicc
-CXX      =  mpicxx -std=c++11
+CXX      =  mpicxx -std=c++17
 FC       =  mpif90 -nofor_main
 OPTIMIZE = -ggdb -O2 -xCORE-AVX2 -Wno-unknown-pragmas -Wall -Wno-format-security -qopenmp
 ifeq (CHIMES,$(findstring CHIMES,$(CONFIGVARS)))
@@ -183,6 +183,10 @@ CXX     = mpic++
 CHIMESINCL = -I/usr/local/include/sundials
 CHIMESLIBS = -L/usr/local/lib -lsundials_cvode -lsundials_nvecserial
 endif
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include
+OPTIMIZE += -L/opt/homebrew/opt/libomp/lib -lomp
+endif
 MKL_INCL = #
 MKL_LIBS = #
 GSL_INCL = -I/opt/homebrew/Cellar/gsl/2.8/include #-I$(PORTINCLUDE)
@@ -232,6 +236,9 @@ CC       =   mpicxx
 CXX      =   mpicxx -std=c++17
 FC      = mpifort
 OPTIMIZE =  -O3 -ffast-math -funroll-loops -march=native -g -Wall
+ifeq (OPENMP,$(findstring OPENMP,$(CONFIGVARS)))
+OPTIMIZE += -fopenmp
+endif
 GSL_INCL = -I$(GSL_BASE)/include
 GSL_LIBS = -L$(GSL_BASE)/lib -Xlinker -R -Xlinker $(GSL_BASE) -lgsl -lgslcblas
 FFTW3_BASE= /mnt/sw/nix/store/bjzkf3pwcw0gy54db19kd4rl0xdiq98s-fftw-3.3.10/.
