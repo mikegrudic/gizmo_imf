@@ -1297,9 +1297,9 @@ void process_wake_ups(void)
 	    binold = P.TimeBin[i];
 	    if(TimeBinActive[binold]) {continue;}
 
-	    if(P[i].wakeup > 0) {
+	    if(P.wakeup[i] > 0) {
 		/* hydro wakeup: target timestep = dt_waker / WAKEUP */
-		int waker_bin = P[i].wakeup - 1;
+		int waker_bin = P.wakeup[i] - 1;
 		bin = IMAX(0, waker_bin - wakeup_bin_offset);
 	    } else {
 		/* generic wakeup (sinks, merge, etc.): use highest active bin */

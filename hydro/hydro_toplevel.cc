@@ -531,7 +531,7 @@ static inline void particle2in_hydra(struct INPUT_STRUCT_NAME *in, int i, int lo
 #endif
 
 #ifdef WAKEUP
-    in->TimeBin = P[i].TimeBin;
+    in->TimeBin = P.TimeBin[i];
 #endif
 
 }
