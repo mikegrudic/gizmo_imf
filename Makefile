@@ -485,12 +485,12 @@ GMP_INCL = #
 GMP_LIBS = #
 MKL_INCL = #
 MKL_LIBS = #
-GSL_INCL = -I/usr/local/include #-I$(PORTINCLUDE)
-GSL_LIBS = -L/usr/local/lib #-L$(PORTLIB)
-FFTW_INCL= -I/usr/local/include
-FFTW_LIBS= -L/usr/local/lib
-HDF5INCL = -I/usr/local/include -DH5_USE_16_API #-I$(PORTINCLUDE) -DH5_USE_16_API
-HDF5LIB  = -L/usr/local/lib -lhdf5 -lz #-L$(PORTLIB)
+GSL_INCL = -I/opt/homebrew/include #-I$(PORTINCLUDE)
+GSL_LIBS = -L/opt/homebrew/lib #-L$(PORTLIB)
+FFTW_INCL= -I/opt/homebrew/include
+FFTW_LIBS= -L/opt/homebrew/lib
+HDF5INCL = -I/opt/homebrew/include -DH5_USE_16_API #-I$(PORTINCLUDE) -DH5_USE_16_API
+HDF5LIB  = -L/opt/homebrew/lib -lhdf5 -lz #-L$(PORTLIB)
 MPICHLIB = #
 OPT     += -DDISABLE_ALIGNED_ALLOC -DCHIMES_USE_DOUBLE_PRECISION #
 ##
@@ -1329,8 +1329,6 @@ HYDRO_OBJS = 	hydro/hydro_toplevel.o \
 				turb/turb_powerspectra.o
 
 EOSCOOL_OBJS =  cooling/cooling.o \
-                                cooling/jaco.o \
-	                        cooling/microphysics_func_jac.o \
 				cooling/grackle.o \
 				cooling/simple_chemistry.o \
 				eos/eos.o \
@@ -1386,6 +1384,10 @@ MISC_OBJS = sidm/cbe_integrator.o \
 EXEC   = GIZMO
 OPTIONS = $(OPTIMIZE) $(OPT)
 
+ifeq (JACO,$(findstring JACO,$(CONFIGVARS)))
+EOSCOOL_OBJS += cooling/jaco.o cooling/microphysics_func_jac.o
+endif
+
 ## combine all the objects above
 OBJS  = $(CORE_OBJS) $(SYSTEM_OBJS) $(GRAVITY_OBJS) $(HYDRO_OBJS) \
 		$(EOSCOOL_OBJS) $(STARFORM_OBJS) $(SINK_OBJS) $(RHD_OBJS) \
@@ -1410,6 +1412,10 @@ INCL    += 	allvars.h \
 			cooling/cooling.h \
 			nuclear/nuclear_network.h \
 			Makefile
+
+ifeq (JACO,$(findstring JACO,$(CONFIGVARS)))
+INCL += cooling/microphysics_func_jac.h cooling/jaco_interp.h
+endif
 
 
 ## now we add special cases dependent on compiler flags. normally we would

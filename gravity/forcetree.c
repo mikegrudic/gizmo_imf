@@ -2220,7 +2220,7 @@ int force_treeevaluate(int target, int mode, int *exportflag, int *exportnodecou
                     }
 #ifdef SINGLE_STAR_TIMESTEPPING
                     double bh_dvx=nop->bh_vel[0]-vel_x, bh_dvy=nop->bh_vel[1]-vel_y, bh_dvz=nop->bh_vel[2]-vel_z, vSqr=bh_dvx*bh_dvx+bh_dvy*bh_dvy+bh_dvz*bh_dvz, M_total=nop->bh_mass+pmass, r2soft;
-                    r2soft = DMAX(SinkParticle_GravityKernelRadius, soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER; r2soft = r2 + r2soft*r2soft;
+                    r2soft = DMAX(SinkParticle_GravityKernelRadius, soft) * KERNEL_FAC_FROM_FORCESOFT_TO_PLUMMER; r2soft = bh_r2 + r2soft*r2soft;
                     double tSqr = r2soft/(vSqr + MIN_REAL_NUMBER), tff4 = r2soft*r2soft*r2soft/(M_total*M_total);
 #ifdef SINGLE_STAR_FB_TIMESTEPLIMIT
                     if(ptype == 0) {

@@ -372,7 +372,7 @@ void mechanical_fb_calculate_eventrates_Winds(int i, double dt)
     if(is_particle_single_star_eligible(i)) /* SINGLE-STAR VERSION: single-star wind mass-loss rates */
     {
 #if defined(SINGLE_STAR_FB_WINDS)
-        double fire_wind_rel_mass_res = 1e-4; /* relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass */
+        double fire_wind_rel_mass_res = 1e-6; /* relative mass resolution of winds, essentially the wind will get spawned in packets of fire_wind_rel_mass_res*(gas_mass_resolution) mass */
         D_RETURN_FRAC = (fire_wind_rel_mass_res * P[i].Sink_Formation_Mass) / P[i].Mass;
 #ifdef SINGLE_STAR_STARFORGE_PROTOSTELLAR_EVOLUTION /* for 'fancy' multi-stage modules, have a separate subroutine to compute this */
         if(P[i].wind_mode != 2) {return;} /* only some eligible particles have winds in this module */
@@ -1050,6 +1050,9 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
 #ifdef WIND_MDOT
     wind_mass_loss_rate = WIND_MDOT / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR);
 #endif
+#ifdef WIND_MDOT
+    wind_mass_loss_rate = WIND_MDOT / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR);
+#endif
     // let's deal with the case of undefined wind mode (just promoted to MS or restart from snapshot)
     if ( set_mode && (wind_mass_loss_rate>0) ) {
         // let's calculate N_wind = Mdot_wind * t_wind / dm_wind, where t_wind is solved from: Mdot_wind * t_wind = material swept up = 4/3 pi rho (v_wind*t_wind)^3
@@ -1057,11 +1060,15 @@ double single_star_wind_mdot(int n, int set_mode) { //if set_mode is zero then t
         double t_wind =sqrt( wind_mass_loss_rate * (3.0/(4.0*M_PI*P[n].DensAroundStar)) / (v_wind*v_wind*v_wind));
         double N_wind = wind_mass_loss_rate * t_wind / target_mass_for_wind_spawning(n);
         int old_wind_mode = P[n].wind_mode;
+#ifdef SINGLE_STAR_WIND_MODE
+        P[n].wind_mode = SINGLE_STAR_WIND_MODE;
+#else
         if (N_wind >= n_particles_for_discrete_wind_spawn){
             P[n].wind_mode = 1; // we can spawn enough particles per wind time
         } else{
             P[n].wind_mode = 2; // we can't spawn enough particles per wind time, switching to FIRE wind module to reduce burstiness
         }
+#endif
 #ifdef SINGLE_STAR_FB_JETS
         double spawning_min_wind_jet_mom_ratio = 10.0; // if winds are much more powerful than jets ( (wind momentum injection/jet momentum injection) > this value) then we can safely spawn the winds and neglect the jets if we want to
         if ( (P[n].wind_mode == 1) && (P[n].BH_Mdot>0) ){ // we want to spawn winds but we have jets too
@@ -1086,6 +1093,9 @@ double singlestar_WR_lifetime_Gyr(int n) { // calculate lifetime for star in Wol
 
 
 double single_star_wind_velocity(int n) { /* Let's get the wind velocity for MS stars */
+#if defined(WIND_MDOT) && defined(WIND_LUMINOSITY)
+    return sqrt(2*WIND_LUMINOSITY/UNIT_LUM_IN_CGS/(WIND_MDOT / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR)));
+#endif
 #if defined(WIND_MDOT) && defined(WIND_LUMINOSITY)
     return sqrt(2*WIND_LUMINOSITY/UNIT_LUM_IN_CGS/(WIND_MDOT / (UNIT_MASS_IN_SOLAR/UNIT_TIME_IN_YR)));
 #endif

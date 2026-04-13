@@ -2617,6 +2617,10 @@ extern struct global_data_all_processes
 #endif // GALSF_SUBGRID_WINDS //
 
 #ifdef GALSF_FB_FIRE_STELLAREVOLUTION
+#ifdef GALSF_FB_MECHANICAL
+    double MechFB_Injected_KE;
+    double MechFB_Injected_TE;
+#endif
     double SNe_Energy_Renormalization;
     double StellarMassLoss_Rate_Renormalization;
     double StellarMassLoss_Energy_Renormalization;

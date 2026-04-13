@@ -6,6 +6,9 @@
 #ifdef COOLING
 #include "cooling/cooling.h"
 #endif
+#ifdef JACO
+#include "cooling/microphysics_func_jac.h"
+#endif
 #ifdef BLACK_HOLES
 #include "./galaxy_sf/blackholes/blackhole.h"
 #endif
@@ -827,10 +830,12 @@ void hydro_force(void);
 void init(void);
 void do_the_cooling_for_particle(int i);
 void set_PdV_work_heatingrate(int i, double dtime);
+#ifdef JACO
 void call_jaco(int i);
 void jaco_do_cooling(int i);
 void jaco_set_eos_pressure(int i);
-int jaco_solve(double *X, double *params, double tol);
+int jaco_solve(SolveVars *sv, Params *pr, double tol);
+#endif
 double get_equilibrium_dust_temperature_estimate(int i, double shielding_factor_for_exgalbg, double T);
 double gas_dust_heating_coeff(int i, double T, double Tdust);
 double rt_eqm_dust_temp(int i, double T, double dust_absorption_rate);

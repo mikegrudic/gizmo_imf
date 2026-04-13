@@ -442,6 +442,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
                 }
                     
                 } // couple_anything_but_scalar_mass_and_metals
+
+                /* track injected energy for diagnostics (1-loop path) */
+                {
+                    double dKE_injected = 0;
+                    for(k=0;k<3;k++) {dKE_injected += 0.5 * Mass_j * Vel_j[k]*Vel_j[k] - 0.5 * Mass_j_0 * Vel_j_0[k]*Vel_j_0[k];}
+                    double dTE_injected = Mass_j * InternalEnergy_j - Mass_j_0 * InternalEnergy_j_0;
+                    _Pragma("omp atomic")
+                    All.MechFB_Injected_KE += dKE_injected;
+                    _Pragma("omp atomic")
+                    All.MechFB_Injected_TE += dTE_injected;
+                }
                 
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
                 #pragma omp atomic
@@ -1153,6 +1164,17 @@ int addFB_evaluate(int target, int mode, int *exportflag, int *exportnodecount, 
 #endif
                     
                 } // couple_anything_but_scalar_mass_and_metals
+
+                /* track injected energy for diagnostics (2-loop path) */
+                {
+                    double dKE_injected = 0;
+                    for(k=0;k<3;k++) {dKE_injected += 0.5 * Mass_j * Vel_j[k]*Vel_j[k] - 0.5 * Mass_j_0 * Vel_j_0[k]*Vel_j_0[k];}
+                    double dTE_injected = Mass_j * InternalEnergy_j - Mass_j_0 * InternalEnergy_j_0;
+                    _Pragma("omp atomic")
+                    All.MechFB_Injected_KE += dKE_injected;
+                    _Pragma("omp atomic")
+                    All.MechFB_Injected_TE += dTE_injected;
+                }
                 
                 /* we updated variables that need to get assigned to element 'j' -- let's do it here in a thread-safe manner */
 #pragma omp atomic
@@ -1271,6 +1293,21 @@ void mechanical_fb_calc_toplevel(void)
     verify_and_assign_local_mechfb_integrals();
     myfree(LocalGasMechFBInfoTemp); /* free the structure */
 #endif
+    /* reduce and log cumulative injected energy after all fb loops complete */
+    {
+        double step_KE = All.MechFB_Injected_KE, step_TE = All.MechFB_Injected_TE, step_KE_total = 0, step_TE_total = 0;
+        All.MechFB_Injected_KE = 0; All.MechFB_Injected_TE = 0;
+        MPI_Reduce(&step_KE, &step_KE_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&step_TE, &step_TE_total, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        if(ThisTask == 0) {
+            All.MechFB_Injected_KE += step_KE_total;
+            All.MechFB_Injected_TE += step_TE_total;
+            char buf[1000]; FILE *fd;
+            sprintf(buf, "%s%s", All.OutputDir, "MechFB_EnergyInjected.txt");
+            fd = fopen(buf, "a");
+            if(fd) {fprintf(fd, "%.16g %.16g %.16g\n", All.Time, All.MechFB_Injected_KE, All.MechFB_Injected_TE); fflush(fd); fclose(fd);}
+        }
+    }
 }
 
 
